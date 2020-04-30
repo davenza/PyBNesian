@@ -149,7 +149,7 @@ case Type::TypeID:                                                              
         m_batch = rb;
     }
 
-    int64_t DataFrame::null_count() {
+    int64_t DataFrame::null_count() const {
         auto rb = this->m_batch;
         int64_t null_count = 0;
         for (std::shared_ptr<Array> column : rb->columns()) {
@@ -158,7 +158,7 @@ case Type::TypeID:                                                              
         return null_count;
     }
 
-    std::shared_ptr<Buffer> DataFrame::combined_bitmap_with_null() {
+    std::shared_ptr<Buffer> DataFrame::combined_bitmap_with_null() const {
         auto rb = this->m_batch;
         int first_col_idx = 0;
 
@@ -190,7 +190,7 @@ case Type::TypeID:                                                              
         return bitmap;
     }
 
-    std::shared_ptr<Buffer> DataFrame::combined_bitmap() {
+    std::shared_ptr<Buffer> DataFrame::combined_bitmap() const {
         if (null_count() > 0) {
             return combined_bitmap_with_null();
         } else {
@@ -198,7 +198,7 @@ case Type::TypeID:                                                              
         }
     }
 
-    int64_t DataFrame::null_instances_count() {
+    int64_t DataFrame::null_instances_count() const {
         auto num_rows = this->m_batch->num_rows();
         auto comb_bitmap = combined_bitmap();
 
@@ -232,19 +232,36 @@ case Type::TypeID:                                                              
 
             return DataFrame(RecordBatch::Make(schema, n_rows, columns));
 
-
         } else {
             return *this;
         }
     }
 
+    Column DataFrame::loc(int i) const {
+        auto self_batch = this->m_batch;
+        auto dt = self_batch->schema()->field(i)->type();
+        auto array = self_batch->column(i);
+        return Column {
+            .array = array,
+            .data_type = dt
+        };
+    }
 
-    MatrixXd DataFrame::to_eigen() {
+    Column DataFrame::loc(const std::string& name) const {
+        auto self_batch = this->m_batch;
+        auto dt = self_batch->schema()->GetFieldByName(name)->type();
+        auto array = self_batch->GetColumnByName(name);
+        return Column {
+            .array = array,
+            .data_type = dt
+        };
+    }
+
+
+    MatrixXd DataFrame::to_eigen() const {
         auto rb = this->m_batch;
         auto comb_bitmap = combined_bitmap();
-        std::cout << "Combined bitmap" << comb_bitmap->ToHexString() << std::endl;
         int64_t n_rows = arrow::internal::CountSetBits(comb_bitmap->data(), 0, rb->num_rows());
-
         MatrixXd m(n_rows, rb->num_columns());
 
 //        std::cout << m.data() << std::endl;

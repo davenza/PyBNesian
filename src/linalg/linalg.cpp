@@ -3,62 +3,65 @@
 #include <pybind11/pybind11.h>
 #include <assert.h>
 #include <simd/simd.hpp>
+#include <dataset/dataset.hpp>
 
 using arrow::Array, arrow::NumericArray, arrow::DataType, arrow::Type;
+using dataset::Column;
 
 namespace linalg {
-
-    namespace internal {
-
-        template<typename ArrowType>
-        double mean(std::shared_ptr<Array> ar) {
-            return simd::mean<ArrowType, double>(ar);
-        }
-
-        template<typename ArrowType>
-        double var(std::shared_ptr<Array> ar) {
-            return simd::var<ArrowType, double>(ar);
-        }
-    }
-
-
-    double mean(std::shared_ptr<Array> ar, std::shared_ptr<DataType> dt) {
-        switch (dt->id()) {
+        
+    double mean(Column col) {
+        switch (col.data_type->id()) {
             case Type::DOUBLE:
-                return internal::mean<arrow::DoubleType>(ar);
+                return simd::mean<arrow::DoubleType, double>(col.array);
             case Type::FLOAT:
-                return internal::mean<arrow::FloatType>(ar);
+                return simd::mean<arrow::FloatType, double>(col.array);
             case Type::HALF_FLOAT:
-                return internal::mean<arrow::HalfFloatType>(ar);
+                return simd::mean<arrow::HalfFloatType, double>(col.array);
             case Type::INT64:
-                return internal::mean<arrow::Int64Type>(ar);
+                return simd::mean<arrow::Int64Type, double>(col.array);
             case Type::UINT64:
-                return internal::mean<arrow::UInt64Type>(ar);
+                return simd::mean<arrow::UInt64Type, double>(col.array);
             case Type::INT32:
-                return internal::mean<arrow::Int32Type>(ar);
+                return simd::mean<arrow::Int32Type, double>(col.array);
             case Type::UINT32:
-                return internal::mean<arrow::UInt32Type>(ar);
+                return simd::mean<arrow::UInt32Type, double>(col.array);
             case Type::INT16:
-                return internal::mean<arrow::Int16Type>(ar);
+                return simd::mean<arrow::Int16Type, double>(col.array);
             case Type::UINT16:
-                return internal::mean<arrow::UInt16Type>(ar);
+                return simd::mean<arrow::UInt16Type, double>(col.array);
             case Type::INT8:
-                return internal::mean<arrow::Int8Type>(ar);
+                return simd::mean<arrow::Int8Type, double>(col.array);
             case Type::UINT8:
-                return internal::mean<arrow::UInt8Type>(ar);
+                return simd::mean<arrow::UInt8Type, double>(col.array);
             default:
                 throw pybind11::value_error("Only numeric data types are allowed in mean().");
         }
     }
 
-    double var(std::shared_ptr<Array> ar, std::shared_ptr<DataType> dt) {
-        switch (dt->id()) {
+    double var(Column col) {
+        switch (col.data_type->id()) {
             case Type::DOUBLE:
-                return internal::var<arrow::DoubleType>(ar);
+                return simd::var<arrow::DoubleType, double>(col.array);
             case Type::FLOAT:
-                return internal::var<arrow::FloatType>(ar);
+                return simd::var<arrow::FloatType, double>(col.array);
             case Type::HALF_FLOAT:
-                return internal::var<arrow::HalfFloatType>(ar);
+                return simd::var<arrow::HalfFloatType, double>(col.array);
+            default:
+                throw pybind11::value_error("Only floating point data is implemented in var().");
+        }
+    }
+
+    double var(Column col, double mean) {
+        switch (col.data_type->id()) {
+            case Type::DOUBLE:
+                return simd::var<arrow::DoubleType, double>(col.array, mean);
+            case Type::FLOAT:
+                return simd::var<arrow::FloatType, double>(col.array,
+                                                           static_cast<typename arrow::FloatType::c_type>(mean));
+            case Type::HALF_FLOAT:
+                return simd::var<arrow::HalfFloatType, double>(col.array,
+                                                           static_cast<typename arrow::HalfFloatType::c_type>(mean));
             default:
                 throw pybind11::value_error("Only floating point data is implemented in var().");
         }

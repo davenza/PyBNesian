@@ -11,8 +11,9 @@ using arrow::Array, arrow::DataType;
 
 namespace linalg {
 
-    double mean(std::shared_ptr<Array> ar, std::shared_ptr<DataType> dt);
-    double var(std::shared_ptr<Array> ar, std::shared_ptr<DataType> dt);
+    double mean(Column col);
+    double var(Column col);
+    double var(Column col, double mean);
 }
 
 #endif //PGM_DATASET_LINALG_HPP

@@ -257,7 +257,7 @@ namespace simd {
         return SimdProperties{
                 .leading_elements = leading_elements,
                 .aligned_words = words,
-                .trailing_elements = trailing
+                .trailing_elements = trailing,
         };
     }
 

@@ -30,6 +30,7 @@ namespace factors::continuous {
         std::string variable;
         std::vector<std::string> evidence;
         std::vector<double> beta;
+        double variance;
     };
 }
 

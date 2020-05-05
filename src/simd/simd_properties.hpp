@@ -1,6 +1,8 @@
 #ifndef PGM_DATASET_SIMD_PROPERTIES_HPP
 #define PGM_DATASET_SIMD_PROPERTIES_HPP
 
+#include <immintrin.h>
+#include <arrow/api.h>
 
 namespace simd {
 
@@ -16,10 +18,13 @@ namespace simd {
         static constexpr int64_t LANES = 4;
         static constexpr uintptr_t ALIGNMENT = 32;
         static constexpr auto simd_load = _mm256_load_pd;
+        static constexpr auto simd_loadu = _mm256_loadu_pd;
         static constexpr auto simd_set1 = _mm256_set1_pd;
         static constexpr auto simd_add = _mm256_add_pd;
         static constexpr auto simd_sub = _mm256_sub_pd;
         static constexpr auto simd_mul = _mm256_mul_pd;
+        static constexpr auto simd_fmadd = _mm256_fmadd_pd;
+        static constexpr auto simd_stream_store = _mm256_stream_pd;
 
         inline static arrow::DoubleType::c_type horizontal_sum(__m256d simd) {
             auto high = _mm256_extractf128_pd(simd, 1);
@@ -37,10 +42,13 @@ namespace simd {
         static constexpr int64_t LANES = 8;
         static constexpr uintptr_t ALIGNMENT = 32;
         static constexpr auto simd_load = _mm256_load_ps;
+        static constexpr auto simd_loadu = _mm256_loadu_ps;
         static constexpr auto simd_set1 = _mm256_set1_ps;
         static constexpr auto simd_add = _mm256_add_ps;
         static constexpr auto simd_sub = _mm256_sub_ps;
         static constexpr auto simd_mul = _mm256_mul_ps;
+        static constexpr auto simd_fmadd = _mm256_fmadd_ps;
+        static constexpr auto simd_stream_store = _mm256_stream_ps;
 
 //    Implementation from here: https://stackoverflow.com/questions/13219146/how-to-sum-m256-horizontally
         inline static arrow::FloatType::c_type horizontal_sum(__m256 simd) {
@@ -70,6 +78,10 @@ namespace simd {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
+        inline static __m256i simd_loadu(const arrow::Int64Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
         inline static arrow::Int64Type::c_type horizontal_sum(__m256i simd) {
             auto high = _mm256_extractf128_si256(simd, 1);
             auto simd_sum = _mm_add_epi64(high, _mm256_castsi256_si128(simd));
@@ -91,6 +103,10 @@ namespace simd {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
+        inline static __m256i simd_loadu(const arrow::UInt64Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
         inline static arrow::UInt64Type::c_type horizontal_sum(__m256i simd) {
             auto high = _mm256_extractf128_si256(simd, 1);
             auto simd_sum = _mm_add_epi64(high, _mm256_castsi256_si128(simd));
@@ -110,6 +126,10 @@ namespace simd {
 
         inline static __m256i simd_load(const arrow::Int32Type::c_type *mem) {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
+        inline static __m256i simd_loadu(const arrow::Int32Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
         inline static arrow::Int32Type::c_type horizontal_sum(__m256i simd) {
@@ -134,6 +154,10 @@ namespace simd {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
+        inline static __m256i simd_loadu(const arrow::UInt32Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
         inline static arrow::UInt32Type::c_type horizontal_sum(__m256i simd) {
             auto high_quad = _mm256_extractf128_si256(simd, 1);
             auto sum_quad = _mm_add_epi32(high_quad, _mm256_castsi256_si128(simd));
@@ -154,6 +178,10 @@ namespace simd {
 
         inline static __m256i simd_load(const arrow::Int16Type::c_type *mem) {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
+        inline static __m256i simd_loadu(const arrow::Int16Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
         inline static arrow::Int16Type::c_type horizontal_sum(__m256i simd) {
@@ -179,6 +207,10 @@ namespace simd {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
+        inline static __m256i simd_loadu(const arrow::UInt16Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
         inline static arrow::UInt16Type::c_type horizontal_sum(__m256i simd) {
             auto high_oct = _mm256_extractf128_si256(simd, 1);
             auto sum_oct = _mm_add_epi16(high_oct, _mm256_castsi256_si128(simd));
@@ -200,6 +232,10 @@ namespace simd {
 
         inline static __m256i simd_load(const arrow::Int8Type::c_type *mem) {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
+        inline static __m256i simd_loadu(const arrow::Int8Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
         inline static arrow::Int8Type::c_type horizontal_sum(__m256i simd) {
@@ -226,6 +262,10 @@ namespace simd {
             return _mm256_stream_load_si256(reinterpret_cast<const __m256i *>(mem));
         }
 
+        inline static __m256i simd_loadu(const arrow::UInt8Type::c_type *mem) {
+            return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(mem));
+        }
+
         inline static arrow::UInt8Type::c_type horizontal_sum(__m256i simd) {
             auto high_hex = _mm256_extractf128_si256(simd, 1);
             auto sum_hex = _mm_add_epi8(high_hex, _mm256_castsi256_si128(simd));
@@ -239,9 +279,9 @@ namespace simd {
 
 
     struct SimdProperties {
-        int64_t leading_elements;
-        int64_t aligned_words;
-        int64_t trailing_elements;
+        uint64_t leading_elements;
+        uint64_t aligned_words;
+        uint64_t trailing_elements;
     };
 
     template<typename ArrowType>
@@ -250,9 +290,9 @@ namespace simd {
         constexpr auto LANES = SimdTraits<ArrowType>::LANES;
         uintptr_t iptr = reinterpret_cast<uintptr_t>(data);
 
-        int64_t leading_elements = std::min<int64_t>(length, (iptr % ALIGNMENT) / sizeof(typename ArrowType::c_type));
-        int64_t words = (length - leading_elements) / LANES;
-        int64_t trailing = (length - leading_elements) % LANES;
+        uint64_t leading_elements = std::min<uint64_t>(length, (iptr % ALIGNMENT) / sizeof(typename ArrowType::c_type));
+        uint64_t words = (length - leading_elements) / LANES;
+        uint64_t trailing = (length - leading_elements) % LANES;
 
         return SimdProperties{
                 .leading_elements = leading_elements,

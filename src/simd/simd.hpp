@@ -3,6 +3,7 @@
 
 #include <simd/sum.hpp>
 #include <simd/variance.hpp>
+#include <simd/fmadd.hpp>
 
 
 #endif //PGM_DATASET_SIMD_HPP

@@ -5,10 +5,9 @@
 #include <arrow/util/bit_util.h>
 #include <immintrin.h>
 #include <iostream>
-#include <util/align_util.hpp>
+#include <simd/bit_util.hpp>
 #include <simd/simd_properties.hpp>
 
-using bit_util::BitmapWordAlignExtra;
 using arrow::BitUtil::GetBit;
 
 using arrow::Array;
@@ -52,12 +51,12 @@ namespace simd::sum_internals {
         }
 
         CType accum = 0;
-        for (int i = 0; i < p.leading_elements; ++i) {
+        for (uint64_t i = 0; i < p.leading_elements; ++i) {
             accum += raw_values[i];
         }
 
         auto simd_accum = SimdTraits<ArrowType>::simd_set1(0);
-        for (int w = 0, offset = p.leading_elements; w < p.aligned_words; ++w, offset += SimdTraits<ArrowType>::LANES) {
+        for (uint64_t w = 0, offset = p.leading_elements; w < p.aligned_words; ++w, offset += SimdTraits<ArrowType>::LANES) {
             auto l = SimdTraits<ArrowType>::simd_load(raw_values + offset);
             simd_accum = SimdTraits<ArrowType>::simd_add(simd_accum, l);
         }
@@ -76,7 +75,6 @@ namespace simd::sum_internals {
     sum_non_contiguous(std::shared_ptr <Array> array) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using CType = typename ArrowType::c_type;
-        using arrow::internal::BitmapWordAlign;
 
         auto dwn_array = std::static_pointer_cast<ArrayType>(array);
         auto raw_values = dwn_array->raw_values();
@@ -84,21 +82,14 @@ namespace simd::sum_internals {
 
         auto length = dwn_array->length();
 
-        const auto p = BitmapWordAlign<8>(null_bitmap, 0, length);
+        const auto p = bit_util::bitmap_words<64>(length);
 
         CType accum = 0;
 
-        for (int64_t i = 0; i < p.leading_bits; ++i) {
-            if (GetBit(null_bitmap, i)) {
-                accum += raw_values[i];
-            }
-        }
-
-        if (p.aligned_words > 0) {
+        if (p.words > 0) {
             const uint64_t *u64_bitmap = reinterpret_cast<const uint64_t *>(null_bitmap);
-
             auto offset_values = 0;
-            for (auto i = 0; i < p.aligned_words; ++i) {
+            for (uint64_t i = 0; i < p.words; ++i) {
                 if (u64_bitmap[i] == 0xFFFFFFFFFFFFFFFF) {
                     for (auto j = 0; j < 64; ++j) {
                         accum += raw_values[offset_values + j];

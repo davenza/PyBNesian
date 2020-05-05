@@ -43,7 +43,8 @@ ext_modules = [
          'src/lib.cpp',
          'src/factors/continuous/LinearGaussianCPD.cpp',
          'src/dataset/dataset.cpp',
-         'src/linalg/linalg.cpp'
+         'src/linalg/linalg.cpp',
+         'src/simd/bit_util.cpp'
          ],
         include_dirs=[
         #     # Path to pybind11 headers

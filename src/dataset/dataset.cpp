@@ -3,7 +3,6 @@
 #include <arrow/util/align_util.h>
 #include <arrow/util/bit_util.h>
 #include <arrow/python/pyarrow.h>
-#include <util/align_util.hpp>
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
 
@@ -209,7 +208,6 @@ case Type::TypeID:                                                              
         }
     }
 
-
     DataFrame DataFrame::drop_null_instances() {
         auto rb = this->m_batch;
         auto comb_bitmap = combined_bitmap();
@@ -237,26 +235,13 @@ case Type::TypeID:                                                              
         }
     }
 
-    Column DataFrame::loc(int i) const {
-        auto self_batch = this->m_batch;
-        auto dt = self_batch->schema()->field(i)->type();
-        auto array = self_batch->column(i);
-        return Column {
-            .array = array,
-            .data_type = dt
-        };
+    Array_ptr DataFrame::loc(int i) const {
+        return m_batch->column(i);
     }
 
-    Column DataFrame::loc(const std::string& name) const {
-        auto self_batch = this->m_batch;
-        auto dt = self_batch->schema()->GetFieldByName(name)->type();
-        auto array = self_batch->GetColumnByName(name);
-        return Column {
-            .array = array,
-            .data_type = dt
-        };
+    Array_ptr DataFrame::loc(const std::string& name) const {
+        return m_batch->GetColumnByName(name);
     }
-
 
     MatrixXd DataFrame::to_eigen() const {
         auto rb = this->m_batch;
@@ -264,17 +249,10 @@ case Type::TypeID:                                                              
         int64_t n_rows = arrow::internal::CountSetBits(comb_bitmap->data(), 0, rb->num_rows());
         MatrixXd m(n_rows, rb->num_columns());
 
-//        std::cout << m.data() << std::endl;
         return m;
     }
 
     std::shared_ptr<arrow::RecordBatch> DataFrame::operator->() { return m_batch; }
-
-
-
-
-
-
 
 }
 

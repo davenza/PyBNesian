@@ -6,64 +6,157 @@
 #include <dataset/dataset.hpp>
 
 using arrow::Array, arrow::NumericArray, arrow::DataType, arrow::Type;
-using dataset::Column;
+
+typedef std::shared_ptr<arrow::Array> Array_ptr;
 
 namespace linalg {
-        
-    double mean(Column col) {
-        switch (col.data_type->id()) {
+
+    double mean(Array_ptr col) {
+        switch (col->type_id()) {
             case Type::DOUBLE:
-                return simd::mean<arrow::DoubleType, double>(col.array);
+                return simd::mean<arrow::DoubleType, double>(col);
             case Type::FLOAT:
-                return simd::mean<arrow::FloatType, double>(col.array);
+                return simd::mean<arrow::FloatType, double>(col);
             case Type::HALF_FLOAT:
-                return simd::mean<arrow::HalfFloatType, double>(col.array);
+                return simd::mean<arrow::HalfFloatType, double>(col);
             case Type::INT64:
-                return simd::mean<arrow::Int64Type, double>(col.array);
+                return simd::mean<arrow::Int64Type, double>(col);
             case Type::UINT64:
-                return simd::mean<arrow::UInt64Type, double>(col.array);
+                return simd::mean<arrow::UInt64Type, double>(col);
             case Type::INT32:
-                return simd::mean<arrow::Int32Type, double>(col.array);
+                return simd::mean<arrow::Int32Type, double>(col);
             case Type::UINT32:
-                return simd::mean<arrow::UInt32Type, double>(col.array);
+                return simd::mean<arrow::UInt32Type, double>(col);
             case Type::INT16:
-                return simd::mean<arrow::Int16Type, double>(col.array);
+                return simd::mean<arrow::Int16Type, double>(col);
             case Type::UINT16:
-                return simd::mean<arrow::UInt16Type, double>(col.array);
+                return simd::mean<arrow::UInt16Type, double>(col);
             case Type::INT8:
-                return simd::mean<arrow::Int8Type, double>(col.array);
+                return simd::mean<arrow::Int8Type, double>(col);
             case Type::UINT8:
-                return simd::mean<arrow::UInt8Type, double>(col.array);
+                return simd::mean<arrow::UInt8Type, double>(col);
             default:
                 throw pybind11::value_error("Only numeric data types are allowed in mean().");
         }
     }
 
-    double var(Column col) {
-        switch (col.data_type->id()) {
+    double var(Array_ptr col) {
+        switch (col->type_id()) {
             case Type::DOUBLE:
-                return simd::var<arrow::DoubleType, double>(col.array);
+                return simd::var<arrow::DoubleType, double>(col);
             case Type::FLOAT:
-                return simd::var<arrow::FloatType, double>(col.array);
+                return simd::var<arrow::FloatType, double>(col);
             case Type::HALF_FLOAT:
-                return simd::var<arrow::HalfFloatType, double>(col.array);
+                return simd::var<arrow::HalfFloatType, double>(col);
             default:
                 throw pybind11::value_error("Only floating point data is implemented in var().");
         }
     }
 
-    double var(Column col, double mean) {
-        switch (col.data_type->id()) {
+    double var(Array_ptr col, double mean) {
+        switch (col->type_id()) {
             case Type::DOUBLE:
-                return simd::var<arrow::DoubleType, double>(col.array, mean);
+                return simd::var<arrow::DoubleType, double>(col, mean);
             case Type::FLOAT:
-                return simd::var<arrow::FloatType, double>(col.array,
+                return simd::var<arrow::FloatType, double>(col,
                                                            static_cast<typename arrow::FloatType::c_type>(mean));
             case Type::HALF_FLOAT:
-                return simd::var<arrow::HalfFloatType, double>(col.array,
+                return simd::var<arrow::HalfFloatType, double>(col,
                                                            static_cast<typename arrow::HalfFloatType::c_type>(mean));
             default:
                 throw pybind11::value_error("Only floating point data is implemented in var().");
+        }
+    }
+
+    double covariance_unsafe(Array_ptr col1, Array_ptr col2, double mean1, double mean2) {
+        switch (col1->type_id()) {
+            case Type::DOUBLE:
+                return simd::covariance<arrow::DoubleType, double>(col1, col2, mean1, mean2);
+            case Type::FLOAT:
+                return simd::covariance<arrow::FloatType, double>(col1, col2,
+                                                           static_cast<typename arrow::FloatType::c_type>(mean1),
+                                                           static_cast<typename arrow::FloatType::c_type>(mean2));
+            case Type::HALF_FLOAT:
+                return simd::covariance<arrow::HalfFloatType, double>(col1, col2,
+                                                                static_cast<typename arrow::HalfFloatType::c_type>(mean1),
+                                                                static_cast<typename arrow::HalfFloatType::c_type>(mean2));
+            default:
+                throw pybind11::value_error("Only floating point data is implemented in var().");
+        }
+    }
+
+    double covariance(Array_ptr col1, Array_ptr col2, double mean1, double mean2) {
+        if (col1->type_id() != col2->type_id()) {
+            throw pybind11::value_error("Data type for both columns should be the same in covariance()");
+        }
+
+        return covariance_unsafe(col1, col2, mean1, mean2);
+    }
+}
+
+namespace linalg::linear_regression {
+
+
+    template<typename ArrowType>
+    Array_ptr fitted_values_typed(std::vector<double> beta, std::vector<Array_ptr> columns) {
+        using CType = typename ArrowType::c_type;
+
+        auto length = columns[0]->length();
+        auto result = arrow::AllocateBuffer(length * sizeof(CType));
+
+        if (!result.ok()) {
+            throw std::bad_alloc();
+        }
+
+        auto buffer_data = std::move(result).ValueOrDie();
+        auto raw_buffer_data = reinterpret_cast<CType*>(buffer_data->mutable_data());
+        auto intercept = static_cast<CType>(beta[0]);
+        std::fill(raw_buffer_data, raw_buffer_data + length, intercept);
+
+
+        auto output_datatype = arrow::TypeTraits<ArrowType>::type_singleton();
+
+        auto combined_bitmap = simd::bit_util::combined_bitmap(columns);
+
+        std::shared_ptr<NumericArray<ArrowType>> output_array;
+        if (combined_bitmap) {
+            auto null_count = simd::bit_util::null_count(combined_bitmap, length);
+            output_array = std::make_shared<arrow::NumericArray<ArrowType>>(output_datatype, length,
+                                                                        std::move(buffer_data),
+                                                                        std::move(combined_bitmap),
+                                                                        null_count);
+        } else {
+            output_array = std::make_shared<arrow::NumericArray<ArrowType>>(output_datatype, length, std::move(buffer_data));
+        }
+
+        for (uint64_t i = 0; i < columns.size(); ++i) {
+            simd::fmadd<ArrowType>(columns[i], beta[i+1], output_array);
+        }
+
+        return std::static_pointer_cast<Array>(output_array);
+    }
+
+//    TODO: Document: This function only accepts columns non empty
+    Array_ptr fitted_values(std::vector<double> beta, std::vector<Array_ptr> columns) {
+
+        std::cout << "columns size " << (columns.size()) << std::endl;
+        auto dt_id = columns[0]->type_id();
+
+        for (Array_ptr c : columns) {
+            if (c->type_id() != dt_id) {
+                throw pybind11::value_error("Data type for every column should be the same in fitted_values()");
+            }
+        }
+
+        switch(dt_id) {
+            case Type::DOUBLE:
+                return fitted_values_typed<arrow::DoubleType>(beta, columns);
+            case Type::FLOAT:
+                return fitted_values_typed<arrow::FloatType>(beta, columns);
+            case Type::HALF_FLOAT:
+                return fitted_values_typed<arrow::HalfFloatType>(beta, columns);
+            default:
+                throw pybind11::value_error("Only floating point data is implemented in fitted_values().");
         }
     }
 }

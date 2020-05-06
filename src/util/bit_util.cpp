@@ -1,13 +1,14 @@
 
-#include <simd/bit_util.hpp>
+#include <util/bit_util.hpp>
 #include <simd/simd_properties.hpp>
 #include <arrow/api.h>
 
-namespace simd::bit_util {
+namespace util::bit_util {
 
     using arrow::BitUtil::GetBit;
 
     typedef std::shared_ptr<arrow::Array> Array_ptr;
+    typedef std::shared_ptr<arrow::Buffer> Buffer_ptr;
 
     uint64_t null_count(std::vector<Array_ptr> columns) {
         int64_t null_count = 0;
@@ -17,7 +18,7 @@ namespace simd::bit_util {
         return null_count;
     }
 
-    std::shared_ptr<arrow::Buffer> combined_bitmap_with_null(std::vector<Array_ptr> columns) {
+    Buffer_ptr combined_bitmap_with_null(std::vector<Array_ptr> columns) {
         int first_col_idx = 0;
 
         auto length = columns[0]->length();
@@ -49,7 +50,7 @@ namespace simd::bit_util {
         return bitmap;
     }
 
-    std::shared_ptr<arrow::Buffer> combined_bitmap(std::vector<Array_ptr> columns) {
+    Buffer_ptr combined_bitmap(std::vector<Array_ptr> columns) {
         if (null_count(columns) > 0) {
             return combined_bitmap_with_null(columns);
         } else {
@@ -57,32 +58,26 @@ namespace simd::bit_util {
         }
     }
 
-    uint64_t null_count(std::shared_ptr<arrow::Buffer> bitmap, uint64_t length) {
+    Buffer_ptr combined_bitmap(Buffer_ptr bitmap1, Buffer_ptr bitmap2, uint64_t length) {
+        if (!bitmap2) {
+            return bitmap1;
+        } else if (!bitmap1) {
+            return bitmap2;
+        } else {
+            auto res = arrow::Buffer::Copy(bitmap1, arrow::default_cpu_memory_manager()).ValueOrDie();
+            arrow::internal::BitmapAnd(bitmap1->data(), 0,
+                                              bitmap2->data(), 0,
+                                              length,
+                                              0, res->mutable_data());
+            return res;
+        }
+    }
+
+    uint64_t null_count(Buffer_ptr bitmap, uint64_t length) {
         return length - arrow::internal::CountSetBits(bitmap->data(), 0, length);
     }
 
-    uint64_t count_combined_set_bits(const uint8_t* bitmap1, const uint8_t* bitmap2, uint64_t length) {
-
-        auto p = bitmap_words<64>(length);
-
-        uint64_t count = 0;
-
-        auto u64_bitmap1 = reinterpret_cast<const uint64_t*>(bitmap1);
-        auto u64_bitmap2 = reinterpret_cast<const uint64_t*>(bitmap2);
-
-        if (p.words > 0) {
-            for(uint64_t w = 0; w < p.words; ++w) {
-                uint64_t comb_bitmap = u64_bitmap1[w] & u64_bitmap2[w];
-                count += _mm_popcnt_u64(comb_bitmap);
-            }
-        }
-
-        for(uint64_t i = p.trailing_bit_offset; i < length; ++i) {
-            if (GetBit(bitmap1, i) && GetBit(bitmap2, i)) {
-                ++count;
-            }
-        }
-
-        return count;
+    uint64_t non_null_count(Buffer_ptr bitmap, uint64_t length) {
+        return arrow::internal::CountSetBits(bitmap->data(), 0, length);
     }
 }

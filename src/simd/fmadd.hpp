@@ -3,45 +3,77 @@
 
 #include <arrow/api.h>
 #include <pybind11/pybind11.h>
-#include <simd/bit_util.hpp>
+#include <util/bit_util.hpp>
 
 namespace simd::fmadd_internals {
 
-    template<typename ArrowType,
-             typename = std::enable_if_t<SimdTraits<ArrowType>::CAN_SIMD>>
-    void fmadd_same_alignment(std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> input_array,
-                              typename ArrowType::c_type coeff,
-                              std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> output_array,
-                              SimdProperties p) {
-        using CType = typename ArrowType::c_type;
-        auto raw_input = input_array->raw_values();
-        auto raw_output = reinterpret_cast<CType*>(output_array->values()->mutable_data());
+//    template<typename ArrowType,
+//             typename = std::enable_if_t<SimdTraits<ArrowType>::CAN_SIMD>>
+//    void fmadd_same_alignment(std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> input_array,
+//                              typename ArrowType::c_type coeff,
+//                              std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> output_array,
+//                              SimdProperties p) {
+//        using CType = typename ArrowType::c_type;
+//        auto raw_input = input_array->raw_values();
+//        auto raw_output = reinterpret_cast<CType*>(output_array->values()->mutable_data());
+//
+//        for (uint64_t i = 0; i < p.leading_elements; ++i) {
+//            raw_output[i] += coeff*raw_input[i];
+//        }
+//
+//        auto simd_coeff = SimdTraits<ArrowType>::simd_set1(coeff);
+//        for (uint64_t w = 0, offset = p.leading_elements;
+//            w < p.aligned_words;
+//            ++w, offset += SimdTraits<ArrowType>::LANES) {
+//
+//            auto simd_input = SimdTraits<ArrowType>::simd_load(raw_input + offset);
+//            auto simd_output = SimdTraits<ArrowType>::simd_load(raw_output + offset);
+//            simd_output = SimdTraits<ArrowType>::simd_fmadd(simd_input, simd_coeff, simd_output);
+//
+//            SimdTraits<ArrowType>::simd_stream_store(raw_output + offset, simd_output);
+//        }
+//
+//        uint64_t length = input_array->length();
+//        for (uint64_t i = length - p.trailing_elements; i < length; ++i) {
+//            raw_output[i] += coeff*raw_input[i];
+//        }
+//    }
+//
+//    template<typename ArrowType,
+//            typename = std::enable_if_t<SimdTraits<ArrowType>::CAN_SIMD>>
+//    void fmadd_different_alignment(std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> input_array,
+//                                   typename ArrowType::c_type coeff,
+//                                   std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> output_array,
+//                                   SimdProperties p) {
+//        using CType = typename ArrowType::c_type;
+//        auto raw_input = input_array->raw_values();
+//        auto raw_output = reinterpret_cast<CType*>(output_array->values()->mutable_data());
+//
+//        for (uint64_t i = 0; i < p.leading_elements; ++i) {
+//            raw_output[i] += coeff*raw_input[i];
+//        }
+//
+//        auto simd_coeff = SimdTraits<ArrowType>::simd_set1(coeff);
+//        for (uint64_t w = 0, offset = p.leading_elements;
+//             w < p.aligned_words;
+//             ++w, offset += SimdTraits<ArrowType>::LANES) {
+//
+//            auto simd_input = SimdTraits<ArrowType>::simd_loadu(raw_input + offset);
+//            auto simd_output = SimdTraits<ArrowType>::simd_load(raw_output + offset);
+//            simd_output = SimdTraits<ArrowType>::simd_fmadd(simd_input, simd_coeff, simd_output);
+//
+//            SimdTraits<ArrowType>::simd_stream_store(raw_output + offset, simd_output);
+//        }
+//
+//        uint64_t length = input_array->length();
+//        for (uint64_t i = length - p.trailing_elements; i < length; ++i) {
+//            raw_output[i] += coeff*raw_input[i];
+//        }
+//    }
 
-        for (uint64_t i = 0; i < p.leading_elements; ++i) {
-            raw_output[i] += coeff*raw_input[i];
-        }
-
-        auto simd_coeff = SimdTraits<ArrowType>::simd_set1(coeff);
-        for (uint64_t w = 0, offset = p.leading_elements;
-            w < p.aligned_words;
-            ++w, offset += SimdTraits<ArrowType>::LANES) {
-
-            auto simd_input = SimdTraits<ArrowType>::simd_load(raw_input + offset);
-            auto simd_output = SimdTraits<ArrowType>::simd_load(raw_output + offset);
-            simd_output = SimdTraits<ArrowType>::simd_fmadd(simd_input, simd_coeff, simd_output);
-
-            SimdTraits<ArrowType>::simd_stream_store(raw_output + offset, simd_output);
-        }
-
-        uint64_t length = input_array->length();
-        for (uint64_t i = length - p.trailing_elements; i < length; ++i) {
-            raw_output[i] += coeff*raw_input[i];
-        }
-    }
-
-    template<typename ArrowType,
+    template<typename ArrowType, bool aligned_input_array, bool aligned_output_array,
             typename = std::enable_if_t<SimdTraits<ArrowType>::CAN_SIMD>>
-    void fmadd_different_alignment(std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> input_array,
+    void fmadd_alignment(std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> input_array,
                                    typename ArrowType::c_type coeff,
                                    std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType> output_array,
                                    SimdProperties p) {
@@ -58,10 +90,17 @@ namespace simd::fmadd_internals {
              w < p.aligned_words;
              ++w, offset += SimdTraits<ArrowType>::LANES) {
 
-            auto simd_input = SimdTraits<ArrowType>::simd_loadu(raw_input + offset);
-            auto simd_output = SimdTraits<ArrowType>::simd_load(raw_output + offset);
-            simd_output = SimdTraits<ArrowType>::simd_fmadd(simd_input, simd_coeff, simd_output);
+            auto simd_input = [=]() -> auto {
+                if constexpr(aligned_input_array) return SimdTraits<ArrowType>::simd_load(raw_input + offset);
+                else return SimdTraits<ArrowType>::simd_loadu(raw_input + offset);
+            }();
 
+            auto simd_output = [=]() -> auto {
+                if constexpr(aligned_output_array) return SimdTraits<ArrowType>::simd_load(raw_output + offset);
+                else return SimdTraits<ArrowType>::simd_loadu(raw_output + offset);
+            }();
+
+            simd_output = SimdTraits<ArrowType>::simd_fmadd(simd_input, simd_coeff, simd_output);
             SimdTraits<ArrowType>::simd_stream_store(raw_output + offset, simd_output);
         }
 
@@ -112,9 +151,9 @@ namespace simd {
         auto p_output = simd_properties<ArrowType>(raw_output, length);
 
         if (p_input.leading_elements == p_output.leading_elements) {
-            simd::fmadd_internals::fmadd_same_alignment<ArrowType>(dwn_input, coeff, dwn_output, p_output);
+            simd::fmadd_internals::fmadd_alignment<ArrowType, true, true>(dwn_input, coeff, dwn_output, p_output);
         } else {
-            simd::fmadd_internals::fmadd_different_alignment<ArrowType>(dwn_input, coeff, dwn_output, p_output);
+            simd::fmadd_internals::fmadd_alignment<ArrowType, false, true>(dwn_input, coeff, dwn_output, p_output);
         }
     }
 }

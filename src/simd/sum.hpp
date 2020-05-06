@@ -5,19 +5,22 @@
 #include <arrow/util/bit_util.h>
 #include <immintrin.h>
 #include <iostream>
-#include <simd/bit_util.hpp>
+#include <util/bit_util.hpp>
 #include <simd/simd_properties.hpp>
 
 using arrow::BitUtil::GetBit;
 
 using arrow::Array;
 
+typedef std::shared_ptr<arrow::Array> Array_ptr;
+typedef std::shared_ptr<arrow::Buffer> Buffer_ptr;
+
 namespace simd::sum_internals {
 
     template<typename ArrowType,
             std::enable_if_t<!SimdTraits<ArrowType>::CAN_SIMD, int> = 0>
     typename ArrowType::c_type
-    sum_contiguous(std::shared_ptr <Array> array) {
+    sum_contiguous(Array_ptr array) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
 
         auto dwn_array = std::static_pointer_cast<ArrayType>(array);
@@ -33,7 +36,7 @@ namespace simd::sum_internals {
     template<typename ArrowType,
             std::enable_if_t<SimdTraits<ArrowType>::CAN_SIMD, int> = 0>
     typename ArrowType::c_type
-    sum_contiguous(std::shared_ptr <Array> array) {
+    sum_contiguous(Array_ptr array) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using CType = typename ArrowType::c_type;
 
@@ -72,24 +75,24 @@ namespace simd::sum_internals {
 
     template<typename ArrowType>
     typename ArrowType::c_type
-    sum_non_contiguous(std::shared_ptr <Array> array) {
+    sum_non_contiguous(Array_ptr array, Buffer_ptr bitmap) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using CType = typename ArrowType::c_type;
 
         auto dwn_array = std::static_pointer_cast<ArrayType>(array);
         auto raw_values = dwn_array->raw_values();
-        auto null_bitmap = dwn_array->null_bitmap()->data();
+        auto null_bitmap = bitmap->data();
 
         auto length = dwn_array->length();
 
-        const auto p = bit_util::bitmap_words<64>(length);
+        const auto bp = util::bit_util::bitmap_words<64>(length);
 
         CType accum = 0;
 
-        if (p.words > 0) {
+        if (bp.words > 0) {
             const uint64_t *u64_bitmap = reinterpret_cast<const uint64_t *>(null_bitmap);
             auto offset_values = 0;
-            for (uint64_t i = 0; i < p.words; ++i) {
+            for (uint64_t i = 0; i < bp.words; ++i) {
                 if (u64_bitmap[i] == 0xFFFFFFFFFFFFFFFF) {
                     for (auto j = 0; j < 64; ++j) {
                         accum += raw_values[offset_values + j];
@@ -105,7 +108,7 @@ namespace simd::sum_internals {
             }
         }
 
-        for (int64_t i = p.trailing_bit_offset; i < length; ++i) {
+        for (int64_t i = bp.trailing_bit_offset; i < length; ++i) {
             if (GetBit(null_bitmap, i)) {
                 accum += raw_values[i];
             }
@@ -180,7 +183,7 @@ namespace simd::sum_internals {
 //    template<typename ArrowType,
 //             std::enable_if_t<SimdTraits<ArrowType>::CAN_SIMD, int> = 0>
 //    typename ArrowType::c_type
-//    sum_non_contiguous(std::shared_ptr <Array> array) {
+//    sum_non_contiguous(Array_ptr array) {
 //        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
 //        using CType = typename ArrowType::c_type;
 //        using arrow::internal::BitmapWordAlign;
@@ -251,25 +254,21 @@ namespace simd::sum_internals {
 namespace simd {
     template<typename ArrowType, typename Output = typename ArrowType::c_type>
     Output
-    mean(std::shared_ptr<Array> array) {
+    mean(Array_ptr array) {
         auto null_count = array->null_count();
         if (array->null_count() == 0) {
             return static_cast<Output>(simd::sum_internals::sum_contiguous<ArrowType>(array)) / array->length();
         } else {
-            return static_cast<Output>(simd::sum_internals::sum_non_contiguous<ArrowType>(array))
-                                            / (array->length() - null_count);
+            return static_cast<Output>(simd::sum_internals::sum_non_contiguous<ArrowType>(array, array->null_bitmap()))
+                                                                                    / (array->length() - null_count);
         }
     }
 
-
-    template<typename ArrowType>
-    typename ArrowType::c_type
-    sum(std::shared_ptr<Array> array) {
-        if (array->null_count() == 0) {
-            return simd::sum_internals::sum_contiguous<ArrowType>(array);
-        } else {
-            return simd::sum_internals::sum_non_contiguous<ArrowType>(array);
-        }
+    template<typename ArrowType, typename Output = typename ArrowType::c_type>
+    Output
+    mean(Array_ptr array, Buffer_ptr bitmap) {
+        auto non_null = arrow::internal::CountSetBits(bitmap->data(), 0, array->length());
+        return static_cast<Output>(simd::sum_internals::sum_non_contiguous<ArrowType>(array, bitmap)) / non_null;
     }
 }
 

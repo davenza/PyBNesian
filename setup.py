@@ -44,7 +44,7 @@ ext_modules = [
          'src/factors/continuous/LinearGaussianCPD.cpp',
          'src/dataset/dataset.cpp',
          'src/linalg/linalg.cpp',
-         'src/simd/bit_util.cpp'
+         'src/util/bit_util.cpp'
          ],
         include_dirs=[
         #     # Path to pybind11 headers
@@ -86,7 +86,7 @@ def cpp_flag(compiler):
 
     The newer version is prefered over c++11 (when it is available).
     """
-    flags = ['-std=c++17', '-std=c++14', '-std=c++11']
+    flags = ['-std=c++17']
 
     for flag in flags:
         if has_flag(compiler, flag): return flag
@@ -123,6 +123,7 @@ class BuildExt(build_ext):
         opts.append("-Wextra")
         opts.append("-Wno-error=unused-variable")
         opts.append("-march=native")
+        # opts.append("-C")
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
             opts.append(cpp_flag(self.compiler))

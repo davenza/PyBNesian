@@ -5,8 +5,9 @@
 #include <arrow/api.h>
 
 typedef std::shared_ptr<arrow::Array> Array_ptr;
+typedef std::shared_ptr<arrow::Buffer> Buffer_ptr;
 
-namespace simd::bit_util {
+namespace util::bit_util {
 
     struct BitMapWords {
         uint64_t words;
@@ -27,11 +28,13 @@ namespace simd::bit_util {
     }
 
     uint64_t null_count(std::vector<Array_ptr> columns);
-    uint64_t null_count(std::shared_ptr<arrow::Buffer> bitmap, uint64_t length);
-    std::shared_ptr<arrow::Buffer> combined_bitmap(std::vector<Array_ptr> columns);
-    std::shared_ptr<arrow::Buffer> combined_bitmap_with_null(std::vector<Array_ptr> columns);
+    uint64_t null_count(Buffer_ptr bitmap, uint64_t length);
+    uint64_t non_null_count(Buffer_ptr bitmap, uint64_t length);
 
-    uint64_t count_combined_set_bits(const uint8_t* bitmap1, const uint8_t* bitmap2, uint64_t length);
+    Buffer_ptr combined_bitmap(std::vector<Array_ptr> columns);
+    Buffer_ptr combined_bitmap(Buffer_ptr bitmap1, Buffer_ptr bitmap2, uint64_t length);
+    Buffer_ptr combined_bitmap_with_null(std::vector<Array_ptr> columns);
+
 }
 
 #endif //PGM_DATASET_BIT_UTIL_HPP

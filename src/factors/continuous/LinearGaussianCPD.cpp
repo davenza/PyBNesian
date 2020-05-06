@@ -5,6 +5,7 @@
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <dataset/dataset.hpp>
 #include <linalg/linalg.hpp>
+#include <util/bit_util.hpp>
 
 #include <arrow/compute/kernels/cast.h>
 #include <arrow/compute/context.h>
@@ -21,14 +22,10 @@ typedef std::shared_ptr<arrow::Array> Array_ptr;
 
 namespace factors::continuous {
 
-//    LinearGaussianCPD::LinearGaussianCPD() {};
-
     struct LeastSquaresFitResult {
         std::vector<double> beta;
         double variance;
     };
-
-
 
     LinearGaussianCPD::LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence) :
     variable(variable),
@@ -54,15 +51,15 @@ namespace factors::continuous {
 
 
     void LinearGaussianCPD::_fit(DataFrame df) {
-        std::cout << "fitting" << std::endl;
-        std::cout << (this->evidence.size()) << std::endl;
-        std::cout << (this->evidence.empty()) << std::endl;
-        if (this->evidence.empty()) {
-            this->beta[0] = linalg::mean(df.loc(this->variable));
-            this->variance = linalg::var(df.loc(this->variable), this->beta[0]);
-            std::cout << "empty" << std::endl;
-        } else if (this->evidence.size() == 1) {
-            _fit_1parent(df.loc(this->variable), df.loc(this->evidence[0]));
+        std::cout << (evidence.size()) << std::endl;
+        std::cout << (evidence.empty()) << std::endl;
+        if (evidence.empty()) {
+            beta[0] = linalg::mean(df.loc(variable));
+            variance = linalg::var(df.loc(variable), beta[0]);
+        } else if (evidence.size() == 1) {
+            _fit_1parent(df.loc(variable), df.loc(evidence[0]));
+        } else if (evidence.size() == 2) {
+            _fit_2parent(df.loc(variable), df.loc(evidence[0]), df.loc(evidence[1]));
         } else {
 
         }
@@ -99,11 +96,24 @@ namespace factors::continuous {
 
 
     void LinearGaussianCPD::_fit_1parent(Array_ptr y, Array_ptr regressor) {
+        auto length = y->length();
+        auto combined_bitmap = util::bit_util::combined_bitmap(y->null_bitmap(), regressor->null_bitmap(), length);
 
-        auto mean_y = linalg::mean(y);
-        auto mean_reg = linalg::mean(regressor);
-        auto cov = linalg::covariance(y, regressor, mean_y, mean_reg);
-        auto var_reg = linalg::var(regressor, mean_reg);
+        auto [mean_y, mean_reg, cov, var_reg] = [=]() {
+            if (combined_bitmap) {
+                auto mean_y = linalg::mean(y, combined_bitmap);
+                auto mean_reg = linalg::mean(regressor, combined_bitmap);
+                auto cov = linalg::covariance(y, regressor, mean_y, mean_reg, combined_bitmap);
+                auto var_reg = linalg::var(regressor, mean_reg, combined_bitmap);
+                return std::make_tuple(mean_y, mean_reg, cov, var_reg);
+            } else {
+                auto mean_y = linalg::mean(y);
+                auto mean_reg = linalg::mean(regressor);
+                auto cov = linalg::covariance(y, regressor, mean_y, mean_reg);
+                auto var_reg = linalg::var(regressor, mean_reg);
+                return std::make_tuple(mean_y, mean_reg, cov, var_reg);
+            }
+        }();
 
 //        TODO: Check var_reg != 0.
         auto b = cov / var_reg;
@@ -114,14 +124,99 @@ namespace factors::continuous {
         columns.reserve(1);
         columns.push_back(std::move(regressor));
 
-        std::cout << "Before fitted" << std::endl;
-        std::cout << "columns " << (columns.size()) << std::endl;
-        std::cout << "beta " << (beta.size()) << std::endl;
         auto fitted_values = linalg::linear_regression::fitted_values(beta, columns);
 
-        std::cout << "beta [" << beta[0] << ", " << beta[1] << "]" << std::endl;
-        std::cout << "fitted_values " << fitted_values->ToString() << std::endl;
-        variance = 0.5;
+        auto sse = linalg::sse(y, fitted_values);
+
+        auto null_fitted = fitted_values->null_count();
+        auto null_y = y->null_count();
+
+        auto n_instances = 0;
+        if (null_fitted == 0 && null_y == 0) {
+            n_instances = length;
+        } else if (null_fitted == 0 && null_y != 0) {
+            n_instances = length - null_y;
+        } else if (null_fitted != 0 && null_y == 0) {
+            n_instances = length - null_fitted;
+        } else {
+            n_instances = util::bit_util::non_null_count(combined_bitmap, length);
+        }
+
+        variance = sse / (n_instances - 2);
+
+        std::cout << "beta: [" << std::setprecision(24) << beta[0] << ", " << beta[1] << "]" << std::endl;
+        std::cout << "variance: " << std::setprecision(24) << variance << std::endl;
+    }
+
+    void LinearGaussianCPD::_fit_2parent(Array_ptr y, Array_ptr regressor1, Array_ptr regressor2) {
+        auto length = y->length();
+        std::vector<Array_ptr> columns;
+        columns.reserve(3);
+        columns.push_back(y);
+        columns.push_back(regressor1);
+        columns.push_back(regressor2);
+
+        auto combined_bitmap = util::bit_util::combined_bitmap(columns);
+
+        auto [mean_y, mean_reg1, mean_reg2, var_reg1, var_reg2, cov_xx, cov_yx1, cov_yx2] = [=]() {
+            if (combined_bitmap) {
+                auto mean_y = linalg::mean(y, combined_bitmap);
+                auto mean_reg1 = linalg::mean(regressor1, combined_bitmap);
+                auto mean_reg2 = linalg::mean(regressor2, combined_bitmap);
+                auto var_reg1 = linalg::var(regressor1, mean_reg1, combined_bitmap);
+                auto var_reg2 = linalg::var(regressor2, mean_reg2, combined_bitmap);
+                auto cov_xx = linalg::covariance(regressor1, regressor2, mean_reg1, mean_reg2, combined_bitmap);
+                auto cov_yx1 = linalg::covariance(y, regressor1, mean_y, mean_reg1, combined_bitmap);
+                auto cov_yx2 = linalg::covariance(y, regressor2, mean_y, mean_reg2, combined_bitmap);
+                return std::make_tuple(mean_y, mean_reg1, mean_reg2, var_reg1, var_reg2, cov_xx, cov_yx1, cov_yx2);
+            } else {
+                auto mean_y = linalg::mean(y);
+                auto mean_reg1 = linalg::mean(regressor1);
+                auto mean_reg2 = linalg::mean(regressor2);
+                auto var_reg1 = linalg::var(regressor1, mean_reg1);
+                auto var_reg2 = linalg::var(regressor2, mean_reg2);
+                auto cov_xx = linalg::covariance(regressor1, regressor2, mean_reg1, mean_reg2);
+                auto cov_yx1 = linalg::covariance(y, regressor1, mean_y, mean_reg1);
+                auto cov_yx2 = linalg::covariance(y, regressor2, mean_y, mean_reg2);
+                return std::make_tuple(mean_y, mean_reg1, mean_reg2, var_reg1, var_reg2, cov_xx, cov_yx1, cov_yx2);
+            }
+        }();
+
+        auto den = var_reg1*var_reg2 - cov_xx*cov_xx;
+        auto b1 = (var_reg2 * cov_yx1 - cov_xx * cov_yx2) / den;
+        auto b2 = (cov_yx2 - b1 * cov_xx) / var_reg2;
+
+        beta.push_back(mean_y - b1*mean_reg1 - b2*mean_reg2);
+        beta.push_back(b1);
+        beta.push_back(b2);
+
+        std::vector<Array_ptr> regressors;
+        regressors.reserve(2);
+        regressors.push_back(std::move(regressor1));
+        regressors.push_back(std::move(regressor2));
+
+        auto fitted_values = linalg::linear_regression::fitted_values(beta, regressors);
+
+        auto sse = linalg::sse(y, fitted_values);
+
+        auto null_fitted = fitted_values->null_count();
+        auto null_y = y->null_count();
+
+        auto n_instances = 0;
+        if (null_fitted == 0 && null_y == 0) {
+            n_instances = length;
+        } else if (null_fitted == 0 && null_y != 0) {
+            n_instances = length - null_y;
+        } else if (null_fitted != 0 && null_y == 0) {
+            n_instances = length - null_fitted;
+        } else {
+            n_instances = arrow::internal::CountSetBits(combined_bitmap->data(), 0, length);
+        }
+
+        variance = sse / (n_instances - 3);
+
+        std::cout << "beta: [" << std::setprecision(24) << beta[0] << ", " << beta[1] << ", " << beta[2] << "]" << std::endl;
+        std::cout << "variance: " << std::setprecision(24) << variance << std::endl;
     }
 
 }

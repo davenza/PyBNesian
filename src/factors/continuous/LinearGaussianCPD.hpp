@@ -29,6 +29,7 @@ namespace factors::continuous {
         void _fit(DataFrame df);
         void _fit_1parent(Array_ptr y, Array_ptr regressor);
         void _fit_2parent(Array_ptr y, Array_ptr regressor1, Array_ptr regressor2);
+        void _fit_nparent(Array_ptr y, DataFrame evidence);
         std::string variable;
         std::vector<std::string> evidence;
         std::vector<double> beta;

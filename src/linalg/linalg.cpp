@@ -264,15 +264,7 @@ namespace linalg::linear_regression {
 
 //    TODO: Document: This function only accepts columns non empty
     Array_ptr fitted_values(std::vector<double> beta, std::vector<Array_ptr> columns) {
-
-        std::cout << "columns size " << (columns.size()) << std::endl;
         auto dt_id = columns[0]->type_id();
-
-        for (Array_ptr c : columns) {
-            if (c->type_id() != dt_id) {
-                throw pybind11::value_error("Data type for every column should be the same in fitted_values()");
-            }
-        }
 
         switch(dt_id) {
             case Type::DOUBLE:

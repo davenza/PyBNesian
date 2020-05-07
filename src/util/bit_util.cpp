@@ -59,17 +59,23 @@ namespace util::bit_util {
     }
 
     Buffer_ptr combined_bitmap(Buffer_ptr bitmap1, Buffer_ptr bitmap2, uint64_t length) {
-        if (!bitmap2) {
-            return bitmap1;
-        } else if (!bitmap1) {
-            return bitmap2;
+        if(bitmap1) {
+            if(bitmap2) {
+                auto res = arrow::Buffer::Copy(bitmap1, arrow::default_cpu_memory_manager()).ValueOrDie();
+                arrow::internal::BitmapAnd(bitmap1->data(), 0,
+                                           bitmap2->data(), 0,
+                                           length,
+                                           0, res->mutable_data());
+                return res;
+            } else {
+                return bitmap1;
+            }
         } else {
-            auto res = arrow::Buffer::Copy(bitmap1, arrow::default_cpu_memory_manager()).ValueOrDie();
-            arrow::internal::BitmapAnd(bitmap1->data(), 0,
-                                              bitmap2->data(), 0,
-                                              length,
-                                              0, res->mutable_data());
-            return res;
+            if (bitmap2) {
+                return bitmap2;
+            } else {
+                return nullptr;
+            }
         }
     }
 

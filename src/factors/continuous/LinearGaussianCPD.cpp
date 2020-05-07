@@ -6,6 +6,7 @@
 #include <dataset/dataset.hpp>
 #include <linalg/linalg.hpp>
 #include <util/bit_util.hpp>
+#include <Eigen/Dense>
 
 #include <arrow/compute/kernels/cast.h>
 #include <arrow/compute/context.h>
@@ -14,6 +15,9 @@
 
 namespace py = pybind11;
 namespace pyarrow = arrow::py;
+
+using arrow::Type;
+using Eigen::Matrix, Eigen::Dynamic, Eigen::Map;
 
 using dataset::DataFrame;
 
@@ -61,7 +65,7 @@ namespace factors::continuous {
         } else if (evidence.size() == 2) {
             _fit_2parent(df.loc(variable), df.loc(evidence[0]), df.loc(evidence[1]));
         } else {
-
+            _fit_nparent(df.loc(variable), df.loc(evidence));
         }
 
 //        auto column_array = df->GetColumnByName(this->variable);
@@ -182,6 +186,7 @@ namespace factors::continuous {
             }
         }();
 
+//        TODO: Check den not 0
         auto den = var_reg1*var_reg2 - cov_xx*cov_xx;
         auto b1 = (var_reg2 * cov_yx1 - cov_xx * cov_yx2) / den;
         auto b2 = (cov_yx2 - b1 * cov_xx) / var_reg2;
@@ -217,6 +222,66 @@ namespace factors::continuous {
 
         std::cout << "beta: [" << std::setprecision(24) << beta[0] << ", " << beta[1] << ", " << beta[2] << "]" << std::endl;
         std::cout << "variance: " << std::setprecision(24) << variance << std::endl;
+    }
+
+    template<typename ArrowType>
+    void _fit_nparent_typed(Array_ptr y, DataFrame evidence) {
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        using MatrixX = Matrix<typename ArrowType::c_type, Dynamic, Dynamic>;
+        using VectorX = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+
+        auto length = y->length();
+        auto combined_bitmap = util::bit_util::combined_bitmap(y->null_bitmap(), evidence.combined_bitmap(), length);
+
+        if (combined_bitmap) {
+
+        } else {
+
+            MatrixX ev_matrix(evidence->num_rows(), evidence->num_columns()+1);
+
+            auto matrix_ptr = ev_matrix.data();
+            std::fill_n(matrix_ptr, length, 1);
+            for (auto i = 0; i < evidence->num_columns(); ++i) {
+                auto col = evidence.loc(i);
+                auto dwn_col = std::static_pointer_cast<ArrayType>(col);
+                std::memcpy(matrix_ptr + (i+1)*length, dwn_col->raw_values(), sizeof(typename ArrowType::c_type)*length);
+            }
+
+            auto dwn_y = std::static_pointer_cast<ArrayType>(y);
+            const Map<const VectorX> y_vec(dwn_y->raw_values(), length);
+
+//            std::cout << "ev_matrix: " << ev_matrix << std::endl;
+//            std::cout << "y_vec: " << y_vec << std::endl;
+
+            std::cout << "The solution using BDCSVD decomposition is:\n"
+                      << std::setprecision(24) << ev_matrix.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(y_vec) << std::endl;
+            std::cout << "The solution using householderQr decomposition is:\n"
+                      << std::setprecision(24) << ev_matrix.householderQr().solve(y_vec) << std::endl;
+            std::cout << "The solution using colPivHouseholderQr decomposition is:\n"
+                      << std::setprecision(24) << ev_matrix.colPivHouseholderQr().solve(y_vec) << std::endl;
+            std::cout << "The solution using fullPivHouseholderQr decomposition is:\n"
+                      << std::setprecision(24) << ev_matrix.fullPivHouseholderQr().solve(y_vec) << std::endl;
+            std::cout << "The solution using normal equations is:\n"
+                      << std::setprecision(24) << (ev_matrix.transpose() * ev_matrix).ldlt().solve(ev_matrix.transpose() * y_vec) << std::endl;
+        }
+    }
+
+    void LinearGaussianCPD::_fit_nparent(Array_ptr y, DataFrame evidence) {
+        auto dt_id = y->type_id();
+
+        switch(dt_id) {
+            case Type::DOUBLE:
+                _fit_nparent_typed<arrow::DoubleType>(y, evidence);
+                break;
+            case Type::FLOAT:
+                _fit_nparent_typed<arrow::FloatType>(y, evidence);
+                break;
+//            case Type::HALF_FLOAT:
+//                _fit_nparent_typed<arrow::HalfFloatType>(y, evidence);
+//                break;
+            default:
+                throw pybind11::value_error("Only floating point data is implemented in fitted_values().");
+        }
     }
 
 }

@@ -5,6 +5,7 @@
 #include <arrow/python/pyarrow.h>
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
+#include <util/util.hpp>
 
 using Eigen::MatrixXd;
 
@@ -171,7 +172,7 @@ case Type::TypeID:                                                              
         }
 
         auto res = Buffer::Copy(rb->column(first_col_idx)->null_bitmap(), arrow::default_cpu_memory_manager());
-        auto bitmap = res.ValueOrDie();
+        auto bitmap = std::move(res).ValueOrDie();
 
         for(int i = first_col_idx + 1; i < rb->num_columns(); ++i) {
             auto col = rb->column(i);
@@ -233,23 +234,6 @@ case Type::TypeID:                                                              
         } else {
             return *this;
         }
-    }
-
-    Array_ptr DataFrame::loc(int i) const {
-        return m_batch->column(i);
-    }
-
-    Array_ptr DataFrame::loc(const std::string& name) const {
-        return m_batch->GetColumnByName(name);
-    }
-
-    MatrixXd DataFrame::to_eigen() const {
-        auto rb = this->m_batch;
-        auto comb_bitmap = combined_bitmap();
-        int64_t n_rows = arrow::internal::CountSetBits(comb_bitmap->data(), 0, rb->num_rows());
-        MatrixXd m(n_rows, rb->num_columns());
-
-        return m;
     }
 
     std::shared_ptr<arrow::RecordBatch> DataFrame::operator->() { return m_batch; }

@@ -19,7 +19,7 @@ import os
 
 __version__ = '0.0.1'
 
-os.environ['CC'] = "ccache gcc"
+# os.environ['CC'] = "ccache gcc"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path

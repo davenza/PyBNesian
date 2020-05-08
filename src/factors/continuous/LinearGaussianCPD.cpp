@@ -36,10 +36,6 @@ typedef std::shared_ptr<arrow::Array> Array_ptr;
 
 namespace factors::continuous {
 
-    struct LeastSquaresFitResult {
-        std::vector<double> beta;
-        double variance;
-    };
 
     LinearGaussianCPD::LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence) :
     variable(variable),
@@ -89,9 +85,45 @@ namespace factors::continuous {
 
 
     void LinearGaussianCPD::_fit(DataFrame df) {
-        BENCHMARK(df.loc({"a", "c"});, 10000);
-        BENCHMARK(df.loc({0, 2});, 10000);
+//        BENCHMARK(df.loc({"a", "c"});, 10000);
+//        BENCHMARK(df.loc({0, 2});, 10000);
 
+        {
+            std::cout << "String - ones true" << std::endl;
+            auto m = df.to_eigen<true>(std::string("a"));
+            std::cout << std::get<0>(m) << std::endl;
+        }
+//        {
+//            std::cout << "String - ones false" << std::endl;
+//            auto m = df.to_eigen<false>("a");
+//            std::cout << std::get<0>(m) << std::endl;
+//        }
+//        {
+//            std::cout << "integer - ones true" << std::endl;
+//            auto m = df.to_eigen<true>(1);
+//            std::cout << std::get<0>(m) << std::endl;
+//        }
+//        {
+//            std::cout << "integer - ones false" << std::endl;
+//            auto m = df.to_eigen<false>(1);
+//            std::cout << std::get<0>(m) << std::endl;
+//        }
+//        {
+//            std::cout << "integer list - ones true" << std::endl;
+//            auto m = df.to_eigen<true>({1,2});
+//            std::cout << std::get<0>(m) << std::endl;
+//        }
+        {
+            std::vector<int> v{1,2};
+            std::cout << "integer list - ones false" << std::endl;
+            auto m = df.to_eigen<false>(v);
+            std::cout << std::get<0>(m) << std::endl;
+        }
+
+//        std::cout << "integer - ones true" << std::endl;
+//        std::cout << df.to_eigen<true>(1);
+//        std::cout << "integer - ones false" << std::endl;
+//        std::cout << df.to_eigen<false>(1);
 
         if (evidence.empty()) {
 //            beta[0] = linalg::mean(df.loc(variable));

@@ -6,7 +6,7 @@ from pgm_dataset import LinearGaussianCPD
 
 import pandas as pd
 
-SIZE = 100000
+SIZE = 10
 NA_SIZE = 0
 # df = pd.DataFrame({'a': [0.1, np.nan, np.nan], 'b': [-23, np.nan, 4]})
 

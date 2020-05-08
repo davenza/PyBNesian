@@ -15,9 +15,11 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
+import os
 
 __version__ = '0.0.1'
 
+os.environ['CC'] = "ccache gcc"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -61,7 +63,6 @@ ext_modules = [
         extra_compile_args=['-isystem' + d for d in
                                 [pa.get_include()]
                             ],
-        use_incremental=True
     ),
 ]
 
@@ -92,7 +93,7 @@ def cpp_flag(compiler):
     for flag in flags:
         if has_flag(compiler, flag): return flag
 
-    raise RuntimeError('Unsupported compiler -- at least C++11 support '
+    raise RuntimeError('Unsupported compiler -- at least C++17 support '
                        'is needed!')
 
 

@@ -20,6 +20,15 @@ namespace dataset {
 
     std::shared_ptr<arrow::RecordBatch> to_record_batch(py::handle pyobject);
 
+    class Column {
+    public:
+        Column(Array_ptr column);
+
+        Array_ptr operator->();
+    private:
+        Array_ptr m_column;
+    };
+
     class DataFrame {
     public:
         DataFrame(std::shared_ptr<arrow::RecordBatch> rb);
@@ -34,8 +43,14 @@ namespace dataset {
         DataFrame loc(T cols) const;
         template<typename V>
         DataFrame loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
-        Array_ptr loc(int i) const { return m_batch->column(i); }
-        Array_ptr loc(const std::string& name) const { return m_batch->GetColumnByName(name); }
+        Column loc(int i) const { return m_batch->column(i); }
+        Column loc(const std::string& name) const { return m_batch->GetColumnByName(name); }
+
+
+//        template<typename CType>
+//        Matrix<CType, Dynamic, Dynamic> to_eigen();
+//        template<typename CType>
+//        Matrix<CType, Dynamic, Dynamic> to_eigen(Buffer_ptr bitmap);
 
         std::shared_ptr<arrow::RecordBatch> operator->();
     private:
@@ -79,6 +94,11 @@ namespace dataset {
         auto new_schema = std::make_shared<arrow::Schema>(new_fields);
         return DataFrame(arrow::RecordBatch::Make(new_schema, m_batch->num_rows(), new_cols));
     }
+
+//    template<typename CType>
+//    Matrix<CType, Dynamic, Dynamic> DataFrame::to_eigen() {
+//
+//    }
 }
 
 

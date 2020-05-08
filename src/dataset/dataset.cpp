@@ -144,10 +144,10 @@ case Type::TypeID:                                                              
     }
 #undef CASE_DOWNCAST_COPY
 
+    Column::Column(Array_ptr column) : m_column(column) {}
+    Array_ptr Column::operator->() { return m_column; };
 
-    DataFrame::DataFrame(std::shared_ptr<RecordBatch> rb) {
-        m_batch = rb;
-    }
+    DataFrame::DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) { }
 
     int64_t DataFrame::null_count() const {
         auto rb = this->m_batch;

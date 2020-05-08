@@ -6,7 +6,7 @@ from pgm_dataset import LinearGaussianCPD
 
 import pandas as pd
 
-SIZE = 1000
+SIZE = 100000
 NA_SIZE = 0
 # df = pd.DataFrame({'a': [0.1, np.nan, np.nan], 'b': [-23, np.nan, 4]})
 
@@ -72,6 +72,20 @@ beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'d'].values, r
 
 print("Python solution: " + str(beta))
 print("Python var: " + str(res / (df_non_nan.shape[0]-3)))
+
+print("intercept: " + str(df_non_nan["d"].mean() - beta[1:].dot(df_non_nan[["a", "b", "c"]].mean())))
+
+y_diff = df_non_nan["d"].values - df_non_nan["d"].mean()
+
+
+cov = df_non_nan[["a", "b", "c"]].cov()
+A = np.linalg.inv(cov) / SIZE
+c = np.sum(y_diff[:,np.newaxis] * df_non_nan[["a", "b", "c"]], axis=0).values
+print("cov " + str(A))
+print("vec " + str(c))
+print("res " + str(A.dot(c)))
+
+
 
 pa_df = pa.RecordBatch.from_pandas(df)
 

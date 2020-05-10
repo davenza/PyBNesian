@@ -68,7 +68,7 @@ namespace factors::continuous {
                 throw py::value_error("Wrong data type to fit the linear regression. (double) or (float) data is expected.");
             }
 
-            for (auto ev : evidence) {
+            for (auto &ev : evidence) {
                 auto ev_field = schema->GetFieldByName(ev);
                 if (!ev_field) {
                     throw py::value_error("Variable \"" + ev + "\" not found in dataset.");
@@ -88,35 +88,21 @@ namespace factors::continuous {
 //        BENCHMARK(df.loc({"a", "c"});, 10000);
 //        BENCHMARK(df.loc({0, 2});, 10000);
 
+//        {
+//            std::cout << "String - ones true" << std::endl;
+//            auto m = df.loc(2.1);
+//            std::cout << m->ToString() << std::endl;
+//        }
+
+
         {
-            std::cout << "String - ones true" << std::endl;
-            auto m = df.to_eigen<true>(std::string("a"));
-            std::cout << std::get<0>(m) << std::endl;
-        }
-//        {
-//            std::cout << "String - ones false" << std::endl;
-//            auto m = df.to_eigen<false>("a");
-//            std::cout << std::get<0>(m) << std::endl;
-//        }
-//        {
-//            std::cout << "integer - ones true" << std::endl;
-//            auto m = df.to_eigen<true>(1);
-//            std::cout << std::get<0>(m) << std::endl;
-//        }
-//        {
-//            std::cout << "integer - ones false" << std::endl;
-//            auto m = df.to_eigen<false>(1);
-//            std::cout << std::get<0>(m) << std::endl;
-//        }
-//        {
-//            std::cout << "integer list - ones true" << std::endl;
-//            auto m = df.to_eigen<true>({1,2});
-//            std::cout << std::get<0>(m) << std::endl;
-//        }
-        {
-            std::vector<int> v{1,2};
-            std::cout << "integer list - ones false" << std::endl;
-            auto m = df.to_eigen<false>(v);
+            std::cout << "String - ones false" << std::endl;
+            auto m = df.to_eigen<false>(0);
+            std::get<0>(m)(0) = 5;
+            auto col = df->column(0);
+            auto dwn_col = std::static_pointer_cast<typename arrow::TypeTraits<DoubleType>::ArrayType>(col);
+            std::cout << "Arrow ptr: " << dwn_col->raw_values() << std::endl;
+            std::cout << "Eigen ptr: " << std::get<0>(m).data() << std::endl;
             std::cout << std::get<0>(m) << std::endl;
         }
 

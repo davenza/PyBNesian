@@ -8,6 +8,7 @@
 #include <arrow/api.h>
 #include <util/util.hpp>
 #include <util/bit_util.hpp>
+#include <util/variant_util.hpp>
 
 namespace py = pybind11;
 
@@ -34,7 +35,6 @@ namespace dataset {
         Array_ptr m_column;
     };
 
-
     class DataFrame {
     public:
         DataFrame(std::shared_ptr<arrow::RecordBatch> rb);
@@ -46,10 +46,10 @@ namespace dataset {
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         DataFrame loc(T cols) const;
         template<typename V>
-        DataFrame loc(std::initializer_list<V> cols) const { std::cout <<"initializer" << std::endl; return loc<std::initializer_list<V>>(cols); }
-        Column loc(int i) const { std::cout << "int single" << std::endl; return m_batch->column(i); }
+        DataFrame loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
+        Column loc(int i) const { return m_batch->column(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        Column loc(StringType name) const { std::cout << "string single" << std::endl; return m_batch->GetColumnByName(name); }
+        Column loc(StringType name) const { return m_batch->GetColumnByName(name); }
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         Buffer_ptr combined_bitmap(T cols) const;
@@ -69,32 +69,50 @@ namespace dataset {
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         int64_t null_count(StringType name) const { return m_batch->GetColumnByName(name)->null_count(); }
 
+
+        using ReturnedEigenVector = std::variant<
+                                        std::unique_ptr<Matrix<double, Dynamic, 2>>, // append ones
+                                        std::unique_ptr<Matrix<double, Dynamic, 1>>, // !append_ones but null_bitmap != nullptr
+                                        std::unique_ptr<Matrix<float, Dynamic, 2>>, // append ones
+                                        std::unique_ptr<Matrix<float, Dynamic, 1>>, // !append_ones but null_bitmap != nullptr
+                                        std::unique_ptr<Map<const Matrix<double, Dynamic, 1>>>, // !append_ones and null_bitmap == nullptr
+                                        std::unique_ptr<Map<const Matrix<float, Dynamic, 1>>> // !append_ones and null_bitmap == nullptr
+                                    >;
+
+//        FIXME: Keeping Map may not worth it. Check benchmarks.
+        using ReturnedEigenMatrix = std::variant<
+                                        std::unique_ptr<MatrixXd>,
+                                        std::unique_ptr<MatrixXf>,
+//                                        If cols.size() == 1, same variants as the ReturnedEigenVector
+                                        std::unique_ptr<Matrix<double, Dynamic, 2>>, // append ones
+                                        std::unique_ptr<Matrix<double, Dynamic, 1>>, // !append_ones but null_bitmap != nullptr
+                                        std::unique_ptr<Matrix<float, Dynamic, 2>>, // append ones
+                                        std::unique_ptr<Matrix<float, Dynamic, 1>>, // !append_ones but null_bitmap != nullptr
+                                        std::unique_ptr<Map<const Matrix<double, Dynamic, 1>>>, // !append_ones and null_bitmap == nullptr
+                                        std::unique_ptr<Map<const Matrix<float, Dynamic, 1>>> // !append_ones and null_bitmap == nullptr
+                                    >;
+
         template<bool append_ones, typename T, util::enable_if_index_container_t<T, int> = 0>
-        std::variant<MatrixXd, MatrixXf> to_eigen(T cols) const;
+        ReturnedEigenMatrix to_eigen(T cols) const;
         template<bool append_ones, typename V>
-        std::variant<MatrixXd, MatrixXf> to_eigen(std::initializer_list<V> cols) const {
+        ReturnedEigenMatrix to_eigen(std::initializer_list<V> cols) const {
             return to_eigen<append_ones, std::initializer_list<V>>(cols);
         }
         template<bool append_ones, int = 0>
-        std::variant<Matrix<DoubleType::c_type, Dynamic, 1+append_ones>, Matrix<FloatType::c_type, Dynamic, 1+append_ones>>
-        to_eigen(int i) const;
+        ReturnedEigenVector to_eigen(int i) const;
 
         template<bool append_ones, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        std::variant<Matrix<DoubleType::c_type, Dynamic, 1+append_ones>, Matrix<FloatType::c_type, Dynamic, 1+append_ones>>
-        to_eigen(StringType name) const;
+        ReturnedEigenVector to_eigen(StringType name) const;
 
         std::shared_ptr<arrow::RecordBatch> operator->();
     private:
         std::shared_ptr <arrow::Buffer> combined_bitmap_with_null() const;
 
         template<bool append_ones, typename T, typename ArrowType, util::enable_if_index_container_t<T, int> = 0>
-        Matrix<typename ArrowType::c_type, Dynamic, Dynamic> to_eigen_typed(T cols) const;
+        ReturnedEigenMatrix to_eigen_typed(T cols) const;
 
         template<bool append_ones, typename ArrowType>
-        Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones> to_eigen_typed(int i) const;
-
-//        template<bool append_ones, typename ArrowType>
-//        Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones> to_eigen_typed(const std::string& name) const;
+        ReturnedEigenVector to_eigen_typed(Array_ptr c) const;
 
         std::shared_ptr <arrow::RecordBatch> m_batch;
     };
@@ -103,7 +121,6 @@ namespace dataset {
     DataFrame DataFrame::loc(T cols) const {
         static_assert(util::is_integral_container_v<T> || util::is_string_container_v<T>,
                       "loc() only accepts integral or string containers.");
-        std::cout <<"container of things" << std::endl;
         auto size = cols.size();
 
         std::vector<std::shared_ptr<arrow::Field>> new_fields;
@@ -207,7 +224,7 @@ namespace dataset {
 
 
     template<bool append_ones, typename T, typename ArrowType, util::enable_if_index_container_t<T, int> = 0>
-    Matrix<typename ArrowType::c_type, Dynamic, Dynamic> DataFrame::to_eigen_typed(T cols) const {
+    DataFrame::ReturnedEigenMatrix DataFrame::to_eigen_typed(T cols) const {
 //        TODO: Review static asserts.
 //        static_assert(util::is_integral_container_v<T> || util::is_string_container_v<T>,
 //                      "to_eigen_typed() only accepts integral or string containers.");
@@ -222,11 +239,11 @@ namespace dataset {
             auto valid_rows = util::bit_util::non_null_count(buffer_bitmap, rows);
 
             auto m = [&cols, valid_rows]() {
-                if constexpr(append_ones) return MatrixType(valid_rows, cols.size()+1);
-                else return MatrixType(valid_rows, cols.size());
+                if constexpr(append_ones) return std::make_unique<MatrixType>(valid_rows, cols.size()+1);
+                else return std::make_unique<MatrixType>(valid_rows, cols.size());
             }();
 
-            auto m_ptr = m.data();
+            auto m_ptr = m->data();
 
             auto offset_ptr = 0;
             if constexpr(append_ones) {
@@ -255,17 +272,17 @@ namespace dataset {
                 offset_ptr += valid_rows;
             }
 
-            return m;
+            return std::move(m);
 
         } else {
 
             auto rows = m_batch->num_rows();
             auto m = [&cols, rows]() {
-                if constexpr(append_ones) return MatrixType(rows, cols.size()+1);
-                else return MatrixType(rows, cols.size());
+                if constexpr(append_ones) return std::make_unique<MatrixType>(rows, cols.size()+1);
+                else return std::make_unique<MatrixType>(rows, cols.size());
             }();
 
-            auto m_ptr = m.data();
+            auto m_ptr = m->data();
 
             auto offset_ptr = 0;
             if constexpr(append_ones) {
@@ -287,13 +304,13 @@ namespace dataset {
                 offset_ptr += rows;
             }
 
-            return m;
+            return std::move(m);
         }
 
     }
 
     template<bool append_ones, typename T, util::enable_if_index_container_t<T, int> = 0>
-    std::variant<MatrixXd, MatrixXf> DataFrame::to_eigen(T cols) const {
+    DataFrame::ReturnedEigenMatrix DataFrame::to_eigen(T cols) const {
 //        static_assert(!std::is_convertible_v<T,std::string> && (util::is_integral_container_v<T> || util::is_string_container_v<T>),
 //                      "to_eigen() only accepts integral or string containers.");
 
@@ -301,7 +318,10 @@ namespace dataset {
 //            TODO return empty matrix.
         }
 
-        std::cout << "To eigen list" << std::endl;
+        if (cols.size() == 1) {
+            return util::variant_cast(to_eigen<append_ones>(*cols.begin()));
+        }
+
         auto dt_id = [this, &cols]() {
             if constexpr(util::is_integral_container_v<T>) return m_batch->column(*cols.begin())->type_id();
             else if constexpr (util::is_string_container_v<T>) return m_batch->GetColumnByName(*cols.begin())->type_id();
@@ -320,28 +340,27 @@ namespace dataset {
     }
 
     template<bool append_ones, typename ArrowType>
-    Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones> DataFrame::to_eigen_typed(int i) const {
+    DataFrame::ReturnedEigenVector DataFrame::to_eigen_typed(Array_ptr c) const {
         using MatrixType = Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones>;
+        using MapType = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
 
-        auto rows = m_batch->num_rows();
-        auto buffer_bitmap = m_batch->column(i)->null_bitmap();
+        auto rows = c->length();
+        auto buffer_bitmap = c->null_bitmap();
 
         if(buffer_bitmap) {
-
             auto valid_rows = util::bit_util::non_null_count(buffer_bitmap, rows);
 
-            MatrixType m(valid_rows, 1+append_ones);
+            auto m = std::make_unique<MatrixType>(valid_rows, 1+append_ones);
 
-            auto m_ptr = m.data();
+            auto m_ptr = m->data();
 
             if constexpr(append_ones) {
                 std::fill_n(m_ptr, valid_rows, 1);
                 m_ptr += valid_rows;
             }
 
-            auto col = m_batch->column(i);
-            auto dwn_col = std::static_pointer_cast<ArrayType>(col);
+            auto dwn_col = std::static_pointer_cast<ArrayType>(c);
 
             auto raw_values = dwn_col->raw_values();
             auto k = 0;
@@ -351,122 +370,52 @@ namespace dataset {
                 if (arrow::BitUtil::GetBit(combined_bitmap, j))
                     m_ptr[k++] = raw_values[j];
             }
-
-            return m;
+            return std::move(m);
 
         } else {
-            auto rows = m_batch->num_rows();
-            auto col = m_batch->column(i);
-            auto dwn_col = std::static_pointer_cast<ArrayType>(col);
+            auto dwn_col = std::static_pointer_cast<ArrayType>(c);
             if constexpr(append_ones) {
-                MatrixType m(rows, 1 + append_ones);
-                auto m_ptr = m.data();
+                auto m = std::make_unique<MatrixType>(rows, 1+append_ones);
+                auto m_ptr = m->data();
 
                 std::fill_n(m_ptr, rows, 1);
                 m_ptr += rows;
 
                 std::memcpy(m_ptr, dwn_col->raw_values(), sizeof(typename ArrowType::c_type) * rows);
-
-                return m;
+                return std::move(m);
             } else {
-                std::cout << "Returning map" << std::endl;
-
-                Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>> map(dwn_col->raw_values(), rows);
-                std::cout << "map data " << map.data() << std::endl;
-                return map;
+                return std::make_unique<MapType>(dwn_col->raw_values(), rows);
             }
         }
     }
 
     template<bool append_ones, int = 0>
-    std::variant<Matrix<DoubleType::c_type, Dynamic, 1+append_ones>,
-                 Matrix<FloatType::c_type, Dynamic, 1+append_ones>>
-     DataFrame::to_eigen(int i) const {
-        auto dt_id = m_batch->column(i)->type_id();
+    DataFrame::ReturnedEigenVector DataFrame::to_eigen(int i) const {
+        auto col = m_batch->column(i);
+        auto dt_id = col->type_id();
         switch (dt_id) {
             case Type::DOUBLE:
             {
-                auto tmp = to_eigen_typed<append_ones, DoubleType>(i);
-                std::cout << "tmp ptr: " << tmp.data() << std::endl;
+                auto tmp = to_eigen_typed<append_ones, DoubleType>(col);
                 return tmp;
             }
             case Type::FLOAT:
-                return to_eigen_typed<append_ones, FloatType>(i);
+                return to_eigen_typed<append_ones, FloatType>(col);
             default:
                 throw pybind11::value_error("Only numeric data types can be transformed to Eigen matrix.");
         }
     }
-    
-    template<bool append_ones, typename ArrowType>
-    Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones> DataFrame::to_eigen_typed(const std::string& name) const {
-        using MatrixType = Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones>;
-        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-
-        auto rows = m_batch->num_rows();
-        auto buffer_bitmap = m_batch->GetColumnByName(name)->null_bitmap();
-
-        if(buffer_bitmap) {
-
-            auto valid_rows = util::bit_util::non_null_count(buffer_bitmap, rows);
-
-            MatrixType m(valid_rows, 1+append_ones);
-
-            auto m_ptr = m.data();
-
-            if constexpr(append_ones) {
-                std::fill_n(m_ptr, valid_rows, 1);
-                m_ptr += valid_rows;
-            }
-
-            auto col = m_batch->GetColumnByName(name);
-            auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-
-            auto raw_values = dwn_col->raw_values();
-            auto k = 0;
-            auto combined_bitmap = buffer_bitmap->data();
-
-            for (auto j = 0; j < rows; ++j) {
-                if (arrow::BitUtil::GetBit(combined_bitmap, j))
-                    m_ptr[k++] = raw_values[j];
-            }
-
-            return m;
-
-        } else {
-            auto rows = m_batch->num_rows();
-            auto col = m_batch->GetColumnByName(name);
-            auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-            if constexpr(append_ones) {
-                MatrixType m(rows, 1 + append_ones);
-                auto m_ptr = m.data();
-
-                std::fill_n(m_ptr, rows, 1);
-                m_ptr += rows;
-
-                std::memcpy(m_ptr, dwn_col->raw_values(), sizeof(typename ArrowType::c_type) * rows);
-
-                return m;
-            } else {
-                std::cout << "Returning map" << std::endl;
-
-                Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>> map(dwn_col->raw_values(), rows);
-                std::cout << "map data " << map.data() << std::endl;
-                return map;
-            }
-        }
-    }
 
     template<bool append_ones, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    std::variant<Matrix<DoubleType::c_type, Dynamic, 1+append_ones>, Matrix<FloatType::c_type, Dynamic, 1+append_ones>>
-    DataFrame::to_eigen(StringType name) const {
+    DataFrame::ReturnedEigenVector DataFrame::to_eigen(StringType name) const {
         //static_assert(std::is_convertible_v<StringType,std::string>, "to_eigen() only accepts integral or std::string.");
-
-        auto dt_id = m_batch->GetColumnByName(name)->type_id();
+        auto col = m_batch->GetColumnByName(name);
+        auto dt_id = col->type_id();
         switch (dt_id) {
             case Type::DOUBLE:
-                return to_eigen_typed<append_ones, DoubleType>(name);
+                return to_eigen_typed<append_ones, DoubleType>(col);
             case Type::FLOAT:
-                return to_eigen_typed<append_ones, FloatType>(name);
+                return to_eigen_typed<append_ones, FloatType>(col);
             default:
                 throw pybind11::value_error("Only numeric data types can be transformed to Eigen matrix.");
         }

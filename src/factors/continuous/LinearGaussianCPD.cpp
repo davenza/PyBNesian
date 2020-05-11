@@ -95,45 +95,85 @@ namespace factors::continuous {
         _fit(df);
     }
 
-
     void LinearGaussianCPD::_fit(DataFrame df) {
 
         if (evidence.empty()) {
             BENCHMARK(
-            auto eigen = df.to_eigen<false>(variable);
+                    auto eigen = df.to_eigen<false>(variable);
 
-            std::visit([this](auto&& arg) {
-                auto mean = arg->mean();
-                auto var = (arg->array() - mean).matrix().squaredNorm();
-                beta.push_back(static_cast<double>(mean));
-                variance = static_cast<double>(var) / (arg->rows() - 1);
-            }, eigen);
-            , 1000)
+                    std::visit([this](auto &&arg) {
+                        auto mean = arg->mean();
+                        auto var = (arg->array() - mean).matrix().squaredNorm();
+                        beta.push_back(static_cast<double>(mean));
+                        variance = static_cast<double>(var) / (arg->rows() - 1);
+                    }, eigen);, 1000)
 
             std::cout << "beta: " << std::setprecision(24) << beta[0] << std::endl;
             std::cout << "variance: " << std::setprecision(24) << variance << std::endl;
 
         } else if (evidence.size() == 1) {
             BENCHMARK(
-            auto eigen = df.to_eigen<false>({variable, evidence[0]});
+            auto comb_bitmap = df.combined_bitmap({variable, evidence[0]});
 //
-            std::visit([this](auto&& arg) {
-                auto m0 = arg->col(0).mean();
-                auto m1 = arg->col(1).mean();
-                auto diff0 = (arg->col(0).array() - m0);
-                auto diff1 = (arg->col(1).array() - m1);
-                auto var = diff1.matrix().squaredNorm() / (arg->rows() - 1);
-                auto cov = (diff0 * diff1).sum() / (arg->rows() - 1);
+            auto var = df.to_eigen<false>(variable, comb_bitmap);
+            auto ev = df.to_eigen<false>(evidence[0], comb_bitmap);
 
-                auto b = cov / var;
-                auto a = m0 - b*m1;
-                beta.push_back(a);
-                beta.push_back(b);
+//            TODO: Downcast instead of visit.
+            std::visit(util::overloaded_same_type_and_cols {
+                [this](auto &&v, auto &&e) {
+                    auto mv = v->mean();
+                    auto me = e->mean();
 
-                variance = (diff0 - b*diff1).matrix().squaredNorm() / (arg->rows() - 2);
-            }, eigen);
+                    auto d0 = (v->array() - mv);
+                    auto d1 = (e->array() - me);
+                    auto var = d1.matrix().squaredNorm() / (v->rows() - 1);
+                    auto cov = (d0 * d1).sum() / (v->rows() - 1);
+
+                    auto b = cov / var;
+                    auto a = mv - b*me;
+                    auto vari = (d0 - b*d1).matrix().squaredNorm() / (v->rows() - 2);
+
+                    beta.push_back(a);
+                    beta.push_back(b);
+                    variance = vari;
+                }
+            }, var, ev);
             , 1000)
+
+//            auto comb_bitmap = df.combined_bitmap({variable, evidence[0]});
+//            auto var = df.to_eigen<false>(variable, comb_bitmap);
+//            auto ev = df.to_eigen<false>(evidence[0], comb_bitmap);
+//            auto s = df.to_eigen<false>(evidence[0], comb_bitmap);
+
+
+//            std::visit(util::overloaded_same_type_and_cols {
+//                    [this](auto &&v, auto &&e, auto &&p) {
+//                        auto a = (e->array() * p->array()).sum();
+//                        std::cout << "Testing with 3 parameters "  << a << std::endl;
+//                    }
+//            }, var, ev, fl);
+
+
+//            BENCHMARK(
+//            auto eigen = df.to_eigen<false>({variable, evidence[0]});
+////
+//            std::visit([this](auto&& arg) {
+//                auto m0 = arg->col(0).mean();
+//                auto m1 = arg->col(1).mean();
+//                auto diff0 = (arg->col(0).array() - m0);
+//                auto diff1 = (arg->col(1).array() - m1);
+//                auto var = diff1.matrix().squaredNorm() / (arg->rows() - 1);
+//                auto cov = (diff0 * diff1).sum() / (arg->rows() - 1);
 //
+//                auto b = cov / var;
+//                auto a = m0 - b*m1;
+//                beta.push_back(a);
+//                beta.push_back(b);
+//
+//                variance = (diff0 - b*diff1).matrix().squaredNorm() / (arg->rows() - 2);
+//            }, eigen);
+//            , 1000)
+
             std::cout << "beta: [" << std::setprecision(24) << beta[0] << ", " << beta[1] << "]" << std::endl;
             std::cout << "variance: " << std::setprecision(24) << variance << std::endl;
         } else if (evidence.size() == 2) {
@@ -141,9 +181,10 @@ namespace factors::continuous {
         } else {
 //            _fit_nparent(df.loc(variable), df.loc(evidence));
         }
-
-
-
     }
+
+
+
+
 
 }

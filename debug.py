@@ -7,7 +7,7 @@ from pgm_dataset import LinearGaussianCPD
 import pandas as pd
 
 SIZE = 20000
-NA_SIZE = 1000
+NA_SIZE = 0
 # df = pd.DataFrame({'a': [0.1, np.nan, np.nan], 'b': [-23, np.nan, 4]})
 
 # df = pd.DataFrame({'a': np.random.normal(size=10), 'b': np.random.normal(size=10)})

@@ -42,6 +42,36 @@ namespace util {
     {
         return variant_cast_proxy(std::move(v));
     }
+
+
+    template <bool...> struct bool_pack;
+    template <bool... v>
+    using all_true = std::is_same<bool_pack<true, v...>, bool_pack<v..., true>>;
+
+
+    template<class... Ts> struct overloaded_same_type_and_cols : Ts... {
+
+
+        template<typename PtrT, typename... PtrArgs, std::enable_if_t<
+
+                ((PtrT::element_type::ColsAtCompileTime != PtrArgs::element_type::ColsAtCompileTime) || ...)
+                                                ||
+                (!std::is_same_v<typename PtrT::element_type::Scalar, typename PtrArgs::element_type::Scalar> || ...)
+
+                                    , int> = 0
+                >
+        auto operator()(PtrT& first_eigen, PtrArgs&... eigens) {
+            throw std::invalid_argument("Unreachable code. This is an indicative of a bug.");
+        }
+
+        using Ts::operator()...;
+    };
+
+    template<class... Ts> overloaded_same_type_and_cols(Ts...) ->
+    overloaded_same_type_and_cols<Ts...>; // not needed as of C++20
+
+
+
 }
 
 #endif //PGM_DATASET_VARIANT_UTIL_HPP

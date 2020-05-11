@@ -7,7 +7,7 @@ from pgm_dataset import LinearGaussianCPD
 import pandas as pd
 
 SIZE = 20000
-NA_SIZE = 0
+NA_SIZE = 1000
 # df = pd.DataFrame({'a': [0.1, np.nan, np.nan], 'b': [-23, np.nan, 4]})
 
 # df = pd.DataFrame({'a': np.random.normal(size=10), 'b': np.random.normal(size=10)})
@@ -43,9 +43,7 @@ df.loc[c_nan_indices,'c'] = np.nan
 df.loc[d_nan_indices,'d'] = np.nan
 
 
-# df_non_nan = df[["a"]].dropna()
-# print("Python beta " + str(df_non_nan["a"].mean()))
-# print("Python var " + str(df_non_nan["a"].var()))
+
 
 
 
@@ -56,11 +54,7 @@ m0 = np.mean(v[:, 0])
 m1 = np.mean(v[:, 1])
 
 
-linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a"]]))
-beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'b'].values, rcond=None)
 
-print("Python solution: " + str(beta))
-print("Python var: " + str(res / (df_non_nan.shape[0]-2)))
 #
 # df_non_nan = df.dropna()
 # print(df_non_nan)
@@ -83,10 +77,20 @@ print("Python var: " + str(res / (df_non_nan.shape[0]-2)))
 
 pa_df = pa.RecordBatch.from_pandas(df)
 
-# cpd = LinearGaussianCPD("a", [])
-# cpd.fit(df)
+df_non_nan = df[["a"]].dropna()
+print("Python beta " + str(df_non_nan["a"].mean()))
+print("Python var " + str(df_non_nan["a"].var()))
+cpd = LinearGaussianCPD("a", [])
+cpd.fit(pa_df)
+print()
+df_non_nan = df[["a", "b"]].dropna()
+linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a"]]))
+beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'b'].values, rcond=None)
+
+print("Python solution: " + str(beta))
+print("Python var: " + str(res / (df_non_nan.shape[0]-2)))
 cpd = LinearGaussianCPD("b", ["a"])
-cpd.fit(df)
+cpd.fit(pa_df)
 # cpd = LinearGaussianCPD("c", ["a", "b"])
 # cpd = LinearGaussianCPD("d", ["a", "b", "c"])
 # cpd.fit(df)

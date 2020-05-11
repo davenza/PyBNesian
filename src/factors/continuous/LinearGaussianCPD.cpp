@@ -99,6 +99,7 @@ namespace factors::continuous {
     void LinearGaussianCPD::_fit(DataFrame df) {
 
         if (evidence.empty()) {
+            BENCHMARK(
             auto eigen = df.to_eigen<false>(variable);
 
             std::visit([this](auto&& arg) {
@@ -107,14 +108,16 @@ namespace factors::continuous {
                 beta.push_back(static_cast<double>(mean));
                 variance = static_cast<double>(var) / (arg->rows() - 1);
             }, eigen);
+            , 1000)
 
             std::cout << "beta: " << std::setprecision(24) << beta[0] << std::endl;
             std::cout << "variance: " << std::setprecision(24) << variance << std::endl;
 
         } else if (evidence.size() == 1) {
+            BENCHMARK(
             auto eigen = df.to_eigen<false>({variable, evidence[0]});
 //
-            BENCHMARK(std::visit([this](auto&& arg) {
+            std::visit([this](auto&& arg) {
                 auto m0 = arg->col(0).mean();
                 auto m1 = arg->col(1).mean();
                 auto diff0 = (arg->col(0).array() - m0);

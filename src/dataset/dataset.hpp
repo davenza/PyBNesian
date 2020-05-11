@@ -94,25 +94,34 @@ namespace dataset {
 
         template<bool append_ones, typename T, util::enable_if_index_container_t<T, int> = 0>
         ReturnedEigenMatrix to_eigen(T cols) const;
+        template<bool append_ones, typename T, util::enable_if_index_container_t<T, int> = 0>
+        ReturnedEigenMatrix to_eigen(T cols, Buffer_ptr bitmap) const;
         template<bool append_ones, typename V>
         ReturnedEigenMatrix to_eigen(std::initializer_list<V> cols) const {
             return to_eigen<append_ones, std::initializer_list<V>>(cols);
         }
+        template<bool append_ones, typename V>
+        ReturnedEigenMatrix to_eigen(std::initializer_list<V> cols, Buffer_ptr bitmap) const {
+            return to_eigen<append_ones, std::initializer_list<V>>(cols, bitmap);
+        }
         template<bool append_ones, int = 0>
         ReturnedEigenVector to_eigen(int i) const;
-
+        template<bool append_ones, int = 0>
+        ReturnedEigenVector to_eigen(int i, Buffer_ptr bitmap) const;
         template<bool append_ones, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         ReturnedEigenVector to_eigen(StringType name) const;
+        template<bool append_ones, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        ReturnedEigenVector to_eigen(StringType name, Buffer_ptr bitmap) const;
 
         std::shared_ptr<arrow::RecordBatch> operator->();
     private:
         std::shared_ptr <arrow::Buffer> combined_bitmap_with_null() const;
 
         template<bool append_ones, typename T, typename ArrowType, util::enable_if_index_container_t<T, int> = 0>
-        ReturnedEigenMatrix to_eigen_typed(T cols) const;
+        ReturnedEigenMatrix to_eigen_typed(T cols, Buffer_ptr bitmap) const;
 
         template<bool append_ones, typename ArrowType>
-        ReturnedEigenVector to_eigen_typed(Array_ptr c) const;
+        ReturnedEigenVector to_eigen_typed(Array_ptr c, Buffer_ptr bitmap) const;
 
         std::shared_ptr <arrow::RecordBatch> m_batch;
     };
@@ -222,21 +231,17 @@ namespace dataset {
         }
     }
 
-
     template<bool append_ones, typename T, typename ArrowType, util::enable_if_index_container_t<T, int> = 0>
-    DataFrame::ReturnedEigenMatrix DataFrame::to_eigen_typed(T cols) const {
+    DataFrame::ReturnedEigenMatrix DataFrame::to_eigen_typed(T cols, Buffer_ptr bitmap) const {
 //        TODO: Review static asserts.
 //        static_assert(util::is_integral_container_v<T> || util::is_string_container_v<T>,
 //                      "to_eigen_typed() only accepts integral or string containers.");
         using MatrixType = Matrix<typename ArrowType::c_type, Dynamic, Dynamic>;
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
 
-        auto buffer_bitmap = combined_bitmap(cols);
-
-        if (buffer_bitmap) {
-
+        if (bitmap) {
             auto rows = m_batch->num_rows();
-            auto valid_rows = util::bit_util::non_null_count(buffer_bitmap, rows);
+            auto valid_rows = util::bit_util::non_null_count(bitmap, rows);
 
             auto m = [&cols, valid_rows]() {
                 if constexpr(append_ones) return std::make_unique<MatrixType>(valid_rows, cols.size()+1);
@@ -251,7 +256,7 @@ namespace dataset {
                 offset_ptr += valid_rows;
             }
 
-            auto combined_bitmap = buffer_bitmap->data();
+            auto bitmap_data = bitmap->data();
 
             for (auto &col_index : cols) {
                 auto col = [this, &col_index]() -> auto {
@@ -266,7 +271,7 @@ namespace dataset {
 
                 auto k = 0;
                 for (auto j = 0; j < rows; ++j) {
-                    if (arrow::BitUtil::GetBit(combined_bitmap, j))
+                    if (arrow::BitUtil::GetBit(bitmap_data, j))
                         m_ptr[offset_ptr + k++] = raw_values[j];
                 }
                 offset_ptr += valid_rows;
@@ -275,7 +280,6 @@ namespace dataset {
             return std::move(m);
 
         } else {
-
             auto rows = m_batch->num_rows();
             auto m = [&cols, rows]() {
                 if constexpr(append_ones) return std::make_unique<MatrixType>(rows, cols.size()+1);
@@ -306,11 +310,19 @@ namespace dataset {
 
             return std::move(m);
         }
-
     }
 
     template<bool append_ones, typename T, util::enable_if_index_container_t<T, int> = 0>
     DataFrame::ReturnedEigenMatrix DataFrame::to_eigen(T cols) const {
+//        static_assert(!std::is_convertible_v<T,std::string> && (util::is_integral_container_v<T> || util::is_string_container_v<T>),
+//                      "to_eigen() only accepts integral or string containers.");
+
+        auto buffer_bitmap = combined_bitmap(cols);
+        return to_eigen<append_ones>(cols, buffer_bitmap);
+    }
+
+    template<bool append_ones, typename T, util::enable_if_index_container_t<T, int> = 0>
+    DataFrame::ReturnedEigenMatrix DataFrame::to_eigen(T cols, Buffer_ptr bitmap) const {
 //        static_assert(!std::is_convertible_v<T,std::string> && (util::is_integral_container_v<T> || util::is_string_container_v<T>),
 //                      "to_eigen() only accepts integral or string containers.");
 
@@ -319,7 +331,7 @@ namespace dataset {
         }
 
         if (cols.size() == 1) {
-            return util::variant_cast(to_eigen<append_ones>(*cols.begin()));
+            return util::variant_cast(to_eigen<append_ones>(*cols.begin(), bitmap));
         }
 
         auto dt_id = [this, &cols]() {
@@ -329,10 +341,10 @@ namespace dataset {
 
         switch (dt_id) {
             case Type::DOUBLE:
-                return to_eigen_typed<append_ones, T, arrow::DoubleType>(cols);
+                return to_eigen_typed<append_ones, T, arrow::DoubleType>(cols, bitmap);
                 break;
             case Type::FLOAT:
-                return to_eigen_typed<append_ones, T, arrow::FloatType>(cols);
+                return to_eigen_typed<append_ones, T, arrow::FloatType>(cols, bitmap);
                 break;
             default:
                 throw pybind11::value_error("Only numeric data types can be transformed to Eigen matrix.");
@@ -340,16 +352,15 @@ namespace dataset {
     }
 
     template<bool append_ones, typename ArrowType>
-    DataFrame::ReturnedEigenVector DataFrame::to_eigen_typed(Array_ptr c) const {
+    DataFrame::ReturnedEigenVector DataFrame::to_eigen_typed(Array_ptr c, Buffer_ptr bitmap) const {
         using MatrixType = Matrix<typename ArrowType::c_type, Dynamic, 1+append_ones>;
         using MapType = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
 
         auto rows = c->length();
-        auto buffer_bitmap = c->null_bitmap();
 
-        if(buffer_bitmap) {
-            auto valid_rows = util::bit_util::non_null_count(buffer_bitmap, rows);
+        if(bitmap) {
+            auto valid_rows = util::bit_util::non_null_count(bitmap, rows);
 
             auto m = std::make_unique<MatrixType>(valid_rows, 1+append_ones);
 
@@ -361,10 +372,10 @@ namespace dataset {
             }
 
             auto dwn_col = std::static_pointer_cast<ArrayType>(c);
-
             auto raw_values = dwn_col->raw_values();
+
             auto k = 0;
-            auto combined_bitmap = buffer_bitmap->data();
+            auto combined_bitmap = bitmap->data();
 
             for (auto j = 0; j < rows; ++j) {
                 if (arrow::BitUtil::GetBit(combined_bitmap, j))
@@ -391,16 +402,19 @@ namespace dataset {
 
     template<bool append_ones, int = 0>
     DataFrame::ReturnedEigenVector DataFrame::to_eigen(int i) const {
+        auto buffer_bitmap = m_batch->column(i)->null_bitmap();
+        return to_eigen<append_ones>(i, buffer_bitmap);
+    }
+
+    template<bool append_ones, int = 0>
+    DataFrame::ReturnedEigenVector DataFrame::to_eigen(int i, Buffer_ptr bitmap) const {
         auto col = m_batch->column(i);
         auto dt_id = col->type_id();
         switch (dt_id) {
             case Type::DOUBLE:
-            {
-                auto tmp = to_eigen_typed<append_ones, DoubleType>(col);
-                return tmp;
-            }
+                return to_eigen_typed<append_ones, DoubleType>(col, bitmap);
             case Type::FLOAT:
-                return to_eigen_typed<append_ones, FloatType>(col);
+                return to_eigen_typed<append_ones, FloatType>(col, bitmap);
             default:
                 throw pybind11::value_error("Only numeric data types can be transformed to Eigen matrix.");
         }
@@ -409,13 +423,19 @@ namespace dataset {
     template<bool append_ones, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
     DataFrame::ReturnedEigenVector DataFrame::to_eigen(StringType name) const {
         //static_assert(std::is_convertible_v<StringType,std::string>, "to_eigen() only accepts integral or std::string.");
+        auto buffer_bitmap = m_batch->GetColumnByName(name)->null_bitmap();
+        return to_eigen<append_ones>(name, buffer_bitmap);
+    }
+
+    template<bool append_ones, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+    DataFrame::ReturnedEigenVector DataFrame::to_eigen(StringType name, Buffer_ptr bitmap) const {
         auto col = m_batch->GetColumnByName(name);
         auto dt_id = col->type_id();
         switch (dt_id) {
             case Type::DOUBLE:
-                return to_eigen_typed<append_ones, DoubleType>(col);
+                return to_eigen_typed<append_ones, DoubleType>(col, bitmap);
             case Type::FLOAT:
-                return to_eigen_typed<append_ones, FloatType>(col);
+                return to_eigen_typed<append_ones, FloatType>(col, bitmap);
             default:
                 throw pybind11::value_error("Only numeric data types can be transformed to Eigen matrix.");
         }

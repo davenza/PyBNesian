@@ -8,7 +8,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <dataset/dataset.hpp>
+#include <Eigen/Dense>
 
+using Eigen::VectorXd;
 
 namespace py = pybind11;
 
@@ -26,14 +28,19 @@ namespace factors::continuous {
         void fit(py::handle pyobject);
 
     private:
+        template<typename ArrowType, bool contains_null>
         void _fit(DataFrame df);
-        void _fit_1parent(Array_ptr y, Array_ptr regressor);
-        void _fit_2parent(Array_ptr y, Array_ptr regressor1, Array_ptr regressor2);
-        void _fit_nparent(Array_ptr y, DataFrame evidence);
-        std::string variable;
-        std::vector<std::string> evidence;
-        std::vector<double> beta;
-        double variance;
+        template<typename ArrowType, bool contains_null>
+        void _fit_1parent(DataFrame df);
+        template<typename ArrowType, bool contains_null>
+        void _fit_2parent(DataFrame df);
+        template<typename ArrowType, bool contains_null>
+        void _fit_nparent(DataFrame df);
+
+        std::string m_variable;
+        std::vector<std::string> m_evidence;
+        VectorXd m_beta;
+        double m_variance;
     };
 }
 

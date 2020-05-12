@@ -54,27 +54,6 @@ m0 = np.mean(v[:, 0])
 m1 = np.mean(v[:, 1])
 
 
-
-#
-# df_non_nan = df.dropna()
-# print(df_non_nan)
-#
-# linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a", "b"]]))
-# beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'c'].values, rcond=None)
-#
-# print("Python solution: " + str(beta))
-# print("Python var: " + str(res / (df_non_nan.shape[0]-3)))
-#
-#
-# linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a", "b", "c"]]))
-# beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'d'].values, rcond=None)
-#
-# print("Python solution: " + str(beta))
-# print("Python var: " + str(res / (df_non_nan.shape[0]-3)))
-
-
-
-
 pa_df = pa.RecordBatch.from_pandas(df)
 
 df_non_nan = df[["a"]].dropna()
@@ -82,15 +61,34 @@ print("Python beta " + str(df_non_nan["a"].mean()))
 print("Python var " + str(df_non_nan["a"].var()))
 cpd = LinearGaussianCPD("a", [])
 cpd.fit(pa_df)
+
 print()
+
 df_non_nan = df[["a", "b"]].dropna()
 linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a"]]))
 beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'b'].values, rcond=None)
-
 print("Python solution: " + str(beta))
 print("Python var: " + str(res / (df_non_nan.shape[0]-2)))
 cpd = LinearGaussianCPD("b", ["a"])
 cpd.fit(pa_df)
-# cpd = LinearGaussianCPD("c", ["a", "b"])
-# cpd = LinearGaussianCPD("d", ["a", "b", "c"])
-# cpd.fit(df)
+
+print()
+
+df_non_nan = df[["a", "b", "c"]].dropna()
+linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a", "b"]]))
+beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'c'].values, rcond=None)
+print("Python solution: " + str(beta))
+print("Python var: " + str(res / (df_non_nan.shape[0]-2)))
+cpd = LinearGaussianCPD("c", ["a", "b"])
+cpd.fit(pa_df)
+
+
+print()
+
+df_non_nan = df[["a", "b", "c", "d"]].dropna()
+linregress_data = np.column_stack((np.ones(df_non_nan.shape[0]), df_non_nan[["a", "b", "c"]]))
+beta, res,_,_ = np.linalg.lstsq(linregress_data, df_non_nan.loc[:,'d'].values, rcond=None)
+print("Python solution: " + str(beta))
+print("Python var: " + str(res / (df_non_nan.shape[0]-2)))
+cpd = LinearGaussianCPD("d", ["a", "b", "c"])
+cpd.fit(pa_df)

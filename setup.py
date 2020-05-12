@@ -125,7 +125,7 @@ class BuildExt(build_ext):
         opts.append("-Wextra")
         opts.append("-Wno-error=unused-variable")
         opts.append("-march=native")
-        opts.append("-w")
+        # opts.append("-S")
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
             opts.append(cpp_flag(self.compiler))

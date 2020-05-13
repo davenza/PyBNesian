@@ -4,7 +4,6 @@
 #include <arrow/python/pyarrow.h>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <dataset/dataset.hpp>
-//#include <linalg/linalg.hpp>
 #include <util/bit_util.hpp>
 #include <Eigen/Dense>
 
@@ -58,9 +57,10 @@ namespace factors::continuous {
     };
 
     LinearGaussianCPD::LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence,
-                                         const std::vector<double> beta) :
+                                         const std::vector<double> beta, double variance) :
     m_variable(variable),
-    m_evidence(evidence)
+    m_evidence(evidence),
+    m_variance(variance)
 //    TODO: Error checking: Length of vectors
     {
         m_beta = VectorXd(beta.size());

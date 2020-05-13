@@ -1,11 +1,10 @@
 #ifndef PGM_DATASET_DATASET_HPP
 #define PGM_DATASET_DATASET_HPP
 
-#include <variant>
+#include <arrow/api.h>
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
 //#include <arrow/python/pyarrow.h>
-#include <arrow/api.h>
 #include <util/util.hpp>
 #include <util/bit_util.hpp>
 #include <util/variant_util.hpp>

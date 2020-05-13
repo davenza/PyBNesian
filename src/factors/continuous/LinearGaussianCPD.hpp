@@ -1,7 +1,3 @@
-//
-// Created by david on 17/4/20.
-//
-
 #ifndef PGM_DATASET_LINEARGAUSSIANCPD_HPP
 #define PGM_DATASET_LINEARGAUSSIANCPD_HPP
 
@@ -17,10 +13,17 @@ namespace py = pybind11;
 using namespace dataset;
 
 namespace factors::continuous {
-    class LinearGaussianCPD {
 
+
+    struct LinearGaussianCPD_Params {
+        VectorXd beta;
+        double variance;
+    };
+
+    class LinearGaussianCPD {
     public:
-//        LinearGaussianCPD();
+        using ParamsClass = LinearGaussianCPD_Params;
+        
         LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence);
         LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence,
                             const std::vector<double> beta);

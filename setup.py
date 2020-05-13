@@ -43,10 +43,10 @@ ext_modules = [
         'pgm_dataset',
         [
          'src/lib.cpp',
-         'src/factors/continuous/LinearGaussianCPD.cpp',
-         'src/dataset/dataset.cpp',
-         'src/linalg/linalg.cpp',
-         'src/util/bit_util.cpp'
+        #  'src/factors/continuous/LinearGaussianCPD.cpp',
+        #  'src/dataset/dataset.cpp',
+        #  'src/util/bit_util.cpp',
+         'src/graph/dag.cpp'
          ],
         include_dirs=[
         #     # Path to pybind11 headers
@@ -54,7 +54,8 @@ ext_modules = [
             get_pybind_include(user=True),
             # pa.get_include(),
             "src",
-            "lib/eigen-3.3.7"
+            "lib/eigen-3.3.7",
+            "lib/graph"
         ],
         libraries=pa.get_libraries(),
         library_dirs=pa.get_library_dirs(),

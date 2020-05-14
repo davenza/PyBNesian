@@ -5,16 +5,18 @@
 
 namespace py = pybind11; 
 
-
 namespace learning::algorithms {
 
 
+    void estimate(py::handle data, double score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
 
+    template<typename Model>
     class GreedyHillClimbing {
 
-
-        GreedyHillClimbing(py::handle data, )
-    }
+    public:
+        template<typename Score>
+        Model estimate(py::handle data, Score score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
+    };
 }
 
 

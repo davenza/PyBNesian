@@ -19,7 +19,7 @@ import os
 
 __version__ = '0.0.1'
 
-# os.environ['CC'] = "ccache gcc"
+os.environ['CC'] = "ccache gcc"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -43,10 +43,14 @@ ext_modules = [
         'pgm_dataset',
         [
          'src/lib.cpp',
-        #  'src/factors/continuous/LinearGaussianCPD.cpp',
-        #  'src/dataset/dataset.cpp',
-        #  'src/util/bit_util.cpp',
-         'src/graph/dag.cpp'
+         'src/factors/continuous/LinearGaussianCPD.cpp',
+         'src/dataset/dataset.cpp',
+         'src/util/bit_util.cpp',
+         'src/util/validate_dtype.cpp',
+         'src/graph/dag.cpp',
+         'src/learning/parameter/mle_LinearGaussianCPD.cpp',
+         'src/learning/scores/bic.cpp',
+         'src/learning/algorithms/hillclimbing.cpp',
          ],
         include_dirs=[
         #     # Path to pybind11 headers

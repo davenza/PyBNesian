@@ -1,6 +1,8 @@
 #ifndef PGM_DATASET_VARIANT_UTIL_HPP
 #define PGM_DATASET_VARIANT_UTIL_HPP
 
+#include <variant>
+
 namespace util {
 
     // This code allows casting between a variant to another variant that is a superset.

@@ -7,8 +7,9 @@
 #include <graph/dag.hpp>
 
 #include <learning/scores/scores.hpp>
+// #include <learning/scores/bic.hpp>
 #include <learning/parameter/mle.hpp>
-#include <learning/parameter/mle_LinearGaussianCPD.hpp>
+#include <learning/algorithms/hillclimbing.hpp>
 
 namespace py = pybind11;
 
@@ -24,9 +25,11 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     m.doc() = "pybind11 data plugin"; // optional module docstring
 
-    // py::class_<LinearGaussianCPD>(m, "LinearGaussianCPD")
-    //         .def(py::init<const std::string, const std::vector<std::string>>())
-    //         .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
-    //         .def("fit", &LinearGaussianCPD::fit);
+    py::class_<LinearGaussianCPD>(m, "LinearGaussianCPD")
+            .def(py::init<const std::string, const std::vector<std::string>>())
+            .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
+            .def("fit", &LinearGaussianCPD::fit);
 
+
+    m.def("estimate", &learning::algorithms::estimate, "Hill climbing");
 }

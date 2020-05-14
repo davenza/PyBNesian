@@ -1,6 +1,8 @@
 #ifndef PGM_DATASET_DATASET_VARIANT_IMPL_HPP
 #define PGM_DATASET_DATASET_VARIANT_IMPL_HPP
 
+#include <util/variant_util.hpp>
+
 namespace dataset {
     template<bool append_ones, typename T, typename ArrowType, util::enable_if_index_container_t<T, int> = 0>
     DataFrame::EigenMatrixVariant DataFrame::to_eigen_variant_typed(T cols, Buffer_ptr bitmap) const {

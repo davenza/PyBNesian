@@ -2,8 +2,10 @@
 #define PGM_DATASET_SCORES_HPP
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
+#include <dataset/dataset.hpp>
 
 using factors::continuous::LinearGaussianCPD;
+using namespace dataset;
 
 namespace learning::scores {
 
@@ -12,8 +14,8 @@ namespace learning::scores {
     class StructureScore {
 
     public:
-        double local_score(DataFrame& df, const std::string& variable, const std::string& evidence) {
-            static_cast<Derived*>(this)->local_score(df, variable, evidence);
+        double local_score(DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence) {
+            return static_cast<Derived*>(this)->local_score(df, variable, evidence);
         }
     };
 
@@ -22,14 +24,11 @@ namespace learning::scores {
     class BIC : StructureScore<BIC<CPD>> {
 
     public:
-        double local_score(DataFrame& df, const std::string& variable, const std::string& evidence);
+        double local_score(DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence);
     };
 
 
-    template<>
-    double BIC<LinearGaussianCPD>::local_score(DataFrame& df, const std::string& variable, const std::string& evidence) {
 
-    }
 
 }
 

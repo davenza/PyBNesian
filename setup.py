@@ -51,6 +51,7 @@ ext_modules = [
          'src/learning/parameter/mle_LinearGaussianCPD.cpp',
          'src/learning/scores/bic.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
+         'src/models/GaussianNetwork.cpp',
          ],
         include_dirs=[
         #     # Path to pybind11 headers
@@ -130,6 +131,7 @@ class BuildExt(build_ext):
         opts.append("-Wextra")
         opts.append("-Wno-error=unused-variable")
         opts.append("-march=native")
+        opts.append("-fdiagnostics-color=always")
         # opts.append("-S")
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())

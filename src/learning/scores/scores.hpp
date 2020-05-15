@@ -9,23 +9,21 @@ using namespace dataset;
 
 namespace learning::scores {
 
+    // template<typename Score>
+    // struct score_traits;
 
-    template<typename Derived>
-    class StructureScore {
 
+    template<typename Model>
+    class BIC {
     public:
-        double local_score(DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence) {
-            return static_cast<Derived*>(this)->local_score(df, variable, evidence);
-        }
+        inline static constexpr bool is_decomposable = true;
+
+        static double score(const DataFrame& df, Model& model);
+
+        template<std::enable_if_t<is_decomposable, int> = 0>
+        static double local_score(const DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence);
     };
 
-
-    template<typename CPD>
-    class BIC : StructureScore<BIC<CPD>> {
-
-    public:
-        double local_score(DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence);
-    };
 
 
 

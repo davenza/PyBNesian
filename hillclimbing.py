@@ -23,5 +23,5 @@ df = pd.DataFrame({
 pa_df = pa.RecordBatch.from_pandas(df)
 
 
-estimate(pa_df, 5.12, [("a", "b"), ("b", "c"), ("a", "d")], [], 5, 10e-4)
+estimate(pa_df, "bic", [("a", "b"), ("b", "c"), ("a", "d")], [], 5, 10e-4)
 

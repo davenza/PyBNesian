@@ -47,6 +47,8 @@ namespace dataset {
     public:
         DataFrame(std::shared_ptr<arrow::RecordBatch> rb);
 
+        std::vector<std::string> column_names() const;
+
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         DataFrame loc(T cols) const;
         template<typename V>

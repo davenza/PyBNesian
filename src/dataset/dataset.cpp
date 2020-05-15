@@ -149,6 +149,17 @@ case Type::TypeID:                                                              
 
     DataFrame::DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) { }
 
+    std::vector<std::string> DataFrame::column_names() const {
+        auto schema = m_batch->schema();
+        std::vector<std::string> names;
+        names.reserve(schema->num_fields());
+
+        for(auto i = 0; i < schema->num_fields(); ++i) {
+            names.push_back(schema->field(i)->name());
+        }
+
+        return names;
+    }
 
     std::shared_ptr<arrow::RecordBatch> DataFrame::operator->() const { return m_batch; }
 

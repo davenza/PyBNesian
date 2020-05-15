@@ -3,19 +3,28 @@
 
 #include <pybind11/pybind11.h>
 
+#include <dataset/dataset.hpp>
+#include <graph/dag.hpp>
+
+
 namespace py = pybind11; 
+
+using dataset::DataFrame;
+using graph::arc_vector;
 
 namespace learning::algorithms {
 
 
-    void estimate(py::handle data, double score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
+    // TODO: Include start graph.
+    void estimate(py::handle data, std::string score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
 
     template<typename Model>
     class GreedyHillClimbing {
 
     public:
         template<typename Score>
-        Model estimate(py::handle data, Score score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
+        void estimate(const DataFrame& data, Score score, arc_vector blacklist, 
+                      arc_vector whitelist, int max_indegree, double epsilon, const Model& start);
     };
 }
 

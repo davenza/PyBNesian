@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_DAG_HPP
 #define PGM_DATASET_DAG_HPP
 
+#include <iostream>
 #include <pybind11/pybind11.h>
 #include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -8,13 +9,14 @@
 
 namespace py = pybind11;
 using boost::adjacency_matrix, boost::adjacency_list, boost::directedS, boost::setS, boost::vecS, boost::property, boost::vertex_name_t,
-    boost::property_map, boost::vertex_name;
+    boost::property_map, boost::vertex_name, boost::tie;
 
 using adj_m = adjacency_matrix<directedS, property<vertex_name_t, std::string>>;
 using adj_l = adjacency_list<setS, vecS, directedS, property<vertex_name_t, std::string>>;
 
 namespace graph {
 
+    using arc_vector = std::vector<std::pair<std::string, std::string>>;
 
     template<typename Graph>
     class Dag {
@@ -39,6 +41,27 @@ namespace graph {
                 put(node_name, *n, "n" + std::to_string(i));
             }
         };
+
+        Dag(const std::vector<std::string>& nodes) : g(nodes.size()) {
+            NameMap node_name = get(vertex_name, g);
+            node_iterator n, e;
+
+            int i = 0;
+            for (tie(n, e) = vertices(g); n != e; ++n, ++i) {
+                put(node_name, *n, nodes[i]);
+            }
+        };
+
+        Dag(const std::vector<std::string>& nodes, const arc_vector& arcs) : g(nodes.size()) {
+            NameMap node_name = get(vertex_name, g);
+            node_iterator n, e;
+
+            int i = 0;
+            for (tie(n, e) = vertices(g); n != e; ++n, ++i) {
+                put(node_name, *n, nodes[i]);
+            }
+        };
+
 
         void
         add_edge(node_descriptor u, node_descriptor v);

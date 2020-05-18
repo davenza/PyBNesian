@@ -12,6 +12,8 @@ using Eigen::VectorXd;
 using models::GaussianNetwork;
 using learning::scores::BIC;
 using graph::arc_vector;
+using learning::operators::DefaultOperatorPool, learning::operators::OperatorPool, learning::operators::OperatorType,
+        learning::operators::ArcOperatorsType;
 
 namespace learning::algorithms {
 
@@ -38,11 +40,19 @@ namespace learning::algorithms {
 
         
 
-
+        auto nnodes = df->num_columns();
         
         if (str_score == "bic") {
             BIC<GaussianNetwork> score;
-            hc.estimate(df, score, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
+
+            std::vector<std::unique_ptr<OperatorType<GaussianNetwork>>> op_types;
+            auto arc_scores = std::make_unique<ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>>>(nnodes);
+            op_types.push_back(std::move(arc_scores));
+            // OperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(std::move(op_types));
+            OperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(std::move(op_types));
+
+            // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
+            // hc.estimate(df, score, op_pool, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
         }
          else {
             throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
@@ -50,9 +60,10 @@ namespace learning::algorithms {
     }
     
     template<typename Model>
-    template<typename Score>
+    template<typename Score, typename OperatorPool>
     void GreedyHillClimbing<Model>::estimate(const DataFrame& df, 
                                               Score score,
+                                              OperatorPool op_pool,
                                               arc_vector blacklist, 
                                               arc_vector whitelist, 
                                               int max_indegree, 
@@ -61,6 +72,26 @@ namespace learning::algorithms {
 
 
         Model::requires(df);
+
+
+
+        // op_pool.cache_scores(start);
+
+        // Model current_model = start;
+
+        // while(true) {
+
+        //     auto best_op = op_pool.find_max(current_model);
+
+        //     // if (best_op->delta() < epsilon) {
+        //     //     break;
+        //     // }
+
+        //     // best_op.apply_operator(current_model);
+        // }
+
+
+
 
     }
 

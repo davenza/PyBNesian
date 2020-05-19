@@ -47,10 +47,10 @@ ext_modules = [
          'src/dataset/dataset.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
-         'src/graph/dag.cpp',
          'src/learning/parameter/mle_LinearGaussianCPD.cpp',
          'src/learning/scores/bic.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
+        #  'src/learning/operators/operators.cpp',
          'src/models/GaussianNetwork.cpp',
          ],
         include_dirs=[

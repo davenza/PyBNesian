@@ -47,6 +47,9 @@ namespace graph {
         using node_iterator_t = typename boost::graph_traits<Graph>::vertex_iterator;
         using edge_iterator_t = typename boost::graph_traits<Graph>::edge_iterator;
 
+        using nodes_size_type = typename boost::graph_traits<Graph>::vertices_size_type;
+        using edges_size_type = typename boost::graph_traits<Graph>::edges_size_type;
+
         using NameMap = typename property_map<Graph, vertex_name_t>::type;
 
         template<typename = std::enable_if_t<std::is_default_constructible_v<Graph>>>
@@ -88,6 +91,14 @@ namespace graph {
         void
         add_node(std::string u);
 
+        nodes_size_type num_nodes() const {
+            return num_vertices(g);
+        }
+
+        edges_size_type num_edges() const {
+            return num_edges(g);
+        }
+        
         dag_node_iterator<node_iterator_t> nodes() const;
         void print();
 

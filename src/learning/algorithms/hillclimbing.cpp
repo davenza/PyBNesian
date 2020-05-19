@@ -12,15 +12,10 @@ using Eigen::VectorXd;
 using models::GaussianNetwork;
 using learning::scores::BIC;
 using graph::arc_vector;
-using learning::operators::DefaultOperatorPool, learning::operators::OperatorPool, learning::operators::OperatorType,
-        learning::operators::ArcOperatorsType;
+using learning::operators::ArcOperatorsType;
 
 namespace learning::algorithms {
 
-
-
-
-    
     // TODO: Include start model.
     void estimate(py::handle data, std::string str_score, 
                   std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, 
@@ -33,23 +28,21 @@ namespace learning::algorithms {
         auto blacklist_cpp = util::check_edge_list(df, blacklist);
         auto whitelist_cpp = util::check_edge_list(df, whitelist);
 
+        auto nodes = df.column_names();
+        auto nnodes = nodes.size();
+
         GreedyHillClimbing<GaussianNetwork> hc;
 
-        GaussianNetwork gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork(df.column_names(), whitelist_cpp) :
-                                                           GaussianNetwork(df.column_names());
+        GaussianNetwork gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork(nodes, whitelist_cpp) :
+                                                           GaussianNetwork(nodes);
 
         
 
-        auto nnodes = df->num_columns();
         
         if (str_score == "bic") {
             BIC<GaussianNetwork> score;
 
-            std::vector<std::unique_ptr<OperatorType<GaussianNetwork>>> op_types;
-            auto arc_scores = std::make_unique<ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>>>(nnodes);
-            op_types.push_back(std::move(arc_scores));
-            // OperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(std::move(op_types));
-            OperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(std::move(op_types));
+            ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
 
             // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
             // hc.estimate(df, score, op_pool, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);

@@ -27,6 +27,9 @@ namespace models {
 
         using node_iterator_t = typename DagType::node_iterator_t;
 
+        using nodes_size_type = typename DagType::nodes_size_type;
+        using edges_size_type = typename DagType::edges_size_type;
+
         BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_nodes(nodes) {};
         BayesianNetwork(const std::vector<std::string>& nodes, std::vector<std::pair<std::string, std::string>>& arcs) : g(nodes, arcs), m_nodes(nodes) {};
 
@@ -34,6 +37,19 @@ namespace models {
 
         dag_node_iterator<node_iterator_t> nodes() const { 
             return g.nodes();
+        }
+
+
+        nodes_size_type num_nodes() const {
+            return g.num_nodes();
+        }
+
+        edges_size_type num_edges() const {
+            return g.num_edges();
+        }
+
+        const std::vector<std::string>& names() const {
+            return m_nodes;
         }
 
         
@@ -51,8 +67,6 @@ namespace models {
         // TODO: Allow change the type of Dag.
         DagType g;
         std::vector<std::string> m_nodes;
-
-
     };
 
     using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK>;

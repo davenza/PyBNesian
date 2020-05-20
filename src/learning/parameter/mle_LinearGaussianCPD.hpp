@@ -1,5 +1,5 @@
-// #ifndef PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
-// #define PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
+#ifndef PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
+#define PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <learning/parameter/mle.hpp>
@@ -8,10 +8,10 @@ using factors::continuous::LinearGaussianCPD;
 
 namespace learning::parameter {
 
-    template<typename ArrowType, bool contains_null>
+    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceType>
     typename LinearGaussianCPD::ParamsClass _fit_1parent(const DataFrame& df,
-                                                         const std::string& variable,  
-                                                         const std::vector<std::string>& evidence) {
+                                                         const VarType& variable,  
+                                                         const EvidenceType& evidence) {
         
         auto [y, x] = [&df, &variable, &evidence]() {
            if constexpr(contains_null) {
@@ -52,10 +52,10 @@ namespace learning::parameter {
         };
     }
 
-    template<typename ArrowType, bool contains_null>
+    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceType>
     typename LinearGaussianCPD::ParamsClass _fit_2parent(const DataFrame& df,
-                                                         const std::string& variable,  
-                                                         const std::vector<std::string>& evidence) {
+                                                         const VarType& variable,  
+                                                         const EvidenceType& evidence) {
         
         auto [y, x1, x2] = [&df, &variable, &evidence]() {
            if constexpr(contains_null) {
@@ -108,10 +108,10 @@ namespace learning::parameter {
         };
     }
 
-    template<typename ArrowType, bool contains_null>
+    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceType>
     typename LinearGaussianCPD::ParamsClass _fit_nparent(const DataFrame& df,
-                                                         const std::string& variable,  
-                                                         const std::vector<std::string>& evidence) {
+                                                         const VarType& variable,  
+                                                         const EvidenceType& evidence) {
         
         auto [y, X] = [&df, &variable, &evidence]() {    
             if constexpr(contains_null) {
@@ -148,10 +148,10 @@ namespace learning::parameter {
         }
     }
 
-    template<typename ArrowType, bool contains_null>
+    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceType>
     typename LinearGaussianCPD::ParamsClass _fit(const DataFrame& df,
-                                                 const std::string& variable,  
-                                                 const std::vector<std::string>& evidence) {
+                                                 const VarType& variable,  
+                                                 const EvidenceType& evidence) {
         if (evidence.empty()) {
             auto v = df.to_eigen<false, ArrowType, contains_null>(variable);
             auto mean = v->mean();
@@ -173,11 +173,12 @@ namespace learning::parameter {
     }
 
     template<>
+    template<typename VarType, typename EvidenceType>
     typename LinearGaussianCPD::ParamsClass MLE<LinearGaussianCPD>::estimate(const DataFrame& df, 
-                                                                             const std::string& variable,  
-                                                                             const std::vector<std::string>& evidence) {
+                                                                             const VarType& variable,  
+                                                                             const EvidenceType& evidence) {
 
-        auto var_col = df->GetColumnByName(variable);
+        auto var_col = df.loc(variable);
 
         if (var_col) {
             auto type = var_col->type();
@@ -189,12 +190,21 @@ namespace learning::parameter {
             }
 
             for (auto &ev : evidence) {
-                auto ev_col = df->GetColumnByName(ev);
+                auto ev_col = df.loc(ev);
 
-                if (!ev_col) {
-                    throw py::value_error("Variable \"" + ev + "\" not found in dataset.");
-                } else if (!type->Equals(ev_col->type())){
-                    throw py::value_error("\"" + variable + "\" has different data type than \"" + ev + "\"");
+                if constexpr (std::is_convertible_v<typename EvidenceType::value_type, const std::string&>) {
+                    if (!ev_col) {
+                        throw py::value_error("Variable \"" + static_cast<const std::string&>(ev) + "\" not found in dataset.");
+                    } else if (!type->Equals(ev_col->type())){
+                        throw py::value_error("\"" + variable + "\" has different data type than \"" + static_cast<const std::string&>(ev) + "\"");
+                    }
+                } else if constexpr (std::is_integral_v<typename EvidenceType::value_type>) {
+                    if (!ev_col) {
+                        throw py::value_error("Variable index [" + std::to_string(ev) + "] not found in dataset.");
+                    } else if (!type->Equals(ev_col->type())){
+                        throw py::value_error("Variable index [" + std::to_string(variable) + "] has different data type than "
+                                              "variable index [" + std::to_string(ev) + "]");
+                    }
                 }
 
                 contains_null = (contains_null || (ev_col->null_count() != 0));
@@ -225,4 +235,4 @@ namespace learning::parameter {
 
 }
 
-// #endif //PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
+#endif //PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP

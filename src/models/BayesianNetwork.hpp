@@ -81,6 +81,26 @@ namespace models {
             return get_parents(m_indices.at(node));
         }
 
+        std::vector<int> get_parent_indices(node_descriptor node) {
+            std::vector<int> parent_indices;
+            auto it_parents = g.get_parents(node);
+
+            for (auto it = it_parents.first; it != it_parents.second; ++it) {
+                parent_indices.push_back(g.index(*it));
+            }
+
+            return parent_indices;
+        }
+
+        std::vector<int> get_parent_indices(int node_index) const {
+            return get_parent_indices(g.node(node_index));
+        }
+
+        std::vector<int> get_parent_indices(const std::string& node) const {
+            return get_parent_indices(m_indices.at(node));
+        }
+
+
         
         void print() {
             g.print();
@@ -98,6 +118,7 @@ namespace models {
         // TODO: Allow change the type of Dag.
         DagType g;
         std::vector<std::string> m_nodes;
+        // Change to FNV hash function?
         std::unordered_map<std::string, int> m_indices;
     };
 

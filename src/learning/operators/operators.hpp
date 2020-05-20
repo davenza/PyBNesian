@@ -125,10 +125,13 @@ namespace learning::operators {
     void ArcOperatorsType<Model, Score>::cache_scores() {
 
         for (auto i = 0; i < model.num_nodes(); ++i) {
-            auto node = model.node(i);
-            auto parents = model.get_parents(i);
+            // auto node = model.node(i);
+            // auto parents = model.get_parent(node);
+            auto parents = model.get_parent_indices(i);
 
             // local_score(i) = Score::local_score(df, node, parents);
+            local_score(i) = Score::local_score(df, i, parents);
+            std::cout << "Local score: " << local_score(i) << std::endl;
         }
     }
 

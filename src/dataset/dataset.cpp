@@ -144,9 +144,6 @@ case Type::TypeID:                                                              
     }
 #undef CASE_DOWNCAST_COPY
 
-    Column::Column(Array_ptr column) : m_column(column) {}
-    Array_ptr Column::operator->() { return m_column; };
-
     DataFrame::DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) { }
 
     std::vector<std::string> DataFrame::column_names() const {

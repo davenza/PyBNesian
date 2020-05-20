@@ -24,15 +24,6 @@ namespace dataset {
 
     std::shared_ptr<arrow::RecordBatch> to_record_batch(py::handle pyobject);
 
-    class Column {
-    public:
-        Column(Array_ptr column);
-
-        Array_ptr operator->();
-    private:
-        Array_ptr m_column;
-    };
-
     template<typename ArrowType>
     using EigenMatrix = std::unique_ptr<Matrix<typename ArrowType::c_type, Dynamic, Dynamic>>;
 
@@ -53,9 +44,9 @@ namespace dataset {
         DataFrame loc(T cols) const;
         template<typename V>
         DataFrame loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
-        Column loc(int i) const { return m_batch->column(i); }
+        Array_ptr loc(int i) const { return m_batch->column(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        Column loc(StringType name) const { return m_batch->GetColumnByName(name); }
+        Array_ptr loc(StringType name) const { return m_batch->GetColumnByName(name); }
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         Buffer_ptr combined_bitmap(T cols) const;

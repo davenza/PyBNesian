@@ -41,16 +41,16 @@ namespace learning::algorithms {
 
         std::cout << "Is string: " << std::is_convertible_v<std::reference_wrapper<std::string>, std::string> << std::endl;
         gbn.print();
-        // if (str_score == "bic") {
+        if (str_score == "bic") {
 
-        //     ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
+            ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
 
-        //     // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
-        //     hc.estimate(df, arc_op, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
-        // }
-        //  else {
-        //     throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
-        // }
+            // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
+            hc.estimate(df, arc_op, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
+        }
+         else {
+            throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
+        }
     }
     
     template<typename Model>
@@ -66,7 +66,7 @@ namespace learning::algorithms {
 
         Model::requires(df);
 
-        // op.cache_scores();
+        op.cache_scores();
 
         // op_pool.cache_scores(start);
 

@@ -21,7 +21,9 @@ namespace learning::scores {
         static double score(const DataFrame& df, Model& model);
 
         template<std::enable_if_t<is_decomposable, int> = 0>
-        static double local_score(const DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence);
+        static double local_score(const DataFrame& df, 
+                                  const std::string& variable, 
+                                  const std::vector<std::string>& evidence);
     };
 
 

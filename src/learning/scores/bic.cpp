@@ -25,7 +25,9 @@ namespace learning::scores {
 
     template<>
     template<std::enable_if_t<BIC<GaussianNetwork>::is_decomposable, int> = 0>
-    double BIC<GaussianNetwork>::local_score(const DataFrame& df, const std::string& variable, const std::vector<std::string>& evidence) {
+    double BIC<GaussianNetwork>::local_score(const DataFrame& df, 
+                                             const std::string& variable, 
+                                             const std::vector<std::string>& evidence) {
 
         MLE<LinearGaussianCPD> mle;
 

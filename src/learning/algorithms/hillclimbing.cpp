@@ -9,7 +9,7 @@
 using namespace dataset;
 
 using Eigen::VectorXd;
-using models::GaussianNetwork;
+using models::GaussianNetwork, models::GaussianNetworkList;
 using learning::scores::BIC;
 using graph::arc_vector;
 using learning::operators::ArcOperatorsType;
@@ -36,27 +36,27 @@ namespace learning::algorithms {
         GaussianNetwork gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork(nodes, whitelist_cpp) :
                                                            GaussianNetwork(nodes);
 
-        
+        // GaussianNetworkList gbn = (whitelist_cpp.size() > 0) ? GaussianNetworkList(nodes, whitelist_cpp) :
+        //                                                        GaussianNetworkList(nodes);
 
-        
-        if (str_score == "bic") {
-            BIC<GaussianNetwork> score;
+        std::cout << "Is string: " << std::is_convertible_v<std::reference_wrapper<std::string>, std::string> << std::endl;
+        gbn.print();
+        // if (str_score == "bic") {
 
-            ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
+        //     ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
 
-            // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
-            // hc.estimate(df, score, op_pool, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
-        }
-         else {
-            throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
-         }
+        //     // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
+        //     hc.estimate(df, arc_op, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
+        // }
+        //  else {
+        //     throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
+        // }
     }
     
     template<typename Model>
-    template<typename Score, typename OperatorPool>
+    template<typename Operators>
     void GreedyHillClimbing<Model>::estimate(const DataFrame& df, 
-                                              Score score,
-                                              OperatorPool op_pool,
+                                              Operators op,
                                               arc_vector blacklist, 
                                               arc_vector whitelist, 
                                               int max_indegree, 
@@ -66,7 +66,7 @@ namespace learning::algorithms {
 
         Model::requires(df);
 
-
+        // op.cache_scores();
 
         // op_pool.cache_scores(start);
 

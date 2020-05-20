@@ -22,8 +22,8 @@ namespace learning::algorithms {
     class GreedyHillClimbing {
 
     public:
-        template<typename Score, typename OperatorPool>
-        void estimate(const DataFrame& data, Score score, OperatorPool op_pool, arc_vector blacklist, 
+        template<typename Operators>
+        void estimate(const DataFrame& data, Operators op_pool, arc_vector blacklist, 
                       arc_vector whitelist, int max_indegree, double epsilon, const Model& start);
     };
 }

@@ -97,7 +97,40 @@ namespace learning::operators {
                                                     local_score(model.num_nodes()), 
                                                     df(df), 
                                                     model(model)
-    {}
+    {
+        auto nnodes = model.num_nodes();
+        auto val_ptr = valid_op.data();
+
+        std::fill(val_ptr, val_ptr + nnodes*nnodes, true);
+
+        auto indices = model.indices();
+
+        for(auto whitelist_edge : whitelist) {
+            auto source_index = indices[whitelist_edge.first];
+            auto dest_index = indices[whitelist_edge.second];
+
+            valid_op(source_index, dest_index) = false;
+            valid_op(dest_index, source_index) = false;
+        }
+        
+        for(auto blacklist_edge : blacklist) {
+            auto source_index = indices[blacklist_edge.first];
+            auto dest_index = indices[blacklist_edge.second];
+
+            valid_op(source_index, dest_index) = false;
+        }
+    }
+
+    template<typename Model, typename Score>
+    void ArcOperatorsType<Model, Score>::cache_scores() {
+
+        for (auto i = 0; i < model.num_nodes(); ++i) {
+            auto node = model.node(i);
+            auto parents = model.get_parents(i);
+
+            // local_score(i) = Score::local_score(df, node, parents);
+        }
+    }
 
 
 

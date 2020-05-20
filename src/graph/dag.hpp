@@ -8,11 +8,11 @@
 
 
 namespace py = pybind11;
-using boost::adjacency_matrix, boost::adjacency_list, boost::directedS, boost::setS, boost::vecS, boost::property, boost::vertex_name_t,
-    boost::property_map, boost::vertex_name, boost::tie;
+using boost::adjacency_matrix, boost::adjacency_list, boost::directedS, boost::setS, boost::vecS, boost::property, boost::vertex_index_t,
+    boost::property_map, boost::vertex_index;
 
-using adj_m = adjacency_matrix<directedS, property<vertex_name_t, std::string>>;
-using adj_l = adjacency_list<setS, vecS, directedS, property<vertex_name_t, std::string>>;
+using adj_m = adjacency_matrix<directedS, property<vertex_index_t, int>>;
+using adj_l = adjacency_list<setS, vecS, directedS, property<vertex_index_t, int>>;
 
 namespace graph {
 
@@ -46,44 +46,18 @@ namespace graph {
 
         using node_iterator_t = typename boost::graph_traits<Graph>::vertex_iterator;
         using edge_iterator_t = typename boost::graph_traits<Graph>::edge_iterator;
+        using in_edge_iterator_t = typename boost::graph_traits<Graph>::in_edge_iterator;
 
         using nodes_size_type = typename boost::graph_traits<Graph>::vertices_size_type;
         using edges_size_type = typename boost::graph_traits<Graph>::edges_size_type;
 
-        using NameMap = typename property_map<Graph, vertex_name_t>::type;
-
         template<typename = std::enable_if_t<std::is_default_constructible_v<Graph>>>
         Dag() = delete;
 
-        Dag(int n_vertex) : g(n_vertex) {
-            NameMap node_name = get(vertex_name, g);
-            node_iterator_t n, e;
+        Dag(int nnodes) : g(nnodes) { };
 
-            int i = 1;
-            for (tie(n, e) = vertices(g); n != e; ++n, ++i) {
-                put(node_name, *n, "n" + std::to_string(i));
-            }
-        };
-
-        Dag(const std::vector<std::string>& nodes) : g(nodes.size()) {
-            NameMap node_name = get(vertex_name, g);
-            node_iterator_t n, e;
-
-            int i = 0;
-            for (tie(n, e) = vertices(g); n != e; ++n, ++i) {
-                put(node_name, *n, nodes[i]);
-            }
-        };
-
-        Dag(const std::vector<std::string>& nodes, const arc_vector& arcs) : g(nodes.size()) {
-            NameMap node_name = get(vertex_name, g);
-            node_iterator_t n, e;
-
-            int i = 0;
-            for (tie(n, e) = vertices(g); n != e; ++n, ++i) {
-                put(node_name, *n, nodes[i]);
-            }
-        };
+        // TODO Implement adding arcs.
+        Dag(int nnodes, const arc_vector& arcs) : g(nnodes) {};
 
         void
         add_edge(node_descriptor u, node_descriptor v);
@@ -98,8 +72,29 @@ namespace graph {
         edges_size_type num_edges() const {
             return num_edges(g);
         }
+
+        std::pair<in_edge_iterator_t, in_edge_iterator_t> get_parents(node_descriptor node) const {
+            return in_edges(node, g);
+        }
+
+        int index(node_descriptor n) const {
+            return get(boost::vertex_index, g)[n];
+        }
+
+        node_descriptor node(nodes_size_type index) const {
+            return vertex(index, g);
+        }
+
+        node_descriptor source(edge_descriptor edge) const {
+            return boost::source(edge, g);
+        }
+
+        node_descriptor target(edge_descriptor edge) const {
+            return boost::target(edge, g);
+        }
         
         dag_node_iterator<node_iterator_t> nodes() const;
+
         void print();
 
     private:
@@ -114,7 +109,7 @@ namespace graph {
     Dag<Graph>::add_edge(typename Dag<Graph>::node_descriptor u, typename Dag<Graph>::node_descriptor v) {
         edge_descriptor e;
         bool added;
-        tie(e, added) = boost::add_edge(u, v, g);
+        std::tie(e, added) = boost::add_edge(u, v, g);
         std::cout << "Added edge: " << e << ", " << added << std::endl;
     }
 
@@ -132,12 +127,12 @@ namespace graph {
         node_iterator_t nit, nend;
         edge_iterator_t eit, eend;
 
-        for(boost::tie(nit, nend) = vertices(g); nit != nend; ++nit)
-            std::cout << "Node: " << get(boost::vertex_name, g)[*nit] << std::endl;
+        std::cout << "Using dag type: " << typeid(Graph).name() << std::endl;
+        for(std::tie(nit, nend) = vertices(g); nit != nend; ++nit)
+            std::cout << "Descriptor: " << *nit << ", Index: " << index(*nit) << std::endl;
 
-        for(boost::tie(eit, eend) = edges(g); eit != eend; ++eit)
-            std::cout << get(boost::vertex_name, g)[source(*eit, g)] << " -> "
-              << get(boost::vertex_name, g)[target(*eit, g)] << std::endl;
+        for(std::tie(eit, eend) = edges(g); eit != eend; ++eit)
+            std::cout << boost::source(*eit, g) << " -> " << boost::target(*eit, g) << std::endl;
     }
 
     template<typename Graph>

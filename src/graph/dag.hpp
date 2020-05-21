@@ -73,7 +73,7 @@ namespace graph {
             return num_edges(g);
         }
 
-        std::pair<in_edge_iterator_t, in_edge_iterator_t> get_parents(node_descriptor node) const {
+        std::pair<in_edge_iterator_t, in_edge_iterator_t> get_parent_edges(node_descriptor node) const {
             return in_edges(node, g);
         }
 
@@ -91,6 +91,11 @@ namespace graph {
 
         node_descriptor target(edge_descriptor edge) const {
             return boost::target(edge, g);
+        }
+
+        bool has_edge(node_descriptor source, node_descriptor dest) const {
+            std::cout << boost::edge(source, dest, g).first << std::endl;
+            return boost::edge(source, dest, g).second;
         }
         
         dag_node_iterator<node_iterator_t> nodes() const;

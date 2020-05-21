@@ -111,6 +111,9 @@ namespace learning::operators {
 
             valid_op(source_index, dest_index) = false;
             valid_op(dest_index, source_index) = false;
+
+            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+            delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
         }
         
         for(auto blacklist_edge : blacklist) {
@@ -118,21 +121,60 @@ namespace learning::operators {
             auto dest_index = indices[blacklist_edge.second];
 
             valid_op(source_index, dest_index) = false;
+            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+        }
+
+        for (auto i = 0; i < model.num_nodes(); ++i) {
+            valid_op(i, i) = false;
+            delta(i, i) = std::numeric_limits<double>::lowest();
         }
     }
 
     template<typename Model, typename Score>
     void ArcOperatorsType<Model, Score>::cache_scores() {
 
-        for (auto i = 0; i < model.num_nodes(); ++i) {
-            // auto node = model.node(i);
-            // auto parents = model.get_parent(node);
-            auto parents = model.get_parent_indices(i);
+        std::cout << "valid_ops:" << std::endl;
+        std::cout << valid_op << std::endl;
 
-            // local_score(i) = Score::local_score(df, node, parents);
+        for (int i = 0; i < model.num_nodes(); ++i) {
+            auto parents = model.get_parent_indices(i);
             local_score(i) = Score::local_score(df, i, parents);
-            std::cout << "Local score: " << local_score(i) << std::endl;
         }
+
+        std::cout << "Local scores:" << std::endl;
+        std::cout << local_score << std::endl; 
+
+        for (auto dest = 0; dest < model.num_nodes(); ++dest) {
+            std::vector<int> new_parents_dest = model.get_parent_indices(dest);
+            
+            for (auto source = 0; source < model.num_nodes(); ++source) {
+                if(valid_op(source, dest)) {
+
+                    if (model.has_edge(source, dest)) {
+                        new_parents_dest.erase(std::remove(new_parents_dest.begin(), new_parents_dest.end(), source));
+                        delta(source, dest) = Score::local_score(df, dest, new_parents_dest) - local_score(dest);
+                        new_parents_dest.push_back(source);
+                    } else if (model.has_edge(dest, source)) {
+                        auto new_parents_source = model.get_parent_indices(source);
+                        new_parents_source.erase(std::remove(new_parents_source.begin(), new_parents_source.end(), dest));
+                        new_parents_dest.push_back(source);
+
+                        delta(source, dest) = Score::local_score(df, source, new_parents_source) + 
+                                              Score::local_score(df, dest, new_parents_dest) 
+                                              - local_score(source) - local_score(dest);
+
+                        new_parents_dest.erase(std::remove(new_parents_dest.begin(), new_parents_dest.end(), source));
+                    } else {
+                        new_parents_dest.push_back(source);
+                        delta(source, dest) = Score::local_score(df, dest, new_parents_dest) - local_score(dest);
+                        new_parents_dest.erase(std::remove(new_parents_dest.begin(), new_parents_dest.end(), source));
+                    }
+                }
+            }
+        }
+
+        std::cout << "delta scores:" << std::endl;
+        std::cout << delta << std::endl; 
     }
 
 

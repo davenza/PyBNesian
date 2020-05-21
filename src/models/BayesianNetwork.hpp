@@ -62,7 +62,7 @@ namespace models {
 
         std::vector<std::reference_wrapper<const std::string>> get_parents(node_descriptor node) const {
             std::vector<std::reference_wrapper<const std::string>> parents;
-            auto it_parents = g.get_parents(node);
+            auto it_parents = g.get_parent_edges(node);
 
             for (auto it = it_parents.first; it != it_parents.second; ++it) {
                 auto parent = g.source(*it);
@@ -81,12 +81,12 @@ namespace models {
             return get_parents(m_indices.at(node));
         }
 
-        std::vector<int> get_parent_indices(node_descriptor node) {
+        std::vector<int> get_parent_indices(node_descriptor node) const {
             std::vector<int> parent_indices;
-            auto it_parents = g.get_parents(node);
+            auto it_parents = g.get_parent_edges(node);
 
             for (auto it = it_parents.first; it != it_parents.second; ++it) {
-                parent_indices.push_back(g.index(*it));
+                parent_indices.push_back(g.index(g.source(*it)));
             }
 
             return parent_indices;
@@ -100,7 +100,17 @@ namespace models {
             return get_parent_indices(m_indices.at(node));
         }
 
+        bool has_edge(node_descriptor source, node_descriptor dest) const {
+            return g.has_edge(source, dest);
+        }
 
+        bool has_edge(int source, int dest) const {
+            return g.has_edge(g.node(source), g.node(dest));
+        }
+
+        bool has_edge(const std::string& source, const std::string& dest) const {
+            return g.has_edge(m_indices.at(source), m_indices.at(dest));
+        }
         
         void print() {
             g.print();

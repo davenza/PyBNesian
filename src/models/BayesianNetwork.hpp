@@ -9,6 +9,7 @@ using dataset::DataFrame;
 using graph::AdjMatrixDag, graph::AdjListDag, graph::dag_node_iterator;
 using boost::source;
 
+using graph::arc_vector; 
 namespace models {
 
 
@@ -32,13 +33,9 @@ namespace models {
         using edges_size_type = typename DagType::edges_size_type;
 
         BayesianNetwork(const std::vector<std::string>& nodes);
-        BayesianNetwork(const std::vector<std::string>& nodes, std::vector<std::pair<std::string, std::string>>& arcs);
+        BayesianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs);
 
         static void requires(const DataFrame& df);
-
-        // dag_node_iterator<node_iterator_t> nodes() const { 
-        //     return g.nodes();
-        // }
 
         nodes_size_type num_nodes() const {
             return g.num_nodes();
@@ -56,8 +53,12 @@ namespace models {
             return m_indices;
         }
 
-        const std::string& node(int node_index) const {
-            return m_nodes[node_index];
+        node_descriptor node(int node_index) const {
+            return g.node(node_index);
+        }
+
+        node_descriptor node(const std::string& node) const {
+            return g.node(m_indices.at(node));
         }
 
         std::vector<std::reference_wrapper<const std::string>> get_parents(node_descriptor node) const {
@@ -143,14 +144,19 @@ namespace models {
 
     template<BayesianNetworkType T, typename DagType>
     BayesianNetwork<T, DagType>::BayesianNetwork(const std::vector<std::string>& nodes, 
-                                                 std::vector<std::pair<std::string, std::string>>& arcs) 
-                                                 : g(nodes.size(), arcs), m_nodes(nodes), m_indices(nodes.size())
+                                                 const arc_vector& edges) 
+                                                 : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size())
     {
         int i = 0;
         for (const std::string& str : nodes) {
             m_indices.insert(std::make_pair(str, i));
             ++i;
         }
+
+        for(auto edge : edges) {
+            g.add_edge(node(edge.first), node(edge.second));
+        }
+
     };
 
     using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK>;

@@ -1,7 +1,6 @@
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
 
-
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 
@@ -23,14 +22,14 @@ namespace learning::operators {
     };
 
     template<typename Model>
-    class AddArc : public Operator<Model> {
+    class AddEdge : public Operator<Model> {
 
-        AddArc(typename Model::node_descriptor source, 
+        AddEdge(typename Model::node_descriptor source, 
                typename Model::node_descriptor dest,
                double delta) : m_source(source), m_dest(dest), Operator<Model>(delta) {}
         
         void apply_operator(Model& m) override {
-            m.add_arc(m_source, m_dest);
+            m.add_edge(m_source, m_dest);
         }
 
     private:
@@ -39,14 +38,14 @@ namespace learning::operators {
     };
 
     template<typename Model>
-    class RemoveArc : public Operator<Model> {
+    class RemoveEdge : public Operator<Model> {
 
-        RemoveArc(typename Model::node_descriptor source, 
+        RemoveEdge(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
                   double delta) : m_source(source), m_dest(dest), Operator<Model>(delta) {}
         
         void apply_operator(Model& m) override {
-            m.remove_arc(m_source, m_dest);
+            m.remove_edge(m_source, m_dest);
         }
 
     private:
@@ -55,14 +54,14 @@ namespace learning::operators {
     };
 
     template<typename Model>
-    class FlipArc : public Operator<Model> {
+    class FlipEdge : public Operator<Model> {
 
-        FlipArc(typename Model::node_descriptor source, 
+        FlipEdge(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
                   double delta) : m_source(source), m_dest(dest), Operator<Model>(delta){}
         
         void apply_operator(Model& m) override {
-            m.flip_arc(m_source, m_dest);
+            m.flip_edge(m_source, m_dest);
         }
 
     private:
@@ -132,17 +131,13 @@ namespace learning::operators {
 
     template<typename Model, typename Score>
     void ArcOperatorsType<Model, Score>::cache_scores() {
-
-        std::cout << "valid_ops:" << std::endl;
+        std::cout << "valid_op:" << std::endl;
         std::cout << valid_op << std::endl;
-
+        
         for (int i = 0; i < model.num_nodes(); ++i) {
             auto parents = model.get_parent_indices(i);
             local_score(i) = Score::local_score(df, i, parents);
         }
-
-        std::cout << "Local scores:" << std::endl;
-        std::cout << local_score << std::endl; 
 
         for (auto dest = 0; dest < model.num_nodes(); ++dest) {
             std::vector<int> new_parents_dest = model.get_parent_indices(dest);
@@ -151,33 +146,49 @@ namespace learning::operators {
                 if(valid_op(source, dest)) {
 
                     if (model.has_edge(source, dest)) {
-                        new_parents_dest.erase(std::remove(new_parents_dest.begin(), new_parents_dest.end(), source));
-                        delta(source, dest) = Score::local_score(df, dest, new_parents_dest) - local_score(dest);
-                        new_parents_dest.push_back(source);
+                        std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
+                        delta(source, dest) = Score::local_score(df, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - local_score(dest);
                     } else if (model.has_edge(dest, source)) {
                         auto new_parents_source = model.get_parent_indices(source);
-                        new_parents_source.erase(std::remove(new_parents_source.begin(), new_parents_source.end(), dest));
+                        std::iter_swap(std::find(new_parents_source.begin(), new_parents_source.end(), dest), new_parents_source.end() - 1);
+                        
                         new_parents_dest.push_back(source);
 
-                        delta(source, dest) = Score::local_score(df, source, new_parents_source) + 
-                                              Score::local_score(df, dest, new_parents_dest) 
+                        delta(source, dest) = Score::local_score(df, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
+                                              Score::local_score(df, dest, new_parents_dest.begin(), new_parents_dest.end()) 
                                               - local_score(source) - local_score(dest);
-
-                        new_parents_dest.erase(std::remove(new_parents_dest.begin(), new_parents_dest.end(), source));
+                        new_parents_dest.pop_back();
                     } else {
                         new_parents_dest.push_back(source);
                         delta(source, dest) = Score::local_score(df, dest, new_parents_dest) - local_score(dest);
-                        new_parents_dest.erase(std::remove(new_parents_dest.begin(), new_parents_dest.end(), source));
+                        new_parents_dest.pop_back();
                     }
                 }
             }
         }
-
-        std::cout << "delta scores:" << std::endl;
-        std::cout << delta << std::endl; 
     }
 
+    template<typename Model, typename Score>
+    std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max(const Model& m) {
 
+        auto delta_ptr = delta.data();
+        auto max_index = std::max_element(delta_ptr, delta_ptr + model.num_nodes()*model.num_nodes() - 1) - delta_ptr;
+
+        auto sorted_
+
+        auto source = max_index % model.num_nodes();
+        auto dest = max_index / model.num_nodes();
+
+        // Check if can be applied (cycles!)
+        if (model.has_edge(source, dest)) {
+            return std::make_unique<RemoveEdge>(model.node(source), model.node(dest), delta(source, dest));
+        } else if (model.has_edge(dest, source)) {
+            return std::make_unique<FlipEdge>(model.node(dest), model.node(source), delta(dest, source));
+        } else {
+            return std::make_unique<AddEdge>(model.node(source), model.node(dest), delta(source, dest));
+        }
+
+    }
 
     template<typename Model, typename Score>
     struct default_operator {};

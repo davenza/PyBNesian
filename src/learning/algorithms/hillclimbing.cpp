@@ -36,16 +36,11 @@ namespace learning::algorithms {
         GaussianNetwork gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork(nodes, whitelist_cpp) :
                                                            GaussianNetwork(nodes);
 
-        // GaussianNetworkList gbn = (whitelist_cpp.size() > 0) ? GaussianNetworkList(nodes, whitelist_cpp) :
-        //                                                        GaussianNetworkList(nodes);
-
-        std::cout << "Is string: " << std::is_convertible_v<std::reference_wrapper<std::string>, std::string> << std::endl;
         gbn.print();
         if (str_score == "bic") {
 
             ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
 
-            // DefaultOperatorPool<GaussianNetwork, BIC<GaussianNetwork>> op_pool(nnodes);
             hc.estimate(df, arc_op, blacklist_cpp, whitelist_cpp, max_indegree, epsilon, gbn);
         }
          else {
@@ -68,7 +63,6 @@ namespace learning::algorithms {
 
         op.cache_scores();
 
-        // op_pool.cache_scores(start);
 
         // Model current_model = start;
 

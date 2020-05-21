@@ -59,12 +59,6 @@ namespace graph {
         // TODO Implement adding arcs.
         Dag(int nnodes, const arc_vector& arcs) : g(nnodes) {};
 
-        void
-        add_edge(node_descriptor u, node_descriptor v);
-
-        void
-        add_node(std::string u);
-
         nodes_size_type num_nodes() const {
             return num_vertices(g);
         }
@@ -94,8 +88,11 @@ namespace graph {
         }
 
         bool has_edge(node_descriptor source, node_descriptor dest) const {
-            std::cout << boost::edge(source, dest, g).first << std::endl;
             return boost::edge(source, dest, g).second;
+        }
+
+        void add_edge(node_descriptor source, node_descriptor dest) {
+            boost::add_edge(source, dest, g);
         }
         
         dag_node_iterator<node_iterator_t> nodes() const;
@@ -108,23 +105,6 @@ namespace graph {
 
     using AdjMatrixDag = Dag<adj_m>;
     using AdjListDag = Dag<adj_l>;
-
-    template<typename Graph>
-    void
-    Dag<Graph>::add_edge(typename Dag<Graph>::node_descriptor u, typename Dag<Graph>::node_descriptor v) {
-        edge_descriptor e;
-        bool added;
-        std::tie(e, added) = boost::add_edge(u, v, g);
-        std::cout << "Added edge: " << e << ", " << added << std::endl;
-    }
-
-    template<typename Graph>
-    void
-    Dag<Graph>::add_node(std::string u) {
-        node_descriptor n;
-        n = boost::add_vertex(u, g);
-        std::cout << "Added node: " << n << std::endl;
-    }
 
     template<typename Graph>
     void
@@ -145,8 +125,6 @@ namespace graph {
         auto it = vertices(g);
         return dag_node_iterator(it.first, it.second);
     }
-
-
 }
 
 

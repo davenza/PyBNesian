@@ -49,7 +49,7 @@ namespace util {
 //    struct is_string_container : public is_container<T> {};
 
     template<typename T>
-    using is_string_container = std::integral_constant<bool, is_container_v<T> && std::is_convertible_v<typename T::value_type, std::string>>;
+    using is_string_container = std::integral_constant<bool, is_container_v<T> && std::is_convertible_v<typename T::value_type, const std::string&>>;
 
     template<typename T>
     inline constexpr auto is_string_container_v = is_string_container<T>::value;
@@ -62,6 +62,49 @@ namespace util {
                                                 std::disjunction<
                                                     is_integral_container<T>,
                                                     is_string_container<T>
+                                                >
+                                            >, R
+                                        >;
+
+
+    template<typename T, typename _ = void>
+    struct is_iterator : std::false_type {};
+
+    template<typename T>
+    struct is_iterator<
+            T,
+            std::void_t<
+                typename std::iterator_traits<T>::difference_type,
+                typename std::iterator_traits<T>::pointer,
+                typename std::iterator_traits<T>::reference,
+                typename std::iterator_traits<T>::value_type,
+                typename std::iterator_traits<T>::iterator_category
+            >
+    > : public std::true_type {};
+
+    template<typename T>
+    inline constexpr auto is_iterator_v = is_iterator<T>::value;
+
+    template<typename T>
+    using is_integral_iterator = std::integral_constant<bool, is_iterator_v<T> && std::is_integral_v<typename std::iterator_traits<T>::value_type>>;
+
+    template<typename T>
+    inline constexpr auto is_integral_iterator_v = is_integral_iterator<T>::value;
+
+    template<typename T>
+    using is_string_iterator = std::integral_constant<bool, is_iterator_v<T> && std::is_convertible_v<typename std::iterator_traits<T>::value_type, 
+                                                                                                        const std::string&>>;
+
+    template<typename T>
+    inline constexpr auto is_string_iterator_v = is_string_iterator<T>::value;
+
+    template<typename T, typename R = void>
+    using enable_if_index_iterator_t = std::enable_if_t<
+                                            std::conjunction_v<
+                                                is_iterator<T>,
+                                                std::disjunction<
+                                                    is_integral_iterator<T>,
+                                                    is_string_iterator<T>
                                                 >
                                             >, R
                                         >;

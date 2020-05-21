@@ -8,32 +8,16 @@ using namespace dataset;
 
 namespace learning::parameter {
 
-    template <typename MLE_type> 
-    struct CPD_traits;
-
-    template<template<typename> typename Estimator, typename CPD>
-    struct CPD_traits<Estimator<CPD>> {
-        using CPD_type = CPD;
-        using CPD_params = typename CPD::ParamsClass;
-    };
-
-    template<typename Derived>
-    class ParameterEstimator {
-
-    public:
-
-        template<typename VarType, typename EvidenceType>
-        typename CPD_traits<Derived>::CPD_params estimate(const DataFrame& df, const VarType& variable,  const EvidenceType& evidence) {
-            static_cast<Derived*>(this)->estimate(df, variable, evidence);
-        }
-    };
-
     template<typename CPD>
-    class MLE : ParameterEstimator<MLE<CPD>>{
+    class MLE {
     public:
-
         template<typename VarType, typename EvidenceType>
-        typename CPD::ParamsClass estimate(const DataFrame& df, const VarType& variable,  const EvidenceType& evidence);
+        typename CPD::ParamsClass estimate(const DataFrame& df, const VarType& variable,  const EvidenceType& evidence) {
+            return estimate(df, variable, evidence.begin(), evidence.end());
+        }
+
+        template<typename VarType, typename EvidenceIter>
+        typename CPD::ParamsClass estimate(const DataFrame& df, const VarType& variable,  EvidenceIter evidence_begin, EvidenceIter evidence_end);
     };
 }
 

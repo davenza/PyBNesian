@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from pgm_dataset import estimate
 
+np.random.seed(0)
+
 SIZE = 10000
 
 a_array = np.random.normal(3, 0.5, size=SIZE)
@@ -23,5 +25,5 @@ df = pd.DataFrame({
 pa_df = pa.RecordBatch.from_pandas(df)
 
 
-estimate(pa_df, "bic", [("a", "b"), ("b", "c"), ("a", "d")], [], 5, 10e-4)
+estimate(pa_df, "bic", [("b", "c"), ("a", "d")], [("a", "b")], 5, 10e-4)
 

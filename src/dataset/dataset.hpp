@@ -49,27 +49,36 @@ namespace dataset {
         Array_ptr loc(StringType name) const { return m_batch->GetColumnByName(name); }
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        Buffer_ptr combined_bitmap(T cols) const;
+        Buffer_ptr combined_bitmap(T cols) const { return combined_bitmap(cols.begin(), cols.end()); }
         template<typename V>
-        Buffer_ptr combined_bitmap(std::initializer_list<V> cols) const { return combined_bitmap<std::initializer_list<V>>(cols); }
+        Buffer_ptr combined_bitmap(std::initializer_list<V> cols) const { return combined_bitmap(cols.begin(), cols.end()); }
         template<int = 0>
         Buffer_ptr combined_bitmap(int i) const { return m_batch->column(i)->null_bitmap(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         Buffer_ptr combined_bitmap(StringType name) const { return m_batch->GetColumnByName(name)->null_bitmap(); }
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        Buffer_ptr combined_bitmap(IndexIter begin, IndexIter end) const;
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        int64_t null_count(T cols) const;
+        int64_t null_count(T cols) const { return null_count(cols.begin(), cols.end()); }
         template<typename V>
-        int64_t null_count(std::initializer_list<V> cols) const { return null_count<std::initializer_list<V>>(cols); }
+        int64_t null_count(std::initializer_list<V> cols) const { return null_count(cols.begin(), cols.end()); }
         template<int = 0>
         int64_t null_count(int i) const { return m_batch->column(i)->null_count(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         int64_t null_count(StringType name) const { return m_batch->GetColumnByName(name)->null_count(); }
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        int64_t null_count(IndexIter begin, IndexIter end) const;
 
         template<bool append_ones, typename ArrowType, bool contains_null, typename T, util::enable_if_index_container_t<T, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(T cols) const;
+        EigenMatrix<ArrowType> to_eigen(T cols) const { return to_eigen(cols.begin(), cols.end()); }
+        template<bool append_ones, typename ArrowType, bool contains_null, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(IndexIter begin, IndexIter end) const;
+        
         template<bool append_ones, typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(T cols, Buffer_ptr bitmap) const;
+        EigenMatrix<ArrowType> to_eigen(T cols, Buffer_ptr bitmap) const { return to_eigen(cols.begin(), cols.end(), bitmap); }
+        template<bool append_ones, typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(IndexIter begin, IndexIter end, Buffer_ptr bitmap) const;
 
         template<bool append_ones, typename ArrowType, bool contains_null>
         MapOrMatrixType<append_ones, ArrowType, contains_null> to_eigen(int i) const;
@@ -131,36 +140,37 @@ namespace dataset {
         return DataFrame(arrow::RecordBatch::Make(new_schema, m_batch->num_rows(), new_cols));
     }
 
-    template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    int64_t DataFrame::null_count(T cols) const {
-        static_assert(util::is_integral_container_v<T> || util::is_string_container_v<T>,
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    int64_t DataFrame::null_count(IndexIter begin, IndexIter end) const {
+        static_assert(util::is_integral_iterator_v<IndexIter> || util::is_string_iterator_v<IndexIter>,
                       "null_count() only accepts integral or string containers.");
         int64_t r = 0;
-        for (auto &c : cols) {
-            if constexpr (util::is_integral_container_v<T>)
-                r += m_batch->column(c)->null_count();
-            else if constexpr (util::is_string_container_v<T>)
-                r += m_batch->GetColumnByName(c)->null_count();
+
+        for (auto it = begin; it != end; it++) {
+            if constexpr (util::is_integral_iterator_v<IndexIter>)
+                r += m_batch->column(*it)->null_count();
+            else if constexpr (util::is_string_iterator_v<IndexIter>)
+                r += m_batch->GetColumnByName(*it)->null_count();
         }
         return r;
     }
 
-    template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    Buffer_ptr DataFrame::combined_bitmap(T cols) const {
-        static_assert(util::is_integral_container_v<T> || util::is_string_container_v<T>,
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    Buffer_ptr DataFrame::combined_bitmap(IndexIter begin, IndexIter end) const {
+        static_assert(util::is_integral_iterator_v<IndexIter> || util::is_string_iterator_v<IndexIter>,
                       "combined_bitmap() only accepts integral or string containers.");
-        if (null_count(cols) > 0) {
+        if (null_count(begin, end) > 0) {
 
-            typename T::iterator first_null_col = cols.end();
+            IndexIter first_null_col = end;
 
-            for(auto it = cols.begin(); it < cols.end(); ++it) {
-                if constexpr (util::is_integral_container_v<T>) {
+            for(auto it = begin; it < end; ++it) {
+                if constexpr (util::is_integral_iterator_v<IndexIter>) {
                     if (m_batch->column(*it)->null_count() != 0) {
                         first_null_col = it;
                         break;
                     }
                 }
-                else if constexpr (util::is_string_container_v<T>) {
+                else if constexpr (util::is_string_iterator_v<IndexIter>) {
                     if (m_batch->GetColumnByName(*it)->null_count() != 0) {
                         first_null_col = it;
                         break;
@@ -169,19 +179,19 @@ namespace dataset {
             }
 
             auto res = [this, first_null_col]() -> auto {
-                if constexpr (util::is_integral_container_v<T>)
+                if constexpr (util::is_integral_iterator_v<IndexIter>)
                     return Buffer::Copy(m_batch->column(*first_null_col)->null_bitmap(), arrow::default_cpu_memory_manager());
-                else if constexpr (util::is_string_container_v<T>)
+                else if constexpr (util::is_string_iterator_v<IndexIter>)
                     return Buffer::Copy(m_batch->GetColumnByName(*first_null_col)->null_bitmap(), arrow::default_cpu_memory_manager());
             }();
 
             auto bitmap = std::move(res).ValueOrDie();
 
-            for(auto it = first_null_col + 1; it < cols.end(); ++it) {
+            for(auto it = first_null_col + 1; it < end; ++it) {
                 auto col = [this, it]() -> auto {
-                    if constexpr (util::is_integral_container_v<T>)
+                    if constexpr (util::is_integral_iterator_v<IndexIter>)
                         return m_batch->column(*it);
-                    else if constexpr (util::is_string_container_v<T>)
+                    else if constexpr (util::is_string_iterator_v<IndexIter>)
                         return m_batch->GetColumnByName(*it);
                 }();
 
@@ -290,17 +300,18 @@ namespace dataset {
         return m;
     }
 
-    template<bool append_ones, typename ArrowType, bool contains_null, typename T, util::enable_if_index_container_t<T, int> = 0>
-    EigenMatrix<ArrowType> DataFrame::to_eigen(T cols) const {
+    template<bool append_ones, typename ArrowType, bool contains_null, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    EigenMatrix<ArrowType> DataFrame::to_eigen(IndexIter begin, IndexIter end) const {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         if constexpr (contains_null) {
-            auto bitmap = combined_bitmap(cols);
-            return to_eigen<append_ones, ArrowType>(cols, bitmap);
+            auto bitmap = combined_bitmap(begin, end);
+            return to_eigen<append_ones, ArrowType>(begin, end, bitmap);
         } else {
             auto rows = m_batch->num_rows();
-            auto m = [&cols, rows]() {
-                if constexpr(append_ones) return std::make_unique<typename EigenMatrix<ArrowType>::element_type>(rows, cols.size()+1);
-                else return std::make_unique<typename EigenMatrix<ArrowType>::element_type>(rows, cols.size());
+            auto ncols = std::distance(begin, end);
+            auto m = [rows, ncols]() {
+                if constexpr(append_ones) return std::make_unique<typename EigenMatrix<ArrowType>::element_type>(rows, ncols+1);
+                else return std::make_unique<typename EigenMatrix<ArrowType>::element_type>(rows, ncols);
             }();
 
             auto m_ptr = m->data();
@@ -311,12 +322,12 @@ namespace dataset {
                 offset_ptr += rows;
             }
 
-            for(auto &col_index : cols) {
+            for(auto col_index = begin; col_index != end; ++col_index) {
                 auto col = [this, &col_index]() -> auto {
-                    if constexpr (util::is_integral_container_v<T>)
-                        return m_batch->column(col_index);
-                    else if constexpr (util::is_string_container_v<T>)
-                        return m_batch->GetColumnByName(col_index);
+                    if constexpr (util::is_integral_iterator_v<IndexIter>)
+                        return m_batch->column(*col_index);
+                    else if constexpr (util::is_string_iterator_v<IndexIter>)
+                        return m_batch->GetColumnByName(*col_index);
                 }();
 
                 auto dwn_col = std::static_pointer_cast<ArrayType>(col);
@@ -328,15 +339,16 @@ namespace dataset {
         }
     }
 
-    template<bool append_ones, typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
-    EigenMatrix<ArrowType> DataFrame::to_eigen(T cols, Buffer_ptr bitmap) const {
+    template<bool append_ones, typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    EigenMatrix<ArrowType> DataFrame::to_eigen(IndexIter begin, IndexIter end, Buffer_ptr bitmap) const {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         auto rows = m_batch->num_rows();
         auto valid_rows = util::bit_util::non_null_count(bitmap, rows);
 
-        auto m = [&cols, valid_rows]() {
-            if constexpr(append_ones) return std::move(std::make_unique<typename EigenMatrix<ArrowType>::element_type>(valid_rows, cols.size()+1));
-            else return std::move(std::make_unique<typename EigenMatrix<ArrowType>::element_type>(valid_rows, cols.size()));
+        auto ncols = std::distance(begin, end);
+        auto m = [valid_rows, ncols]() {
+            if constexpr(append_ones) return std::move(std::make_unique<typename EigenMatrix<ArrowType>::element_type>(valid_rows, ncols+1));
+            else return std::move(std::make_unique<typename EigenMatrix<ArrowType>::element_type>(valid_rows, ncols));
         }();
 
         auto m_ptr = m->data();
@@ -349,12 +361,12 @@ namespace dataset {
 
         auto bitmap_data = bitmap->data();
 
-        for (auto &col_index : cols) {
+        for (auto col_index = begin; col_index != end; ++col_index) {
             auto col = [this, &col_index]() -> auto {
-                if constexpr (util::is_integral_container_v<T>)
-                    return m_batch->column(col_index);
-                else if constexpr (util::is_string_container_v<T>)
-                    return m_batch->GetColumnByName(col_index);
+                if constexpr (util::is_integral_iterator_v<IndexIter>)
+                    return m_batch->column(*col_index);
+                else if constexpr (util::is_string_iterator_v<IndexIter>)
+                    return m_batch->GetColumnByName(*col_index);
             }();
 
             auto dwn_col = std::static_pointer_cast<ArrayType>(col);

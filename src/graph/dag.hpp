@@ -5,6 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/depth_first_search.hpp>
 
 
 namespace py = pybind11;
@@ -93,6 +94,28 @@ namespace graph {
 
         void add_edge(node_descriptor source, node_descriptor dest) {
             boost::add_edge(source, dest, g);
+        }
+
+        class dummy_visitor : public boost::dfs_visitor<> {};
+
+        bool has_path(node_descriptor source, node_descriptor dest) const {
+            bool path = false;
+
+            std::vector<boost::default_color_type> vertex_color(num_vertices(g));
+            auto idmap = get(vertex_index, g);
+            auto colors = make_iterator_property_map(vertex_color.begin(), idmap);
+        
+            boost::depth_first_visit(g, source, dummy_visitor(), colors, 
+                [&path, &dest](auto node, auto graph) {
+                    if (node == dest) {
+                        path = true;
+                        return true;
+                    } else {
+                        return false;
+                    }
+                });
+
+            return path;
         }
         
         dag_node_iterator<node_iterator_t> nodes() const;

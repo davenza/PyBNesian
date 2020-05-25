@@ -171,23 +171,25 @@ namespace learning::operators {
     template<typename Model, typename Score>
     std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max(const Model& m) {
 
-        auto delta_ptr = delta.data();
-        auto max_index = std::max_element(delta_ptr, delta_ptr + model.num_nodes()*model.num_nodes() - 1) - delta_ptr;
+        // std::vector<size_t> idx(v.size());
+        // std::iota(idx.begin(), idx.end(), 0);
+        // auto delta_ptr = delta.data();
+        // auto max_index = std::max_element(delta_ptr, delta_ptr + model.num_nodes()*model.num_nodes() - 1) - delta_ptr;
 
-        auto sorted_
+        // auto sorted_
 
-        auto source = max_index % model.num_nodes();
-        auto dest = max_index / model.num_nodes();
+        // auto source = max_index % model.num_nodes();
+        // auto dest = max_index / model.num_nodes();
 
-        // Check if can be applied (cycles!)
-        if (model.has_edge(source, dest)) {
-            return std::make_unique<RemoveEdge>(model.node(source), model.node(dest), delta(source, dest));
-        } else if (model.has_edge(dest, source)) {
-            return std::make_unique<FlipEdge>(model.node(dest), model.node(source), delta(dest, source));
-        } else {
-            return std::make_unique<AddEdge>(model.node(source), model.node(dest), delta(source, dest));
-        }
-
+        // // Check if can be applied (cycles!)
+        // if (model.has_edge(source, dest)) {
+        //     return std::make_unique<RemoveEdge>(model.node(source), model.node(dest), delta(source, dest));
+        // } else if (model.has_edge(dest, source)) {
+        //     return std::make_unique<FlipEdge>(model.node(dest), model.node(source), delta(dest, source));
+        // } else {
+        //     return std::make_unique<AddEdge>(model.node(source), model.node(dest), delta(source, dest));
+        // }
+        return nullptr;
     }
 
     template<typename Model, typename Score>

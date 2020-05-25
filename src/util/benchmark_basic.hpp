@@ -3,7 +3,7 @@
 #define BENCHMARK_PRE_SCOPE(N)                                                                                                               \
             {                                                                                                                                \
                 auto t1 = std::chrono::high_resolution_clock::now();                                                                         \
-                for (auto i = 0; i < N; ++i) {                                                                                               \
+                for (auto _i = 0; _i < N; ++_i) {                                                                                               \
 
 #define BENCHMARK_POST_SCOPE(N)                                                                                                              \
                 }                                                                                                                            \

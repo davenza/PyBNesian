@@ -113,6 +113,10 @@ namespace models {
             return g.has_edge(m_indices.at(source), m_indices.at(dest));
         }
         
+        bool has_path(const std::string& source, const std::string& dest) const {
+            return g.has_path(g.node(m_indices.at(source)), g.node(m_indices.at(dest)));
+        }
+
         void print() {
             g.print();
         }

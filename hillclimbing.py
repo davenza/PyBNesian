@@ -2,7 +2,7 @@ import pyarrow as pa
 import numpy as np
 import pandas as pd
 # from pgm_dataset import estimate
-from pgm_dataset import benchmark_sort_vec, benchmark_sort_set, benchmark_sort_priority, benchmark_sort_heap
+from pgm_dataset import benchmark_sort_vec, benchmark_partial_sort_vec, benchmark_sort_set, benchmark_sort_priority, benchmark_sort_heap
 
 np.random.seed(0)
 
@@ -28,12 +28,13 @@ pa_df = pa.RecordBatch.from_pandas(df)
 
 # estimate(pa_df, "bic", [], [("a", "b"), ("b", "c"), ("c", "d")], 5, 10e-4)
 
-nodes = 500
-iterations = 100
-sampling = 20
+# nodes = 500
+# iterations = 100
+# sampling = 20
 
-# benchmark_sort_heap(nodes, iterations, sampling)
-benchmark_sort_priority(nodes, iterations, sampling)
-benchmark_sort_set(nodes, iterations, sampling)
+# # benchmark_sort_heap(nodes, iterations, sampling)
+# benchmark_sort_priority(nodes, iterations, sampling)
+# benchmark_sort_set(nodes, iterations, sampling)
 # benchmark_sort_vec(nodes, iterations, sampling)
+# benchmark_partial_sort_vec(nodes, iterations, sampling)
 

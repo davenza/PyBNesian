@@ -65,6 +65,56 @@ namespace learning::algorithms {
         BENCHMARK_POST_SCOPE(sampling)
     }
 
+
+    void benchmark_partial_sort_vec(int nodes, int iterations, int sampling) {
+        std::random_device rd{};
+        std::mt19937 gen{rd()};
+        std::normal_distribution<> d{5,2};
+        std::uniform_int_distribution in(0, nodes-1);
+        
+        MatrixXd scores(nodes, nodes);
+        
+        int chunks = 10;
+        int chunk_size = nodes*nodes / 10;
+        BENCHMARK_PRE_SCOPE(sampling)
+
+        for (auto i = 0; i < nodes; ++i) {
+            for (auto j = 0; j < nodes; ++j) {
+                scores(i,j) = d(gen);
+            }
+        }
+
+        auto scores_ptr = scores.data();
+        std::vector<size_t> idx(nodes*nodes);
+        std::iota(idx.begin(), idx.end(), 0);
+
+        auto begin = idx.begin();
+
+        // std::partial_sort(begin, begin + chunk_size, idx.end(), [&scores_ptr](auto i1, auto i2) {
+        //     return scores_ptr[i1] >= scores_ptr[i2];
+        // });
+
+
+        for(int i = 0; i < 2; ++i) {
+            std::partial_sort(begin, begin + chunk_size, idx.end(), [&scores_ptr](auto i1, auto i2) {
+                return scores_ptr[i1] >= scores_ptr[i2];
+            });
+
+            std::advance(begin, chunk_size);
+        }
+
+
+        // std::sort(begin, idx.end(), [&scores_ptr](auto i1, auto i2) {
+        //     return scores_ptr[i1] >= scores_ptr[i2];
+        // });
+
+
+
+        BENCHMARK_POST_SCOPE(sampling)
+    }
+
+
+
     void benchmark_sort_set(int nodes, int iterations, int sampling) {
         std::random_device rd{};
         std::mt19937 gen{rd()};

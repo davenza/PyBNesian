@@ -29,6 +29,7 @@ namespace learning::algorithms {
 
 
     void benchmark_sort_vec(int nodes, int iterations, int sampling);
+    void benchmark_partial_sort_vec(int nodes, int iterations, int sampling);
     void benchmark_sort_set(int nodes, int iterations, int sampling);
     void benchmark_sort_priority(int nodes, int iterations, int sampling);
     void benchmark_sort_heap(int nodes, int iterations, int sampling);

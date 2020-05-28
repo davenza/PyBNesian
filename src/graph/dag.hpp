@@ -51,6 +51,7 @@ namespace graph {
 
         using nodes_size_type = typename boost::graph_traits<Graph>::vertices_size_type;
         using edges_size_type = typename boost::graph_traits<Graph>::edges_size_type;
+        using degree_size_type = typename boost::graph_traits<Graph>::degree_size_type;
 
         template<typename = std::enable_if_t<std::is_default_constructible_v<Graph>>>
         Dag() = delete;
@@ -64,8 +65,20 @@ namespace graph {
             return num_vertices(g);
         }
 
-        edges_size_type num_edges() const {
+        edges_size_type num_arcs() const {
             return num_edges(g);
+        }
+
+        degree_size_type num_parents(node_descriptor node) const {
+            return boost::in_degree(node, g);
+        }
+
+        degree_size_type num_children(node_descriptor node) const {
+            return boost::out_degree(node, g);
+        }
+
+        std::pair<node_iterator_t, node_iterator_t> node_iter() const {
+            return vertices(g);
         }
 
         std::pair<in_edge_iterator_t, in_edge_iterator_t> get_parent_edges(node_descriptor node) const {
@@ -117,6 +130,10 @@ namespace graph {
 
             return path;
         }
+
+        void remove_edge(node_descriptor source, node_descriptor dest) {
+            boost::remove_edge(source, dest, g);
+        }
         
         dag_node_iterator<node_iterator_t> nodes() const;
 
@@ -132,14 +149,14 @@ namespace graph {
     template<typename Graph>
     void
     Dag<Graph>::print() {
-        node_iterator_t nit, nend;
-        edge_iterator_t eit, eend;
+        // node_iterator_t nit, nend;
+        // edge_iterator_t eit, eend;
 
         std::cout << "Using dag type: " << typeid(Graph).name() << std::endl;
-        for(std::tie(nit, nend) = vertices(g); nit != nend; ++nit)
+        for(auto [nit, nend] = vertices(g); nit != nend; ++nit)
             std::cout << "Descriptor: " << *nit << ", Index: " << index(*nit) << std::endl;
 
-        for(std::tie(eit, eend) = edges(g); eit != eend; ++eit)
+        for(auto [eit, eend] = edges(g); eit != eend; ++eit)
             std::cout << boost::source(*eit, g) << " -> " << boost::target(*eit, g) << std::endl;
     }
 

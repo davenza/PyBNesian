@@ -49,18 +49,18 @@ namespace learning::algorithms {
         });
 
 
-        for (auto k = 0; k < iterations; ++k) {
-            for (auto i = 0; i < nodes; ++i) {
-                auto s = in(gen);
-                auto dest = in(gen);
-                scores(s,dest) = d(gen);
-            }
+        // for (auto k = 0; k < iterations; ++k) {
+        //     for (auto i = 0; i < nodes; ++i) {
+        //         auto s = in(gen);
+        //         auto dest = in(gen);
+        //         scores(s,dest) = d(gen);
+        //     }
 
-            std::iota(idx.begin(), idx.end(), 0);
-            std::sort(idx.begin(), idx.end(), [&scores_ptr](auto i1, auto i2) {
-                return scores_ptr[i1] >= scores_ptr[i2];
-            });
-        }
+        //     std::iota(idx.begin(), idx.end(), 0);
+        //     std::sort(idx.begin(), idx.end(), [&scores_ptr](auto i1, auto i2) {
+        //         return scores_ptr[i1] >= scores_ptr[i2];
+        //     });
+        // }
 
         BENCHMARK_POST_SCOPE(sampling)
     }
@@ -73,7 +73,6 @@ namespace learning::algorithms {
         
         std::set<double, std::greater<double>> scores;
         
-        BENCHMARK_PRE_SCOPE(sampling)
 
         for (auto i = 0; i < nodes; ++i) {
             for (auto j = 0; j < nodes; ++j) {
@@ -81,9 +80,10 @@ namespace learning::algorithms {
             }
         }
 
+        BENCHMARK_PRE_SCOPE(sampling)
         for (auto k = 0; k < iterations; ++k) {
-            auto b = scores.begin();
-            std::advance(b, nodes);
+            auto b = scores.end();
+            std::advance(b, -nodes);
             scores.erase(b);
             for (auto i = 0; i < nodes; ++i) {
                 auto s = in(gen);
@@ -104,13 +104,13 @@ namespace learning::algorithms {
         
         std::priority_queue<double, std::vector<double>, std::greater<double>> scores;
         
-        BENCHMARK_PRE_SCOPE(sampling)
         for (auto i = 0; i < nodes; ++i) {
             for (auto j = 0; j < nodes; ++j) {
                 scores.push(d(gen));
             }
         }
 
+        BENCHMARK_PRE_SCOPE(sampling)
         for (auto i = 0; i < nodes*nodes; ++i) {
             sorted_double[i] = scores.top();
             scores.pop();
@@ -132,6 +132,61 @@ namespace learning::algorithms {
                 auto dest = in(gen);
                 scores.push(d(gen));
             }
+        }
+        BENCHMARK_POST_SCOPE(sampling)
+    }
+
+    void benchmark_sort_heap(int nodes, int iterations, int sampling) {
+        std::random_device rd{};
+        std::mt19937 gen{rd()};
+        std::normal_distribution<> d{5,2};
+        std::uniform_int_distribution in(0, nodes-1);
+        std::vector<double> sorted_double(nodes*nodes);
+        
+        std::vector<double> scores;
+        scores.reserve(nodes*nodes);
+        scores.resize(nodes*nodes);
+
+        
+        BENCHMARK_PRE_SCOPE(sampling)
+        for (auto i = 0; i < nodes; ++i) {
+            for (auto j = 0; j < nodes; ++j) {
+                scores.push_back(d(gen));
+            }
+        }
+        std::make_heap(scores.begin(), scores.end(), std::greater<double>());
+
+        // for (auto i = 0; i < nodes*nodes; ++i) {
+        //     std::pop_heap(scores.begin(), scores.end());
+        //     sorted_double[i] = scores.back();
+        //     scores.pop_back();
+        // }
+
+        // for (auto i = 0; i < nodes*nodes; ++i) {
+        //     scores.push_back(sorted_double[i]);
+        //     std::push_heap(scores.begin(), scores.end());
+        // }
+
+
+        for (auto k = 0; k < iterations; ++k) {
+            for (auto i = 0; i < nodes; ++i) {
+                std::pop_heap(scores.begin(), scores.end());
+                sorted_double[i] = scores.back();
+                scores.pop_back();
+            }
+
+            for (auto i = 0; i < nodes; ++i) {
+                scores.push_back(sorted_double[i]);
+                std::push_heap(scores.begin(), scores.end());
+            }
+
+            for (auto i = 0; i < nodes; ++i) {
+                auto s = in(gen);
+                auto dest = in(gen);
+                scores[s*nodes + dest] = d(gen);
+                // std::push_heap(scores.begin(), scores.end());
+            }
+            std::make_heap(scores.begin(), scores.end(), std::greater<double>());
         }
         BENCHMARK_POST_SCOPE(sampling)
     }
@@ -159,21 +214,21 @@ namespace learning::algorithms {
 
         gbn.print();
 
-        std::cout << "path a -> b " << gbn.has_path("a", "b") << std::endl;;
-        std::cout << "path a -> c " << gbn.has_path("a", "c") << std::endl;;
-        std::cout << "path a -> d " << gbn.has_path("a", "d") << std::endl;;
+        // std::cout << "path a -> b " << gbn.has_path("a", "b") << std::endl;;
+        // std::cout << "path a -> c " << gbn.has_path("a", "c") << std::endl;;
+        // std::cout << "path a -> d " << gbn.has_path("a", "d") << std::endl;;
         
-        std::cout << "path b -> a " << gbn.has_path("b", "a") << std::endl;;
-        std::cout << "path b -> c " << gbn.has_path("b", "c") << std::endl;;
-        std::cout << "path b -> d " << gbn.has_path("b", "d") << std::endl;;
+        // std::cout << "path b -> a " << gbn.has_path("b", "a") << std::endl;;
+        // std::cout << "path b -> c " << gbn.has_path("b", "c") << std::endl;;
+        // std::cout << "path b -> d " << gbn.has_path("b", "d") << std::endl;;
         
-        std::cout << "path c -> a " << gbn.has_path("c", "a") << std::endl;;
-        std::cout << "path c -> b " << gbn.has_path("c", "b") << std::endl;;
-        std::cout << "path c -> d " << gbn.has_path("c", "d") << std::endl;;
+        // std::cout << "path c -> a " << gbn.has_path("c", "a") << std::endl;;
+        // std::cout << "path c -> b " << gbn.has_path("c", "b") << std::endl;;
+        // std::cout << "path c -> d " << gbn.has_path("c", "d") << std::endl;;
         
-        std::cout << "path d -> a " << gbn.has_path("d", "a") << std::endl;;
-        std::cout << "path d -> b " << gbn.has_path("d", "b") << std::endl;;
-        std::cout << "path d -> c " << gbn.has_path("d", "c") << std::endl;;
+        // std::cout << "path d -> a " << gbn.has_path("d", "a") << std::endl;;
+        // std::cout << "path d -> b " << gbn.has_path("d", "b") << std::endl;;
+        // std::cout << "path d -> c " << gbn.has_path("d", "c") << std::endl;;
         if (str_score == "bic") {
 
             ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp);
@@ -188,7 +243,7 @@ namespace learning::algorithms {
     template<typename Model>
     template<typename Operators>
     void GreedyHillClimbing<Model>::estimate(const DataFrame& df, 
-                                              Operators op,
+                                              Operators& op,
                                               arc_vector blacklist, 
                                               arc_vector whitelist, 
                                               int max_indegree, 
@@ -196,27 +251,22 @@ namespace learning::algorithms {
                                               const Model& start) {
 
 
-        Model::requires(df);
+        // Model::requires(df);
 
-        op.cache_scores();
-
-
-        // Model current_model = start;
+        // auto current_model = start;
+        // op.cache_scores(current_model);
 
         // while(true) {
 
-        //     auto best_op = op_pool.find_max(current_model);
+        //     auto best_op = op.find_max(current_model);
 
-        //     // if (best_op->delta() < epsilon) {
-        //     //     break;
-        //     // }
+        //     if (!best_op || best_op->delta() < epsilon) {
+        //         break;
+        //     }
 
-        //     // best_op.apply_operator(current_model);
+        //     best_op.apply_operator(current_model);
+        //     op.update_scores(current_model, best_op);
         // }
-
-
-
-
     }
 
 

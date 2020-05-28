@@ -31,6 +31,7 @@ namespace models {
 
         using nodes_size_type = typename DagType::nodes_size_type;
         using edges_size_type = typename DagType::edges_size_type;
+        using degree_size_type = typename DagType::degree_size_type;
 
         BayesianNetwork(const std::vector<std::string>& nodes);
         BayesianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs);
@@ -49,6 +50,10 @@ namespace models {
             return m_nodes;
         }
 
+        std::pair<node_iterator_t, node_iterator_t> node_iter() const {
+
+        }
+
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
         }
@@ -59,6 +64,30 @@ namespace models {
 
         node_descriptor node(const std::string& node) const {
             return g.node(m_indices.at(node));
+        }
+
+        degree_size_type num_parents(node_descriptor node) const {
+            g.num_parents(node);
+        }
+
+        degree_size_type num_parents(int node_index) const {
+            num_parents(g.node(node_index));
+        }
+
+        degree_size_type num_parents(const std::string& node) const {
+            num_parents(m_indices.at(node));
+        }
+
+        degree_size_type num_children(node_descriptor node) const {
+            g.num_children(node);
+        }
+
+        degree_size_type num_children(int node_index) const {
+            num_children(g.node(node_index));
+        }
+
+        degree_size_type num_children(const std::string& node) const {
+            num_children(m_indices.at(node));
         }
 
         std::vector<std::reference_wrapper<const std::string>> get_parents(node_descriptor node) const {
@@ -106,15 +135,47 @@ namespace models {
         }
 
         bool has_edge(int source, int dest) const {
-            return g.has_edge(g.node(source), g.node(dest));
+            return has_edge(g.node(source), g.node(dest));
         }
 
         bool has_edge(const std::string& source, const std::string& dest) const {
-            return g.has_edge(m_indices.at(source), m_indices.at(dest));
+            return has_edge(m_indices.at(source), m_indices.at(dest));
+        }
+
+        bool has_path(node_descriptor source, node_descriptor dest) const {
+            return g.has_path(source, dest);
+        }
+        
+        bool has_path(int source_index, int dest_index) const {
+            return has_path(g.node(source_index), g.node(dest_index));
         }
         
         bool has_path(const std::string& source, const std::string& dest) const {
-            return g.has_path(g.node(m_indices.at(source)), g.node(m_indices.at(dest)));
+            return has_path(m_indices.at(source), m_indices.at(dest));
+        }
+
+        void add_edge(node_descriptor source, node_descriptor dest) {
+            g.add_edge(source, dest);
+        }
+
+        void add_edge(int source, int dest) {
+            add_edge(g.node(source), g.node(dest), g);
+        }
+
+        bool add_edge(const std::string& source, const std::string& dest) const {
+            add_edge(m_indices.at(source), m_indices.at(dest));
+        }
+
+        void remove_edge(node_descriptor source, node_descriptor dest) {
+            g.remove_edge(source, dest);
+        }
+
+        void remove_edge(int source, int dest) {
+            remove_edge(g.node(source), g.node(dest), g);
+        }
+
+        void remove_edge(const std::string& source, const std::string& dest) const {
+            remove_edge(m_indices.at(source), m_indices.at(dest));
         }
 
         void print() {

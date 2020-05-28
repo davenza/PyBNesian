@@ -36,4 +36,5 @@ PYBIND11_MODULE(pgm_dataset, m) {
     m.def("benchmark_sort_vec", &learning::algorithms::benchmark_sort_vec, "Hill climbing");
     m.def("benchmark_sort_set", &learning::algorithms::benchmark_sort_set, "Hill climbing");
     m.def("benchmark_sort_priority", &learning::algorithms::benchmark_sort_priority, "Hill climbing");
+    m.def("benchmark_sort_heap", &learning::algorithms::benchmark_sort_heap, "Hill climbing");
 }

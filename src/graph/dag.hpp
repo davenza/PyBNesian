@@ -36,10 +36,7 @@ namespace graph {
         template<typename = std::enable_if_t<std::is_default_constructible_v<Graph>>>
         Dag() = delete;
 
-        Dag(int nnodes) : g(nnodes) { };
-
-        // TODO Implement adding arcs.
-        Dag(int nnodes, const arc_vector& arcs) : g(nnodes) {};
+        Dag(int nnodes) : g(nnodes) { }
 
         nodes_size_type num_nodes() const {
             return num_vertices(g);
@@ -95,26 +92,8 @@ namespace graph {
 
         class dummy_visitor : public boost::dfs_visitor<> {};
 
-        bool has_path(node_descriptor source, node_descriptor dest) const {
-            bool path = false;
-
-            std::vector<boost::default_color_type> vertex_color(num_vertices(g));
-            auto idmap = get(vertex_index, g);
-            auto colors = make_iterator_property_map(vertex_color.begin(), idmap);
+        bool has_path(node_descriptor source, node_descriptor dest) const;
         
-            boost::depth_first_visit(g, source, dummy_visitor(), colors, 
-                [&path, &dest](auto node, auto ) {
-                    if (node == dest) {
-                        path = true;
-                        return true;
-                    } else {
-                        return false;
-                    }
-                });
-
-            return path;
-        }
-
         void remove_edge(node_descriptor source, node_descriptor dest) {
             boost::remove_edge(source, dest, g);
         }
@@ -122,6 +101,27 @@ namespace graph {
     private:
         Graph g;
     };
+
+    template<typename Graph>
+    bool Dag<Graph>::has_path(node_descriptor source, node_descriptor dest) const {
+        bool path = false;
+
+        std::vector<boost::default_color_type> vertex_color(num_nodes());
+        auto idmap = get(vertex_index, g);
+        auto colors = make_iterator_property_map(vertex_color.begin(), idmap);
+    
+        boost::depth_first_visit(g, source, dummy_visitor(), colors, 
+            [&path, &dest](auto node, auto ) {
+                if (node == dest) {
+                    path = true;
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+
+        return path;
+    }
 
     using AdjMatrixDag = Dag<adj_m>;
     using AdjListDag = Dag<adj_l>;

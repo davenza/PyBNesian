@@ -1,4 +1,5 @@
 import pyarrow as pa
+from pyarrow import csv
 import numpy as np
 import pandas as pd
 from pgm_dataset import estimate
@@ -25,9 +26,12 @@ df = pd.DataFrame({
 
 pa_df = pa.RecordBatch.from_pandas(df)
 
+spambase = pd.read_csv('spambase.csv')
+spambase = spambase.astype(np.float64)
+spambase = spambase.drop("class", axis=1)
 
 # estimate(pa_df, "bic", [], [("a", "b"), ("b", "c"), ("c", "d")], 5, 10e-4)
-estimate(pa_df, "bic", [], [], 2, 10e-4)
+estimate(spambase, "bic", [], [], 0, 10e-4)
 
 # nodes = 500
 # iterations = 100

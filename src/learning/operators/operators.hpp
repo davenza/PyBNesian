@@ -92,6 +92,10 @@ namespace learning::operators {
         template<bool limited_indigree>
         std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max_indegree(Model& m);
 
+        double score() {
+            return local_score.sum();
+        }
+
     private:
         MatrixXd delta;
         MatrixXb valid_op;
@@ -222,26 +226,17 @@ namespace learning::operators {
                 return std::make_unique<RemoveArc_t>(m.node(source), m.node(dest), delta(source, dest));
             } else if (m.has_edge(dest, source) && m.can_flip_edge(dest, source)) {
                 if constexpr (limited_indegree) {
-                    std::cout << "Checking indegree flip" << std::endl;
-                    std::cout << "parents: " << m.num_parents(dest) << " max_indegree " << max_indegree << std::endl;
                     if (m.num_parents(dest) >= max_indegree) {
-                        std::cout << "Executing continue" << std::endl;
                         continue;
                     }
                 }
-
-                std::cout << m.name(dest) << " parents: " << m.num_parents(dest) << std::endl;
                 return std::make_unique<FlipArc_t>(m.node(dest), m.node(source), delta(dest, source));
             } else if (m.can_add_edge(source, dest)) {
                 if constexpr (limited_indegree) {
-                    std::cout << "Checking indegree add" << std::endl;
-                    std::cout << "parents: " << m.num_parents(dest) << " max_indegree " << max_indegree << std::endl;
                     if (m.num_parents(dest) >= max_indegree) {
-                        std::cout << "Executing continue" << std::endl;
                         continue;
                     }
                 }
-                std::cout << m.name(dest) << " parents: " << m.num_parents(dest) << std::endl;
                 return std::make_unique<AddArc_t>(m.node(source), m.node(dest), delta(source, dest));
             }
         }

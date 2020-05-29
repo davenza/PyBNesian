@@ -8,7 +8,7 @@
 #define BENCHMARK_POST_SCOPE(N)                                                                                                              \
                 }                                                                                                                            \
                 auto t2 = std::chrono::high_resolution_clock::now();                                                                         \
-                std::cout << "Time: " << (std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count() / N) << " ns" << std::endl;\
+                std::cout << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count() / N) << " ms" << std::endl;\
             }                                                                                                                                \
 
 
@@ -20,4 +20,4 @@
 #define BENCHMARK_POST(N)                                                                                                              \
                 }                                                                                                                            \
                 auto t2 = std::chrono::high_resolution_clock::now();                                                                         \
-                std::cout << "Time: " << (std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count() / N) << " ns" << std::endl;\
+                std::cout << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count() / N) << " ms" << std::endl;\

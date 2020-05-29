@@ -261,7 +261,6 @@ namespace models {
         for(auto edge : edges) {
             g.add_edge(node(edge.first), node(edge.second));
         }
-
     };
 
     using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK>;

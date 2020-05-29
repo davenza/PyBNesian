@@ -87,7 +87,10 @@ namespace learning::operators {
 
         void cache_scores(const Model& m);
         void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
+
         std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max(Model& m);
+        template<bool limited_indigree>
+        std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max_indegree(Model& m);
 
     private:
         MatrixXd delta;
@@ -95,17 +98,17 @@ namespace learning::operators {
         VectorXd local_score;
         std::vector<int> sorted_idx;
         const DataFrame& df;
-        int indegree;
+        int max_indegree;
     };
     
     template<typename Model, typename Score>
-    ArcOperatorsType<Model, Score>::ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree) :
+    ArcOperatorsType<Model, Score>::ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int max_indegree) :
                                                     delta(model.num_nodes(), model.num_nodes()),
                                                     sorted_idx(),
                                                     valid_op(model.num_nodes(), model.num_nodes()), 
                                                     local_score(model.num_nodes()), 
                                                     df(df),
-                                                    indegree(indegree)
+                                                    max_indegree(max_indegree)
     {
         using node_size = typename Model::nodes_size_type;
         node_size nnodes = model.num_nodes();
@@ -190,9 +193,18 @@ namespace learning::operators {
     }
 
 
-
     template<typename Model, typename Score>
     std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
+
+        if (max_indegree > 0)
+            return find_max_indegree<true>(m);
+        else
+            return find_max_indegree<false>(m);
+    }
+
+    template<typename Model, typename Score>
+    template<bool limited_indegree>
+    std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> ArcOperatorsType<Model, Score>::find_max_indegree(Model& m) {
 
         auto delta_ptr = delta.data();
 
@@ -209,8 +221,27 @@ namespace learning::operators {
             if(m.has_edge(source, dest)) {
                 return std::make_unique<RemoveArc_t>(m.node(source), m.node(dest), delta(source, dest));
             } else if (m.has_edge(dest, source) && m.can_flip_edge(dest, source)) {
+                if constexpr (limited_indegree) {
+                    std::cout << "Checking indegree flip" << std::endl;
+                    std::cout << "parents: " << m.num_parents(dest) << " max_indegree " << max_indegree << std::endl;
+                    if (m.num_parents(dest) >= max_indegree) {
+                        std::cout << "Executing continue" << std::endl;
+                        continue;
+                    }
+                }
+
+                std::cout << m.name(dest) << " parents: " << m.num_parents(dest) << std::endl;
                 return std::make_unique<FlipArc_t>(m.node(dest), m.node(source), delta(dest, source));
             } else if (m.can_add_edge(source, dest)) {
+                if constexpr (limited_indegree) {
+                    std::cout << "Checking indegree add" << std::endl;
+                    std::cout << "parents: " << m.num_parents(dest) << " max_indegree " << max_indegree << std::endl;
+                    if (m.num_parents(dest) >= max_indegree) {
+                        std::cout << "Executing continue" << std::endl;
+                        continue;
+                    }
+                }
+                std::cout << m.name(dest) << " parents: " << m.num_parents(dest) << std::endl;
                 return std::make_unique<AddArc_t>(m.node(source), m.node(dest), delta(source, dest));
             }
         }

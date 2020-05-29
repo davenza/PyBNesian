@@ -27,7 +27,7 @@ pa_df = pa.RecordBatch.from_pandas(df)
 
 
 # estimate(pa_df, "bic", [], [("a", "b"), ("b", "c"), ("c", "d")], 5, 10e-4)
-estimate(pa_df, "bic", [], [], 5, 10e-4)
+estimate(pa_df, "bic", [], [], 2, 10e-4)
 
 # nodes = 500
 # iterations = 100

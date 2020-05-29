@@ -22,6 +22,7 @@ namespace learning::algorithms {
                   std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, 
                   int max_indegree, double epsilon) {
 
+        std::cout << "start max_indegree " << max_indegree << std::endl;
 
         auto rb = dataset::to_record_batch(data);
         auto df = DataFrame(rb);

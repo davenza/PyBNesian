@@ -19,26 +19,6 @@ namespace graph {
 
     using arc_vector = std::vector<std::pair<std::string, std::string>>;
 
-
-    template<typename it>
-    class dag_node_iterator {
-    public:
-        using iterator_category = typename std::iterator_traits<it>::iterator_category;
-        using value_type = typename std::iterator_traits<it>::value_type;
-        using difference_type = typename std::iterator_traits<it>::difference_type;
-        using pointer = typename std::iterator_traits<it>::pointer;
-        using reference = typename std::iterator_traits<it>::reference;
-
-        dag_node_iterator(it b, it e) : m_begin(b), m_end(e) {}
-
-        it begin() { return m_begin; }
-
-        it end() { return m_end; }
-    private:
-        it m_begin;
-        it m_end;
-    };
-
     template<typename Graph>
     class Dag {
     public:
@@ -77,8 +57,12 @@ namespace graph {
             return boost::out_degree(node, g);
         }
 
-        std::pair<node_iterator_t, node_iterator_t> node_iter() const {
-            return vertices(g);
+        std::pair<node_iterator_t, node_iterator_t> nodes() const {
+            return boost::vertices(g);
+        }
+
+        std::pair<edge_iterator_t, edge_iterator_t> edges() const {
+            return boost::edges(g);
         }
 
         std::pair<in_edge_iterator_t, in_edge_iterator_t> get_parent_edges(node_descriptor node) const {
@@ -119,7 +103,7 @@ namespace graph {
             auto colors = make_iterator_property_map(vertex_color.begin(), idmap);
         
             boost::depth_first_visit(g, source, dummy_visitor(), colors, 
-                [&path, &dest](auto node, auto graph) {
+                [&path, &dest](auto node, auto ) {
                     if (node == dest) {
                         path = true;
                         return true;
@@ -134,10 +118,6 @@ namespace graph {
         void remove_edge(node_descriptor source, node_descriptor dest) {
             boost::remove_edge(source, dest, g);
         }
-        
-        dag_node_iterator<node_iterator_t> nodes() const;
-
-        void print();
 
     private:
         Graph g;
@@ -145,26 +125,6 @@ namespace graph {
 
     using AdjMatrixDag = Dag<adj_m>;
     using AdjListDag = Dag<adj_l>;
-
-    template<typename Graph>
-    void
-    Dag<Graph>::print() {
-        // node_iterator_t nit, nend;
-        // edge_iterator_t eit, eend;
-
-        std::cout << "Using dag type: " << typeid(Graph).name() << std::endl;
-        for(auto [nit, nend] = vertices(g); nit != nend; ++nit)
-            std::cout << "Descriptor: " << *nit << ", Index: " << index(*nit) << std::endl;
-
-        for(auto [eit, eend] = edges(g); eit != eend; ++eit)
-            std::cout << boost::source(*eit, g) << " -> " << boost::target(*eit, g) << std::endl;
-    }
-
-    template<typename Graph>
-    dag_node_iterator<typename Dag<Graph>::node_iterator_t> Dag<Graph>::nodes() const {
-        auto it = vertices(g);
-        return dag_node_iterator(it.first, it.second);
-    }
 }
 
 

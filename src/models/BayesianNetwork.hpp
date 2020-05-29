@@ -6,7 +6,7 @@
 #include <graph/dag.hpp>
 
 using dataset::DataFrame;
-using graph::AdjMatrixDag, graph::AdjListDag, graph::dag_node_iterator;
+using graph::AdjMatrixDag, graph::AdjListDag;
 using boost::source;
 
 using graph::arc_vector; 
@@ -50,10 +50,6 @@ namespace models {
             return m_nodes;
         }
 
-        std::pair<node_iterator_t, node_iterator_t> node_iter() const {
-
-        }
-
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
         }
@@ -66,28 +62,40 @@ namespace models {
             return g.node(m_indices.at(node));
         }
 
+        const std::string& name(int node_index) const {
+            return m_nodes[node_index];
+        }
+
+        const std::string& name(node_descriptor node) const {
+            return name(g.index(node));
+        }
+
         degree_size_type num_parents(node_descriptor node) const {
-            g.num_parents(node);
+            return g.num_parents(node);
         }
 
         degree_size_type num_parents(int node_index) const {
-            num_parents(g.node(node_index));
+            return num_parents(g.node(node_index));
         }
 
         degree_size_type num_parents(const std::string& node) const {
-            num_parents(m_indices.at(node));
+            return num_parents(m_indices.at(node));
         }
 
         degree_size_type num_children(node_descriptor node) const {
-            g.num_children(node);
+            return g.num_children(node);
         }
 
         degree_size_type num_children(int node_index) const {
-            num_children(g.node(node_index));
+            return num_children(g.node(node_index));
         }
 
         degree_size_type num_children(const std::string& node) const {
-            num_children(m_indices.at(node));
+            return num_children(m_indices.at(node));
+        }
+
+        int index(node_descriptor n) const {
+            return g.index(n);
         }
 
         std::vector<std::reference_wrapper<const std::string>> get_parents(node_descriptor node) const {
@@ -162,8 +170,47 @@ namespace models {
             add_edge(g.node(source), g.node(dest), g);
         }
 
-        bool add_edge(const std::string& source, const std::string& dest) const {
+        void add_edge(const std::string& source, const std::string& dest) const {
             add_edge(m_indices.at(source), m_indices.at(dest));
+        }
+
+        bool can_add_edge(node_descriptor source, node_descriptor dest) const {
+            if (num_parents(source) == 0 || num_children(dest) == 0 || !has_path(dest, source)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        bool can_add_edge(int source_index, int dest_index) const {
+            return can_add_edge(node(source_index), node(dest_index));
+        }
+
+        bool can_add_edge(const std::string& source, const std::string& dest) const {
+            return can_add_edge(m_indices.at(source), m_indices.at(dest));
+        }
+
+        bool can_flip_edge(node_descriptor source, node_descriptor dest) {
+            if (num_parents(dest) == 0 || num_children(source) == 0) {
+                return true;
+            } else {
+                remove_edge(source, dest);
+                bool thereis_path = has_path(source, dest);
+                add_edge(source, dest);
+                if (thereis_path) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+
+        bool can_flip_edge(int source_index, int dest_index) {
+            return can_flip_edge(node(source_index), node(dest_index));
+        }
+
+        bool can_flip_edge(const std::string& source, const std::string& dest) {
+            return can_flip_edge(m_indices.at(source), m_indices.at(dest));
         }
 
         void remove_edge(node_descriptor source, node_descriptor dest) {
@@ -178,20 +225,13 @@ namespace models {
             remove_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        void print() {
-            g.print();
+        void print() const {
+            std::cout << "Bayesian network: " << std::endl; 
+            for(auto [eit, eend] = g.edges(); eit != eend; ++eit)
+                std::cout << name(g.source(*eit)) << " -> " << name(g.target(*eit)) << std::endl;
         }
-        // edge_iterator edges() const;
-
-        // nodestr_iterator nodes_str() const;
-        // edgestr_iterator edges_str() const;
-
-        // void print() {
-        //     g.print();
-        // }
 
     private:
-        // TODO: Allow change the type of Dag.
         DagType g;
         std::vector<std::string> m_nodes;
         // Change to FNV hash function?

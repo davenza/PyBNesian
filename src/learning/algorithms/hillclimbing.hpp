@@ -23,17 +23,8 @@ namespace learning::algorithms {
 
     public:
         template<typename Operators>
-        void estimate(const DataFrame& data, Operators& op_pool, arc_vector blacklist, 
-                      arc_vector whitelist, int max_indegree, double epsilon, const Model& start);
+        void estimate(const DataFrame& data, Operators& op_pool, double epsilon, const Model& start);
     };
-
-
-    void benchmark_sort_vec(int nodes, int iterations, int sampling);
-    void benchmark_partial_sort_vec(int nodes, int iterations, int sampling);
-    void benchmark_sort_set(int nodes, int iterations, int sampling);
-    void benchmark_sort_priority(int nodes, int iterations, int sampling);
-    void benchmark_sort_heap(int nodes, int iterations, int sampling);
-
 }
 
 

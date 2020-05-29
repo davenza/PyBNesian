@@ -10,30 +10,28 @@ using graph::arc_vector;
 
 namespace learning::operators {
 
-    
-
-    template<typename Model>
+    template<typename Model, typename OperatorType>
     class Operator {
     public:
         Operator(double delta) : m_delta(delta) {}
 
-        virtual void apply(Model& m) = 0;
+        virtual void apply(Model& m, OperatorType& op_type) = 0;
         
         double delta() { return m_delta; }
     private:
         double m_delta;
     };
 
-    template<typename Model>
-    class AddArc : public Operator<Model> {
+    template<typename Model, typename OperatorType>
+    class AddArc : public Operator<Model, OperatorType> {
     public:
         AddArc(typename Model::node_descriptor source, 
                typename Model::node_descriptor dest,
-               double delta) : m_source(source), m_dest(dest), Operator<Model>(delta) {}
+               double delta) : m_source(source), m_dest(dest), Operator<Model, OperatorType>(delta) {}
         
-
-        void apply(Model& m) override {
+        void apply(Model& m, OperatorType& op_type) override {
             m.add_edge(m_source, m_dest);
+            op_type.update_node_arcs_scores(m, m_dest);
         }
 
     private:
@@ -41,15 +39,16 @@ namespace learning::operators {
         typename Model::node_descriptor m_dest;
     };
 
-    template<typename Model>
-    class RemoveArc : public Operator<Model> {
+    template<typename Model, typename OperatorType>
+    class RemoveArc : public Operator<Model, OperatorType> {
     public:
         RemoveArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : m_source(source), m_dest(dest), Operator<Model>(delta) {}
+                  double delta) : m_source(source), m_dest(dest), Operator<Model, OperatorType>(delta) {}
         
-        void apply(Model& m) override {
+        void apply(Model& m, OperatorType& op_type) override {
             m.remove_edge(m_source, m_dest);
+            op_type.update_node_arcs_scores(m, m_dest);
         }
 
     private:
@@ -57,17 +56,19 @@ namespace learning::operators {
         typename Model::node_descriptor m_dest;
     };
 
-    template<typename Model>
-    class FlipArc : public Operator<Model> {
+    template<typename Model, typename OperatorType>
+    class FlipArc : public Operator<Model, OperatorType> {
     public:
         FlipArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : m_source(source), m_dest(dest), Operator<Model>(delta){}
+                  double delta) : m_source(source), m_dest(dest), Operator<Model, OperatorType>(delta){}
 
-       
-        void apply(Model& m) override {
+        void apply(Model& m, OperatorType& op_type) override {
             m.remove_edge(m_source, m_dest);
             m.add_edge(m_dest, m_source);
+
+            op_type.update_node_arcs_scores(m, m_source);
+            op_type.update_node_arcs_scores(m, m_dest);
         }
 
     private:
@@ -78,38 +79,42 @@ namespace learning::operators {
     template<typename Model, typename Score>
     class ArcOperatorsType {
     public:
-        ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist);
+        using AddArc_t = AddArc<Model, ArcOperatorsType<Model, Score>>;
+        using RemoveArc_t = RemoveArc<Model, ArcOperatorsType<Model, Score>>;
+        using FlipArc_t = FlipArc<Model, ArcOperatorsType<Model, Score>>;
+
+        ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree);
 
         void cache_scores(const Model& m);
-        void update(Model& model, std::unique_ptr<Operator<Model>> new_op);
-        void arc_update(Model& model, typename Model::node_descriptor dest_node);
-        std::unique_ptr<Operator<Model>> find_max(Model& m);
+        void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
+        std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max(Model& m);
 
     private:
         MatrixXd delta;
-        std::vector<int> sorted_idx;
         MatrixXb valid_op;
         VectorXd local_score;
+        std::vector<int> sorted_idx;
         const DataFrame& df;
+        int indegree;
     };
-
+    
     template<typename Model, typename Score>
-    ArcOperatorsType<Model, Score>::ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist) :
-                                                    delta(),
+    ArcOperatorsType<Model, Score>::ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree) :
+                                                    delta(model.num_nodes(), model.num_nodes()),
                                                     sorted_idx(),
                                                     valid_op(model.num_nodes(), model.num_nodes()), 
                                                     local_score(model.num_nodes()), 
-                                                    df(df)
+                                                    df(df),
+                                                    indegree(indegree)
     {
-        auto nnodes = model.num_nodes();
+        using node_size = typename Model::nodes_size_type;
+        node_size nnodes = model.num_nodes();
         auto val_ptr = valid_op.data();
 
         std::fill(val_ptr, val_ptr + nnodes*nnodes, true);
 
         auto indices = model.indices();
         auto valid_ops = (nnodes * nnodes) - 2*whitelist.size() - blacklist.size() - nnodes;
-
-        sorted_idx.reserve(valid_ops);
 
         for(auto whitelist_edge : whitelist) {
             auto source_index = indices[whitelist_edge.first];
@@ -129,25 +134,24 @@ namespace learning::operators {
             delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
         }
 
-        for (auto i = 0; i < model.num_nodes(); ++i) {
+        for (node_size i = 0; i < nnodes; ++i) {
             valid_op(i, i) = false;
             delta(i, i) = std::numeric_limits<double>::lowest();
         }
 
-        for (auto i = 0; i < nnodes; ++i) {
-            for (auto j = 0; j < nnodes; ++j) {
+        sorted_idx.reserve(valid_ops);
+
+        for (node_size i = 0; i < nnodes; ++i) {
+            for (node_size j = 0; j < nnodes; ++j) {
                 if (valid_op(i, j)) {
                     sorted_idx.push_back(i + j * nnodes);
                 }
             }
         }
-
     }
 
     template<typename Model, typename Score>
     void ArcOperatorsType<Model, Score>::cache_scores(const Model& m) {
-        std::cout << "valid_op:" << std::endl;
-        std::cout << valid_op << std::endl;
         
         for (int i = 0; i < m.num_nodes(); ++i) {
             auto parents = m.get_parent_indices(i);
@@ -183,11 +187,12 @@ namespace learning::operators {
                 }
             }
         }
-
     }
 
+
+
     template<typename Model, typename Score>
-    std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
+    std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
 
         auto delta_ptr = delta.data();
 
@@ -201,51 +206,20 @@ namespace learning::operators {
             auto source = idx % m.num_nodes();
             auto dest = idx / m.num_nodes();
 
-
             if(m.has_edge(source, dest)) {
-                return std::make_unique<RemoveArc>(m.node(source), m.node(dest), delta(source, dest));
-            } else if (m.has_edge(dest, source) && can_flip_edge(m, m.node(dest), m.node(source))) {
-                return std::make_unique<FlipArc>(m.node(dest), m.node(source), delta(dest, source));
-            } else if (can_add_edge(m, m.node(source), m.node(dest))) {
-                return std::make_unique<AddArc>(m.node(source), m.node(dest), delta(source, dest));
-            }
-
-        }
-    }
-
-    template<typename Model>
-    bool can_add_edge(Model& m, typename Model::node_descriptor source, typename Model::node_descriptor dest) {
-        if (m.num_parents(source) == 0 || m.num_children(dest) == 0 || !m.has_path(dest, source)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    template<typename Model>
-    bool can_flip_edge(Model& m, typename Model::node_descriptor source, typename Model::node_descriptor dest) {
-        if (m.num_parents(dest) == 0 || m.num_children(source) == 0) {
-            return true;
-        } else {
-            m.remove_edge(source, dest);
-            bool has_path = m.has_path(source, dest);
-            m.add_edge(source, dest);
-            if (has_path) {
-                return false;
-            } else {
-                return true;
+                return std::make_unique<RemoveArc_t>(m.node(source), m.node(dest), delta(source, dest));
+            } else if (m.has_edge(dest, source) && m.can_flip_edge(dest, source)) {
+                return std::make_unique<FlipArc_t>(m.node(dest), m.node(source), delta(dest, source));
+            } else if (m.can_add_edge(source, dest)) {
+                return std::make_unique<AddArc_t>(m.node(source), m.node(dest), delta(source, dest));
             }
         }
+
+        return nullptr;
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorsType<Model, Score>::update(Model& model, std::unique_ptr<Operator<Model>> op) {
-    
-    }
-
-
-    template<typename Model, typename Score>
-    void ArcOperatorsType<Model, Score>::arc_update(Model& model, typename Model::node_descriptor dest_node) {
+    void ArcOperatorsType<Model, Score>::update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node) {
 
         auto parents = model.get_parent_indices(dest_node);
         auto dest_idx = model.index(dest_node);
@@ -258,8 +232,14 @@ namespace learning::operators {
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
                     double d = Score::local_score(df, dest_idx, parents.begin(), parents.end() - 1) - local_score(dest_idx);
                     delta(i, dest_idx) = d;
+
+                    auto new_parents_i = model.get_parent_indices(i);
+                    new_parents_i.push_back(dest_idx);
+
+                    delta(dest_idx, i) = d + Score::local_score(df, i, new_parents_i.begin(), new_parents_i.end()) 
+                                            - local_score(i);
                 } else if (model.has_edge(dest_idx, i)) {
-                    auto new_parents_i = model.get_parent_indices(source);
+                    auto new_parents_i = model.get_parent_indices(i);
                     std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
                         
                     parents.push_back(i);
@@ -274,18 +254,39 @@ namespace learning::operators {
                     parents.pop_back();
                     delta(i, dest_idx) = d;
                 }
-
             }
         }
     }
 
-    template<typename Model, typename Score>
-    struct default_operator {};
+    // template<typename Model, typename Score>
+    // class ArcOperatorsType {
+    // public:
+    //     using AddArc_t = AddArc<Model, ArcOperatorsType<Model, Score>>;
+    //     using RemoveArc_t = RemoveArc<Model, ArcOperatorsType<Model, Score>>;
+    //     using FlipArc_t = FlipArc<Model, ArcOperatorsType<Model, Score>>;
 
-    template<BayesianNetworkType bn_type, typename Score>
-    struct default_operator<BayesianNetwork<bn_type>, Score> {
-        using default_operator_t = ArcOperatorsType<BayesianNetwork<bn_type>, Score>;
-    };
+    //     ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int max_indegree);
+
+    //     void cache_scores(const Model& m);
+    //     void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
+    //     std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max(Model& m);
+
+    // private:
+    //     MatrixXd delta;
+    //     std::vector<int> sorted_idx;
+    //     MatrixXb valid_op;
+    //     VectorXd local_score;
+    //     const DataFrame& df;
+    //     int max_indegree;
+    // };
+
+    // template<typename Model, typename Score>
+    // struct default_operator {};
+
+    // template<BayesianNetworkType bn_type, typename Score>
+    // struct default_operator<BayesianNetwork<bn_type>, Score> {
+    //     using default_operator_t = ArcOperatorsType<BayesianNetwork<bn_type>, Score>;
+    // };
     
 
     // template<typename Model, typename Score>

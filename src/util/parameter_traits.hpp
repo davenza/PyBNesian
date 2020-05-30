@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_UTIL_HPP
-#define PGM_DATASET_UTIL_HPP
+#ifndef PGM_DATASET_PARAMETER_TRAITS_HPP
+#define PGM_DATASET_PARAMETER_TRAITS_HPP
 
 namespace util {
 
@@ -112,4 +112,4 @@ namespace util {
 
 }
 
-#endif //PGM_DATASET_UTIL_HPP
+#endif //PGM_DATASET_PARAMETER_TRAITS_HPP

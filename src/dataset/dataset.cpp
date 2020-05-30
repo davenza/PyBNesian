@@ -5,7 +5,7 @@
 #include <arrow/python/pyarrow.h>
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
-#include <util/util.hpp>
+#include <util/parameter_traits.hpp>
 
 using Eigen::MatrixXd;
 

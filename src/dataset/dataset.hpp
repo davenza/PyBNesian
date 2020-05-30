@@ -4,7 +4,7 @@
 #include <arrow/api.h>
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
-#include <util/util.hpp>
+#include <util/parameter_traits.hpp>
 #include <util/bit_util.hpp>
 
 

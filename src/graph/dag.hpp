@@ -9,11 +9,11 @@
 
 
 namespace py = pybind11;
-using boost::adjacency_matrix, boost::adjacency_list, boost::directedS, boost::setS, boost::vecS, boost::property, boost::vertex_index_t,
+using boost::adjacency_matrix, boost::adjacency_list, boost::directedS, boost:: bidirectionalS, boost::setS, boost::vecS, boost::property, boost::vertex_index_t,
     boost::property_map, boost::vertex_index;
 
 using adj_m = adjacency_matrix<directedS, property<vertex_index_t, int>>;
-using adj_l = adjacency_list<setS, vecS, directedS, property<vertex_index_t, int>>;
+using adj_l = adjacency_list<setS, vecS, bidirectionalS, property<vertex_index_t, int>>;
 
 namespace graph {
 

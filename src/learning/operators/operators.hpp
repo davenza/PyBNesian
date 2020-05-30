@@ -86,7 +86,7 @@ namespace learning::operators {
         using RemoveArc_t = RemoveArc<Model, ArcOperatorsType<Model, Score>>;
         using FlipArc_t = FlipArc<Model, ArcOperatorsType<Model, Score>>;
 
-        ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree);
+        ArcOperatorsType(const Score& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree);
 
         void cache_scores(const Model& m);
         void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
@@ -100,21 +100,21 @@ namespace learning::operators {
         }
 
     private:
+        const Score& m_score;
         MatrixXd delta;
         MatrixXb valid_op;
         VectorXd local_score;
         std::vector<int> sorted_idx;
-        const DataFrame& df;
         int max_indegree;
     };
     
     template<typename Model, typename Score>
-    ArcOperatorsType<Model, Score>::ArcOperatorsType(const DataFrame& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int max_indegree) :
+    ArcOperatorsType<Model, Score>::ArcOperatorsType(const Score& score, const Model& model, arc_vector whitelist, arc_vector blacklist, int max_indegree) :
+                                                    m_score(score),
                                                     delta(model.num_nodes(), model.num_nodes()),
-                                                    sorted_idx(),
                                                     valid_op(model.num_nodes(), model.num_nodes()), 
                                                     local_score(model.num_nodes()), 
-                                                    df(df),
+                                                    sorted_idx(),
                                                     max_indegree(max_indegree)
     {
         using node_size = typename Model::nodes_size_type;
@@ -165,7 +165,7 @@ namespace learning::operators {
         
         for (int i = 0; i < m.num_nodes(); ++i) {
             auto parents = m.get_parent_indices(i);
-            local_score(i) = Score::local_score(df, i, parents);
+            local_score(i) = m_score.local_score(m, i, parents);
         }
 
         for (auto dest = 0; dest < m.num_nodes(); ++dest) {
@@ -176,21 +176,21 @@ namespace learning::operators {
 
                     if (m.has_edge(source, dest)) {
                         std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
-                        double d = Score::local_score(df, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - local_score(dest);
+                        double d = m_score.local_score(m, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - local_score(dest);
                         delta(source, dest) = d;
                     } else if (m.has_edge(dest, source)) {
                         auto new_parents_source = m.get_parent_indices(source);
                         std::iter_swap(std::find(new_parents_source.begin(), new_parents_source.end(), dest), new_parents_source.end() - 1);
                         
                         new_parents_dest.push_back(source);
-                        double d = Score::local_score(df, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
-                                   Score::local_score(df, dest, new_parents_dest.begin(), new_parents_dest.end()) 
+                        double d = m_score.local_score(m, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
+                                   m_score.local_score(m, dest, new_parents_dest.begin(), new_parents_dest.end()) 
                                    - local_score(source) - local_score(dest);
                         new_parents_dest.pop_back();
                         delta(dest, source) = d;
                     } else {
                         new_parents_dest.push_back(source);
-                        double d = Score::local_score(df, dest, new_parents_dest) - local_score(dest);
+                        double d = m_score.local_score(m, dest, new_parents_dest) - local_score(dest);
                         new_parents_dest.pop_back();
                         delta(source, dest) = d;
                     }
@@ -202,7 +202,6 @@ namespace learning::operators {
 
     template<typename Model, typename Score>
     std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
-
         if (max_indegree > 0)
             return find_max_indegree<true>(m);
         else
@@ -252,34 +251,34 @@ namespace learning::operators {
 
         auto parents = model.get_parent_indices(dest_node);
         auto dest_idx = model.index(dest_node);
-        local_score(dest_idx) = Score::local_score(df, dest_idx, parents);
+        local_score(dest_idx) = m_score.local_score(model, dest_idx, parents);
         
         for (int i = 0; i < model.num_nodes(); ++i) {
             if (valid_op(i, dest_idx)) {
 
                 if (model.has_edge(i, dest_idx)) {
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
-                    double d = Score::local_score(df, dest_idx, parents.begin(), parents.end() - 1) - local_score(dest_idx);
+                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - local_score(dest_idx);
                     delta(i, dest_idx) = d;
 
                     auto new_parents_i = model.get_parent_indices(i);
                     new_parents_i.push_back(dest_idx);
 
-                    delta(dest_idx, i) = d + Score::local_score(df, i, new_parents_i.begin(), new_parents_i.end()) 
+                    delta(dest_idx, i) = d + m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end())
                                             - local_score(i);
                 } else if (model.has_edge(dest_idx, i)) {
                     auto new_parents_i = model.get_parent_indices(i);
                     std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
                         
                     parents.push_back(i);
-                    double d = Score::local_score(df, i, new_parents_i.begin(), new_parents_i.end() - 1) + 
-                                Score::local_score(df, dest_idx, parents.begin(), parents.end()) 
+                    double d = m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end() - 1) + 
+                                m_score.local_score(model, dest_idx, parents.begin(), parents.end()) 
                                 - local_score(i) - local_score(dest_idx);
                     parents.pop_back();
                     delta(dest_idx, i) = d;
                 } else {
                     parents.push_back(i);
-                    double d = Score::local_score(df, dest_idx, parents) - local_score(dest_idx);
+                    double d = m_score.local_score(model, dest_idx, parents) - local_score(dest_idx);
                     parents.pop_back();
                     delta(i, dest_idx) = d;
                 }

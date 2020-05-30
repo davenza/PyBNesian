@@ -44,6 +44,7 @@ ext_modules = [
         [
          'src/lib.cpp',
          'src/factors/continuous/LinearGaussianCPD.cpp',
+         'src/factors/continuous/CKDE.cpp',
          'src/dataset/dataset.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',

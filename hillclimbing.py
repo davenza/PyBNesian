@@ -2,7 +2,7 @@ import pyarrow as pa
 from pyarrow import csv
 import numpy as np
 import pandas as pd
-from pgm_dataset import estimate
+from pgm_dataset.learning.algorithms import hc
 # from pgm_dataset import benchmark_sort_vec, benchmark_partial_sort_vec, benchmark_sort_set, benchmark_sort_priority, benchmark_sort_heap
 
 np.random.seed(0)
@@ -31,7 +31,7 @@ spambase = spambase.astype(np.float64)
 spambase = spambase.drop("class", axis=1)
 
 # estimate(pa_df, "bic", [], [("a", "b"), ("b", "c"), ("c", "d")], 5, 10e-4)
-estimate(spambase, "bic", [], [], 0, 10e-4)
+hc(spambase, "bic", [], [], 0, 10e-4)
 
 # nodes = 500
 # iterations = 100

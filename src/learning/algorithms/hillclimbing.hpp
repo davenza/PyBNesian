@@ -16,7 +16,7 @@ namespace learning::algorithms {
 
 
     // TODO: Include start graph.
-    void estimate(py::handle data, std::string score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
+    void hc(py::handle data, std::string score, std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, int max_indegree, double epsilon);
 
     template<typename Model>
     class GreedyHillClimbing {

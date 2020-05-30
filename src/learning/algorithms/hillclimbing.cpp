@@ -9,15 +9,17 @@
 using namespace dataset;
 
 using Eigen::VectorXd, Eigen::MatrixXd;;
-using models::GaussianNetwork, models::GaussianNetworkList;
+using models::GaussianNetwork, models::GaussianNetwork_M, models::GaussianNetwork_L;
 using learning::scores::BIC;
 using graph::arc_vector;
 using learning::operators::ArcOperatorsType;
 
+#include <util/benchmark_basic.hpp>
+
 namespace learning::algorithms {
 
     // TODO: Include start model.
-    void estimate(py::handle data, std::string str_score, 
+    void hc(py::handle data, std::string str_score, 
                   std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, 
                   int max_indegree, double epsilon) {
 
@@ -29,15 +31,22 @@ namespace learning::algorithms {
 
         auto nodes = df.column_names();
 
-        GreedyHillClimbing<GaussianNetwork> hc;
+        // GreedyHillClimbing<GaussianNetwork> hc;
+        GreedyHillClimbing<GaussianNetwork_M> hc;
 
-        GaussianNetwork gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork(nodes, whitelist_cpp) :
-                                                           GaussianNetwork(nodes);
+        GaussianNetwork_M gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork_M(nodes, whitelist_cpp) :
+                                                           GaussianNetwork_M(nodes);
+
+        // GaussianNetwork_L gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork_L(nodes, whitelist_cpp) :
+        //                                                    GaussianNetwork_L(nodes);
 
         if (str_score == "bic") {
-            ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
-
+            BIC bic(df);
+            // ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+            ArcOperatorsType arc_op(bic, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+            BENCHMARK_PRE_SCOPE(10)  
             hc.estimate(df, arc_op, epsilon, gbn);
+            BENCHMARK_POST_SCOPE(10)  
         }
          else {
             throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
@@ -52,7 +61,7 @@ namespace learning::algorithms {
                                               const Model& start) {
 
 
-        Model::requires(df);
+        // Model::requires(df);
 
         auto current_model = start;
         op.cache_scores(current_model);
@@ -65,7 +74,10 @@ namespace learning::algorithms {
             }
 
             best_op->apply(current_model, op);
+            // std::cout << "New op" << std::endl;
         }
+
+        // std::cout << "Final score: " << op.score() << std::endl;
     }
 
 

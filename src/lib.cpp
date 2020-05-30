@@ -3,6 +3,7 @@
 #include <arrow/python/pyarrow.h>
 
 // #include <factors/continuous/LinearGaussianCPD.hpp>
+#include <factors/continuous/CKDE.hpp>
 
 #include <graph/dag.hpp>
 
@@ -25,11 +26,18 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     m.doc() = "pybind11 data plugin"; // optional module docstring
 
-    py::class_<LinearGaussianCPD>(m, "LinearGaussianCPD")
+    auto factors = m.def_submodule("factors", "Factors submodule.");
+    auto continuous = factors.def_submodule("continuous", "Continuous factors submodule.");
+
+    py::class_<LinearGaussianCPD>(continuous, "LinearGaussianCPD")
             .def(py::init<const std::string, const std::vector<std::string>>())
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
             .def("fit", &LinearGaussianCPD::fit);
 
 
-    m.def("estimate", &learning::algorithms::estimate, "Hill climbing");
+
+    auto learning = m.def_submodule("learning", "Learning submodule");
+    auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
+
+    algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate");
 }

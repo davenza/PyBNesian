@@ -1,3 +1,6 @@
+#ifndef PGM_DATASET_OPERATORS_HPP
+#define PGM_DATASET_OPERATORS_HPP
+
 #include <queue>
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
@@ -345,6 +348,6 @@ namespace learning::operators {
     //     default_operator_t operator_type;
     // };
 
-
-
 }
+
+#endif //PGM_DATASET_OPERATORS_HPP

@@ -1,3 +1,7 @@
+#ifndef PGM_DATASET_BENCHMARK_BASIC_HPP
+#define PGM_DATASET_BENCHMARK_BASIC_HPP
+
+
 #include <chrono>
 
 #define BENCHMARK_PRE_SCOPE(N)                                                                                                               \
@@ -21,3 +25,6 @@
                 }                                                                                                                            \
                 auto t2 = std::chrono::high_resolution_clock::now();                                                                         \
                 std::cout << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count() / N) << " ms" << std::endl;\
+
+
+#endif //PGM_DATASET_BENCHMARK_BASIC_HPP

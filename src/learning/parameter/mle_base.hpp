@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_MLEBASE_HPP
-#define PGM_DATASET_MLEBASE_HPP
+#ifndef PGM_DATASET_MLE_BASE_HPP
+#define PGM_DATASET_MLE_BASE_HPP
 
 #include <dataset/dataset.hpp>
 
@@ -21,4 +21,4 @@ namespace learning::parameter {
     };
 }
 
-#endif //PGM_DATASET_MLEBASE_HPP
+#endif //PGM_DATASET_MLE_BASE_HPP

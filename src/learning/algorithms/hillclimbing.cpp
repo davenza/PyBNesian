@@ -44,9 +44,7 @@ namespace learning::algorithms {
             BIC bic(df);
             // ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
             ArcOperatorsType arc_op(bic, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
-            BENCHMARK_PRE_SCOPE(10)  
             hc.estimate(df, arc_op, epsilon, gbn);
-            BENCHMARK_POST_SCOPE(10)  
         }
          else {
             throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");

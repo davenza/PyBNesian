@@ -27,20 +27,16 @@ namespace models {
 
         using node_iterator_t = typename DagType::node_iterator_t;
 
-        using nodes_size_type = typename DagType::nodes_size_type;
-        using edges_size_type = typename DagType::edges_size_type;
-        using degree_size_type = typename DagType::degree_size_type;
-
         BayesianNetwork(const std::vector<std::string>& nodes);
         BayesianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs);
 
         // static void requires(const DataFrame& df);
 
-        nodes_size_type num_nodes() const {
+        int num_nodes() const {
             return g.num_nodes();
         }
 
-        edges_size_type num_edges() const {
+        int num_edges() const {
             return g.num_edges();
         }
 
@@ -68,27 +64,27 @@ namespace models {
             return name(g.index(node));
         }
 
-        degree_size_type num_parents(node_descriptor node) const {
+        int num_parents(node_descriptor node) const {
             return g.num_parents(node);
         }
 
-        degree_size_type num_parents(int node_index) const {
+        int num_parents(int node_index) const {
             return num_parents(g.node(node_index));
         }
 
-        degree_size_type num_parents(const std::string& node) const {
+        int num_parents(const std::string& node) const {
             return num_parents(m_indices.at(node));
         }
 
-        degree_size_type num_children(node_descriptor node) const {
+        int num_children(node_descriptor node) const {
             return g.num_children(node);
         }
 
-        degree_size_type num_children(int node_index) const {
+        int num_children(int node_index) const {
             return num_children(g.node(node_index));
         }
 
-        degree_size_type num_children(const std::string& node) const {
+        int num_children(const std::string& node) const {
             return num_children(m_indices.at(node));
         }
 
@@ -297,8 +293,5 @@ namespace models {
     // }
 
 }
-
-
-
 
 #endif //PGM_DATASET_BAYESIANNETWORK_HPP

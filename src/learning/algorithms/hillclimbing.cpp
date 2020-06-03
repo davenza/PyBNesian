@@ -3,7 +3,8 @@
 #include <util/validate_dtype.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
-#include <learning/scores/scores.hpp>
+#include <learning/scores/bic.hpp>
+#include <learning/scores/cv_likelihood.hpp>
 #include <learning/operators/operators.hpp>
 
 using namespace dataset;
@@ -11,10 +12,11 @@ using namespace dataset;
 using Eigen::VectorXd, Eigen::MatrixXd;;
 using models::GaussianNetwork, models::GaussianNetwork_M, models::GaussianNetwork_L;
 using learning::scores::BIC;
+// learning::scores::CVLikelihood;
 using graph::arc_vector;
 using learning::operators::ArcOperatorsType;
 
-#include <util/benchmark_basic.hpp>
+// #include <util/benchmark_basic.hpp>
 
 namespace learning::algorithms {
 
@@ -44,8 +46,16 @@ namespace learning::algorithms {
             BIC bic(df);
             // ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
             ArcOperatorsType arc_op(bic, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
-            hc.estimate(df, arc_op, epsilon, gbn);
-        }
+            // BENCHMARK_PRE_SCOPE(10)
+            hc.estimate(arc_op, epsilon, gbn);
+            // BENCHMARK_POST_SCOPE(10)
+        } 
+        // else if (str_score == "predictive-l") {
+        //     CVLikelihood cv(df, 10);
+
+        //     ArcOperatorsType arc_op(cv, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+        //     hc.estimate(arc_op, epsilon, gbn);
+        // }
          else {
             throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
         }
@@ -53,10 +63,9 @@ namespace learning::algorithms {
     
     template<typename Model>
     template<typename Operators>
-    void GreedyHillClimbing<Model>::estimate(const DataFrame& df, 
-                                              Operators& op,
-                                              double epsilon,
-                                              const Model& start) {
+    void GreedyHillClimbing<Model>::estimate(Operators& op,
+                                             double epsilon,
+                                             const Model& start) {
 
 
         // Model::requires(df);

@@ -23,7 +23,7 @@ namespace learning::algorithms {
 
     public:
         template<typename Operators>
-        void estimate(const DataFrame& data, Operators& op_pool, double epsilon, const Model& start);
+        void estimate(Operators& op_pool, double epsilon, const Model& start);
     };
 }
 

@@ -30,7 +30,7 @@ namespace learning::operators {
     public:
         AddArc(typename Model::node_descriptor source, 
                typename Model::node_descriptor dest,
-               double delta) : m_source(source), m_dest(dest), Operator<Model, OperatorType>(delta) {}
+               double delta) :  Operator<Model, OperatorType>(delta), m_source(source), m_dest(dest) {}
         
         void apply(Model& m, OperatorType& op_type) override {
             m.add_edge(m_source, m_dest);
@@ -47,7 +47,7 @@ namespace learning::operators {
     public:
         RemoveArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : m_source(source), m_dest(dest), Operator<Model, OperatorType>(delta) {}
+                  double delta) : Operator<Model, OperatorType>(delta), m_source(source), m_dest(dest) {}
         
         void apply(Model& m, OperatorType& op_type) override {
             m.remove_edge(m_source, m_dest);
@@ -64,7 +64,7 @@ namespace learning::operators {
     public:
         FlipArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : m_source(source), m_dest(dest), Operator<Model, OperatorType>(delta){}
+                  double delta) : Operator<Model, OperatorType>(delta), m_source(source), m_dest(dest) {}
 
         void apply(Model& m, OperatorType& op_type) override {
             m.remove_edge(m_source, m_dest);
@@ -117,8 +117,7 @@ namespace learning::operators {
                                                     sorted_idx(),
                                                     max_indegree(max_indegree)
     {
-        using node_size = typename Model::nodes_size_type;
-        node_size nnodes = model.num_nodes();
+        int nnodes = model.num_nodes();
         auto val_ptr = valid_op.data();
 
         std::fill(val_ptr, val_ptr + nnodes*nnodes, true);
@@ -144,15 +143,15 @@ namespace learning::operators {
             delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
         }
 
-        for (node_size i = 0; i < nnodes; ++i) {
+        for (int i = 0; i < nnodes; ++i) {
             valid_op(i, i) = false;
             delta(i, i) = std::numeric_limits<double>::lowest();
         }
 
         sorted_idx.reserve(valid_ops);
 
-        for (node_size i = 0; i < nnodes; ++i) {
-            for (node_size j = 0; j < nnodes; ++j) {
+        for (int i = 0; i < nnodes; ++i) {
+            for (int j = 0; j < nnodes; ++j) {
                 if (valid_op(i, j)) {
                     sorted_idx.push_back(i + j * nnodes);
                 }

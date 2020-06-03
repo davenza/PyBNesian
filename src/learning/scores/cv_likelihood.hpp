@@ -1,3 +1,6 @@
+#ifndef PGM_DATASET_CV_LIKELIHOOD_HPP
+#define PGM_DATASET_CV_LIKELIHOOD_HPP
+
 #include <dataset/dataset.hpp>
 #include <dataset/crossvalidation_adaptator.hpp>
 
@@ -7,8 +10,8 @@ namespace learning::scores {
     public:
         inline static constexpr bool is_decomposable = true;
 
-        CVLikelihood(DataFrame& df, int k) : m_df(df), m_cv(k) {}
-        CVLikelihood(DataFrame& df, int k, int seed) : m_df(df), m_cv(k, seed) {}
+        CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
+        CVLikelihood(const DataFrame& df, int k, int seed) : m_cv(df, k, seed) {}
 
         template<typename Model>
         double score(const Model& model);
@@ -21,15 +24,10 @@ namespace learning::scores {
             return local_score(model, variable, evidence.begin(), evidence.end());
         }
 
-
         template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<is_decomposable, int> = 0>
-        double local_score(const Model& model,
-                            const VarType& variable, 
-                            EvidenceIter evidence_begin,
-                                    EvidenceIter evidence_end) const;
+        double local_score(const Model& model, const VarType& variable, EvidenceIter evidence_begin, EvidenceIter evidence_end) const;
 
     private:
-        DataFrame& m_df;
         CrossValidation m_cv;
     };
 
@@ -45,3 +43,5 @@ namespace learning::scores {
 
     }
 }
+
+#endif //PGM_DATASET_CV_LIKELIHOOD_HPP

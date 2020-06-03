@@ -29,28 +29,25 @@ namespace graph {
         using edge_iterator_t = typename boost::graph_traits<Graph>::edge_iterator;
         using in_edge_iterator_t = typename boost::graph_traits<Graph>::in_edge_iterator;
 
-        using nodes_size_type = typename boost::graph_traits<Graph>::vertices_size_type;
-        using edges_size_type = typename boost::graph_traits<Graph>::edges_size_type;
-        using degree_size_type = typename boost::graph_traits<Graph>::degree_size_type;
 
         template<typename = std::enable_if_t<std::is_default_constructible_v<Graph>>>
         Dag() = delete;
 
         Dag(int nnodes) : g(nnodes) { }
 
-        nodes_size_type num_nodes() const {
+        int num_nodes() const {
             return num_vertices(g);
         }
 
-        edges_size_type num_arcs() const {
+        int num_arcs() const {
             return num_edges(g);
         }
 
-        degree_size_type num_parents(node_descriptor node) const {
+        int num_parents(node_descriptor node) const {
             return boost::in_degree(node, g);
         }
 
-        degree_size_type num_children(node_descriptor node) const {
+        int num_children(node_descriptor node) const {
             return boost::out_degree(node, g);
         }
 
@@ -70,7 +67,7 @@ namespace graph {
             return get(boost::vertex_index, g)[n];
         }
 
-        node_descriptor node(nodes_size_type index) const {
+        node_descriptor node(int index) const {
             return vertex(index, g);
         }
 

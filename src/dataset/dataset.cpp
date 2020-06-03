@@ -127,17 +127,6 @@ case Type::TypeID:                                                              
         switch (dt->id()) {
             CASE_DOWNCAST_COPY(DOUBLE, arrow::DoubleType);
             CASE_DOWNCAST_COPY(FLOAT, arrow::FloatType);
-            CASE_DOWNCAST_COPY(HALF_FLOAT, arrow::HalfFloatType);
-            CASE_DOWNCAST_COPY(UINT8, arrow::UInt8Type);
-            CASE_DOWNCAST_COPY(INT8, arrow::Int8Type);
-            CASE_DOWNCAST_COPY(UINT16, arrow::UInt16Type);
-            CASE_DOWNCAST_COPY(INT16, arrow::Int16Type);
-            CASE_DOWNCAST_COPY(UINT32, arrow::UInt32Type);
-            CASE_DOWNCAST_COPY(INT32, arrow::Int32Type);
-            CASE_DOWNCAST_COPY(UINT64, arrow::UInt64Type);
-            CASE_DOWNCAST_COPY(INT64, arrow::Int64Type);
-            CASE_DOWNCAST_COPY(DATE32, arrow::Date32Type);
-            CASE_DOWNCAST_COPY(DATE64, arrow::Date64Type);
             default:
                 return nullptr;
         }
@@ -159,6 +148,46 @@ case Type::TypeID:                                                              
     }
 
     std::shared_ptr<arrow::RecordBatch> DataFrame::operator->() const { return m_batch; }
+
+    int64_t null_count(Array_iterator begin, Array_iterator end) {
+        int64_t r = 0;
+        for (auto it = begin; it != end; it++) {
+            r += (*it)->null_count();
+        }
+        return r;
+    }
+
+    Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end) {
+        if (null_count(begin, end) > 0) {
+
+            Array_iterator first_null_col = end;
+
+            for(auto it = begin; it < end; ++it) {
+                if ((*it)->null_count() != 0) {
+                    first_null_col = it;
+                    break;
+                }
+            }
+
+            auto res = Buffer::Copy((*first_null_col)->null_bitmap(), arrow::default_cpu_memory_manager());
+            auto bitmap = std::move(res).ValueOrDie();
+
+            for(auto it = first_null_col + 1; it < end; ++it) {
+                auto col = *it;
+                if (col->null_count()) {
+                    auto other_bitmap = col->null_bitmap();
+
+                    arrow::internal::BitmapAnd(bitmap->data(), 0,
+                                               other_bitmap->data(), 0,
+                                                (*first_null_col)->length(),
+                                               0, bitmap->mutable_data());
+                }
+            }
+            return bitmap;
+        } else {
+            return nullptr;
+        }
+    }
 
 }
 

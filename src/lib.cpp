@@ -7,7 +7,7 @@
 
 #include <graph/dag.hpp>
 
-#include <learning/scores/scores.hpp>
+#include <learning/scores/bic.hpp>
 // #include <learning/scores/bic.hpp>
 #include <learning/parameter/mle.hpp>
 #include <learning/algorithms/hillclimbing.hpp>

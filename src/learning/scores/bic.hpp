@@ -15,9 +15,6 @@ using learning::parameter::MLE;
 
 namespace learning::scores {
 
-    // template<typename Score>
-    // struct score_traits;
-
 
     class BIC {
     public:

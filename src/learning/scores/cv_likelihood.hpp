@@ -38,9 +38,10 @@ namespace learning::scores {
                                         EvidenceIter evidence_begin,
                                         EvidenceIter evidence_end) const {
 
-        MLE<LinearGaussianCPD> mle;
+        
+        // for (auto [train_df, test_df] : m_cv.loc(variable, )) {
 
-
+        // }
     }
 }
 

@@ -187,6 +187,8 @@ namespace dataset {
         Array_ptr loc(int i) const { return m_batch->column(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         Array_ptr loc(StringType name) const { return m_batch->GetColumnByName(name); }
+        template<typename ...Args>
+        DataFrame loc(Args... args);
 
         
         Buffer_ptr combined_bitmap() const { Array_vector cols = m_batch->columns(); return dataset::combined_bitmap(cols.begin(), cols.end()); }
@@ -274,6 +276,32 @@ namespace dataset {
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         Array_vector indices_to_columns(IndexIter begin, IndexIter end) const;
 
+        template<typename T, util::enable_if_index_container_t<T, int> = 0>
+        void append_columns(std::vector<std::shared_ptr<arrow::Field>>& fields, Array_vector& arrays, T cols);
+
+        template<typename V>
+        void append_columns(std::vector<std::shared_ptr<arrow::Field>>& fields, 
+                            Array_vector& arrays, 
+                            std::initializer_list<V> cols) { append_columns<std::initializer_list<V>>(fields, arrays, cols); }
+
+        void append_columns(std::vector<std::shared_ptr<arrow::Field>>& fields,
+                            Array_vector& arrays,
+                            int i) {
+            auto field = m_batch->schema()->field(i);
+            fields.push_back(field);
+            arrays.push_back(m_batch->column(i));
+        }
+
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        void append_columns(std::vector<std::shared_ptr<arrow::Field>>& fields,
+                            Array_vector& arrays,
+                            StringType name) {
+
+            auto field = m_batch->schema()->GetFieldByName(name);
+            fields.push_back(field);
+            arrays.push_back(m_batch->GetColumnByName(name));
+        }
+
         std::shared_ptr <arrow::RecordBatch> m_batch;
     };
 
@@ -307,30 +335,62 @@ namespace dataset {
         return v;    
     }
 
+    template<typename T, util::enable_if_index_container_t<T, int> = 0>
+    inline int size_argument(T arg) { return arg.size(); }
+
+    inline int size_argument(int) { return 1; }
+
+    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+    inline int size_argument(StringType) { return 1; }
+
+    template<typename T, util::enable_if_index_container_t<T, int> = 0>
+    void DataFrame::append_columns(std::vector<std::shared_ptr<arrow::Field>>& fields,
+                        Array_vector& arrays,
+                        T cols) {
+
+        for (auto &c : cols) {
+            if constexpr (util::is_integral_container_v<T>) {
+                auto field = m_batch->schema()->field(c);
+                fields.push_back(field);
+                arrays.push_back(m_batch->column(c));
+            }
+            else if constexpr (util::is_string_container_v<T>) {
+                auto field = m_batch->schema()->GetFieldByName(c);
+                fields.push_back(field);
+                arrays.push_back(m_batch->GetColumnByName(c));
+            }
+        }
+    }
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     DataFrame DataFrame::loc(T cols) const {
         static_assert(util::is_integral_container_v<T> || util::is_string_container_v<T>,
                       "loc() only accepts integral or string containers.");
-        auto size = cols.size();
 
         std::vector<std::shared_ptr<arrow::Field>> new_fields;
-        new_fields.reserve(size);
-
         std::vector<Array_ptr> new_cols;
+
+        auto size = cols.size();
+        new_fields.reserve(size);
         new_cols.reserve(size);
-        for (auto &c : cols) {
-            if constexpr (util::is_integral_container_v<T>) {
-                auto field = m_batch->schema()->field(c);
-                new_cols.push_back(m_batch->column(c));
-                new_fields.push_back(field);
-            }
-            else if constexpr (util::is_string_container_v<T>) {
-                auto field = m_batch->schema()->GetFieldByName(c);
-                new_cols.push_back(m_batch->GetColumnByName(c));
-                new_fields.push_back(field);
-            }
-        }
+
+        append_columns(new_fields, new_cols, cols);
+
+        auto new_schema = std::make_shared<arrow::Schema>(new_fields);
+        return DataFrame(arrow::RecordBatch::Make(new_schema, m_batch->num_rows(), new_cols));
+    }
+
+
+    template<typename ...Args>
+    DataFrame DataFrame::loc(Args... args) {
+        std::vector<std::shared_ptr<arrow::Field>> new_fields;
+        Array_vector new_cols;
+
+        int total_size = (size_argument(args) + ...);
+        new_fields.reserve(total_size);
+        new_cols.reserve(total_size);
+
+        (append_columns(new_fields, new_cols, args),...);
 
         auto new_schema = std::make_shared<arrow::Schema>(new_fields);
         return DataFrame(arrow::RecordBatch::Make(new_schema, m_batch->num_rows(), new_cols));

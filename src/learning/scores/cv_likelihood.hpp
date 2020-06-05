@@ -24,24 +24,30 @@ namespace learning::scores {
             return local_score(model, variable, evidence.begin(), evidence.end());
         }
 
-        template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<is_decomposable, int> = 0>
-        double local_score(const Model& model, const VarType& variable, EvidenceIter evidence_begin, EvidenceIter evidence_end) const;
+        template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+        double local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
 
     private:
         CrossValidation m_cv;
     };
 
 
-    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<BIC::is_decomposable, int> = 0>
+    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
     double CVLikelihood::local_score(const Model&,
                                         const VarType& variable, 
-                                        EvidenceIter evidence_begin,
-                                        EvidenceIter evidence_end) const {
-
+                                        const EvidenceIter evidence_begin,
+                                        const EvidenceIter evidence_end) const {
         
-        // for (auto [train_df, test_df] : m_cv.loc(variable, )) {
 
-        // }
+        LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
+
+        double loglik = 0;
+        for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
+            cpd.fit(train_df);
+            loglik += cpd.slogpdf(test_df);
+        }
+
+        return loglik;
     }
 }
 

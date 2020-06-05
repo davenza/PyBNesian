@@ -189,6 +189,26 @@ case Type::TypeID:                                                              
         }
     }
 
+    // inline void append_columns(RecordBatch_ptr& rb, Array_vector& arrays, int i) {
+    //     arrays.push_back(rb->column(i));
+    // }
+
+    // inline void append_schema(RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
+    //     b.AddField(rb->schema()->field(i));
+    // }
+
+    DataFrame DataFrame::loc(int i) const {
+        arrow::SchemaBuilder b;
+        b.AddField(m_batch->schema()->field(i));
+        auto r = b.Finish();
+        if (!r.ok()) {
+            throw std::domain_error("Schema could not be created for column index " + std::to_string(i));
+        }
+        Array_vector c = { m_batch->column(i) };
+        return RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), c);
+    }
+
+
 }
 
 

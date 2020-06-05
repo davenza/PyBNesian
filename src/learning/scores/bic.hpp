@@ -35,7 +35,7 @@ namespace learning::scores {
 
 
         template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
-        double local_score(const Model& model, const VarType& variable, EvidenceIter evidence_begin, EvidenceIter evidence_end) const;
+        double local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
     
     private:
         DataFrame& m_df;        
@@ -44,8 +44,8 @@ namespace learning::scores {
     template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int>>
     double BIC::local_score(const Model&,
                             const VarType& variable, 
-                            EvidenceIter evidence_begin,
-                            EvidenceIter evidence_end) const {
+                            const EvidenceIter evidence_begin,
+                            const EvidenceIter evidence_end) const {
 
         MLE<LinearGaussianCPD> mle;
 

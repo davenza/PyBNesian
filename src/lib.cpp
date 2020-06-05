@@ -32,7 +32,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<LinearGaussianCPD>(continuous, "LinearGaussianCPD")
             .def(py::init<const std::string, const std::vector<std::string>>())
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
-            .def("fit", &LinearGaussianCPD::fit);
+            .def("fit", py::overload_cast<py::handle>(&LinearGaussianCPD::fit));
 
 
 

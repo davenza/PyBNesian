@@ -237,6 +237,7 @@ namespace dataset {
         using value_type = std::pair<DataFrame, DataFrame>;
         using reference = value_type&;
         using pointer = value_type*;
+        // FIXME: Check the iterator category operations.
         using iterator_category = std::random_access_iterator_tag; //or another tag
 
         cv_iterator(int i, const CrossValidation& cv) : i(i), cv(cv), updated_fold(false), current_fold() {}
@@ -277,13 +278,17 @@ namespace dataset {
 
     std::pair<DataFrame, DataFrame> fold(int fold) { return generate_cv_pair(fold); }
 
+    const DataFrame& data() const { return df; }
+
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     CrossValidation loc(T cols) const { return CrossValidation(df.loc(cols), prop); }
     template<typename V>
     CrossValidation loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
-    // CrossValidation loc(int i) const { return CrossValidation(*this, df.loc(i)); }
-    // template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    // CrossValidation loc(StringType name) const { return CrossValidation(*this, df.loc(name)); }
+    CrossValidation loc(int i) const { return CrossValidation(df.loc(i), prop); }
+    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+    CrossValidation loc(StringType name) const { return CrossValidation(df.loc(name), prop); }
+    template<typename ...Args>
+    CrossValidation loc(Args... args) const  { return CrossValidation(df.loc(args...), prop); }
 
     private:
         CrossValidation(const DataFrame df, const std::shared_ptr<CrossValidationProperties> prop) : df(df), prop(prop) {}

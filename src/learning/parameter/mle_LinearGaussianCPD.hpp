@@ -183,7 +183,7 @@ namespace learning::parameter {
                                                                              EvidenceIter evidence_begin,
                                                                              EvidenceIter evidence_end) {
 
-        auto var_col = df.loc(variable);
+        auto var_col = df.col(variable);
 
         if (var_col) {
             auto type = var_col->type();
@@ -195,7 +195,7 @@ namespace learning::parameter {
             }
 
             for (auto ev = evidence_begin; ev != evidence_end; ++ev) {
-                auto ev_col = df.loc(*ev);
+                auto ev_col = df.col(*ev);
 
                 if constexpr (std::is_convertible_v<VarType, const std::string&> && 
                               std::is_convertible_v<typename std::iterator_traits<EvidenceIter>::value_type, const std::string&>) 

@@ -18,7 +18,7 @@ namespace py = pybind11;
 namespace pyarrow = arrow::py;
 
 using arrow::Type;
-using Eigen::Matrix, Eigen::Dynamic, Eigen::Map, Eigen::MatrixBase;
+using Eigen::Matrix, Eigen::Array, Eigen::Dynamic, Eigen::Map, Eigen::MatrixBase;
 
 using dataset::DataFrame;
 
@@ -72,27 +72,24 @@ namespace factors::continuous {
     logpdf_impl(const DataFrame& df, const VectorXd& beta, double variance, 
                             const std::string& var, const std::vector<std::string>& evidence) {
         using CType = typename ArrowType::c_type;
-        using VecType = Matrix<CType, Dynamic, 1>;
+        using ArrayVecType = Array<CType, Dynamic, 1>;
 
-        VecType means = VecType(df->num_rows());
+        ArrayVecType means = ArrayVecType::Constant(df->num_rows(), beta[0]);
 
-        // int idx = 1;
-        // for (auto it = evidence.begin(); it != evidence.end(); ++it, ++idx) {
-        //     auto ev_array = df.to_eigen<false, ArrowType, false>(*it);
-        //     means += static_cast<CType>(beta[idx]) * ev_array;
-        // }
+        int idx = 1;
+        for (auto it = evidence.begin(); it != evidence.end(); ++it, ++idx) {
+            auto ev_array = df.to_eigen<false, ArrowType, false>(*it);
+            means += static_cast<CType>(beta[idx]) * ev_array->array();
+        }
 
-        // auto var_array = df.to_eigen<false, ArrowType, false>(var);
+        auto var_array = df.to_eigen<false, ArrowType, false>(var);
 
-        // CType inv_variance = 1 / variance;
+        double inv_variance = 1 / variance;
+        ArrayVecType logl = (inv_variance * (var_array->array() - means)).square();
 
-        auto t = means;
+        logl += -0.5*std::log(variance) - 0.5*std::log(2*pi<CType>);
 
-        VecType logl = t;
-
-        // logl += -0.5*std::log(variance) - 0.5*std::log(2*pi<CType>);
-        
-        return logl;
+        return logl.matrix();
     }
 
     template<typename ArrowType>

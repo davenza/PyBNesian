@@ -48,8 +48,6 @@ ext_modules = [
          'src/dataset/dataset.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
-        #  'src/learning/parameter/mle_LinearGaussianCPD.cpp',
-        #  'src/learning/scores/bic.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
         #  'src/learning/operators/operators.cpp',
          'src/models/GaussianNetwork.cpp',
@@ -61,9 +59,10 @@ ext_modules = [
             # pa.get_include(),
             "src",
             "lib/eigen-3.3.7",
-            "lib/graph"
+            "lib/graph",
+            "lib/OpenCL"
         ],
-        libraries=pa.get_libraries(),
+        libraries=pa.get_libraries() + ["OpenCL"],
         library_dirs=pa.get_library_dirs(),
         language='c++',
         # Included as isystem to avoid errors in arrow headers.

@@ -34,6 +34,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
             .def("fit", py::overload_cast<py::handle>(&LinearGaussianCPD::fit));
 
+    m.def("opencl", &factors::continuous::opencl);
 
 
     auto learning = m.def_submodule("learning", "Learning submodule");

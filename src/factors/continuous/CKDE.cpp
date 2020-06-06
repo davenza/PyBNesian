@@ -1,6 +1,21 @@
 #include <factors/continuous/CKDE.hpp>
+#include <opencl/opencl_config.hpp>
+
+
+using opencl::OpenCLConfig;
 
 namespace factors::continuous {
+
+
+    template<typename ArrowType>
+    void CKDE::_fit(const DataFrame& df) {
+
+    }
+
+    template<typename ArrowType>
+    void CKDE::_fit_null(const DataFrame& df) {
+        
+    }
 
 
 
@@ -11,7 +26,28 @@ namespace factors::continuous {
     }
 
     void CKDE::fit(const DataFrame& df) {
+        auto type_id = df.same_type(m_variable, m_evidence);
 
+        bool contains_null = df.null_count(m_variable, m_evidence);
+
+        switch(type_id) {
+            case Type::DOUBLE: {
+                if (contains_null)
+                    _fit_null<arrow::DoubleType>(df);
+                else 
+                    _fit<arrow::DoubleType>(df);
+                break;
+            }
+            case Type::FLOAT: {
+                if (contains_null)
+                    _fit_null<arrow::FloatType>(df);
+                else 
+                    _fit<arrow::FloatType>(df);
+                break;
+            }
+            default:
+                throw py::value_error("Wrong data type to fit CKDE. [double] or [float] data is expected.");
+        }
     }
 
 
@@ -23,7 +59,13 @@ namespace factors::continuous {
             std::cout<<" No platforms found. Check OpenCL installation!\n";
             // exit(1);
         }
-        cl::Platform default_platform=all_platforms[0];
-        std::cout << "Using platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
+        std::cout << all_platforms.size() << " platforms found." << std::endl;
+
+        for (auto platform : all_platforms) {
+            std::cout << platform.getInfo<CL_PLATFORM_NAME>() << ". Version: " 
+                        << platform.getInfo<CL_PLATFORM_VERSION>() << std::endl; 
+        }
+
+        auto cl_config = OpenCLConfig::init_opencl();
     }
 }

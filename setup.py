@@ -13,9 +13,12 @@
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from distutils.command import build as build_module
 import sys
 import setuptools
 import os
+
+from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.0.1'
 
@@ -103,6 +106,17 @@ def cpp_flag(compiler):
                        'is needed!')
 
 
+def expand_sources():
+    sources = ['src/factors/continuous/opencl/CKDE.cl.src']
+
+    for source in sources:
+        (base, _) = os.path.splitext(source)
+        outstr = process_c_file(source)
+        with open(base, 'w') as fid:
+            fid.write(outstr)
+
+
+
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
     c_opts = {
@@ -120,6 +134,8 @@ class BuildExt(build_ext):
         l_opts['unix'] += darwin_opts
 
     def build_extensions(self):
+        expand_sources()
+
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
         link_opts = self.l_opts.get(ct, [])

@@ -1,0 +1,50 @@
+/* This code assumes column major data for matrices. */
+
+#define IDX(i, j, rows) (i) + ((j)*(rows))
+#define ROW(idx, rows) (idx) % (rows)
+#define COL(idx, rows) (idx) / (rows)
+
+/**begin repeat
+ * #dt = double, float#
+ */
+
+__kernel void substract_matrix_vec_@dt@(__constant @dt@ *matrix,
+                                   __private uint matrix_rows,
+                                   __private uint matrix_cols,
+                                   __constant @dt@ *vec_location,
+                                   __private uint vec_location_rows,
+                                   __private uint vec_row_idx,
+                                   __global @dt@ *res
+                                )
+{
+    int i = get_global_id(0);
+
+    int r = ROW(i, matrix_rows);
+    int c = COL(i, matrix_rows);
+
+    res[IDX(r, c, matrix_rows)] = matrix[i] - vec_location[IDX(vec_row_idx, c, vec_location_rows)];
+}
+
+
+__kernel void solve_@dt@(__global @dt@ *diff_matrix, 
+                    __private uint diff_matrix_rows, 
+                    __private uint diff_matrix_cols,
+                    __constant @dt@ *cholesky_matrix, 
+                    __private uint cholesky_dim) {
+    uint r = get_global_id(0);
+    
+    for (uint c = 0; c < diff_matrix_cols; c++) {
+        for (uint i = 0; i < c; i++) {
+            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, cholesky_dim)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
+        }
+        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, cholesky_dim)];
+    }
+}
+
+__kernel void square_@dt@(__global @dt@ *m) {
+    uint idx = get_global_id(0);
+    double d = m[idx];
+    m[idx] = d * d;
+}
+
+/**end repeat**/

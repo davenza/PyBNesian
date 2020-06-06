@@ -208,6 +208,25 @@ case Type::TypeID:                                                              
         return RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), c);
     }
 
+    arrow::Type::type DataFrame::same_type(Array_iterator begin, Array_iterator end) const {
+        if (std::distance(begin, end) == 0) {
+            throw std::invalid_argument("Cannot check the data type of no columns");
+        }
+
+        arrow::Type::type dt = (*begin)->type_id();
+
+        for (auto it = begin+1; it != end; ++it) {
+            if((*it)->type_id() != dt) {
+                throw std::invalid_argument("Column 0 [" + (*begin)->type()->ToString() + "] and "
+                                            "column " + std::to_string(std::distance(begin, it)) + "[" + (*it)->type()->ToString() + "] " 
+                                            "have different data types");
+            }
+        }
+
+        return dt;
+    }
+
+
 
 }
 

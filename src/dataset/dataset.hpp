@@ -168,6 +168,7 @@ namespace dataset {
         }
     }
 
+
     class DataFrame {
     public:
 
@@ -194,14 +195,18 @@ namespace dataset {
         template<typename V>
         arrow::Type::type same_type(std::initializer_list<V> cols) const { return same_type(cols.begin(), cols.end()); }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        arrow::Type::type same_type(const std::pair<IndexIter, IndexIter> pair) const { return same_type(pair.first, pair.second); }
-        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        arrow::Type::type same_type(const IndexIter begin, const IndexIter end) const;
+        arrow::Type::type same_type(const IndexIter begin, const IndexIter end) const {
+            auto v = indices_to_columns(begin, end);
+            return same_type(v.begin(), v.end());
+        }
         arrow::Type::type same_type(int i) const { return m_batch->column(i)->type_id(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         arrow::Type::type same_type(const StringType name) const { return m_batch->GetColumnByName(name)->type_id(); }
         template<typename ...Args>
-        arrow::Type::type same_type(Args... args) const;
+        arrow::Type::type same_type(Args... args) const {
+            auto v = indices_to_columns(args...);
+            return same_type(v.begin(), v.end());
+        }
 
 
         Array_ptr col(int i) const { return m_batch->column(i); }
@@ -349,38 +354,7 @@ namespace dataset {
         template<typename ...Args>
         Array_vector indices_to_columns(Args... args) const;
 
-
-        template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        arrow::Type::type datatype_unsafe(const T cols) const { return datatype_unsafe(*cols.begin()); }
-        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        arrow::Type::type datatype_unsafe(const std::pair<IndexIter, IndexIter> pair) const { return datatype_unsafe(*pair.first); }
-        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        arrow::Type::type datatype_unsafe(const IndexIter begin, const IndexIter end) const { return datatype_unsafe(*begin); }
-        arrow::Type::type datatype_unsafe(int i) const { return m_batch->column(i)->type_id(); }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        arrow::Type::type datatype_unsafe(const StringType name) const { return m_batch->GetColumnByName(name)->type_id(); }
-
-        template<typename T, typename... Args>
-        arrow::Type::type datatype_unsafe(T f, Args...) const { return datatype_unsafe(f); }
-
-
-        template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        std::string columns_dt_to_string(const T cols) const { 
-            return columns_dt_to_string(cols.begin(), cols.end()); 
-        }
-        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        std::string columns_dt_to_string(const std::pair<IndexIter, IndexIter> pair) const { 
-            return columns_dt_to_string(pair.first, pair.second); 
-        }
-        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        std::string columns_dt_to_string(const IndexIter begin, const IndexIter end) const;
-        std::string columns_dt_to_string(int i) const { 
-            return "Column " + m_batch->column_name(i) + " [" + m_batch->column(i)->type()->ToString() + "]\n";
-        }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        std::string columns_dt_to_string(const StringType name) const { 
-            return "Column " + name + " [" + m_batch->GetColumnByName(name)->type()->ToString() + "]\n";
-        }
+        arrow::Type::type same_type(Array_iterator begin, Array_iterator end) const;
 
         std::shared_ptr<RecordBatch> m_batch;
     };
@@ -535,52 +509,6 @@ namespace dataset {
             throw std::domain_error("Schema could not be created for selected columns.");
         }
         return DataFrame(RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), new_cols));
-    }
-
-
-    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    arrow::Type::type DataFrame::same_type(const IndexIter begin, const IndexIter end) const {
-        if (std::distance(begin, end) == 0) {
-            throw std::invalid_argument("Cannot check the data type of no columns");
-        }
-
-        arrow::Type::type dt = col(*begin)->type_id();
-
-        for (auto it = begin+1; it != end; ++it) {
-            if(col(*it)->type_id() != dt) {
-                throw std::invalid_argument("Column " + name(*begin) + "[" + col(*begin)->type()->ToString() + "] and "
-                                            "column " + name(*it) + "[" + col(*it)->type()->ToString() + "] " 
-                                            "have different data types");
-            }
-        }
-
-        return dt;
-    }
-
-    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    std::string DataFrame::columns_dt_to_string(const IndexIter begin, const IndexIter end) const {
-        std::string s = "";
-        for (auto it = begin; it != end; ++it) {
-            s += columns_dt_to_string(*it);
-        }
-        return s;
-    }
-
-
-    template<typename ...Args>
-    arrow::Type::type DataFrame::same_type(Args... args) const {
-        if (sizeof...(args) == 0) {
-            throw std::invalid_argument("Cannot check the data type of no columns");
-        }
-
-        bool all_equal = (same_type(args) == ...);
-
-        if (!all_equal) {
-            throw std::invalid_argument("Some columns have different data types: " + 
-                                (columns_dt_to_string(args) + ...));
-        }
-
-        return datatype_unsafe(args...);
     }
 }
 

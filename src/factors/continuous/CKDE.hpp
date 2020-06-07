@@ -7,10 +7,11 @@
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
 #include <dataset/dataset.hpp>
+#include <util/math_constants.hpp>
 
 namespace py = pybind11;
 using dataset::DataFrame;
-using Eigen::VectorXd;
+using Eigen::VectorXd, Eigen::Ref, Eigen::LLT;
 using opencl::OpenCLConfig;
 
 namespace factors::continuous {
@@ -25,7 +26,10 @@ namespace factors::continuous {
         CKDE(const std::string variable, const std::vector<std::string> evidence, KDEBandwidth b_selector) 
                                                                                   : m_variable(variable), 
                                                                                     m_evidence(evidence), 
-                                                                                    m_bselector(b_selector) {}
+                                                                                    m_bselector(b_selector),
+                                                                                    m_H_cholesky(),
+                                                                                    m_training(),
+                                                                                    m_lognorm_const(0) {}
 
         void fit(py::handle pyobject);
         void fit(const DataFrame& df);
@@ -36,40 +40,53 @@ namespace factors::continuous {
         double slogpdf(py::handle pyobject) const;
         double slogpdf(const DataFrame& df) const;
     private:
-        template<typename ArrowType>
+        template<typename ArrowType, bool contains_null>
         void _fit(const DataFrame& df);
-        template<typename ArrowType>
-        void _fit_null(const DataFrame& df);
 
-        template<typename ArrowType>
-        void compute_bandwidth(const DataFrame& df);
+        template<typename ArrowType, bool contains_null>
+        Matrix<typename ArrowType::c_type, Dynamic, Dynamic> compute_bandwidth(const DataFrame& df);
+
+        // template<typename ArrowType>
+        // Matrix<typename ArrowType::c_type, Dynamic, Dynamic> compute_bandwidth();
+
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
         KDEBandwidth m_bselector;
-
+        cl::Buffer m_H_cholesky;
+        cl::Buffer m_training;
+        double m_lognorm_const;
     };
 
     void opencl();
 
+    template<typename ArrowType, bool contains_null>
+    Matrix<typename ArrowType::c_type, Dynamic, Dynamic> CKDE::compute_bandwidth(const DataFrame& df) {
+        auto cov = df.cov<ArrowType, contains_null>(m_variable, m_evidence);
+        auto bandwidth = std::pow(df->num_rows(), -1 / (m_evidence.size() + 5)) * (*cov) ;
 
-    template<typename ArrowType>
-    void CKDE::compute_bandwidth(const DataFrame& df) {
-        auto cov = df.cov<ArrowType, false>(m_variable, m_evidence);
-        auto cholesky = cov->llt();
+        return bandwidth;
+    }
+
+    template<typename ArrowType, bool contains_null>
+    void CKDE::_fit(const DataFrame& df) {
+        using CType = typename ArrowType::c_type;
+        using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+
+        auto n = 1 + m_evidence.size();
+
+        auto bandwidth = compute_bandwidth<ArrowType, contains_null>(df);
+
+        LLT<Ref<MatrixType>> llt_cov(bandwidth);
+
         auto opencl = OpenCLConfig::get();
-    }
-
-    template<typename ArrowType>
-    void CKDE::_fit(const DataFrame& df) {   
-        compute_bandwidth<ArrowType>(df);
-    }
-
-    template<typename ArrowType>
-    void CKDE::_fit_null(const DataFrame& df) {
+        opencl.copy_to_buffer(bandwidth.data(), n*n);
         
-    }
+        auto training_data = df.to_eigen<false, ArrowType, contains_null>(m_variable, m_evidence);
+        // opencl.copy_to_buffer(training_data->data(), df->num_rows() * n);
 
+        // m_lognorm_const = -bandwidth.diagonal().array().log().sum() - 0.5 * n * std::log(2*util::pi<CType>);
+    }
 
 }
 

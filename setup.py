@@ -64,7 +64,7 @@ ext_modules = [
             "src",
             "lib/eigen-3.3.7",
             "lib/graph",
-            "lib/OpenCL"
+            # "lib/OpenCL"
         ],
         libraries=pa.get_libraries() + ["OpenCL"],
         library_dirs=pa.get_library_dirs(),
@@ -72,7 +72,7 @@ ext_modules = [
         # Included as isystem to avoid errors in arrow headers.
         extra_compile_args=['-isystem' + d for d in
                                 [pa.get_include()]
-                            ],
+                            ] + ['-isystemlib/OpenCL'],
     ),
 ]
 

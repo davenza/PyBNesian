@@ -34,6 +34,8 @@ namespace opencl {
 
         cl::Context context(dev);
 
+        cl::CommandQueue queue(context, dev);
+
         // Read the program source
         std::ifstream sourceFile("src/factors/continuous/opencl/CKDE.cl");
         std::string sourceCode( std::istreambuf_iterator<char>(sourceFile), (std::istreambuf_iterator<char>()));
@@ -41,9 +43,7 @@ namespace opencl {
 
         cl::Program program (context, source);
 
-
         cl_int build_result = program.build();
-
 
         if (build_result != CL_SUCCESS) {
             cl_int buildErr = CL_SUCCESS;
@@ -53,5 +53,10 @@ namespace opencl {
             }
             throw std::runtime_error("Error compilating OpenCL code.");
         }
+
+        OpenCLConfig::singleton =  OpenCLConfig(context, queue, program);
+        OpenCLConfig::initialized = true;
+
+        return OpenCLConfig::singleton;
     }
 }

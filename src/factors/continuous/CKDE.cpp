@@ -21,16 +21,16 @@ namespace factors::continuous {
         switch(type_id) {
             case Type::DOUBLE: {
                 if (contains_null)
-                    _fit_null<arrow::DoubleType>(df);
+                    _fit<arrow::DoubleType, true>(df);
                 else 
-                    _fit<arrow::DoubleType>(df);
+                    _fit<arrow::DoubleType, false>(df);
                 break;
             }
             case Type::FLOAT: {
                 if (contains_null)
-                    _fit_null<arrow::FloatType>(df);
+                    _fit<arrow::FloatType, true>(df);
                 else 
-                    _fit<arrow::FloatType>(df);
+                    _fit<arrow::FloatType, false>(df);
                 break;
             }
             default:

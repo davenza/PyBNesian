@@ -173,16 +173,20 @@ namespace dataset {
 
     template<typename ArrowType, typename MatrixObject>
     EigenMatrix<ArrowType> compute_cov(std::vector<MatrixObject>& v) {
+        using CType = typename ArrowType::c_type;
+        auto N = v[0].rows();
         auto n = v.size();
         EigenMatrix<ArrowType> res = std::make_unique<typename EigenMatrix<ArrowType>::element_type>(n, n);
-        
-        typename ArrowType::c_type inv_n = 1 / (n - 1);
+
+        CType inv_N = 1 / static_cast<CType>(N - 1);
+
         int i = 0;
         for(auto it = v.begin(); it != v.end(); ++it, ++i) {
-            (*res)(i, i) = (*it).squaredNorm() * inv_n;
+            (*res)(i, i) = (*it).squaredNorm() * inv_N;
+
             int j = 0;
             for(auto it2 = v.begin(); it2 != it; ++it2, ++j) {
-                (*res)(i, j) = (*res)(j, i) = (*it).dot(*it2) * inv_n;
+                (*res)(i, j) = (*res)(j, i) = (*it).dot(*it2) * inv_N;
             }
         }
 

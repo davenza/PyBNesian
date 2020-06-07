@@ -4,7 +4,10 @@
 
 namespace opencl {
 
-        OpenCLConfig& OpenCLConfig::get() {
+    OpenCLConfig OpenCLConfig::singleton = OpenCLConfig();
+    bool OpenCLConfig::initialized = false;
+
+    OpenCLConfig& OpenCLConfig::get() {
 
         if (initialized)
             return singleton;

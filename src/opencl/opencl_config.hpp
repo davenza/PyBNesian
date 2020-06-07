@@ -23,6 +23,7 @@ namespace opencl {
         template<typename T>
         cl::Buffer copy_to_buffer(const T* d, int size);
     private:
+        OpenCLConfig() {}
         OpenCLConfig(cl::Context cont, cl::CommandQueue queue, cl::Program program) : m_context(cont), 
                                                                                       m_queue(queue), 
                                                                                       m_program(program) {}
@@ -34,6 +35,8 @@ namespace opencl {
         cl::CommandQueue m_queue;
         cl::Program m_program;
     };
+
+
 
     template<typename T>
     cl::Buffer OpenCLConfig::copy_to_buffer(const T* d, int size) {

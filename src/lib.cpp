@@ -2,7 +2,7 @@
 #include <pybind11/pybind11.h>
 #include <arrow/python/pyarrow.h>
 
-// #include <factors/continuous/LinearGaussianCPD.hpp>
+#include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
 
 #include <graph/dag.hpp>
@@ -19,6 +19,9 @@ namespace pyarrow = arrow::py;
 // using namespace factors::continuous;
 using namespace ::graph;
 
+using factors::continuous::LinearGaussianCPD;
+using factors::continuous::CKDE;
+
 
 PYBIND11_MODULE(pgm_dataset, m) {
 //    TODO: Check error
@@ -33,6 +36,11 @@ PYBIND11_MODULE(pgm_dataset, m) {
             .def(py::init<const std::string, const std::vector<std::string>>())
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
             .def("fit", py::overload_cast<py::handle>(&LinearGaussianCPD::fit));
+
+    py::class_<CKDE>(continuous, "CKDE")
+            .def(py::init<const std::string, const std::vector<std::string>>())
+            // .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
+            .def("fit", py::overload_cast<py::handle>(&CKDE::fit));
 
     m.def("opencl", &factors::continuous::opencl);
 

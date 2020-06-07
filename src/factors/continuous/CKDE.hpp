@@ -62,8 +62,9 @@ namespace factors::continuous {
 
     template<typename ArrowType, bool contains_null>
     Matrix<typename ArrowType::c_type, Dynamic, Dynamic> CKDE::compute_bandwidth(const DataFrame& df) {
+        using CType = typename ArrowType::c_type;
         auto cov = df.cov<ArrowType, contains_null>(m_variable, m_evidence);
-        auto bandwidth = std::pow(df->num_rows(), -1 / (m_evidence.size() + 5)) * (*cov) ;
+        auto bandwidth = std::pow(static_cast<CType>(df->num_rows()), -1 / static_cast<CType>(m_evidence.size() + 5)) * (*cov) ;
 
         return bandwidth;
     }
@@ -83,9 +84,9 @@ namespace factors::continuous {
         opencl.copy_to_buffer(bandwidth.data(), n*n);
         
         auto training_data = df.to_eigen<false, ArrowType, contains_null>(m_variable, m_evidence);
-        // opencl.copy_to_buffer(training_data->data(), df->num_rows() * n);
+        opencl.copy_to_buffer(training_data->data(), df->num_rows() * n);
 
-        // m_lognorm_const = -bandwidth.diagonal().array().log().sum() - 0.5 * n * std::log(2*util::pi<CType>);
+        m_lognorm_const = -bandwidth.diagonal().array().log().sum() - 0.5 * n * std::log(2*util::pi<CType>);
     }
 
 }

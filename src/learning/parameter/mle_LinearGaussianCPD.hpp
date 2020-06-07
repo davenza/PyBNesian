@@ -19,8 +19,8 @@ namespace learning::parameter {
                auto x_bitmap = df.combined_bitmap(*evidence_begin);
                auto rows = df->num_rows();
                auto combined_bitmap = util::bit_util::combined_bitmap(y_bitmap, x_bitmap, rows);
-               auto y = df.to_eigen<false, ArrowType>(variable, combined_bitmap);
-               auto x = df.to_eigen<false, ArrowType>(*evidence_begin, combined_bitmap);
+               auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
+               auto x = df.to_eigen<false, ArrowType>(combined_bitmap, *evidence_begin);
                return std::make_tuple(std::move(y), std::move(x));
            } else {
                auto y = df.to_eigen<false, ArrowType, contains_null>(variable);
@@ -64,9 +64,9 @@ namespace learning::parameter {
                auto x_bitmap = df.combined_bitmap(evidence_begin, evidence_end);
                auto rows = df->num_rows();
                auto combined_bitmap = util::bit_util::combined_bitmap(y_bitmap, x_bitmap, rows);
-               auto y = df.to_eigen<false, ArrowType>(variable, combined_bitmap);
-               auto x1 = df.to_eigen<false, ArrowType>(*evidence_begin, combined_bitmap);
-               auto x2 = df.to_eigen<false, ArrowType>(*(evidence_begin + 1), combined_bitmap);
+               auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
+               auto x1 = df.to_eigen<false, ArrowType>(combined_bitmap, *evidence_begin);
+               auto x2 = df.to_eigen<false, ArrowType>(combined_bitmap, *(evidence_begin + 1));
                return std::make_tuple(std::move(y), std::move(x1), std::move(x2));
            } else {
                auto y = df.to_eigen<false, ArrowType, contains_null>(variable);
@@ -121,8 +121,8 @@ namespace learning::parameter {
                 auto X_bitmap = df.combined_bitmap(evidence_begin, evidence_end);
                 auto rows = df->num_rows();
                 auto combined_bitmap = util::bit_util::combined_bitmap(y_bitmap, X_bitmap, rows);
-                auto y = df.to_eigen<false, ArrowType>(variable, combined_bitmap);
-                auto X = df.to_eigen<true, ArrowType>(evidence_begin, evidence_end, combined_bitmap);
+                auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
+                auto X = df.to_eigen<true, ArrowType>(combined_bitmap, evidence_begin, evidence_end);
                 return std::make_tuple(std::move(y), std::move(X));
             } else {
                 auto y = df.to_eigen<false, ArrowType, contains_null>(variable);

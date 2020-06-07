@@ -3,6 +3,7 @@
 
 #include<iostream>
 #include <CL/cl2.hpp>
+#include <opencl/opencl_config.hpp>
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
 #include <dataset/dataset.hpp>
@@ -10,6 +11,7 @@
 namespace py = pybind11;
 using dataset::DataFrame;
 using Eigen::VectorXd;
+using opencl::OpenCLConfig;
 
 namespace factors::continuous {
     
@@ -19,8 +21,7 @@ namespace factors::continuous {
 
     class CKDE {
     public:
-        CKDE(const std::string variable, const std::vector<std::string> evidence) : m_variable(variable), 
-                                                                                    m_evidence(evidence) {}
+        CKDE(const std::string variable, const std::vector<std::string> evidence) : CKDE(variable, evidence, KDEBandwidth::SCOTT) {}
         CKDE(const std::string variable, const std::vector<std::string> evidence, KDEBandwidth b_selector) 
                                                                                   : m_variable(variable), 
                                                                                     m_evidence(evidence), 
@@ -40,6 +41,8 @@ namespace factors::continuous {
         template<typename ArrowType>
         void _fit_null(const DataFrame& df);
 
+        template<typename ArrowType>
+        void compute_bandwidth(const DataFrame& df);
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -48,6 +51,25 @@ namespace factors::continuous {
     };
 
     void opencl();
+
+
+    template<typename ArrowType>
+    void CKDE::compute_bandwidth(const DataFrame& df) {
+        auto cov = df.cov<ArrowType, false>(m_variable, m_evidence);
+        auto cholesky = cov->llt();
+        auto opencl = OpenCLConfig::get();
+    }
+
+    template<typename ArrowType>
+    void CKDE::_fit(const DataFrame& df) {   
+        compute_bandwidth<ArrowType>(df);
+    }
+
+    template<typename ArrowType>
+    void CKDE::_fit_null(const DataFrame& df) {
+        
+    }
+
 
 }
 

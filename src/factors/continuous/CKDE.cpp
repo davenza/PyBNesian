@@ -7,18 +7,6 @@ using opencl::OpenCLConfig;
 namespace factors::continuous {
 
 
-    template<typename ArrowType>
-    void CKDE::_fit(const DataFrame& df) {
-
-    }
-
-    template<typename ArrowType>
-    void CKDE::_fit_null(const DataFrame& df) {
-        
-    }
-
-
-
     void CKDE::fit(py::handle pyobject) {
         auto rb = dataset::to_record_batch(pyobject);
         auto df = DataFrame(rb);
@@ -66,6 +54,6 @@ namespace factors::continuous {
                         << platform.getInfo<CL_PLATFORM_VERSION>() << std::endl; 
         }
 
-        auto cl_config = OpenCLConfig::init_opencl();
+        auto cl_config = OpenCLConfig::get();
     }
 }

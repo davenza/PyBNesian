@@ -54,6 +54,7 @@ ext_modules = [
          'src/learning/algorithms/hillclimbing.cpp',
         #  'src/learning/operators/operators.cpp',
          'src/models/GaussianNetwork.cpp',
+         'src/opencl/opencl_config.cpp',
          ],
         include_dirs=[
         #     # Path to pybind11 headers

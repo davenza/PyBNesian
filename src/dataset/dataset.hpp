@@ -33,10 +33,13 @@ namespace dataset {
 
     template<bool append_ones, typename ArrowType>
     using EigenVectorOrMatrix = std::unique_ptr<Matrix<typename ArrowType::c_type, Dynamic, append_ones+1>>;
+    template<typename ArrowType>
+    using MapType = std::unique_ptr<Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>>;
     template<bool append_ones, typename ArrowType, bool contains_null>
     using MapOrMatrixType = typename std::conditional_t<append_ones || contains_null,
                                             EigenVectorOrMatrix<append_ones, ArrowType>,
-                                            std::unique_ptr<Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>>>;
+                                            MapType<ArrowType>
+                                            >;
 
     int64_t null_count(Array_iterator begin, Array_iterator end);
     Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end);
@@ -70,7 +73,7 @@ namespace dataset {
     }
 
     template<bool append_ones, typename ArrowType>
-    EigenMatrix<ArrowType> to_eigen(Array_iterator begin, Array_iterator end, Buffer_ptr bitmap) {
+    EigenMatrix<ArrowType> to_eigen(Buffer_ptr bitmap, Array_iterator begin, Array_iterator end) {
         auto ncols = std::distance(begin, end);
 
         if (ncols == 0) {
@@ -128,7 +131,7 @@ namespace dataset {
     }
 
     template<bool append_ones, typename ArrowType>
-    EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(Array_ptr col, Buffer_ptr bitmap) {
+    EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(Buffer_ptr bitmap, Array_ptr col) {
         using MatrixType = Matrix<typename ArrowType::c_type, Dynamic, 1 + append_ones>;
         auto rows = col->length();
 
@@ -153,7 +156,7 @@ namespace dataset {
 
         if constexpr (contains_null) {
             auto bitmap = col->null_bitmap();
-            return to_eigen<append_ones, ArrowType>(col, bitmap);
+            return to_eigen<append_ones, ArrowType>(bitmap, col);
         } else {
             auto dwn_col = std::static_pointer_cast<ArrayType>(col);
             if constexpr (append_ones) {
@@ -168,6 +171,91 @@ namespace dataset {
         }
     }
 
+    template<typename ArrowType, typename MatrixObject>
+    EigenMatrix<ArrowType> compute_cov(std::vector<MatrixObject>& v) {
+        auto n = v.size();
+        EigenMatrix<ArrowType> res = std::make_unique<typename EigenMatrix<ArrowType>::element_type>(n, n);
+        
+        typename ArrowType::c_type inv_n = 1 / (n - 1);
+        int i = 0;
+        for(auto it = v.begin(); it != v.end(); ++it, ++i) {
+            (*res)(i, i) = (*it).squaredNorm() * inv_n;
+            int j = 0;
+            for(auto it2 = v.begin(); it2 != it; ++it2, ++j) {
+                (*res)(i, j) = (*res)(j, i) = (*it).dot(*it2) * inv_n;
+            }
+        }
+
+        return res;
+    }
+
+    template<typename ArrowType>
+    EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, Array_iterator begin, Array_iterator end) {
+        using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+        std::vector<EigenVector> columns;
+        auto n = std::distance(begin, end);
+        columns.reserve(n);
+
+        for(auto it = begin; it != end; ++it) {
+            auto c = to_eigen<false, ArrowType>(*it, bitmap);
+            auto m = c->mean();
+            columns.push_back(c->array() - m);
+        }
+
+        return compute_cov<ArrowType>(columns);
+    }
+
+    template<typename ArrowType, bool contains_null>
+    EigenMatrix<ArrowType> cov(Array_iterator begin, Array_iterator end) {
+        if constexpr (contains_null) {
+            auto bitmap = combined_bitmap(begin, end);
+            return cov<ArrowType>(begin, end, bitmap);
+        } else {
+            using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+            std::vector<EigenVector> columns;
+            auto n = std::distance(begin, end);
+            columns.reserve(n);
+
+            for(auto it = begin; it != end; ++it) {
+                auto c = to_eigen<false, ArrowType, false>(*it);
+                auto m = c->mean();
+                columns.push_back(c->array() - m);
+            }
+
+            return compute_cov<ArrowType>(columns);
+        }
+    }
+
+    template<typename ArrowType>
+    EigenMatrix<ArrowType> to_eigen(Buffer_ptr bitmap, Array_ptr col) {
+        using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+        std::vector<EigenVector> columns;
+        columns.reserve(1);
+
+        auto c = to_eigen<false, ArrowType>(col, bitmap);
+        auto m = c->mean();
+        columns.push_back(c->array() - m);
+
+        return compute_cov<ArrowType>(columns);
+    }
+
+    template<typename ArrowType, bool contains_null>
+    EigenMatrix<ArrowType> to_eigen(Array_ptr col) {
+        if constexpr (contains_null) {
+            auto bitmap = col->null_bitmap();
+            return cov<ArrowType>(col, bitmap);
+        } else {
+            using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+            std::vector<EigenVector> columns;
+            columns.reserve(1);
+
+            auto c = to_eigen<false, ArrowType, false>(col);
+            auto m = c->mean();
+            columns.push_back(c->array() - m);
+
+            return compute_cov<ArrowType>(columns);
+        }
+    }
 
     class DataFrame {
     public:
@@ -303,15 +391,15 @@ namespace dataset {
         }
         
         template<bool append_ones, typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(T cols, Buffer_ptr bitmap) const { 
+        EigenMatrix<ArrowType> to_eigen(Buffer_ptr bitmap, T cols) const { 
             Array_vector v = indices_to_columns(cols); 
-            return dataset::to_eigen<append_ones, ArrowType>(v.begin(), v.end(), bitmap); 
+            return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end()); 
         }
 
         template<bool append_ones, typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(IndexIter begin, IndexIter end, Buffer_ptr bitmap) const {
+        EigenMatrix<ArrowType> to_eigen(Buffer_ptr bitmap, IndexIter begin, IndexIter end) const {
             Array_vector v = indices_to_columns(begin, end); 
-            return dataset::to_eigen<append_ones, ArrowType>(v.begin(), v.end(), bitmap); 
+            return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end()); 
         }
 
         template<bool append_ones, typename ArrowType, bool contains_null>
@@ -321,9 +409,9 @@ namespace dataset {
         }
 
         template<bool append_ones, typename ArrowType>
-        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(int i, Buffer_ptr bitmap) const {
+        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(Buffer_ptr bitmap, int i) const {
             auto col = m_batch->column(i);
-            return dataset::to_eigen<append_ones, ArrowType>(col, bitmap);
+            return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
         }
 
         template<bool append_ones, typename ArrowType, bool contains_null, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
@@ -333,9 +421,66 @@ namespace dataset {
         }
 
         template<bool append_ones, typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(StringType name, Buffer_ptr bitmap) const {
+        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(Buffer_ptr bitmap, StringType name) const {
             auto col = m_batch->GetColumnByName(name);
-            return dataset::to_eigen<append_ones, ArrowType>(col, bitmap);
+            return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
+        }
+
+        template<typename ArrowType, bool contains_null, typename T, util::enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> cov(const T cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, const T cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
+        }
+        template<typename ArrowType, bool contains_null, typename V>
+        EigenMatrix<ArrowType> cov(std::initializer_list<V> cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename V>
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, std::initializer_list<V> cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
+        }
+        template<typename ArrowType, bool contains_null, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> cov(const IndexIter begin, const IndexIter end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, const IndexIter begin, const IndexIter end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
+        }
+        template<typename ArrowType, bool contains_null>
+        EigenMatrix<ArrowType> cov(int i) const {
+            dataset::cov<ArrowType, contains_null>(m_batch->column(i));
+        }
+        template<typename ArrowType>
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, int i) const {
+            dataset::cov<ArrowType>(bitmap, m_batch->column(i));
+        }
+        template<typename ArrowType, bool contains_null, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        EigenMatrix<ArrowType> cov(const StringType name) const {
+            dataset::cov<ArrowType, contains_null>(m_batch->GetColumnByName(name));
+        }
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, const StringType name) const {
+            dataset::cov<ArrowType>(bitmap, m_batch->GetColumnByName(name));
+        }
+        template<typename ArrowType, bool contains_null, typename ...Args>
+        EigenMatrix<ArrowType> cov(Args... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename ...Args>
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, Args... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
         std::shared_ptr<RecordBatch> operator->() const;
@@ -464,7 +609,6 @@ namespace dataset {
         return cols;
     }
 
-
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
     DataFrame DataFrame::loc(const StringType name) const {
         arrow::SchemaBuilder b;
@@ -510,6 +654,68 @@ namespace dataset {
         }
         return DataFrame(RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), new_cols));
     }
+
+    // template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    // MatrixXd DataFrame::cov(Array_vector begin, Array_ end) const {
+    //     auto n = std::distance(begin, end);
+    //     MatrixXd c(n, n);
+
+    //     std::vector<EigenVectorOrMatrix> d_vector;
+    //     d_vector.reserve(std::distance(begin, end));
+
+
+
+    //     for (auto it = begin; it != end; ++it) {
+    //         auto d1 = to_eigen(*it);
+    //         auto m1 =  d1.mean();
+    //         d1 = d1 - m1;
+    //     }
+
+    //     int i, j;
+    //     for (auto it = begin, i = 0; it != end; ++it, ++i) {
+
+
+    //         cov(i, i) = d1.squaredNorm();
+
+    //         for (auto it2 = begin, j = 0; it2 < it; ++it2, ++j) {
+    //             VectorXd d2 = to_eigen(*it);
+    //             auto m1 =  d1.mean();
+    //             d1 = d1 - m1;
+    //         }
+    //     }
+
+    // }
+
+    // template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    // MatrixXd DataFrame::cov(const IndexIter begin, const IndexIter end) const {
+    //     auto n = std::distance(begin, end);
+    //     MatrixXd c(n, n);
+
+    //     std::vector<EigenVectorOrMatrix> d_vector;
+    //     d_vector.reserve(std::distance(begin, end));
+
+
+
+    //     for (auto it = begin; it != end; ++it) {
+    //         auto d1 = to_eigen(*it);
+    //         auto m1 =  d1.mean();
+    //         d1 = d1 - m1;
+    //     }
+
+    //     int i, j;
+    //     for (auto it = begin, i = 0; it != end; ++it, ++i) {
+
+
+    //         cov(i, i) = d1.squaredNorm();
+
+    //         for (auto it2 = begin, j = 0; it2 < it; ++it2, ++j) {
+    //             VectorXd d2 = to_eigen(*it);
+    //             auto m1 =  d1.mean();
+    //             d1 = d1 - m1;
+    //         }
+    //     }
+
+    // }
 }
 
 

@@ -189,14 +189,6 @@ case Type::TypeID:                                                              
         }
     }
 
-    // inline void append_columns(RecordBatch_ptr& rb, Array_vector& arrays, int i) {
-    //     arrays.push_back(rb->column(i));
-    // }
-
-    // inline void append_schema(RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
-    //     b.AddField(rb->schema()->field(i));
-    // }
-
     DataFrame DataFrame::loc(int i) const {
         arrow::SchemaBuilder b;
         b.AddField(m_batch->schema()->field(i));

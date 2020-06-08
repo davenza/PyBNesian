@@ -43,6 +43,7 @@ namespace dataset {
 
     int64_t null_count(Array_iterator begin, Array_iterator end);
     Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end);
+    int64_t valid_count(Array_iterator begin, Array_iterator end);
 
     template<bool append_ones, typename ArrowType>
     inline typename ArrowType::c_type* fill_ones(typename ArrowType::c_type* ptr, int rows [[maybe_unused]]) {
@@ -261,7 +262,6 @@ namespace dataset {
         }
     }
 
-
     class DataFrame {
     public:
 
@@ -382,6 +382,32 @@ namespace dataset {
         int64_t null_count(Args... args) const {
             Array_vector v = indices_to_columns(args...); 
             return dataset::null_count(v.begin(), v.end());
+        }
+
+        int64_t valid_count() const {
+            auto cols = m_batch->columns();
+            return dataset::valid_count(cols.begin(), cols.end()); 
+        }
+        template<typename T, util::enable_if_index_container_t<T, int> = 0>
+        int64_t valid_count(const T cols) const { 
+            return valid_count(cols.begin(), cols.end()); 
+        }
+        template<typename V>
+        int64_t valid_count(std::initializer_list<V> cols) const { 
+            return valid_count(cols.begin(), cols.end()); 
+        }
+        int64_t valid_count(int i) const { return m_batch->num_rows() - m_batch->column(i)->null_count(); }
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        int64_t valid_count(const StringType name) const { return m_batch->num_rows() - m_batch->GetColumnByName(name)->null_count(); }
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        int64_t valid_count(const IndexIter begin, const IndexIter end) const {
+            auto v = indices_to_columns(begin, end);
+            return dataset::valid_count(v.begin(), v.end());
+        }
+        template<typename ...Args>
+        int64_t valid_count(Args... args) const {
+            auto v = indices_to_columns(args...);
+            return dataset::valid_count(v.begin(), v.end());
         }
 
         template<bool append_ones, typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
@@ -747,68 +773,6 @@ namespace dataset {
         }
         return DataFrame(RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), new_cols));
     }
-
-    // template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    // MatrixXd DataFrame::cov(Array_vector begin, Array_ end) const {
-    //     auto n = std::distance(begin, end);
-    //     MatrixXd c(n, n);
-
-    //     std::vector<EigenVectorOrMatrix> d_vector;
-    //     d_vector.reserve(std::distance(begin, end));
-
-
-
-    //     for (auto it = begin; it != end; ++it) {
-    //         auto d1 = to_eigen(*it);
-    //         auto m1 =  d1.mean();
-    //         d1 = d1 - m1;
-    //     }
-
-    //     int i, j;
-    //     for (auto it = begin, i = 0; it != end; ++it, ++i) {
-
-
-    //         cov(i, i) = d1.squaredNorm();
-
-    //         for (auto it2 = begin, j = 0; it2 < it; ++it2, ++j) {
-    //             VectorXd d2 = to_eigen(*it);
-    //             auto m1 =  d1.mean();
-    //             d1 = d1 - m1;
-    //         }
-    //     }
-
-    // }
-
-    // template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    // MatrixXd DataFrame::cov(const IndexIter begin, const IndexIter end) const {
-    //     auto n = std::distance(begin, end);
-    //     MatrixXd c(n, n);
-
-    //     std::vector<EigenVectorOrMatrix> d_vector;
-    //     d_vector.reserve(std::distance(begin, end));
-
-
-
-    //     for (auto it = begin; it != end; ++it) {
-    //         auto d1 = to_eigen(*it);
-    //         auto m1 =  d1.mean();
-    //         d1 = d1 - m1;
-    //     }
-
-    //     int i, j;
-    //     for (auto it = begin, i = 0; it != end; ++it, ++i) {
-
-
-    //         cov(i, i) = d1.squaredNorm();
-
-    //         for (auto it2 = begin, j = 0; it2 < it; ++it2, ++j) {
-    //             VectorXd d2 = to_eigen(*it);
-    //             auto m1 =  d1.mean();
-    //             d1 = d1 - m1;
-    //         }
-    //     }
-
-    // }
 }
 
 

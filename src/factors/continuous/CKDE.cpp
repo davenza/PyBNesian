@@ -13,12 +13,11 @@ namespace factors::continuous {
         fit(df);
     }
 
-    void CKDE::fit(const DataFrame& df) {
-        auto type_id = df.same_type(m_variable, m_evidence);
+    void KDE::fit(const DataFrame& df) {
+        m_training_type = df.same_type(m_variables);
+        bool contains_null = df.null_count(m_variables);
 
-        bool contains_null = df.null_count(m_variable, m_evidence);
-
-        switch(type_id) {
+        switch(m_training_type) {
             case Type::DOUBLE: {
                 if (contains_null)
                     _fit<arrow::DoubleType, true>(df);
@@ -38,22 +37,35 @@ namespace factors::continuous {
         }
     }
 
+    // VectorXd KDE::logpdf(py::handle pyobject) const {
+    //     auto rb = dataset::to_record_batch(pyobject);
+    //     auto df = DataFrame(rb);
+    //     return logpdf(df);
+    // }
 
-    void opencl() {
-        //get all platforms (drivers)
-        std::vector<cl::Platform> all_platforms;
-        cl::Platform::get(&all_platforms);
-        if(all_platforms.size()==0){
-            std::cout<<" No platforms found. Check OpenCL installation!\n";
-            // exit(1);
-        }
-        std::cout << all_platforms.size() << " platforms found." << std::endl;
+    cl::Buffer KDE::logpdf(const DataFrame& df) const {
+        // FIXME: Check the model is fitted.
+        auto type_id = df.same_type(m_variables);
 
-        for (auto platform : all_platforms) {
-            std::cout << platform.getInfo<CL_PLATFORM_NAME>() << ". Version: " 
-                        << platform.getInfo<CL_PLATFORM_VERSION>() << std::endl; 
+        if (type_id != m_training_type) {
+            throw std::invalid_argument("Data type of training and test datasets is different.");
         }
 
-        auto cl_config = OpenCLConfig::get();
+        bool contains_null = df.null_count(m_variables);
+        switch(type_id) {
+            case Type::DOUBLE:
+                if (contains_null)
+                    return _logpdf<arrow::DoubleType, true>(df);
+                else
+                    return _logpdf<arrow::DoubleType, false>(df);
+            case Type::FLOAT:
+                if (contains_null)
+                    return _logpdf<arrow::FloatType, true>(df);
+                else
+                    return _logpdf<arrow::FloatType, false>(df);
+            default:
+                throw std::runtime_error("Unreachable code.");
+        }
+
     }
 }

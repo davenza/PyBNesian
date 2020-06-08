@@ -189,6 +189,18 @@ case Type::TypeID:                                                              
         }
     }
 
+    int64_t valid_count(Array_iterator begin, Array_iterator end) {
+        if (std::distance(begin, end) == 0) {
+            return 0;
+        }
+
+        auto bitmap = combined_bitmap(begin, end);
+        if (bitmap)
+            return util::bit_util::non_null_count(bitmap, (*begin)->length());
+        else
+            return (*begin)->length();
+    }
+
     DataFrame DataFrame::loc(int i) const {
         arrow::SchemaBuilder b;
         b.AddField(m_batch->schema()->field(i));

@@ -72,7 +72,7 @@ ext_modules = [
         # Included as isystem to avoid errors in arrow headers.
         extra_compile_args=['-isystem' + d for d in
                                 [pa.get_include()]
-                            ] + ['-isystemlib/OpenCL'],
+                            ] + ['-isystemlib/OpenCL'] + ['-m64'],
     ),
 ]
 

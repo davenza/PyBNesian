@@ -4,6 +4,8 @@
 
 namespace opencl {
 
+
+
     OpenCLConfig OpenCLConfig::singleton = OpenCLConfig();
     bool OpenCLConfig::initialized = false;
 
@@ -57,9 +59,34 @@ namespace opencl {
             throw std::runtime_error("Error compilating OpenCL code.");
         }
 
-        OpenCLConfig::singleton =  OpenCLConfig(context, queue, program);
+        cl_int err_code = CL_SUCCESS;
+        int max_local_size = dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(&err_code);
+        if (err_code != CL_SUCCESS) {
+            throw std::runtime_error("Maximum work group size could not be determined.");
+        }
+
+        OpenCLConfig::singleton =  OpenCLConfig(context, queue, program, max_local_size);
         OpenCLConfig::initialized = true;
 
         return OpenCLConfig::singleton;
     }
+
+    cl::Kernel OpenCLConfig::kernel(const char* name) {
+        cl_int err_code = CL_SUCCESS;
+        auto k = cl::Kernel(m_program, name, &err_code);
+
+        if (err_code != CL_SUCCESS) {
+            throw std::runtime_error(std::string("Error creating OpenCL kernel ") + name);
+        }
+
+        return std::move(k);
+    }
+
+    void update_reduc_status(int& length, int& num_groups, int& local_size, int& global_size, int max_local_size) {
+        length = num_groups;
+        num_groups = static_cast<int>(std::ceil(static_cast<double>(length) / static_cast<double>(max_local_size)));
+        local_size = (length > max_local_size) ? max_local_size : length;
+        global_size = local_size * num_groups;
+    }
+
 }

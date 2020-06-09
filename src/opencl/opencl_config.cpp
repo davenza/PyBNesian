@@ -71,18 +71,27 @@ namespace opencl {
         return OpenCLConfig::singleton;
     }
 
-    cl::Kernel OpenCLConfig::kernel(const char* name) {
-        cl_int err_code = CL_SUCCESS;
-        auto k = cl::Kernel(m_program, name, &err_code);
+    cl::Kernel& OpenCLConfig::kernel(const char* name) {
 
-        if (err_code != CL_SUCCESS) {
-            throw std::runtime_error(std::string("Error creating OpenCL kernel ") + name);
+        auto it = m_kernels.find(name);
+
+        if (it != m_kernels.end()) {
+            return it->second;
+        } else {
+            cl_int err_code = CL_SUCCESS;
+            auto k = cl::Kernel(m_program, name, &err_code);
+
+            if (err_code != CL_SUCCESS) {
+                throw std::runtime_error(std::string("Error creating OpenCL kernel ") + name);
+            }
+
+            m_kernels.insert({name, std::move(k)});
+
+            return m_kernels.find(name)->second;
         }
-
-        return std::move(k);
     }
 
-    void update_reduc_status(int& length, int& num_groups, int& local_size, int& global_size, int max_local_size) {
+    void update_reduction_status(int& length, int& num_groups, int& local_size, int& global_size, int max_local_size) {
         length = num_groups;
         num_groups = static_cast<int>(std::ceil(static_cast<double>(length) / static_cast<double>(max_local_size)));
         local_size = (length > max_local_size) ? max_local_size : length;

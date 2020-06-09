@@ -44,10 +44,11 @@ __kernel void logpdf_values_1d_matrix_@dt@(__constant @dt@ *train_vector,
  * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
  */
 
-__kernel void @operation@1d_copy_@dt@(__constant @dt@ *input,
+__kernel void @operation@1d_@dt@(__constant @dt@ *input,
                                       __private uint input_length,
                                       __local @dt@ *localMaxs,
-                                      __global @dt@ *output)
+                                      __global @dt@ *output,
+                                      __private uint output_offset)
 {
     uint global_id = get_global_id(0);
     uint local_id = get_local_id(0);
@@ -85,105 +86,14 @@ __kernel void @operation@1d_copy_@dt@(__constant @dt@ *input,
     }
 
     if (local_id == 0) {
-        output[group_id] = localMaxs[0];
+        output[output_offset + group_id] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void @operation@1d_@dt@(__constant @dt@ *input,
-                                 __private uint input_length,
-                                 __local @dt@ *localMaxs)
-{
-    uint global_id = get_global_id(0);
-    uint local_id = get_local_id(0);
-    uint group_size = get_local_size(0);
-    uint group_id = get_group_id(0);
-    uint num_groups = get_num_groups(0);
-
-    if (group_id == num_groups-1) {
-        group_size = input_length - group_id*group_size;
-
-        if (global_id < input_length) {
-            localMaxs[local_id] = input[global_id];
-        }
-    }
-    else {
-        localMaxs[local_id] = input[global_id];
-    }
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                @operation_macro@(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                @operation_macro@(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (local_id == 0) {
-        input[group_id] = localMaxs[0];
-    }
-}
-
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void @operation@1d_single_wg_@dt@(__constant @dt@ *array,
-                                             __local @dt@ *localMaxs)
-{
-    uint global_id = get_global_id(0);
-    uint group_size = get_global_size(0);
-
-    localSums[global_id] = array[global_id];
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (global_id < stride) {
-                @operation_macro@(localSums[global_id], localSums[global_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (global_id < stride) {
-                @operation_macro@(localSums[global_id+1], localSums[global_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (global_id == 0) {
-        array[0] = localSums[0];
-    }
-}
-
-/**begin repeat1**/
-
-__kernel void max_mat_cols_copy_@dt@(__constant @dt@ *mat,
-                            __private uint rows,
-                            __local @dt@ *localMaxs
-                            __global double *output)
+__kernel void @operation@_mat_cols_@dt@(__constant @dt@ *mat,
+                                             __private uint mat_rows,
+                                             __local @dt@ *localMaxs
+                                             __global double *output)
 {
     uint global_id_row = get_global_id(0);
     uint global_id_col = get_global_id(1);
@@ -193,14 +103,14 @@ __kernel void max_mat_cols_copy_@dt@(__constant @dt@ *mat,
     uint num_groups = get_num_groups(0);
 
     if (group_id == num_groups-1) {
-        group_size = rows - group_id*group_size;
-s
+        group_size = mat_rows - group_id*group_size;
+
         if (global_id_col < rows) {
-            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, rows)];
-        }X
+            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+        }
     }
     else {
-        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, rows)];
+        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
     }
 
     while (group_size > 1) {
@@ -208,13 +118,13 @@ s
         barrier(CLK_LOCAL_MEM_FENCE);
         if (group_size % 2 == 0) {
             if (local_id < stride) {
-                localMaxs[local_id] = max(localMaxs[local_id], localMaxs[local_id + stride]);
+                @operation_macro@(localMaxs[local_id], localMaxs[local_id + stride]);
             }
             group_size = group_size / 2;
         }
         else {
             if (local_id < stride) {
-                localMaxs[local_id+1] = max(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
+                @operation_macro@(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
             }
             group_size = (group_size / 2) + 1;
         }
@@ -225,103 +135,31 @@ s
     }
 }
 
-__kernel void max_mat_cols_@dt@(__global @dt@ *mat,
-                                __private uint rows,
-                                __local @dt@ *localMaxs)
-{
-    uint global_id_row = get_global_id(0);
-    uint global_id_col = get_global_id(1);
-    uint local_id = get_local_id(0);
-    uint group_size = get_local_size(0);
-    uint group_id = get_group_id(0);
-    uint num_groups = get_num_groups(0);
-
-    if (group_id == num_groups-1) {
-        group_size = rows - group_id*group_size;
-
-        if (global_id_col < rows) {
-            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, rows)];
-        }
-    }
-    else {
-        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, rows)];
-    }
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                localMaxs[local_id] = max(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                localMaxs[local_id+1] = max(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (local_id == 0) {
-        mat[IDX(group_id, global_id_col, num_groups)] = localMaxs[0];
-    }
-}
-
-__kernel void max_mat_cols_single_wg_@dt@(__global @dt@ *mat,
-                                          __private uint rows,
-                                          __local @dt@ *localMaxs)
-{
-    uint global_id_row = get_global_id(0);
-    uint global_id_col = get_global_id(1);
-    uint group_size = get_global_size(0);
-
-    localMaxs[global_id_row] = mat[IDX(global_id_row, global_id_col, rows)];
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                localMaxs[local_id] = max(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                localMaxs[local_id+1] = max(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (global_id_row == 0) {
-        mat[IDX(0, global_id_col, num_groups)] = localMaxs[0];
-    }
-}
+/**end repeat1**/
 
 
 __kernel void logsumexp_coeffs_@dt@(__global @dt@ *input,
-                                    __constant @dt@ *max) {
+                                    __constant @dt@ *max,
+                                    __private uint max_offset) {
     uint idx = get_global_id(0);
-    input[idx] = exp(input[idx] - max[0]);
+    input[idx] = exp(input[idx] - max[max_offset]);
 }
 
 __kernel void logsumexp_coeffs_mat_@dt@(__global @dt@ *input,
                                         __private uint input_rows,
-                                        __constant @dt@ *max,
-                                        __private uint max_rows) {
+                                        __constant @dt@ *max) {
     uint idx = get_global_id(0);
     uint col = COL(idx, input_rows);
-    input[idx] = exp(input[idx] - max[IDX(0, col, max_rows)]);
+    input[idx] = exp(input[idx] - max[col]);
 }
 
 __kernel void copy_logpdf_result_@dt@(__constant @dt@ *sum,
+                                      __private uint sum_offset,
                                       __constant @dt@ *max,
+                                      __private uint max_offset,
                                       __global @dt *res,
                                       __private uint res_offset) {
-    res[res_offset] = max[0] + log(sum[0]);
+    res[res_offset] = max[max_offset] + log(sum[sum_offset]);
 }
 
 __kernel void maxwise_@dt@(__global @dt@ *max_buffer,
@@ -337,7 +175,7 @@ __kernel void sum_lse_coefficient_@dt@(__constant @dt@ *logpdf, __constant @dt@ 
 
 __kernel void finish_lse_@dt@(__global @dt@ *res, __constant @dt@ *max_vec) {
     uint idx = get_global_id(0);
-    res[idx] = log(res[idx]) + maxexp[idx];
+    res[idx] = log(res[idx]) + max_vec[idx];
 }
 
 

@@ -31,220 +31,29 @@ __kernel void logpdf_values_1d_double(__constant double *train_vector,
     result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
 }
 
-
-#line 31
-
-__kernel void max1d_copy_double(__constant double *input,
-                                      __private uint input_length,
-                                      __local double *localMaxs,
-                                      __global double *output)
-{
-    uint global_id = get_global_id(0);
-    uint local_id = get_local_id(0);
-    uint group_size = get_local_size(0);
-    uint group_id = get_group_id(0);
-    uint num_groups = get_num_groups(0);
-
-    if (group_id == num_groups-1) {
-        group_size = input_length - group_id*group_size;
-
-        if (global_id < input_length) {
-            localMaxs[local_id] = input[global_id];
-        }
-    }
-    else {
-        localMaxs[local_id] = input[global_id];
-    }
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (local_id == 0) {
-        output[group_id] = localMaxs[0];
-    }
-}
-
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void max1d_double(__constant double *input,
-                                 __private uint input_length,
-                                 __local double *localMaxs)
-{
-    uint global_id = get_global_id(0);
-    uint local_id = get_local_id(0);
-    uint group_size = get_local_size(0);
-    uint group_id = get_group_id(0);
-    uint num_groups = get_num_groups(0);
-
-    if (group_id == num_groups-1) {
-        group_size = input_length - group_id*group_size;
-
-        if (global_id < input_length) {
-            localMaxs[local_id] = input[global_id];
-        }
-    }
-    else {
-        localMaxs[local_id] = input[global_id];
-    }
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (local_id == 0) {
-        input[group_id] = localMaxs[0];
-    }
-}
-
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void max1d_single_wg_double(__constant double *array,
-                                             __local double *localMaxs)
-{
-    uint global_id = get_global_id(0);
-    uint group_size = get_global_size(0);
-
-    localSums[global_id] = array[global_id];
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (global_id < stride) {
-                MAX_ASSIGN(localSums[global_id], localSums[global_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (global_id < stride) {
-                MAX_ASSIGN(localSums[global_id+1], localSums[global_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (global_id == 0) {
-        array[0] = localSums[0];
-    }
-}
-
-/**begin repeat1**/
-
-__kernel void logsumexp_coeffs_double(__global double *input,
-                                    __constant double *max) {
-    uint idx = get_global_id(0);
-    input[idx] = exp(input[idx] - max[0]);
-}
-
-__kernel void copy_logpdf_result_double(__constant double *sum,
-                                      __constant double *max,
-                                      __global @dt *res,
-                                      __private uint res_offset) {
-    res[res_offset] = max[0] + log(sum[0]);
-}
-
-__kernel void maxwise_double(__global double *max_buffer,
-                            __constant double *other) {
-    uint i = get_global_id(0);
-    max_buffer[i] = max(max_buffer[i], other[i]);
-}
-
-__kernel void sum_lse_coefficient_double(__constant double *logpdf, __constant double *max_vec, __global double *lse_total) {
-    uint idx = get_global_id(0);
-    lse_total[idx] += exp(logpdf[idx] - max_vec[idx]);
-}
-
-__kernel void finish_lse_double(__global double *res, __constant double *max_vec) {
-    uint idx = get_global_id(0);
-    res[idx] = log(res[idx]) + maxexp[idx];
-}
-
-
-__kernel void substract_matrix_vec_double(__constant double *matrix,
-                                   __private uint matrix_rows,
-                                   __private uint matrix_cols,
-                                   __constant double *vec_location,
-                                   __private uint vec_location_rows,
-                                   __private uint vec_row_idx,
-                                   __global double *res
-                                )
+__kernel void logpdf_values_1d_matrix_double(__constant double *train_vector,
+                                           __private uint train_rows,
+                                           __constant double *test_vector,
+                                           __constant double *standard_deviation,
+                                           __private double lognorm_factor,
+                                           __global double *result) 
 {
     int i = get_global_id(0);
-
-    int r = ROW(i, matrix_rows);
-    int c = COL(i, matrix_rows);
-
-    res[IDX(r, c, matrix_rows)] = matrix[i] - vec_location[IDX(vec_row_idx, c, vec_location_rows)];
+    int train_idx = ROW(i, train_rows);
+    int test_idx = COL(i, train_rows);
+    double d = train_vector[train_idx] - test_vector[test_idx];
+    result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
 }
 
 
-__kernel void solve_double(__global double *diff_matrix, 
-                    __private uint diff_matrix_rows, 
-                    __private uint diff_matrix_cols,
-                    __constant double *cholesky_matrix, 
-                    __private uint cholesky_dim) {
-    uint r = get_global_id(0);
-    
-    for (uint c = 0; c < diff_matrix_cols; c++) {
-        for (uint i = 0; i < c; i++) {
-            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, cholesky_dim)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
-        }
-        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, cholesky_dim)];
-    }
-}
 
-__kernel void square_double(__global double *m) {
-    uint idx = get_global_id(0);
-    double d = m[idx];
-    m[idx] = d * d;
-}
+#line 46
 
-#line 31
-
-__kernel void sum1d_copy_double(__constant double *input,
+__kernel void max1d_double(__constant double *input,
                                       __private uint input_length,
                                       __local double *localMaxs,
-                                      __global double *output)
+                                      __global double *output,
+                                      __private uint output_offset)
 {
     uint global_id = get_global_id(0);
     uint local_id = get_local_id(0);
@@ -268,34 +77,77 @@ __kernel void sum1d_copy_double(__constant double *input,
         barrier(CLK_LOCAL_MEM_FENCE);
         if (group_size % 2 == 0) {
             if (local_id < stride) {
-                SUM_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
+                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
             }
 
             group_size = group_size / 2;
         }
         else {
             if (local_id < stride) {
-                SUM_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
+                MAX_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
             }
             group_size = (group_size / 2) + 1;
         }
     }
 
     if (local_id == 0) {
-        output[group_id] = localMaxs[0];
+        output[output_offset + group_id] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
+__kernel void max_mat_cols_double(__constant double *mat,
+                                             __private uint mat_rows,
+                                             __local double *localMaxs
+                                             __global double *output)
+{
+    uint global_id_row = get_global_id(0);
+    uint global_id_col = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_size = get_local_size(0);
+    uint group_id = get_group_id(0);
+    uint num_groups = get_num_groups(0);
 
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
+    if (group_id == num_groups-1) {
+        group_size = mat_rows - group_id*group_size;
+
+        if (global_id_col < rows) {
+            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+        }
+    }
+    else {
+        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+    }
+
+    while (group_size > 1) {
+        int stride = group_size / 2;
+        barrier(CLK_LOCAL_MEM_FENCE);
+        if (group_size % 2 == 0) {
+            if (local_id < stride) {
+                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
+            }
+            group_size = group_size / 2;
+        }
+        else {
+            if (local_id < stride) {
+                MAX_ASSIGN(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
+            }
+            group_size = (group_size / 2) + 1;
+        }
+    }
+
+    if (local_id == 0) {
+        output[IDX(group_id, global_id_col, num_groups)] = localMaxs[0];
+    }
+}
+
+
+#line 46
 
 __kernel void sum1d_double(__constant double *input,
-                                 __private uint input_length,
-                                 __local double *localMaxs)
+                                      __private uint input_length,
+                                      __local double *localMaxs,
+                                      __global double *output,
+                                      __private uint output_offset)
 {
     uint global_id = get_global_id(0);
     uint local_id = get_local_id(0);
@@ -333,61 +185,80 @@ __kernel void sum1d_double(__constant double *input,
     }
 
     if (local_id == 0) {
-        input[group_id] = localMaxs[0];
+        output[output_offset + group_id] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void sum1d_single_wg_double(__constant double *array,
-                                             __local double *localMaxs)
+__kernel void sum_mat_cols_double(__constant double *mat,
+                                             __private uint mat_rows,
+                                             __local double *localMaxs
+                                             __global double *output)
 {
-    uint global_id = get_global_id(0);
-    uint group_size = get_global_size(0);
+    uint global_id_row = get_global_id(0);
+    uint global_id_col = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_size = get_local_size(0);
+    uint group_id = get_group_id(0);
+    uint num_groups = get_num_groups(0);
 
-    localSums[global_id] = array[global_id];
+    if (group_id == num_groups-1) {
+        group_size = mat_rows - group_id*group_size;
+
+        if (global_id_col < rows) {
+            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+        }
+    }
+    else {
+        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+    }
 
     while (group_size > 1) {
         int stride = group_size / 2;
         barrier(CLK_LOCAL_MEM_FENCE);
         if (group_size % 2 == 0) {
-            if (global_id < stride) {
-                SUM_ASSIGN(localSums[global_id], localSums[global_id + stride]);
+            if (local_id < stride) {
+                SUM_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
             }
-
             group_size = group_size / 2;
         }
         else {
-            if (global_id < stride) {
-                SUM_ASSIGN(localSums[global_id+1], localSums[global_id + 1 + stride]);
+            if (local_id < stride) {
+                SUM_ASSIGN(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
             }
             group_size = (group_size / 2) + 1;
         }
     }
 
-    if (global_id == 0) {
-        array[0] = localSums[0];
+    if (local_id == 0) {
+        output[IDX(group_id, global_id_col, num_groups)] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
+
+
 
 __kernel void logsumexp_coeffs_double(__global double *input,
-                                    __constant double *max) {
+                                    __constant double *max,
+                                    __private uint max_offset) {
     uint idx = get_global_id(0);
-    input[idx] = exp(input[idx] - max[0]);
+    input[idx] = exp(input[idx] - max[max_offset]);
+}
+
+__kernel void logsumexp_coeffs_mat_double(__global double *input,
+                                        __private uint input_rows,
+                                        __constant double *max) {
+    uint idx = get_global_id(0);
+    uint col = COL(idx, input_rows);
+    input[idx] = exp(input[idx] - max[col]);
 }
 
 __kernel void copy_logpdf_result_double(__constant double *sum,
+                                      __private uint sum_offset,
                                       __constant double *max,
+                                      __private uint max_offset,
                                       __global @dt *res,
                                       __private uint res_offset) {
-    res[res_offset] = max[0] + log(sum[0]);
+    res[res_offset] = max[max_offset] + log(sum[sum_offset]);
 }
 
 __kernel void maxwise_double(__global double *max_buffer,
@@ -403,7 +274,7 @@ __kernel void sum_lse_coefficient_double(__constant double *logpdf, __constant d
 
 __kernel void finish_lse_double(__global double *res, __constant double *max_vec) {
     uint idx = get_global_id(0);
-    res[idx] = log(res[idx]) + maxexp[idx];
+    res[idx] = log(res[idx]) + max_vec[idx];
 }
 
 
@@ -461,220 +332,29 @@ __kernel void logpdf_values_1d_float(__constant float *train_vector,
     result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
 }
 
-
-#line 31
-
-__kernel void max1d_copy_float(__constant float *input,
-                                      __private uint input_length,
-                                      __local float *localMaxs,
-                                      __global float *output)
-{
-    uint global_id = get_global_id(0);
-    uint local_id = get_local_id(0);
-    uint group_size = get_local_size(0);
-    uint group_id = get_group_id(0);
-    uint num_groups = get_num_groups(0);
-
-    if (group_id == num_groups-1) {
-        group_size = input_length - group_id*group_size;
-
-        if (global_id < input_length) {
-            localMaxs[local_id] = input[global_id];
-        }
-    }
-    else {
-        localMaxs[local_id] = input[global_id];
-    }
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (local_id == 0) {
-        output[group_id] = localMaxs[0];
-    }
-}
-
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void max1d_float(__constant float *input,
-                                 __private uint input_length,
-                                 __local float *localMaxs)
-{
-    uint global_id = get_global_id(0);
-    uint local_id = get_local_id(0);
-    uint group_size = get_local_size(0);
-    uint group_id = get_group_id(0);
-    uint num_groups = get_num_groups(0);
-
-    if (group_id == num_groups-1) {
-        group_size = input_length - group_id*group_size;
-
-        if (global_id < input_length) {
-            localMaxs[local_id] = input[global_id];
-        }
-    }
-    else {
-        localMaxs[local_id] = input[global_id];
-    }
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (local_id < stride) {
-                MAX_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (local_id == 0) {
-        input[group_id] = localMaxs[0];
-    }
-}
-
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void max1d_single_wg_float(__constant float *array,
-                                             __local float *localMaxs)
-{
-    uint global_id = get_global_id(0);
-    uint group_size = get_global_size(0);
-
-    localSums[global_id] = array[global_id];
-
-    while (group_size > 1) {
-        int stride = group_size / 2;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if (group_size % 2 == 0) {
-            if (global_id < stride) {
-                MAX_ASSIGN(localSums[global_id], localSums[global_id + stride]);
-            }
-
-            group_size = group_size / 2;
-        }
-        else {
-            if (global_id < stride) {
-                MAX_ASSIGN(localSums[global_id+1], localSums[global_id + 1 + stride]);
-            }
-            group_size = (group_size / 2) + 1;
-        }
-    }
-
-    if (global_id == 0) {
-        array[0] = localSums[0];
-    }
-}
-
-/**begin repeat1**/
-
-__kernel void logsumexp_coeffs_float(__global float *input,
-                                    __constant float *max) {
-    uint idx = get_global_id(0);
-    input[idx] = exp(input[idx] - max[0]);
-}
-
-__kernel void copy_logpdf_result_float(__constant float *sum,
-                                      __constant float *max,
-                                      __global @dt *res,
-                                      __private uint res_offset) {
-    res[res_offset] = max[0] + log(sum[0]);
-}
-
-__kernel void maxwise_float(__global float *max_buffer,
-                            __constant float *other) {
-    uint i = get_global_id(0);
-    max_buffer[i] = max(max_buffer[i], other[i]);
-}
-
-__kernel void sum_lse_coefficient_float(__constant float *logpdf, __constant float *max_vec, __global float *lse_total) {
-    uint idx = get_global_id(0);
-    lse_total[idx] += exp(logpdf[idx] - max_vec[idx]);
-}
-
-__kernel void finish_lse_float(__global float *res, __constant float *max_vec) {
-    uint idx = get_global_id(0);
-    res[idx] = log(res[idx]) + maxexp[idx];
-}
-
-
-__kernel void substract_matrix_vec_float(__constant float *matrix,
-                                   __private uint matrix_rows,
-                                   __private uint matrix_cols,
-                                   __constant float *vec_location,
-                                   __private uint vec_location_rows,
-                                   __private uint vec_row_idx,
-                                   __global float *res
-                                )
+__kernel void logpdf_values_1d_matrix_float(__constant float *train_vector,
+                                           __private uint train_rows,
+                                           __constant float *test_vector,
+                                           __constant float *standard_deviation,
+                                           __private float lognorm_factor,
+                                           __global float *result) 
 {
     int i = get_global_id(0);
-
-    int r = ROW(i, matrix_rows);
-    int c = COL(i, matrix_rows);
-
-    res[IDX(r, c, matrix_rows)] = matrix[i] - vec_location[IDX(vec_row_idx, c, vec_location_rows)];
+    int train_idx = ROW(i, train_rows);
+    int test_idx = COL(i, train_rows);
+    float d = train_vector[train_idx] - test_vector[test_idx];
+    result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
 }
 
 
-__kernel void solve_float(__global float *diff_matrix, 
-                    __private uint diff_matrix_rows, 
-                    __private uint diff_matrix_cols,
-                    __constant float *cholesky_matrix, 
-                    __private uint cholesky_dim) {
-    uint r = get_global_id(0);
-    
-    for (uint c = 0; c < diff_matrix_cols; c++) {
-        for (uint i = 0; i < c; i++) {
-            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, cholesky_dim)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
-        }
-        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, cholesky_dim)];
-    }
-}
 
-__kernel void square_float(__global float *m) {
-    uint idx = get_global_id(0);
-    double d = m[idx];
-    m[idx] = d * d;
-}
+#line 46
 
-#line 31
-
-__kernel void sum1d_copy_float(__constant float *input,
+__kernel void max1d_float(__constant float *input,
                                       __private uint input_length,
                                       __local float *localMaxs,
-                                      __global float *output)
+                                      __global float *output,
+                                      __private uint output_offset)
 {
     uint global_id = get_global_id(0);
     uint local_id = get_local_id(0);
@@ -698,34 +378,77 @@ __kernel void sum1d_copy_float(__constant float *input,
         barrier(CLK_LOCAL_MEM_FENCE);
         if (group_size % 2 == 0) {
             if (local_id < stride) {
-                SUM_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
+                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
             }
 
             group_size = group_size / 2;
         }
         else {
             if (local_id < stride) {
-                SUM_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
+                MAX_ASSIGN(localMaxs[local_id + 1], localMaxs[local_id + 1 + stride]);
             }
             group_size = (group_size / 2) + 1;
         }
     }
 
     if (local_id == 0) {
-        output[group_id] = localMaxs[0];
+        output[output_offset + group_id] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
+__kernel void max_mat_cols_float(__constant float *mat,
+                                             __private uint mat_rows,
+                                             __local float *localMaxs
+                                             __global double *output)
+{
+    uint global_id_row = get_global_id(0);
+    uint global_id_col = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_size = get_local_size(0);
+    uint group_id = get_group_id(0);
+    uint num_groups = get_num_groups(0);
 
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
+    if (group_id == num_groups-1) {
+        group_size = mat_rows - group_id*group_size;
+
+        if (global_id_col < rows) {
+            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+        }
+    }
+    else {
+        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+    }
+
+    while (group_size > 1) {
+        int stride = group_size / 2;
+        barrier(CLK_LOCAL_MEM_FENCE);
+        if (group_size % 2 == 0) {
+            if (local_id < stride) {
+                MAX_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
+            }
+            group_size = group_size / 2;
+        }
+        else {
+            if (local_id < stride) {
+                MAX_ASSIGN(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
+            }
+            group_size = (group_size / 2) + 1;
+        }
+    }
+
+    if (local_id == 0) {
+        output[IDX(group_id, global_id_col, num_groups)] = localMaxs[0];
+    }
+}
+
+
+#line 46
 
 __kernel void sum1d_float(__constant float *input,
-                                 __private uint input_length,
-                                 __local float *localMaxs)
+                                      __private uint input_length,
+                                      __local float *localMaxs,
+                                      __global float *output,
+                                      __private uint output_offset)
 {
     uint global_id = get_global_id(0);
     uint local_id = get_local_id(0);
@@ -763,61 +486,80 @@ __kernel void sum1d_float(__constant float *input,
     }
 
     if (local_id == 0) {
-        input[group_id] = localMaxs[0];
+        output[output_offset + group_id] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
-
-/**begin repeat1
- * #operation = max, sum#
- * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
- */
-
-__kernel void sum1d_single_wg_float(__constant float *array,
-                                             __local float *localMaxs)
+__kernel void sum_mat_cols_float(__constant float *mat,
+                                             __private uint mat_rows,
+                                             __local float *localMaxs
+                                             __global double *output)
 {
-    uint global_id = get_global_id(0);
-    uint group_size = get_global_size(0);
+    uint global_id_row = get_global_id(0);
+    uint global_id_col = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_size = get_local_size(0);
+    uint group_id = get_group_id(0);
+    uint num_groups = get_num_groups(0);
 
-    localSums[global_id] = array[global_id];
+    if (group_id == num_groups-1) {
+        group_size = mat_rows - group_id*group_size;
+
+        if (global_id_col < rows) {
+            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+        }
+    }
+    else {
+        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+    }
 
     while (group_size > 1) {
         int stride = group_size / 2;
         barrier(CLK_LOCAL_MEM_FENCE);
         if (group_size % 2 == 0) {
-            if (global_id < stride) {
-                SUM_ASSIGN(localSums[global_id], localSums[global_id + stride]);
+            if (local_id < stride) {
+                SUM_ASSIGN(localMaxs[local_id], localMaxs[local_id + stride]);
             }
-
             group_size = group_size / 2;
         }
         else {
-            if (global_id < stride) {
-                SUM_ASSIGN(localSums[global_id+1], localSums[global_id + 1 + stride]);
+            if (local_id < stride) {
+                SUM_ASSIGN(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
             }
             group_size = (group_size / 2) + 1;
         }
     }
 
-    if (global_id == 0) {
-        array[0] = localSums[0];
+    if (local_id == 0) {
+        output[IDX(group_id, global_id_col, num_groups)] = localMaxs[0];
     }
 }
 
-/**begin repeat1**/
+
+
 
 __kernel void logsumexp_coeffs_float(__global float *input,
-                                    __constant float *max) {
+                                    __constant float *max,
+                                    __private uint max_offset) {
     uint idx = get_global_id(0);
-    input[idx] = exp(input[idx] - max[0]);
+    input[idx] = exp(input[idx] - max[max_offset]);
+}
+
+__kernel void logsumexp_coeffs_mat_float(__global float *input,
+                                        __private uint input_rows,
+                                        __constant float *max) {
+    uint idx = get_global_id(0);
+    uint col = COL(idx, input_rows);
+    input[idx] = exp(input[idx] - max[col]);
 }
 
 __kernel void copy_logpdf_result_float(__constant float *sum,
+                                      __private uint sum_offset,
                                       __constant float *max,
+                                      __private uint max_offset,
                                       __global @dt *res,
                                       __private uint res_offset) {
-    res[res_offset] = max[0] + log(sum[0]);
+    res[res_offset] = max[max_offset] + log(sum[sum_offset]);
 }
 
 __kernel void maxwise_float(__global float *max_buffer,
@@ -833,7 +575,7 @@ __kernel void sum_lse_coefficient_float(__constant float *logpdf, __constant flo
 
 __kernel void finish_lse_float(__global float *res, __constant float *max_vec) {
     uint idx = get_global_id(0);
-    res[idx] = log(res[idx]) + maxexp[idx];
+    res[idx] = log(res[idx]) + max_vec[idx];
 }
 
 

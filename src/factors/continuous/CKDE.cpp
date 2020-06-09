@@ -54,15 +54,9 @@ namespace factors::continuous {
         bool contains_null = df.null_count(m_variables);
         switch(type_id) {
             case Type::DOUBLE:
-                if (contains_null)
-                    return _logpdf<arrow::DoubleType, true>(df);
-                else
-                    return _logpdf<arrow::DoubleType, false>(df);
+                return _logpdf<arrow::DoubleType>(df);
             case Type::FLOAT:
-                if (contains_null)
-                    return _logpdf<arrow::FloatType, true>(df);
-                else
-                    return _logpdf<arrow::FloatType, false>(df);
+                return _logpdf<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
         }

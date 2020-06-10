@@ -43,7 +43,7 @@ namespace factors::continuous {
     //     return logpdf(df);
     // }
 
-    cl::Buffer KDE::logpdf(const DataFrame& df) const {
+    VectorXd KDE::logpdf(const DataFrame& df) const {
         // FIXME: Check the model is fitted.
         auto type_id = df.same_type(m_variables);
 
@@ -51,7 +51,6 @@ namespace factors::continuous {
             throw std::invalid_argument("Data type of training and test datasets is different.");
         }
 
-        bool contains_null = df.null_count(m_variables);
         switch(type_id) {
             case Type::DOUBLE:
                 return _logpdf<arrow::DoubleType>(df);

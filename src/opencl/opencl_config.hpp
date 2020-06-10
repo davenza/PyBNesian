@@ -29,6 +29,11 @@ namespace opencl {
         inline constexpr static const char* maxwise = "maxwise_double";
         inline constexpr static const char* sum_lse_coefficient = "sum_lse_coefficient_double";
         inline constexpr static const char* finish_lse = "finish_lse_double";
+        inline constexpr static const char* substract_matrix = "substract_matrix_double";
+        inline constexpr static const char* solve = "solve_double";
+        inline constexpr static const char* square = "square_double";
+        inline constexpr static const char* logpdf_values = "logpdf_values_double";
+        inline constexpr static const char* logpdf_values_mat = "logpdf_values_mat_double";
     };
 
     template<>
@@ -45,6 +50,11 @@ namespace opencl {
         inline constexpr static const char* maxwise = "maxwise_float";
         inline constexpr static const char* sum_lse_coefficient = "sum_lse_coefficient_float";
         inline constexpr static const char* finish_lse = "finish_lse_float";
+        inline constexpr static const char* substract_matrix = "substract_matrix_float";
+        inline constexpr static const char* solve = "solve_float";
+        inline constexpr static const char* square = "square_float";
+        inline constexpr static const char* logpdf_values = "logpdf_values_float";
+        inline constexpr static const char* logpdf_values_mat = "logpdf_values_mat_float";
     };
 
     template<typename ArrowType>
@@ -72,6 +82,10 @@ namespace opencl {
 
         template<typename T>
         cl::Buffer copy_to_buffer(const T* d, int size);
+
+        template<typename T>
+        void read_from_buffer(T* dest, const cl::Buffer from, int size);
+
         template<typename T>
         cl::Buffer new_buffer(int size);
 
@@ -158,6 +172,17 @@ namespace opencl {
         }
 
         return std::move(b);
+    }
+
+    template<typename T>
+    void OpenCLConfig::read_from_buffer(T* dest, const cl::Buffer from, int size) {
+        cl_int err_code = CL_SUCCESS;
+
+        err_code = m_queue.enqueueReadBuffer(from, CL_TRUE, 0, sizeof(T)*size, dest);
+
+        if (err_code != CL_SUCCESS) {
+            throw std::runtime_error("Error copying reading buffer.");
+        }
     }
 
     template<typename T>

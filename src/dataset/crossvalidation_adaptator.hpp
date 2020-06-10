@@ -63,15 +63,16 @@ namespace dataset {
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
         auto bitmap = col->null_bitmap();
+        auto bitmap_data = bitmap->data();
         for(auto it = begin; it != test_begin; ++it) {
-            if (arrow::BitUtil::GetBit(bitmap->data(), *it))
+            if (arrow::BitUtil::GetBit(bitmap_data, *it))
                 builder.UnsafeAppend(raw_values[*it]);
             else
                 builder.UnsafeAppendNull();
         }
 
         for(auto it = test_end; it != end; ++it) {
-            if (arrow::BitUtil::GetBit(bitmap->data(), *it))
+            if (arrow::BitUtil::GetBit(bitmap_data, *it))
                 builder.UnsafeAppend(raw_values[*it]);
             else
                 builder.UnsafeAppendNull();
@@ -116,8 +117,9 @@ namespace dataset {
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
         auto bitmap = col->null_bitmap();
+        auto bitmap_data = bitmap->data();
         for(auto it = test_begin; it != test_end; ++it) {
-            if (arrow::BitUtil::GetBit(bitmap->data(), *it))
+            if (arrow::BitUtil::GetBit(bitmap_data, *it))
                 builder.UnsafeAppend(raw_values[*it]);
             else
                 builder.UnsafeAppendNull();

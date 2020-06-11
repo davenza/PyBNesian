@@ -7,12 +7,13 @@ using opencl::OpenCLConfig;
 namespace factors::continuous {
 
 
-    void CKDE::fit(py::handle pyobject) {
+    void KDE::fit(py::handle pyobject) {
         auto rb = dataset::to_record_batch(pyobject);
         auto df = DataFrame(rb);
         fit(df);
     }
 
+    
     void KDE::fit(const DataFrame& df) {
         m_training_type = df.same_type(m_variables);
         bool contains_null = df.null_count(m_variables);
@@ -37,11 +38,13 @@ namespace factors::continuous {
         }
     }
 
-    // VectorXd KDE::logpdf(py::handle pyobject) const {
-    //     auto rb = dataset::to_record_batch(pyobject);
-    //     auto df = DataFrame(rb);
-    //     return logpdf(df);
-    // }
+    VectorXd KDE::logpdf(py::handle pyobject) const {
+        auto rb = dataset::to_record_batch(pyobject);
+        auto df = DataFrame(rb);
+
+        auto l = logpdf(df);
+        return l;
+    }
 
     VectorXd KDE::logpdf(const DataFrame& df) const {
         // FIXME: Check the model is fitted.
@@ -59,6 +62,5 @@ namespace factors::continuous {
             default:
                 throw std::runtime_error("Unreachable code.");
         }
-
     }
 }

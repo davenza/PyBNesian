@@ -20,6 +20,7 @@ namespace pyarrow = arrow::py;
 using namespace ::graph;
 
 using factors::continuous::LinearGaussianCPD;
+using factors::continuous::KDE;
 using factors::continuous::CKDE;
 
 
@@ -37,10 +38,15 @@ PYBIND11_MODULE(pgm_dataset, m) {
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
             .def("fit", py::overload_cast<py::handle>(&LinearGaussianCPD::fit));
 
-    py::class_<CKDE>(continuous, "CKDE")
-            .def(py::init<const std::string, const std::vector<std::string>>())
+    py::class_<KDE>(continuous, "KDE")
+             .def(py::init<std::vector<std::string>>())
+             .def("fit", py::overload_cast<py::handle>(&KDE::fit))
+             .def("logpdf", py::overload_cast<py::handle>(&KDE::logpdf, py::const_));
+
+//     py::class_<CKDE>(continuous, "CKDE")
+//             .def(py::init<const std::string, const std::vector<std::string>>())
             // .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
-            .def("fit", py::overload_cast<py::handle>(&CKDE::fit));
+        //     .def("fit", py::overload_cast<py::handle>(&CKDE::fit));
 
     auto learning = m.def_submodule("learning", "Learning submodule");
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");

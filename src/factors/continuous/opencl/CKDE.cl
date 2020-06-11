@@ -27,8 +27,8 @@ __kernel void logpdf_values_1d_double(__constant double *train_vector,
                                     __global double *result) 
 {
     int i = get_global_id(0);
-    double d = train_vector[i] - test_vector[test_index];
-    result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
+    double d = (train_vector[i] - test_vector[test_index]) / standard_deviation[0];
+    result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
 __kernel void logpdf_values_1d_matrix_double(__constant double *train_vector,
@@ -41,13 +41,14 @@ __kernel void logpdf_values_1d_matrix_double(__constant double *train_vector,
     int i = get_global_id(0);
     int train_idx = ROW(i, train_rows);
     int test_idx = COL(i, train_rows);
-    double d = train_vector[train_idx] - test_vector[test_idx];
-    result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
+    double d = (train_vector[train_idx] - test_vector[test_idx]) / standard_deviation[0];
+
+    result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
 
 
-#line 46
+#line 47
 
 __kernel void max1d_double(__constant double *input,
                                       __private uint input_length,
@@ -97,7 +98,7 @@ __kernel void max1d_double(__constant double *input,
 
 __kernel void max_mat_cols_double(__constant double *mat,
                                              __private uint mat_rows,
-                                             __local double *localMaxs
+                                             __local double *localMaxs,
                                              __global double *output)
 {
     uint global_id_row = get_global_id(0);
@@ -110,7 +111,7 @@ __kernel void max_mat_cols_double(__constant double *mat,
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
-        if (global_id_col < rows) {
+        if (global_id_row < mat_rows) {
             localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
         }
     }
@@ -141,7 +142,7 @@ __kernel void max_mat_cols_double(__constant double *mat,
 }
 
 
-#line 46
+#line 47
 
 __kernel void sum1d_double(__constant double *input,
                                       __private uint input_length,
@@ -191,7 +192,7 @@ __kernel void sum1d_double(__constant double *input,
 
 __kernel void sum_mat_cols_double(__constant double *mat,
                                              __private uint mat_rows,
-                                             __local double *localMaxs
+                                             __local double *localMaxs,
                                              __global double *output)
 {
     uint global_id_row = get_global_id(0);
@@ -204,7 +205,7 @@ __kernel void sum_mat_cols_double(__constant double *mat,
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
-        if (global_id_col < rows) {
+        if (global_id_row < mat_rows) {
             localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
         }
     }
@@ -256,7 +257,7 @@ __kernel void copy_logpdf_result_double(__constant double *sum,
                                       __private uint sum_offset,
                                       __constant double *max,
                                       __private uint max_offset,
-                                      __global @dt *res,
+                                      __global double *res,
                                       __private uint res_offset) {
     res[res_offset] = max[max_offset] + log(sum[sum_offset]);
 }
@@ -301,11 +302,11 @@ __kernel void solve_double(__global double *diff_matrix,
                         __constant double *cholesky_matrix) {
     uint r = get_global_id(0);
     
-    for (uint c = 0; c < diff_matrix_cols; c++) {
+    for (uint c = 0; c < matrices_cols; c++) {
         for (uint i = 0; i < c; i++) {
-            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, cholesky_dim)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
+            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, matrices_cols)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
         }
-        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, cholesky_dim)];
+        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, matrices_cols)];
     }
 }
 
@@ -316,13 +317,14 @@ __kernel void square_double(__global double *m) {
 }
 
 __kernel void logpdf_values_double(__constant double *square_data,
-                                __private uint square_rows,
+                                __private uint square_cols,
                                 __global double *sol_vec,
                                 __private double lognorm_factor) {
     uint sol_row = get_global_id(0);
+    uint square_rows = get_global_size(0);
 
     sol_vec[sol_row] = square_data[IDX(sol_row, 0, square_rows)];
-    for (uint i = 1; i < n_col; i++) {
+    for (uint i = 1; i < square_cols; i++) {
         sol_vec[sol_row] += square_data[IDX(sol_row, i, square_rows)];
     }
 
@@ -331,19 +333,20 @@ __kernel void logpdf_values_double(__constant double *square_data,
 
 
 __kernel void logpdf_values_mat_double(__constant double *square_data,
+                                     __private uint square_cols,
                                      __global double *sol_mat,
                                      __private uint sol_col,
-                                     __private uint matrices_rows,
                                      __private double lognorm_factor) {
     uint sol_row = get_global_id(0);
+    uint square_rows = get_global_size(0);
     
-    uint sol_idx = IDX(sol_row, sol_col, matrices_rows);
-    sol_mat[sol_idx] = square_data[IDX(sol_row, 0, matrices_rows)];
-    for (uint i = 1; i < n_col; i++) {
-        sol_vec[sol_idx] += square_data[IDX(sol_row, i, matrices_rows)];
+    uint sol_idx = IDX(sol_row, sol_col, square_rows);
+    sol_mat[sol_idx] = square_data[IDX(sol_row, 0, square_rows)];
+    for (uint i = 1; i < square_cols; i++) {
+        sol_mat[sol_idx] += square_data[IDX(sol_row, i, square_rows)];
     }
 
-    sol_vec[sol_idx] = (-0.5 * sol_vec[sol_idx]) - lognorm_factor;
+    sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) - lognorm_factor;
 }
 
 
@@ -357,8 +360,8 @@ __kernel void logpdf_values_1d_float(__constant float *train_vector,
                                     __global float *result) 
 {
     int i = get_global_id(0);
-    float d = train_vector[i] - test_vector[test_index];
-    result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
+    float d = (train_vector[i] - test_vector[test_index]) / standard_deviation[0];
+    result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
 __kernel void logpdf_values_1d_matrix_float(__constant float *train_vector,
@@ -371,13 +374,14 @@ __kernel void logpdf_values_1d_matrix_float(__constant float *train_vector,
     int i = get_global_id(0);
     int train_idx = ROW(i, train_rows);
     int test_idx = COL(i, train_rows);
-    float d = train_vector[train_idx] - test_vector[test_idx];
-    result[i] = (0.5 *((d * d)/(standard_deviation[0]*standard_deviation[0])) + lognorm_factor;
+    float d = (train_vector[train_idx] - test_vector[test_idx]) / standard_deviation[0];
+
+    result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
 
 
-#line 46
+#line 47
 
 __kernel void max1d_float(__constant float *input,
                                       __private uint input_length,
@@ -427,8 +431,8 @@ __kernel void max1d_float(__constant float *input,
 
 __kernel void max_mat_cols_float(__constant float *mat,
                                              __private uint mat_rows,
-                                             __local float *localMaxs
-                                             __global double *output)
+                                             __local float *localMaxs,
+                                             __global float *output)
 {
     uint global_id_row = get_global_id(0);
     uint global_id_col = get_global_id(1);
@@ -440,7 +444,7 @@ __kernel void max_mat_cols_float(__constant float *mat,
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
-        if (global_id_col < rows) {
+        if (global_id_row < mat_rows) {
             localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
         }
     }
@@ -471,7 +475,7 @@ __kernel void max_mat_cols_float(__constant float *mat,
 }
 
 
-#line 46
+#line 47
 
 __kernel void sum1d_float(__constant float *input,
                                       __private uint input_length,
@@ -521,8 +525,8 @@ __kernel void sum1d_float(__constant float *input,
 
 __kernel void sum_mat_cols_float(__constant float *mat,
                                              __private uint mat_rows,
-                                             __local float *localMaxs
-                                             __global double *output)
+                                             __local float *localMaxs,
+                                             __global float *output)
 {
     uint global_id_row = get_global_id(0);
     uint global_id_col = get_global_id(1);
@@ -534,7 +538,7 @@ __kernel void sum_mat_cols_float(__constant float *mat,
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
-        if (global_id_col < rows) {
+        if (global_id_row < mat_rows) {
             localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
         }
     }
@@ -586,7 +590,7 @@ __kernel void copy_logpdf_result_float(__constant float *sum,
                                       __private uint sum_offset,
                                       __constant float *max,
                                       __private uint max_offset,
-                                      __global @dt *res,
+                                      __global float *res,
                                       __private uint res_offset) {
     res[res_offset] = max[max_offset] + log(sum[sum_offset]);
 }
@@ -631,11 +635,11 @@ __kernel void solve_float(__global float *diff_matrix,
                         __constant float *cholesky_matrix) {
     uint r = get_global_id(0);
     
-    for (uint c = 0; c < diff_matrix_cols; c++) {
+    for (uint c = 0; c < matrices_cols; c++) {
         for (uint i = 0; i < c; i++) {
-            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, cholesky_dim)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
+            diff_matrix[IDX(r, c, diff_matrix_rows)] -= cholesky_matrix[IDX(c, i, matrices_cols)] * diff_matrix[IDX(r, i, diff_matrix_rows)];
         }
-        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, cholesky_dim)];
+        diff_matrix[IDX(r, c, diff_matrix_rows)] /= cholesky_matrix[IDX(c, c, matrices_cols)];
     }
 }
 
@@ -646,13 +650,14 @@ __kernel void square_float(__global float *m) {
 }
 
 __kernel void logpdf_values_float(__constant float *square_data,
-                                __private uint square_rows,
+                                __private uint square_cols,
                                 __global float *sol_vec,
                                 __private float lognorm_factor) {
     uint sol_row = get_global_id(0);
+    uint square_rows = get_global_size(0);
 
     sol_vec[sol_row] = square_data[IDX(sol_row, 0, square_rows)];
-    for (uint i = 1; i < n_col; i++) {
+    for (uint i = 1; i < square_cols; i++) {
         sol_vec[sol_row] += square_data[IDX(sol_row, i, square_rows)];
     }
 
@@ -661,19 +666,20 @@ __kernel void logpdf_values_float(__constant float *square_data,
 
 
 __kernel void logpdf_values_mat_float(__constant float *square_data,
+                                     __private uint square_cols,
                                      __global float *sol_mat,
                                      __private uint sol_col,
-                                     __private uint matrices_rows,
                                      __private float lognorm_factor) {
     uint sol_row = get_global_id(0);
+    uint square_rows = get_global_size(0);
     
-    uint sol_idx = IDX(sol_row, sol_col, matrices_rows);
-    sol_mat[sol_idx] = square_data[IDX(sol_row, 0, matrices_rows)];
-    for (uint i = 1; i < n_col; i++) {
-        sol_vec[sol_idx] += square_data[IDX(sol_row, i, matrices_rows)];
+    uint sol_idx = IDX(sol_row, sol_col, square_rows);
+    sol_mat[sol_idx] = square_data[IDX(sol_row, 0, square_rows)];
+    for (uint i = 1; i < square_cols; i++) {
+        sol_mat[sol_idx] += square_data[IDX(sol_row, i, square_rows)];
     }
 
-    sol_vec[sol_idx] = (-0.5 * sol_vec[sol_idx]) - lognorm_factor;
+    sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) - lognorm_factor;
 }
 
 

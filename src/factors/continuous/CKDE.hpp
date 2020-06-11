@@ -7,6 +7,7 @@
 #include <opencl/opencl_config.hpp>
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
+#include <pybind11/eigen.h>
 #include <dataset/dataset.hpp>
 #include <util/math_constants.hpp>
 
@@ -33,7 +34,7 @@ namespace factors::continuous {
                                     cl::Buffer&,
                                     cl::Buffer& output_vec) 
         {
-            auto opencl = OpenCLConfig::get();
+            auto& opencl = OpenCLConfig::get();
             auto k_logpdf_values = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_1d);
             k_logpdf_values.setArg(0, training_vec);
             k_logpdf_values.setArg(1, test_vec);
@@ -44,7 +45,7 @@ namespace factors::continuous {
 
         template<typename ArrowType>
         void static execute_logpdf_vec(const unsigned int test_index, const unsigned int training_length, const unsigned int) {
-            auto opencl = OpenCLConfig::get();
+            auto& opencl = OpenCLConfig::get();
             auto k_logpdf_values = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_1d);
             k_logpdf_values.setArg(2, test_index);
             auto queue = opencl.queue();
@@ -62,7 +63,7 @@ namespace factors::continuous {
                                        cl::Buffer&,
                                        cl::Buffer& output_mat) 
         {
-            auto opencl = OpenCLConfig::get();
+            auto& opencl = OpenCLConfig::get();
             auto k_logpdf_values_matrix = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_1d_matrix);
             k_logpdf_values_matrix.setArg(0, training_vec);
             k_logpdf_values_matrix.setArg(1, training_length);
@@ -88,7 +89,7 @@ namespace factors::continuous {
                                     cl::Buffer& tmp_mat,
                                     cl::Buffer& output_vec) 
         {
-            auto opencl = OpenCLConfig::get();
+            auto& opencl = OpenCLConfig::get();
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_matrix);
             k_substract.setArg(0, training_mat);
             k_substract.setArg(1, training_rows);
@@ -107,14 +108,14 @@ namespace factors::continuous {
             
             auto k_logpdf_values = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values);
             k_logpdf_values.setArg(0, tmp_mat);
-            k_logpdf_values.setArg(1, training_rows);
+            k_logpdf_values.setArg(1, matrices_cols);
             k_logpdf_values.setArg(2, output_vec);
             k_logpdf_values.setArg(3, lognorm_const);
         }
 
         template<typename ArrowType>
         void static execute_logpdf_vec(const unsigned int test_index, const unsigned int training_rows, const unsigned int cols) {
-            auto opencl = OpenCLConfig::get();
+            auto& opencl = OpenCLConfig::get();
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_matrix);
             k_substract.setArg(4, test_index);
 
@@ -142,7 +143,7 @@ namespace factors::continuous {
                                        cl::Buffer& tmp_mat,
                                        cl::Buffer& output_mat) 
         {
-            auto opencl = OpenCLConfig::get();
+            auto& opencl = OpenCLConfig::get();
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_matrix);
             k_substract.setArg(0, training_mat);
             k_substract.setArg(1, training_rows);
@@ -161,8 +162,8 @@ namespace factors::continuous {
             
             auto k_logpdf_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_mat);
             k_logpdf_values_mat.setArg(0, tmp_mat);
-            k_logpdf_values_mat.setArg(1, output_mat);
-            k_logpdf_values_mat.setArg(3, matrices_cols);
+            k_logpdf_values_mat.setArg(1, matrices_cols);
+            k_logpdf_values_mat.setArg(2, output_mat);
             k_logpdf_values_mat.setArg(4, lognorm_const);
 
             auto queue = opencl.queue();
@@ -171,7 +172,7 @@ namespace factors::continuous {
                 queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(training_rows*matrices_cols), cl::NullRange);
                 queue.enqueueNDRangeKernel(k_solve, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
                 queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(training_rows*matrices_cols), cl::NullRange);
-                k_logpdf_values_mat.setArg(2, i);
+                k_logpdf_values_mat.setArg(3, i);
                 queue.enqueueNDRangeKernel(k_logpdf_values_mat, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
             }
         }
@@ -196,6 +197,7 @@ namespace factors::continuous {
             }
         }
 
+        void fit(py::handle pyobject);
         void fit(const DataFrame& df);
         void fit(cl::Buffer cholesky, cl::Buffer training, int training_instances, arrow::Type::type training_type) {
             m_H_cholesky = cholesky;
@@ -204,6 +206,7 @@ namespace factors::continuous {
             m_training_type = training_type;
         }
 
+        VectorXd logpdf(py::handle pyobject) const;
         VectorXd logpdf(const DataFrame& df) const;
 
     private:
@@ -239,8 +242,7 @@ namespace factors::continuous {
     Matrix<typename ArrowType::c_type, Dynamic, Dynamic> KDE::compute_bandwidth(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
         auto cov = df.cov<ArrowType, contains_null>(m_variables);
-        auto bandwidth = std::pow(static_cast<CType>(df->num_rows()), -1 / static_cast<CType>(m_variables.size() + 4)) * (*cov) ;
-
+        auto bandwidth = std::pow(static_cast<CType>(df->num_rows()), -2 / static_cast<CType>(m_variables.size() + 4)) * (*cov);
         return bandwidth;
     }
 
@@ -250,19 +252,21 @@ namespace factors::continuous {
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
 
         auto d = m_variables.size();
-        N = df->num_rows();
 
         auto bandwidth = compute_bandwidth<ArrowType, contains_null>(df);
 
         LLT<Ref<MatrixType>> llt_cov(bandwidth);
 
-        auto opencl = OpenCLConfig::get();
+        auto& opencl = OpenCLConfig::get();
         m_H_cholesky = opencl.copy_to_buffer(bandwidth.data(), d*d);
         
         auto training_data = df.to_eigen<false, ArrowType, contains_null>(m_variables);
+        N = training_data->rows();
         m_training = opencl.copy_to_buffer(training_data->data(), N * d);
 
-        m_lognorm_const = -bandwidth.diagonal().array().log().sum() - 0.5 * d * std::log(2*util::pi<CType>);
+        m_lognorm_const = -bandwidth.diagonal().array().log().sum() 
+                          - 0.5 * d * std::log(2*util::pi<CType>)
+                          - std::log(N);
     }
 
     template<typename ArrowType>
@@ -271,12 +275,11 @@ namespace factors::continuous {
         using VectorType = Matrix<CType, Dynamic, 1>;
 
         auto logpdf_buffer = _logpdf_impl<ArrowType>(df);
-
-        auto opencl = OpenCLConfig::get();
+    
+        auto& opencl = OpenCLConfig::get();
         if (df.null_count(m_variables) == 0) {
-            VectorType read_data(df->num_rows()); 
+            VectorType read_data(df->num_rows());
             opencl.read_from_buffer(read_data.data(), logpdf_buffer, df->num_rows());
-
             if constexpr (!std::is_same_v<typename ArrowType::c_type, double>)
                 return read_data.template cast<double>();
             else
@@ -319,7 +322,7 @@ namespace factors::continuous {
     template<typename ArrowType, typename KDEType>
     cl::Buffer KDE::_logpdf_impl_iterate_test(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
-        auto opencl = OpenCLConfig::get();
+        auto& opencl = OpenCLConfig::get();
 
         auto test_matrix = df.to_eigen<false, ArrowType>(m_variables);
         auto m = test_matrix->rows();
@@ -349,7 +352,7 @@ namespace factors::continuous {
     cl::Buffer KDE::_logpdf_impl_iterate_train(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
 
-        auto opencl = OpenCLConfig::get();
+        auto& opencl = OpenCLConfig::get();
 
         auto m = df.valid_count(m_variables);
         
@@ -377,10 +380,11 @@ namespace factors::continuous {
 
     template<typename ArrowType, typename KDEType>
     cl::Buffer KDE::_logpdf_impl_iterate_train_vec(const DataFrame& df, cl::Buffer& max_vec, int m) const {
+        std::cout << "low memory mode!" << std::endl;
         using CType = typename ArrowType::c_type;
 
         auto test_matrix = df.to_eigen<false, ArrowType>(m_variables);
-        auto opencl = OpenCLConfig::get();
+        auto& opencl = OpenCLConfig::get();
         auto test_buffer = opencl.copy_to_buffer(test_matrix->data(), m*m_variables.size());
 
         auto logpdf_buffer = opencl.new_buffer<CType>(m);
@@ -427,11 +431,11 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType, typename KDEType>
-    cl::Buffer KDE::_logpdf_impl_iterate_train_mat(const DataFrame& df, cl::Buffer& cache_vec, int m) const {
+    cl::Buffer KDE::_logpdf_impl_iterate_train_mat(const DataFrame& df, cl::Buffer& cache_mat, int m) const {
         using CType = typename ArrowType::c_type;
 
         auto test_matrix = df.to_eigen<false, ArrowType>(m_variables);
-        auto opencl = OpenCLConfig::get();
+        auto& opencl = OpenCLConfig::get();
         auto test_buffer = opencl.copy_to_buffer(test_matrix->data(), m*m_variables.size());
         
         cl::Buffer tmp_mat_buffer;
@@ -440,10 +444,10 @@ namespace factors::continuous {
         }
 
         KDEType::template execute_logpdf_mat<ArrowType>(m_training, N, test_buffer, m, m_variables.size(), 
-                                                        m_H_cholesky, m_lognorm_const, tmp_mat_buffer, cache_vec);
+                                                        m_H_cholesky, m_lognorm_const, tmp_mat_buffer, cache_mat);
 
         auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, m);
-        return opencl.logsumexp_cols<ArrowType>(cache_vec, N, m, reduc_buffers);
+        return opencl.logsumexp_cols<ArrowType>(cache_mat, N, m, reduc_buffers);
     }
 
     class CKDE {

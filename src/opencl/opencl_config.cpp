@@ -6,14 +6,9 @@ namespace opencl {
 
 
 
-    OpenCLConfig OpenCLConfig::singleton = OpenCLConfig();
-    bool OpenCLConfig::initialized = false;
-
-    OpenCLConfig& OpenCLConfig::get() {
-
-        if (initialized)
-            return singleton;
-
+    // bool OpenCLConfig::initialized = false;
+    
+    OpenCLConfig::OpenCLConfig() {
         std::vector<cl::Platform> platforms;
         cl::Platform::get(&platforms);
         if (platforms.empty()) {
@@ -48,9 +43,9 @@ namespace opencl {
 
         cl::Program program (context, source);
 
-        cl_int build_result = program.build();
-
-        if (build_result != CL_SUCCESS) {
+        try{
+            program.build();
+        } catch(...) {
             cl_int buildErr = CL_SUCCESS;
             auto buildInfo = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(&buildErr);
             for (auto &pair : buildInfo) {
@@ -65,10 +60,15 @@ namespace opencl {
             throw std::runtime_error("Maximum work group size could not be determined.");
         }
 
-        OpenCLConfig::singleton =  OpenCLConfig(context, queue, program, max_local_size);
-        OpenCLConfig::initialized = true;
+        m_context = context;
+        m_queue = queue;
+        m_program = program;
+        m_max_local_size = max_local_size;
+    }
 
-        return OpenCLConfig::singleton;
+    OpenCLConfig& OpenCLConfig::get() {
+        static OpenCLConfig singleton;
+        return singleton;
     }
 
     cl::Kernel& OpenCLConfig::kernel(const char* name) {
@@ -80,14 +80,12 @@ namespace opencl {
         } else {
             cl_int err_code = CL_SUCCESS;
             auto k = cl::Kernel(m_program, name, &err_code);
-
             if (err_code != CL_SUCCESS) {
                 throw std::runtime_error(std::string("Error creating OpenCL kernel ") + name);
             }
 
             m_kernels.insert({name, std::move(k)});
-
-            return m_kernels.find(name)->second;
+            return m_kernels.find(name)->second;;
         }
     }
 

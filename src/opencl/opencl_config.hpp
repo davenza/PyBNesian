@@ -10,6 +10,7 @@
 #include <arrow/api.h>
 #include <CL/cl2.hpp>
 
+
 namespace opencl {
 
     template<typename ArrowType>
@@ -66,7 +67,7 @@ namespace opencl {
     template<typename ArrowType>
     struct SumReduction {
         inline constexpr static const char* reduction1d = OpenCL_kernel_traits<ArrowType>::sum1d;
-        inline constexpr static const char* reduction_mat = OpenCL_kernel_traits<ArrowType>::max_mat_cols;
+        inline constexpr static const char* reduction_mat = OpenCL_kernel_traits<ArrowType>::sum_mat_cols;
     };
 
 
@@ -135,20 +136,20 @@ namespace opencl {
  
 
         int max_local_size() { return m_max_local_size; }
+
+        OpenCLConfig(const OpenCLConfig&)    = delete;
+        void operator=(const OpenCLConfig&)  = delete;
+
     private:
-        OpenCLConfig() {}
-        OpenCLConfig(cl::Context cont, cl::CommandQueue queue, cl::Program program, int max_local_size) 
-                                                                    : m_context(cont), 
-                                                                      m_queue(queue), 
-                                                                      m_program(program),
-                                                                      m_kernels(),
-                                                                      m_max_local_size(max_local_size) {}
+        OpenCLConfig();
+        // OpenCLConfig(cl::Context cont, cl::CommandQueue queue, cl::Program program, int max_local_size) 
+        //                                                             : m_context(cont), 
+        //                                                               m_queue(queue), 
+        //                                                               m_program(program),
+        //                                                               m_kernels(),
+        //                                                               m_max_local_size(max_local_size) {}
 
-
-
-        static OpenCLConfig singleton;
-        static bool initialized;
-
+        // static bool initialized;
         cl::Context m_context;
         cl::CommandQueue m_queue;
         cl::Program m_program;
@@ -369,7 +370,7 @@ namespace opencl {
         logsumexp_coeffs_mat.setArg(2, max_buffer);
         m_queue.enqueueNDRangeKernel(logsumexp_coeffs_mat, cl::NullRange,  cl::NDRange(input_rows*input_cols),cl::NullRange);
 
-        auto sum_buffer = amax_cols<ArrowType>(input_mat, input_rows, input_cols, reduc_buffers);
+        auto sum_buffer = sum_cols<ArrowType>(input_mat, input_rows, input_cols, reduc_buffers);
 
         auto finish_lse = kernel(OpenCL_kernel_traits<ArrowType>::finish_lse);
         finish_lse.setArg(0, sum_buffer);

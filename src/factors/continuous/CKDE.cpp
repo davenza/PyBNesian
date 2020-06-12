@@ -13,10 +13,10 @@ namespace factors::continuous {
         fit(df);
     }
 
-    
     void KDE::fit(const DataFrame& df) {
         m_training_type = df.same_type(m_variables);
-        bool contains_null = df.null_count(m_variables);
+
+        bool contains_null = df.null_count(m_variables) > 0;
 
         switch(m_training_type) {
             case Type::DOUBLE: {
@@ -61,6 +61,37 @@ namespace factors::continuous {
                 return _logpdf<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
+        }
+    }
+
+    void CKDE::fit(py::handle pyobject) {
+        auto rb = dataset::to_record_batch(pyobject);
+        auto df = DataFrame(rb);
+        fit(df);
+    }
+
+    void CKDE::fit(const DataFrame& df) {
+        m_training_type = df.same_type(m_variables);
+
+        bool contains_null = df.null_count(m_variables) > 0;
+
+        switch(m_training_type) {
+            case Type::DOUBLE: {
+                if (contains_null)
+                    _fit<arrow::DoubleType, true>(df);
+                else 
+                    _fit<arrow::DoubleType, false>(df);
+                break;
+            }
+            case Type::FLOAT: {
+                if (contains_null)
+                    _fit<arrow::FloatType, true>(df);
+                else 
+                    _fit<arrow::FloatType, false>(df);
+                break;
+            }
+            default:
+                throw py::value_error("Wrong data type to fit CKDE. [double] or [float] data is expected.");
         }
     }
 }

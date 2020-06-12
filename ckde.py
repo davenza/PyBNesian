@@ -2,12 +2,12 @@ import pyarrow as pa
 from pgm_dataset.factors.continuous import KDE
 import numpy as np
 import pandas as pd
-from scipy.stats import gaussian_kde, norm
+from scipy.stats import gaussian_kde, norm, multivariate_normal
 from scipy.special import logsumexp
 
 np.random.seed(1)
 
-SIZE = 100000
+SIZE = 10000
 
 a_array = np.random.normal(3, 0.5, size=SIZE)
 b_array = 2.5 + 1.65*a_array + np.random.normal(0, 2, size=SIZE)
@@ -23,24 +23,15 @@ df = pd.DataFrame({
                     })
 
 
-train = df.iloc[:10].loc[:, 'a']
-test = df.iloc[10:].loc[:, 'a']
-print("train data: " + str(train))
-print("test data: " + str(test))
-bandwidth = train.shape[0]**(-2/(5))*np.var(train, ddof=1)
 
+k = gaussian_kde(df.to_numpy().T)
 
-k = gaussian_kde(train)
+covariance = k.covariance
+cholesky = np.linalg.cholesky(covariance)
 
-# print("bandwidth: "  + str(bandwidth))
-# print("bandwidth scipy: " + str(k.covariance))
-# print("cholesky scipy: " + str(np.sqrt(k.covariance)))
+spk = gaussian_kde(df.iloc[:8000, :].loc[:, "a"].to_numpy().T)
+print(spk.logpdf(df.iloc[8000:, :].loc[:, "a"].to_numpy().T))
 
-# l = norm(test[0], np.sqrt(k.covariance)).logpdf(train)
-# print("invididual logpdf: " + str(l - np.log(train.shape[0])))
-
-cpd = KDE(['a'])
-cpd.fit(df.iloc[:10])
-
-print("Ground truth: " + str(k.logpdf(test[:10])))
-print("My implementation " + str(cpd.logpdf(df.iloc[10:])[:10]))
+k = KDE(["a"])
+k.fit(df.iloc[:8000])
+print(k.logpdf(df.iloc[8000:]))

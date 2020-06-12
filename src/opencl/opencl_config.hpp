@@ -11,6 +11,9 @@
 #include <CL/cl2.hpp>
 
 
+#include <Eigen/Dense>
+using Eigen::Matrix, Eigen::Dynamic;
+
 namespace opencl {
 
     template<typename ArrowType>
@@ -142,14 +145,7 @@ namespace opencl {
 
     private:
         OpenCLConfig();
-        // OpenCLConfig(cl::Context cont, cl::CommandQueue queue, cl::Program program, int max_local_size) 
-        //                                                             : m_context(cont), 
-        //                                                               m_queue(queue), 
-        //                                                               m_program(program),
-        //                                                               m_kernels(),
-        //                                                               m_max_local_size(max_local_size) {}
 
-        // static bool initialized;
         cl::Context m_context;
         cl::CommandQueue m_queue;
         cl::Program m_program;
@@ -200,7 +196,7 @@ namespace opencl {
 
     template<typename T>
     void OpenCLConfig::fill_buffer(cl::Buffer& buffer, T value, int length) {
-        m_queue.enqueueFillBuffer(buffer, value, 0, length);
+        m_queue.enqueueFillBuffer(buffer, value, 0, sizeof(T)*length);
     }
 
     template<typename ArrowType>
@@ -246,7 +242,6 @@ namespace opencl {
         m_queue.enqueueNDRangeKernel(k_logsumexp_coeffs, cl::NullRange,  cl::NDRange(input_length),cl::NullRange);
 
         sum1d<ArrowType>(input_vec, input_length, reduc_buffers, input_vec, 0);
-        // opencl.sum1d<ArrowType>(logpdf_buffer, m, sum_buffer);
 
         auto k_copy_logpdf_result = kernel(OpenCL_kernel_traits<ArrowType>::copy_logpdf_result);
         k_copy_logpdf_result.setArg(0, input_vec);
@@ -274,7 +269,7 @@ namespace opencl {
         auto k_reduction = kernel(Reduction::reduction1d);
         k_reduction.setArg(0, input_vec);
         k_reduction.setArg(1, static_cast<unsigned int>(length));
-        k_reduction.setArg(2, cl::Local(local_size));
+        k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
         if (num_groups == 1) {
             k_reduction.setArg(3, output_buffer);
             k_reduction.setArg(4, output_offset);
@@ -293,7 +288,7 @@ namespace opencl {
         for(auto i = 0; length > m_max_local_size; ++i) {
             k_reduction.setArg(0, reduc_buffers[i]);
             k_reduction.setArg(1, static_cast<unsigned int>(length));
-            k_reduction.setArg(2, cl::Local(local_size));
+            k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
             k_reduction.setArg(3, reduc_buffers[i+1]);
             k_reduction.setArg(4, 0u);
 
@@ -304,7 +299,7 @@ namespace opencl {
 
         k_reduction.setArg(0, reduc_buffers.back());
         k_reduction.setArg(1, static_cast<unsigned int>(length));
-        k_reduction.setArg(2, cl::Local(local_size));
+        k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
         k_reduction.setArg(3, output_buffer);
         k_reduction.setArg(4, output_offset);
 
@@ -326,7 +321,7 @@ namespace opencl {
         auto k_reduction = kernel(Reduction::reduction_mat);
         k_reduction.setArg(0, input_mat);
         k_reduction.setArg(1, static_cast<unsigned int>(length));
-        k_reduction.setArg(2, cl::Local(local_size));
+        k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
         if (num_groups == 1) {
             k_reduction.setArg(3, res);
         } else {
@@ -343,7 +338,7 @@ namespace opencl {
         for(auto i = 0; length > m_max_local_size; ++i) {
             k_reduction.setArg(0, reduc_buffers[i]);
             k_reduction.setArg(1, static_cast<unsigned int>(length));
-            k_reduction.setArg(2, cl::Local(local_size));
+            k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
             k_reduction.setArg(3, reduc_buffers[i+1]);
 
             m_queue.enqueueNDRangeKernel(k_reduction, cl::NullRange,  cl::NDRange(global_size, input_cols), cl::NDRange(local_size, 1));
@@ -353,7 +348,7 @@ namespace opencl {
 
         k_reduction.setArg(0, reduc_buffers.back());
         k_reduction.setArg(1, static_cast<unsigned int>(length));
-        k_reduction.setArg(2, cl::Local(local_size));
+        k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
         k_reduction.setArg(3, res);
 
         m_queue.enqueueNDRangeKernel(k_reduction, cl::NullRange,  cl::NDRange(global_size, input_cols), cl::NDRange(local_size, 1));
@@ -363,7 +358,7 @@ namespace opencl {
     template<typename ArrowType>
     cl::Buffer OpenCLConfig::logsumexp_cols(cl::Buffer& input_mat, int input_rows, int input_cols, std::vector<cl::Buffer>& reduc_buffers) {
         auto max_buffer = amax_cols<ArrowType>(input_mat, input_rows, input_cols, reduc_buffers);
-
+        
         auto logsumexp_coeffs_mat = kernel(OpenCL_kernel_traits<ArrowType>::logsumexp_coeffs_mat);
         logsumexp_coeffs_mat.setArg(0, input_mat);
         logsumexp_coeffs_mat.setArg(1, static_cast<unsigned int>(input_rows));

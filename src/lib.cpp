@@ -40,7 +40,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     py::class_<KDE>(continuous, "KDE")
              .def(py::init<std::vector<std::string>>())
-             .def("fit", py::overload_cast<py::handle>(&KDE::fit))
+            //  .def("fit", py::overload_cast<py::handle>(&KDE::fit))
+             .def("fit", (void (KDE::*)(py::handle)) &KDE::fit)
              .def("logpdf", py::overload_cast<py::handle>(&KDE::logpdf, py::const_));
 
 //     py::class_<CKDE>(continuous, "CKDE")

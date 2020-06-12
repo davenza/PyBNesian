@@ -95,5 +95,4 @@ namespace opencl {
         local_size = (length > max_local_size) ? max_local_size : length;
         global_size = local_size * num_groups;
     }
-
 }

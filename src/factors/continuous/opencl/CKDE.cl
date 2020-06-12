@@ -108,6 +108,7 @@ __kernel void max_mat_cols_double(__constant double *mat,
     uint group_id = get_group_id(0);
     uint num_groups = get_num_groups(0);
 
+
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
@@ -202,6 +203,7 @@ __kernel void sum_mat_cols_double(__constant double *mat,
     uint group_id = get_group_id(0);
     uint num_groups = get_num_groups(0);
 
+
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
@@ -292,7 +294,7 @@ __kernel void substract_matrix_double(__constant double *training_matrix,
     int r = ROW(i, training_rows);
     int c = COL(i, training_rows);
 
-    res[i] = training_matrix[i] - test_matrix[IDX(test_row_idx, c, test_rows)];
+    res[i] = test_matrix[IDX(test_row_idx, c, test_rows)] - training_matrix[i];
 }
 
 
@@ -328,25 +330,26 @@ __kernel void logpdf_values_double(__constant double *square_data,
         sol_vec[sol_row] += square_data[IDX(sol_row, i, square_rows)];
     }
 
-    sol_vec[sol_row] = (-0.5 * sol_vec[sol_row]) - lognorm_factor;
+    sol_vec[sol_row] = (-0.5 * sol_vec[sol_row]) + lognorm_factor;
 }
 
 
 __kernel void logpdf_values_mat_double(__constant double *square_data,
                                      __private uint square_cols,
                                      __global double *sol_mat,
-                                     __private uint sol_col,
+                                     __private uint sol_rows,
+                                     __private uint sol_row_idx,
                                      __private double lognorm_factor) {
-    uint sol_row = get_global_id(0);
+    uint test_idx = get_global_id(0);
     uint square_rows = get_global_size(0);
     
-    uint sol_idx = IDX(sol_row, sol_col, square_rows);
-    sol_mat[sol_idx] = square_data[IDX(sol_row, 0, square_rows)];
+    uint sol_idx = IDX(sol_row_idx, test_idx, sol_rows);
+    sol_mat[sol_idx] = square_data[IDX(test_idx, 0, square_rows)];
     for (uint i = 1; i < square_cols; i++) {
-        sol_mat[sol_idx] += square_data[IDX(sol_row, i, square_rows)];
+        sol_mat[sol_idx] += square_data[IDX(test_idx, i, square_rows)];
     }
 
-    sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) - lognorm_factor;
+    sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) + lognorm_factor;
 }
 
 
@@ -440,6 +443,7 @@ __kernel void max_mat_cols_float(__constant float *mat,
     uint group_size = get_local_size(0);
     uint group_id = get_group_id(0);
     uint num_groups = get_num_groups(0);
+
 
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
@@ -535,6 +539,7 @@ __kernel void sum_mat_cols_float(__constant float *mat,
     uint group_id = get_group_id(0);
     uint num_groups = get_num_groups(0);
 
+
     if (group_id == num_groups-1) {
         group_size = mat_rows - group_id*group_size;
 
@@ -625,7 +630,7 @@ __kernel void substract_matrix_float(__constant float *training_matrix,
     int r = ROW(i, training_rows);
     int c = COL(i, training_rows);
 
-    res[i] = training_matrix[i] - test_matrix[IDX(test_row_idx, c, test_rows)];
+    res[i] = test_matrix[IDX(test_row_idx, c, test_rows)] - training_matrix[i];
 }
 
 
@@ -661,25 +666,26 @@ __kernel void logpdf_values_float(__constant float *square_data,
         sol_vec[sol_row] += square_data[IDX(sol_row, i, square_rows)];
     }
 
-    sol_vec[sol_row] = (-0.5 * sol_vec[sol_row]) - lognorm_factor;
+    sol_vec[sol_row] = (-0.5 * sol_vec[sol_row]) + lognorm_factor;
 }
 
 
 __kernel void logpdf_values_mat_float(__constant float *square_data,
                                      __private uint square_cols,
                                      __global float *sol_mat,
-                                     __private uint sol_col,
+                                     __private uint sol_rows,
+                                     __private uint sol_row_idx,
                                      __private float lognorm_factor) {
-    uint sol_row = get_global_id(0);
+    uint test_idx = get_global_id(0);
     uint square_rows = get_global_size(0);
     
-    uint sol_idx = IDX(sol_row, sol_col, square_rows);
-    sol_mat[sol_idx] = square_data[IDX(sol_row, 0, square_rows)];
+    uint sol_idx = IDX(sol_row_idx, test_idx, sol_rows);
+    sol_mat[sol_idx] = square_data[IDX(test_idx, 0, square_rows)];
     for (uint i = 1; i < square_cols; i++) {
-        sol_mat[sol_idx] += square_data[IDX(sol_row, i, square_rows)];
+        sol_mat[sol_idx] += square_data[IDX(test_idx, i, square_rows)];
     }
 
-    sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) - lognorm_factor;
+    sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) + lognorm_factor;
 }
 
 

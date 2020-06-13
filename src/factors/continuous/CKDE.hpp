@@ -336,20 +336,20 @@ namespace factors::continuous {
 
     template<typename ArrowType, typename EigenMatrix>
     void KDE::fit(EigenMatrix bandwidth, cl::Buffer training_data, int training_instances) {
-        
+        using CType = typename ArrowType::c_type;
         if (bandwidth.rows() != bandwidth.cols() != m_variables.size()) {
             throw std::invalid_argument("Bandwidth matrix must be a square matrix with dimensionality " + std::to_string(m_variables.size()));
         }
         auto d = m_variables.size();
 
-        // auto llt_cov = bandwidth.llt();
-        // auto& opencl = OpenCLConfig::get();
-        // m_H_cholesky = opencl.copy_to_buffer(llt_cov.data(), d*d);
-        // m_training = training_data;
-        // N = training_instances;
-        // m_lognorm_const = -llt_cov.diagonal().array().log().sum() 
-        //                   - 0.5 * d * std::log(2*util::pi<CType>)
-        //                   - std::log(N);
+        auto llt_cov = bandwidth.llt();
+        auto& opencl = OpenCLConfig::get();
+        m_H_cholesky = opencl.copy_to_buffer(llt_cov.data(), d*d);
+        m_training = training_data;
+        N = training_instances;
+        m_lognorm_const = -llt_cov.diagonal().array().log().sum() 
+                          - 0.5 * d * std::log(2*util::pi<CType>)
+                          - std::log(N);
     }
 
     template<typename ArrowType>
@@ -391,17 +391,15 @@ namespace factors::continuous {
 
     template<typename ArrowType>
     cl::Buffer KDE::_logpdf_impl(const DataFrame& df) const {
-
-        // auto m = df.valid_count(m_variables);
-        // if (N >= m) {
-        //     if (m_variables.size() == 1)
-        //         return _logpdf_impl_iterate_test<ArrowType, UnivariateKDE>(df);
-        //     else
-        //         return _logpdf_impl_iterate_test<ArrowType, MultivariateKDE>(df);
-        // } else {
-        //     return _logpdf_impl_iterate_train<ArrowType>(df);
-        // }
-        return _logpdf_impl_iterate_train<ArrowType>(df);
+        auto m = df.valid_count(m_variables);
+        if (N >= m) {
+            if (m_variables.size() == 1)
+                return _logpdf_impl_iterate_test<ArrowType, UnivariateKDE>(df);
+            else
+                return _logpdf_impl_iterate_test<ArrowType, MultivariateKDE>(df);
+        } else {
+            return _logpdf_impl_iterate_train<ArrowType>(df);
+        }
     }
 
 

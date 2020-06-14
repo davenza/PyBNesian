@@ -137,6 +137,53 @@ __kernel void @operation@_mat_cols_@dt@(__constant @dt@ *mat,
     }
 }
 
+__kernel void @operation@_mat_cols_offset_@dt@(__constant @dt@ *mat,
+                                             __private uint mat_rows,
+                                             __local @dt@ *localMaxs,
+                                             __global @dt@ *output,
+                                             __private uint output_offset)
+{
+    uint global_id_row = get_global_id(0);
+    uint global_id_col = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_size = get_local_size(0);
+    uint group_id = get_group_id(0);
+    uint num_groups = get_num_groups(0);
+
+
+    if (group_id == num_groups-1) {
+        group_size = mat_rows - group_id*group_size;
+
+        if (global_id_row < mat_rows) {
+            localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+        }
+    }
+    else {
+        localMaxs[local_id] = mat[IDX(global_id_row, global_id_col, mat_rows)];
+    }
+
+    while (group_size > 1) {
+        int stride = group_size / 2;
+        barrier(CLK_LOCAL_MEM_FENCE);
+        if (group_size % 2 == 0) {
+            if (local_id < stride) {
+                @operation_macro@(localMaxs[local_id], localMaxs[local_id + stride]);
+            }
+            group_size = group_size / 2;
+        }
+        else {
+            if (local_id < stride) {
+                @operation_macro@(localMaxs[local_id+1], localMaxs[local_id+1+stride]);
+            }
+            group_size = (group_size / 2) + 1;
+        }
+    }
+
+    if (local_id == 0) {
+        output[IDX(group_id, output_offset + global_id_col, num_groups)] = localMaxs[0];
+    }
+}
+
 /**end repeat1**/
 
 
@@ -251,5 +298,141 @@ __kernel void logpdf_values_mat_@dt@(__constant @dt@ *square_data,
 
     sol_mat[sol_idx] = (-0.5 * sol_mat[sol_idx]) + lognorm_factor;
 }
+
+
+__kernel void logpdf_values_1d_mat_partial_@dt@(__constant @dt@ *train_vector,
+                                           __private uint train_rows,
+                                           __constant @dt@ *test_vector,
+                                           __private uint test_offset,
+                                           __constant @dt@ *standard_deviation,
+                                           __private @dt@ lognorm_factor,
+                                           __global @dt@ *result) 
+{
+    int i = get_global_id(0);
+    int train_idx = ROW(i, train_rows);
+    int test_idx = COL(i, train_rows);
+    @dt@ d = (train_vector[train_idx] - test_vector[test_offset + test_idx]) / standard_deviation[0];
+
+    result[i] = (-0.5*d*d) + lognorm_factor;
+}
+
+__kernel void substract_partial_@dt@(__constant @dt@ *training_matrix,
+                                     __private uint training_physical_rows,
+                                     __private uint training_offset,
+                                     __private uint training_rows,
+                                     __constant @dt@ *test_matrix,
+                                     __private uint test_physical_rows,
+                                     __private uint test_offset,
+                                     __private uint test_row_idx,
+                                     __global @dt@ *res
+                                )
+{
+    uint i = get_global_id(0);
+    uint r = ROW(i, training_rows) + training_offset;
+    uint c = COL(i, training_rows);
+
+    res[i] = test_matrix[IDX(test_offset + test_row_idx, c, test_physical_rows)] - training_matrix[IDX(r, c, training_physical_rows)];
+}
+
+
+__kernel void logpdf_values_mat_partial_column_@dt@(__constant @dt@ *square_data,
+                                                    __private uint square_cols,
+                                                    __global @dt@ *sol_mat,
+                                                    __private uint sol_rows,
+                                                    __private uint sol_col_idx,
+                                                    __private @dt@ lognorm_factor) {
+    uint test_idx = get_global_id(0);
+    uint square_rows = get_global_size(0);
+    
+    uint sol_idx = IDX(test_idx, sol_col_idx, sol_rows);
+
+    @dt@ summation = square_data[IDX(test_idx, 0, square_rows)];
+    for (uint i = 1; i < square_cols; i++) {
+        summation += square_data[IDX(test_idx, i, square_rows)];
+    }
+
+    sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
+}
+
+__kernel void logpdf_values_mat_partial_row_@dt@(__constant @dt@ *square_data,
+                                                    __private uint square_cols,
+                                                    __global @dt@ *sol_mat,
+                                                    __private uint sol_rows,
+                                                    __private uint sol_row_idx,
+                                                    __private @dt@ lognorm_factor) {
+    uint test_idx = get_global_id(0);
+    uint square_rows = get_global_size(0);
+    
+    uint sol_idx = IDX(sol_row_idx, test_idx, sol_rows);
+
+    @dt@ summation = square_data[IDX(test_idx, 0, square_rows)];
+    for (uint i = 1; i < square_cols; i++) {
+        summation += square_data[IDX(test_idx, i, square_rows)];
+    }
+
+    sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
+}
+
+__kernel void finish_lse_offset_@dt@(__global @dt@ *res, __private uint res_offset, __constant @dt@ *max_vec) {
+    uint idx = get_global_id(0);
+    res[idx + res_offset] = log(res[idx + res_offset]) + max_vec[idx];
+}
+
+
+
+// __kernel void logpdf_values_mat_partial_@dt@(__constant @dt@ *train_mat,
+//                                            __constant @dt@ *test_mat,
+//                                            __private uint test_offset,
+//                                            __private uint test_physical_rows,
+//                                            __constant @dt@ *cholesky,
+//                                            __local @dt@ *cholesky_local,
+//                                            __private @dt@ lognorm_factor,
+//                                            __local @dt@ *local_instance,
+//                                            __global @dt@ *result)
+// {
+//     int i = get_global_id(0);
+//     int var_idx = get_global_id(2);
+//     int num_vars = get_global_size(2);
+//     int train_idx = get_global_id(0);
+//     int train_rows = get_global_size(0);
+//     int test_idx = get_global_id(1);
+
+//     local_instance[var_idx] = train_mat[IDX(train_idx, var_idx, train_rows)] - test_mat[IDX(test_offset + test_idx, var_idx, test_physical_rows)];
+
+
+//     for (int c = 0; c <= var_idx; ++c) {
+//         cholesky_local[IDX(var_idx, c, num_vars)] = cholesky[IDX(var_idx, c, num_vars)];
+//     }
+
+
+//     if (var_idx == 0) {
+//         barrier(CLK_LOCAL_MEM_FENCE);
+//         for (uint c = 0; c < num_vars; ++c) {
+//             for (uint i = 0; i < c; ++i) {
+//                 local_instance[c] -= cholesky_local[IDX(c, i, num_vars)] * local_instance[i];
+//             }
+//             local_instance[c] /= cholesky_local[IDX(c, c, num_vars)];
+//         }
+//     }
+
+//     barrier(CLK_LOCAL_MEM_FENCE);
+//     local_instance[var_idx] *= local_instance[var_idx];
+
+//     barrier(CLK_LOCAL_MEM_FENCE);
+//     if (var_idx == 0) {
+//         for(uint c = 1; c < num_vars; ++c) {
+//             local_instance[0] += local_instance[c];
+//         }
+
+//         local_instance[0] = (-0.5 * local_instance[0]) + lognorm_factor;
+//         result[IDX(train_idx, test_idx, train_rows)] = local_instance[0];
+//     }
+// }
+
+
+
+
+
+
 
 /**end repeat**/

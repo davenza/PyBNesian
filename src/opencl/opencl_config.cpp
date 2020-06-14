@@ -63,6 +63,7 @@ namespace opencl {
         m_context = context;
         m_queue = queue;
         m_program = program;
+        m_device = dev;
         m_max_local_size = max_local_size;
     }
 

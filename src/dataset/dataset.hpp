@@ -301,7 +301,6 @@ namespace dataset {
             return same_type(v.begin(), v.end());
         }
 
-
         Array_ptr col(int i) const { return m_batch->column(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         Array_ptr col(const StringType name) const { return m_batch->GetColumnByName(name); }

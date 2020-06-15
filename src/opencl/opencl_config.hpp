@@ -1,92 +1,66 @@
 #ifndef PGM_OPENCL_CONFIG_HPP
 #define PGM_OPENCL_CONFIG_HPP
 
-#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
-#define CL_HPP_TARGET_OPENCL_VERSION 120
-
 #include <fstream>
 #include <cmath>
 #include <arrow/api.h>
 #include <CL/cl2.hpp>
 
-
-#include <Eigen/Dense>
-using Eigen::Matrix, Eigen::Dynamic;
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
 
 namespace opencl {
+
+    const char* opencl_error(cl_int error);
 
     template<typename ArrowType>
     struct OpenCL_kernel_traits;
 
     template<>
     struct OpenCL_kernel_traits<arrow::DoubleType> {
-        inline constexpr static const char* logpdf_values_1d = "logpdf_values_1d_double";
-        inline constexpr static const char* logpdf_values_1d_matrix = "logpdf_values_1d_matrix_double";
         inline constexpr static const char* max1d = "max1d_double";
         inline constexpr static const char* max_mat_cols = "max_mat_cols_double";
-        inline constexpr static const char* max_mat_cols_offset = "max_mat_cols_offset_double";
         inline constexpr static const char* sum1d = "sum1d_double";
         inline constexpr static const char* sum_mat_cols = "sum_mat_cols_double";
-        inline constexpr static const char* sum_mat_cols_offset = "sum_mat_cols_offset_double";
         inline constexpr static const char* logsumexp_coeffs = "logsumexp_coeffs_double";
-        inline constexpr static const char* logsumexp_coeffs_mat = "logsumexp_coeffs_mat_double";
-        inline constexpr static const char* copy_logpdf_result = "copy_logpdf_result_double";
-        inline constexpr static const char* maxwise = "maxwise_double";
-        inline constexpr static const char* sum_lse_coefficient = "sum_lse_coefficient_double";
-        inline constexpr static const char* finish_lse = "finish_lse_double";
-        inline constexpr static const char* substract_matrix = "substract_matrix_double";
         inline constexpr static const char* solve = "solve_double";
         inline constexpr static const char* square = "square_double";
-        inline constexpr static const char* logpdf_values = "logpdf_values_double";
-        inline constexpr static const char* logpdf_values_mat = "logpdf_values_mat_double";
         inline constexpr static const char* logpdf_values_1d_mat_partial = "logpdf_values_1d_mat_partial_double";
         inline constexpr static const char* substract_partial = "substract_partial_double";
         inline constexpr static const char* logpdf_values_mat_partial_column = "logpdf_values_mat_partial_column_double";
         inline constexpr static const char* logpdf_values_mat_partial_row = "logpdf_values_mat_partial_row_double";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_double";
+        inline constexpr static const char* substract_vectors = "substract_vectors_double";
     };
 
     template<>
     struct OpenCL_kernel_traits<arrow::FloatType> {
-        inline constexpr static const char* logpdf_values_1d = "logpdf_values_1d_float";
-        inline constexpr static const char* logpdf_values_1d_matrix = "logpdf_values_1d_matrix_float";
         inline constexpr static const char* max1d = "max1d_float";
         inline constexpr static const char* max_mat_cols = "max_mat_cols_float";
-        inline constexpr static const char* max_mat_cols_offset = "max_mat_cols_offset_float";
         inline constexpr static const char* sum1d = "sum1d_float";
         inline constexpr static const char* sum_mat_cols = "sum_mat_cols_float";
-        inline constexpr static const char* sum_mat_cols_offset = "sum_mat_cols_offset_float";
         inline constexpr static const char* logsumexp_coeffs = "logsumexp_coeffs_float";
-        inline constexpr static const char* logsumexp_coeffs_mat = "logsumexp_coeffs_mat_float";
-        inline constexpr static const char* copy_logpdf_result = "copy_logpdf_result_float";
-        inline constexpr static const char* maxwise = "maxwise_float";
-        inline constexpr static const char* sum_lse_coefficient = "sum_lse_coefficient_float";
-        inline constexpr static const char* finish_lse = "finish_lse_float";
-        inline constexpr static const char* substract_matrix = "substract_matrix_float";
         inline constexpr static const char* solve = "solve_float";
         inline constexpr static const char* square = "square_float";
-        inline constexpr static const char* logpdf_values = "logpdf_values_float";
-        inline constexpr static const char* logpdf_values_mat = "logpdf_values_mat_float";
         inline constexpr static const char* logpdf_values_1d_mat_partial = "logpdf_values_1d_mat_partial_float";
         inline constexpr static const char* substract_partial = "substract_partial_float";
         inline constexpr static const char* logpdf_values_mat_partial_column = "logpdf_values_mat_partial_column_float";
         inline constexpr static const char* logpdf_values_mat_partial_row = "logpdf_values_mat_partial_row_float";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_float";
+        inline constexpr static const char* substract_vectors = "substract_vectors_float";
     };
 
     template<typename ArrowType>
     struct MaxReduction {
         inline constexpr static const char* reduction1d = OpenCL_kernel_traits<ArrowType>::max1d;
         inline constexpr static const char* reduction_mat = OpenCL_kernel_traits<ArrowType>::max_mat_cols;
-        inline constexpr static const char* reduction_mat_offset = OpenCL_kernel_traits<ArrowType>::max_mat_cols_offset;
     };
 
     template<typename ArrowType>
     struct SumReduction {
         inline constexpr static const char* reduction1d = OpenCL_kernel_traits<ArrowType>::sum1d;
         inline constexpr static const char* reduction_mat = OpenCL_kernel_traits<ArrowType>::sum_mat_cols;
-        inline constexpr static const char* reduction_mat_offset = OpenCL_kernel_traits<ArrowType>::sum_mat_cols_offset;
     };
 
 
@@ -108,8 +82,11 @@ namespace opencl {
         void read_from_buffer(T* dest, const cl::Buffer from, int size);
 
         template<typename T>
-        cl::Buffer new_buffer(int size);
+        cl::Buffer new_buffer(int size, cl_mem_flags flags = CL_MEM_READ_WRITE);
 
+        template<typename T>
+        cl::Buffer copy_buffer(const cl::Buffer& input, unsigned int offset, unsigned int length, cl_mem_flags flags = CL_MEM_READ_WRITE);
+        
         cl::Kernel& kernel(const char* name);
         cl::CommandQueue& queue() { return m_queue; }
 
@@ -119,18 +96,22 @@ namespace opencl {
         template<typename ArrowType>
         std::vector<cl::Buffer> create_reduction_mat_buffers(int length, int cols_mat);
 
-        template<typename T>
-        void fill_buffer(cl::Buffer& buffer, T value, int length);
-
-        template<typename ArrowType>
-        void logsumexp1d(cl::Buffer& input_vec, int input_length, std::vector<cl::Buffer>& reduc_buffers, cl::Buffer& output, int output_offset);
-
         template<typename ArrowType, typename Reduction>
         void reduction1d(cl::Buffer& input_vec, int input_length, std::vector<cl::Buffer>& reduc_buffers, cl::Buffer& output_buffer, int ouput_offset);
 
         template<typename ArrowType>
-        void amax1d(cl::Buffer& input_vec, int input_length, std::vector<cl::Buffer>& reduc_buffers, cl::Buffer& output_buffer, int output_offset) {
-            reduction1d<ArrowType, MaxReduction<ArrowType>>(input_vec, input_length, reduc_buffers, output_buffer, output_offset);
+        cl::Buffer sum1d(cl::Buffer& input_vec, int input_length) {
+            auto reduction_buffers = create_reduction1d_buffers<ArrowType>(input_length);
+            cl::Buffer output = new_buffer<typename ArrowType::c_type>(1);
+            reduction1d<ArrowType, SumReduction<ArrowType>>(input_vec, input_length, reduction_buffers, output, 0);
+            return std::move(output);
+        }
+
+        template<typename ArrowType>
+        cl::Buffer sum1d(cl::Buffer& input_vec, int input_length, std::vector<cl::Buffer>& reduc_buffers) {
+            cl::Buffer output = new_buffer<typename ArrowType::c_type>(1);
+            reduction1d<ArrowType, SumReduction<ArrowType>>(input_vec, input_length, reduc_buffers, output, 0);
+            return std::move(output);
         }
 
         template<typename ArrowType>
@@ -138,20 +119,12 @@ namespace opencl {
             reduction1d<ArrowType, SumReduction<ArrowType>>(input_vec, input_length, reduc_buffers, output_buffer, output_offset);
         }
 
-        template<typename ArrowType>
-        cl::Buffer logsumexp_cols(cl::Buffer& input_mat, int input_rows, int input_cols, std::vector<cl::Buffer>& reduc_buffers);
-
-        template<typename ArrowType>
-        void logsumexp_cols_partial(cl::Buffer& input_mat, int input_rows, int input_cols, 
-                                    cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers);
-
         template<typename ArrowType, typename Reduction>
         cl::Buffer reduction_cols(const cl::Buffer& input_mat, int input_rows, int input_cols, std::vector<cl::Buffer>& reduc_buffers);
 
         template<typename ArrowType, typename Reduction>
-        void reduction_cols_partial(const cl::Buffer& input_mat, int input_rows, int input_cols, 
+        void reduction_cols_offset(const cl::Buffer& input_mat, int input_rows, int input_cols, 
                             cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers);
-        
         
         template<typename ArrowType>
         cl::Buffer amax_cols(const cl::Buffer& input_mat, int input_rows, int input_cols, std::vector<cl::Buffer>& reduc_buffers) {
@@ -159,18 +132,15 @@ namespace opencl {
         }
 
         template<typename ArrowType>
-        cl::Buffer sum_cols(const cl::Buffer& input_mat, int input_rows, int input_cols, std::vector<cl::Buffer>& reduc_buffers) {
-            return reduction_cols<ArrowType, SumReduction<ArrowType>>(input_mat, input_rows, input_cols, reduc_buffers);
+        void sum_cols_offset(const cl::Buffer& input_mat, int input_rows, int input_cols,
+                              cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers) {
+            reduction_cols_offset<ArrowType, SumReduction<ArrowType>>(input_mat, input_rows, input_cols, 
+                                                                       output_vec, output_offset, reduc_buffers);
         }
 
         template<typename ArrowType>
-        void sum_cols_partial(const cl::Buffer& input_mat, int input_rows, int input_cols,
-                              cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers) {
-            reduction_cols_partial<ArrowType, SumReduction<ArrowType>>(input_mat, input_rows, input_cols, 
-                                                                       output_vec, output_offset, reduc_buffers);
-        }
- 
- 
+        void logsumexp_cols_offset(cl::Buffer& input_mat, int input_rows, int input_cols, 
+                                    cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers);
 
         int max_local_size() { return m_max_local_size; }
 
@@ -190,17 +160,14 @@ namespace opencl {
 
     template<typename T>
     cl::Buffer OpenCLConfig::copy_to_buffer(const T* d, int size) {
+        cl::Buffer b = new_buffer<T>(size);
+
         cl_int err_code = CL_SUCCESS;
-        cl::Buffer b(m_context, CL_MEM_READ_WRITE,  sizeof(T)*size, NULL, &err_code);
-
-        if (err_code != CL_SUCCESS) {
-            throw std::runtime_error("Error creating OpenCL buffer.");
-        }
-
         err_code = m_queue.enqueueWriteBuffer(b, CL_TRUE, 0, sizeof(T)*size, d);
 
         if (err_code != CL_SUCCESS) {
-            throw std::runtime_error("Error copying OpenCL buffer.");
+            throw std::runtime_error(std::string("Error copying OpenCL buffer. ") + 
+                                     opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
         return std::move(b);
@@ -213,25 +180,37 @@ namespace opencl {
         err_code = m_queue.enqueueReadBuffer(from, CL_TRUE, 0, sizeof(T)*size, dest);
 
         if (err_code != CL_SUCCESS) {
-            throw std::runtime_error("Error reading buffer.");
+            throw std::runtime_error(std::string("Error reading buffer.") + 
+                                     opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
     }
 
     template<typename T>
-    cl::Buffer OpenCLConfig::new_buffer(int size) {
+    cl::Buffer OpenCLConfig::new_buffer(int size, cl_mem_flags flags) {
         cl_int err_code = CL_SUCCESS;
-        cl::Buffer b(m_context, CL_MEM_READ_WRITE,  sizeof(T)*size, NULL, &err_code);
+        cl::Buffer b(m_context, flags,  sizeof(T)*size, NULL, &err_code);
 
         if (err_code != CL_SUCCESS) {
-            throw std::runtime_error("Error creating OpenCL buffer.");
+            throw std::runtime_error(std::string("Error creating OpenCL buffer.") + 
+                                                 opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
         return std::move(b);
     }
 
     template<typename T>
-    void OpenCLConfig::fill_buffer(cl::Buffer& buffer, T value, int length) {
-        m_queue.enqueueFillBuffer(buffer, value, 0, sizeof(T)*length);
+    cl::Buffer OpenCLConfig::copy_buffer(const cl::Buffer& input, unsigned int offset, unsigned int length, cl_mem_flags flags) {
+        cl::Buffer b = new_buffer<T>(length, flags);
+
+        cl_int err_code = CL_SUCCESS;
+        err_code = m_queue.enqueueCopyBuffer(input, b, sizeof(T)*offset, 0, sizeof(T)*length);
+
+        if (err_code != CL_SUCCESS) {
+            throw std::runtime_error(std::string("Error copying OpenCL buffer.") + 
+                                                 opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
+        }
+
+        return std::move(b);
     }
 
     template<typename ArrowType>
@@ -266,27 +245,6 @@ namespace opencl {
         return res;
     }
 
-    template<typename ArrowType>
-    void OpenCLConfig::logsumexp1d(cl::Buffer& input_vec, int input_length, std::vector<cl::Buffer>& reduc_buffers, cl::Buffer& output, int output_offset) {
-        amax1d<ArrowType>(input_vec, input_length, reduc_buffers, output, output_offset);
-
-        auto k_logsumexp_coeffs = kernel(OpenCL_kernel_traits<ArrowType>::logsumexp_coeffs);
-        k_logsumexp_coeffs.setArg(0, input_vec);
-        k_logsumexp_coeffs.setArg(1, output);
-        k_logsumexp_coeffs.setArg(2, static_cast<unsigned int>(output_offset));
-        m_queue.enqueueNDRangeKernel(k_logsumexp_coeffs, cl::NullRange,  cl::NDRange(input_length),cl::NullRange);
-
-        sum1d<ArrowType>(input_vec, input_length, reduc_buffers, input_vec, 0);
-
-        auto k_copy_logpdf_result = kernel(OpenCL_kernel_traits<ArrowType>::copy_logpdf_result);
-        k_copy_logpdf_result.setArg(0, input_vec);
-        k_copy_logpdf_result.setArg(1, 0u);
-        k_copy_logpdf_result.setArg(2, output);
-        k_copy_logpdf_result.setArg(3, static_cast<unsigned int>(output_offset));
-        k_copy_logpdf_result.setArg(4, output);
-        k_copy_logpdf_result.setArg(5, static_cast<unsigned int>(output_offset));
-        m_queue.enqueueNDRangeKernel(k_copy_logpdf_result, cl::NullRange,  cl::NDRange(1), cl::NullRange);
-    }
 
     void update_reduction_status(int& length, int& num_groups, int& local_size, int& global_size, int max_local_size);
 
@@ -357,6 +315,7 @@ namespace opencl {
         k_reduction.setArg(0, input_mat);
         k_reduction.setArg(1, static_cast<unsigned int>(length));
         k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
+        k_reduction.setArg(4, 0u);
         if (num_groups == 1) {
             k_reduction.setArg(3, res);
         } else {
@@ -391,7 +350,7 @@ namespace opencl {
     }
 
     template<typename ArrowType, typename Reduction>
-    void OpenCLConfig::reduction_cols_partial(const cl::Buffer& input_mat,
+    void OpenCLConfig::reduction_cols_offset(const cl::Buffer& input_mat,
                                                     int input_rows,
                                                     int input_cols,
                                                     cl::Buffer& output_vec,
@@ -404,7 +363,7 @@ namespace opencl {
 
 
         if (num_groups == 1) {
-            auto k_reduction = kernel(Reduction::reduction_mat_offset);
+            auto k_reduction = kernel(Reduction::reduction_mat);
             k_reduction.setArg(0, input_mat);
             k_reduction.setArg(1, static_cast<unsigned int>(length));
             k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
@@ -418,6 +377,7 @@ namespace opencl {
             k_reduction.setArg(1, static_cast<unsigned int>(length));
             k_reduction.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
             k_reduction.setArg(3, reduc_buffers[0]);
+            k_reduction.setArg(4, 0u);
         
             m_queue.enqueueNDRangeKernel(k_reduction, cl::NullRange,  cl::NDRange(global_size, input_cols), cl::NDRange(local_size, 1));
             
@@ -434,7 +394,7 @@ namespace opencl {
                 update_reduction_status(length, num_groups, local_size, global_size, m_max_local_size);
             }
 
-            auto k_reduction_offset = kernel(Reduction::reduction_mat_offset);
+            auto k_reduction_offset = kernel(Reduction::reduction_mat);
             k_reduction_offset.setArg(0, reduc_buffers.back());
             k_reduction_offset.setArg(1, static_cast<unsigned int>(length));
             k_reduction_offset.setArg(2, cl::Local(local_size*sizeof(typename ArrowType::c_type)));
@@ -445,50 +405,26 @@ namespace opencl {
         }
     }
 
-
     template<typename ArrowType>
-    cl::Buffer OpenCLConfig::logsumexp_cols(cl::Buffer& input_mat, int input_rows, int input_cols, std::vector<cl::Buffer>& reduc_buffers) {
-        auto max_buffer = amax_cols<ArrowType>(input_mat, input_rows, input_cols, reduc_buffers);
-        
-        auto logsumexp_coeffs_mat = kernel(OpenCL_kernel_traits<ArrowType>::logsumexp_coeffs_mat);
-        logsumexp_coeffs_mat.setArg(0, input_mat);
-        logsumexp_coeffs_mat.setArg(1, static_cast<unsigned int>(input_rows));
-        logsumexp_coeffs_mat.setArg(2, max_buffer);
-        m_queue.enqueueNDRangeKernel(logsumexp_coeffs_mat, cl::NullRange,  cl::NDRange(input_rows*input_cols),cl::NullRange);
-
-        auto sum_buffer = sum_cols<ArrowType>(input_mat, input_rows, input_cols, reduc_buffers);
-
-        auto finish_lse = kernel(OpenCL_kernel_traits<ArrowType>::finish_lse);
-        finish_lse.setArg(0, sum_buffer);
-        finish_lse.setArg(1, max_buffer);
-        m_queue.enqueueNDRangeKernel(finish_lse, cl::NullRange,  cl::NDRange(input_cols), cl::NullRange);
-
-        return std::move(sum_buffer);
-    }
-
-    template<typename ArrowType>
-    void OpenCLConfig::logsumexp_cols_partial(cl::Buffer& input_mat, int input_rows, int input_cols, 
+    void OpenCLConfig::logsumexp_cols_offset(cl::Buffer& input_mat, int input_rows, int input_cols, 
                                               cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers) {
 
         auto max_buffer = amax_cols<ArrowType>(input_mat, input_rows, input_cols, reduc_buffers);
 
-        auto logsumexp_coeffs_mat = kernel(OpenCL_kernel_traits<ArrowType>::logsumexp_coeffs_mat);
-        logsumexp_coeffs_mat.setArg(0, input_mat);
-        logsumexp_coeffs_mat.setArg(1, static_cast<unsigned int>(input_rows));
-        logsumexp_coeffs_mat.setArg(2, max_buffer);
-        m_queue.enqueueNDRangeKernel(logsumexp_coeffs_mat, cl::NullRange,  cl::NDRange(input_rows*input_cols),cl::NullRange);
+        auto logsumexp_coeffs = kernel(OpenCL_kernel_traits<ArrowType>::logsumexp_coeffs);
+        logsumexp_coeffs.setArg(0, input_mat);
+        logsumexp_coeffs.setArg(1, static_cast<unsigned int>(input_rows));
+        logsumexp_coeffs.setArg(2, max_buffer);
+        m_queue.enqueueNDRangeKernel(logsumexp_coeffs, cl::NullRange,  cl::NDRange(input_rows*input_cols),cl::NullRange);
 
-        sum_cols_partial<ArrowType>(input_mat, input_rows, input_cols, output_vec, static_cast<unsigned int>(output_offset), reduc_buffers);
+        sum_cols_offset<ArrowType>(input_mat, input_rows, input_cols, output_vec, static_cast<unsigned int>(output_offset), reduc_buffers);
 
         auto finish_lse = kernel(OpenCL_kernel_traits<ArrowType>::finish_lse_offset);
         finish_lse.setArg(0, output_vec);
         finish_lse.setArg(1, static_cast<unsigned int>(output_offset));
         finish_lse.setArg(2, max_buffer);
         m_queue.enqueueNDRangeKernel(finish_lse, cl::NullRange, cl::NDRange(input_cols), cl::NullRange);
-
     }
-
-
 }
 
 

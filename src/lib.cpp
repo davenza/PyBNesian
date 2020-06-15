@@ -42,12 +42,14 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def(py::init<std::vector<std::string>>())
             //  .def("fit", py::overload_cast<py::handle>(&KDE::fit))
              .def("fit", (void (KDE::*)(py::handle)) &KDE::fit)
-             .def("logpdf", py::overload_cast<py::handle>(&KDE::logpdf, py::const_));
+             .def("logpdf", py::overload_cast<py::handle>(&KDE::logpdf, py::const_))
+             .def("slogpdf", py::overload_cast<py::handle>(&KDE::slogpdf, py::const_));
 
-//     py::class_<CKDE>(continuous, "CKDE")
-//             .def(py::init<const std::string, const std::vector<std::string>>())
-            // .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
-        //     .def("fit", py::overload_cast<py::handle>(&CKDE::fit));
+    py::class_<CKDE>(continuous, "CKDE")
+             .def(py::init<const std::string, const std::vector<std::string>>())
+             .def("fit", py::overload_cast<py::handle>(&CKDE::fit))
+             .def("logpdf", py::overload_cast<py::handle>(&CKDE::logpdf, py::const_))
+             .def("slogpdf", py::overload_cast<py::handle>(&CKDE::slogpdf, py::const_));
 
     auto learning = m.def_submodule("learning", "Learning submodule");
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");

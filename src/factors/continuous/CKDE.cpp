@@ -108,6 +108,8 @@ namespace factors::continuous {
             default:
                 throw std::invalid_argument("Wrong data type to fit KDE. [double] or [float] data is expected.");
         }
+
+        m_fitted = true;
     }
 
     VectorXd CKDE::logpdf(py::handle pyobject) const {
@@ -156,6 +158,27 @@ namespace factors::continuous {
                 return _slogpdf<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
+        }
+    }
+
+    std::string CKDE::ToString() const {
+        std::stringstream stream;
+        if (!m_evidence.empty()) {
+            stream << "[CKDE] P(" << m_variable << " | " << m_evidence[0];
+            for (auto& ev : m_evidence) {
+                stream << ", " << ev;
+            }
+            if (m_fitted)
+                stream << ") = CKDE with " << N << " instances";
+            else
+                stream << ") not fitted";
+            return stream.str();
+        } else {
+            if (m_fitted)
+                stream << "[CKDE] P(" << m_variable << ") = CKDE with " << N << " instances";
+            else 
+                stream << "[CKDE] P(" << m_variable << ") not fitted";
+            return stream.str();
         }
     }
 }

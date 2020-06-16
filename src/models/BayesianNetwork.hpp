@@ -4,23 +4,26 @@
 #include <iterator>
 #include <dataset/dataset.hpp>
 #include <graph/dag.hpp>
+#include <factors/continuous/LinearGaussianCPD.hpp>
+#include <factors/continuous/SemiparametricCPD.hpp>
 
 using dataset::DataFrame;
 using graph::AdjMatrixDag, graph::AdjListDag;
 using boost::source;
 
 using graph::arc_vector; 
+
+using factors::continuous::LinearGaussianCPD;
+using factors::continuous::SemiparametricCPD;
+
 namespace models {
 
 
-    enum BayesianNetworkType {
-        GAUSSIAN_NETWORK
-    };
+
     // template<typename it> node_iterator(it b, it e) -> node_iterator<typename std::iterator_traits<Iterator>::value_type>;
 
-    template<BayesianNetworkType T, typename DagType = AdjMatrixDag>
+    template<typename DagType = AdjMatrixDag>
     class BayesianNetwork {
-    
     public:
         using node_descriptor = typename DagType::node_descriptor;
         using edge_descriptor = typename DagType::edge_descriptor;
@@ -50,6 +53,10 @@ namespace models {
 
         node_descriptor node(int node_index) const {
             return g.node(node_index);
+        }
+
+        bool contains_node(const std::string& name) {
+            return indices.find(name) != indices.end();
         }
 
         node_descriptor node(const std::string& node) const {
@@ -219,6 +226,10 @@ namespace models {
             remove_edge(m_indices.at(source), m_indices.at(dest));
         }
 
+        void fit(const DataFrame& df) = 0;
+        VectorXd logpdf(const DataFrame& df) = 0;
+        double slogpdf(const DataFrame& df) = 0;
+
         void print() const {
             std::cout << "Bayesian network: " << std::endl; 
             for(auto [eit, eend] = g.edges(); eit != eend; ++eit)
@@ -232,8 +243,8 @@ namespace models {
         std::unordered_map<std::string, int> m_indices;
     };
 
-    template<BayesianNetworkType T, typename DagType>
-    BayesianNetwork<T, DagType>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {
+    template<typename DagType>
+    BayesianNetwork<DagType>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {
         int i = 0;
         for (const std::string& str : nodes) {
             m_indices.insert(std::make_pair(str, i));
@@ -241,8 +252,8 @@ namespace models {
         }
     };
 
-    template<BayesianNetworkType T, typename DagType>
-    BayesianNetwork<T, DagType>::BayesianNetwork(const std::vector<std::string>& nodes, 
+    template<typename DagType>
+    BayesianNetwork<DagType>::BayesianNetwork(const std::vector<std::string>& nodes, 
                                                  const arc_vector& edges) 
                                                  : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size())
     {
@@ -258,15 +269,47 @@ namespace models {
     };
 
 
+    template<typename DagType = AdjMatrixDag>
+    class GaussianNetwork : public BayesianNetwork<DagType> {
+    public:
+        GaussianNetwork(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes), m_cpds() {}
+        GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs), m_cpds() {}
+
+        void add_cpds(const std::vector<LinearGaussianCPD> cpds) {
+            
+            for (auto& cpd : cpds) {
+                if (!this->contains_node(cpd.variable())) {
+                    throw std::invalid_argument("CPD ");
+                }
+            }
+        } 
+    private:
+        std::vector<LinearGaussianCPD> m_cpds;
+    };
+
+
+    template<typename DagType = AdjMatrixDag>
+    class SemiparametricBN : public BayesianNetwork<DagType> {
+    public:
+        SemiparametricBN(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes), m_cpds() {}
+        SemiparametricBN(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs), m_cpds() {}
+
+        void add_cpds(const std::vector<SemiparametricCPD> cpds) {
+
+        }
+    private:
+        std::vector<SemiparametricCPD> m_cpds;
+    };
+
     // template<typename DagType = AdjMatrixDag>
     // using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK, DagType>;
 
 
-    template<typename DagType = AdjMatrixDag>
-    using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK, DagType>;
+    // template<typename DagType = AdjMatrixDag>
+    // using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK, DagType>;
 
-    using GaussianNetwork_M = GaussianNetwork<AdjMatrixDag>;
-    using GaussianNetwork_L = GaussianNetwork<AdjListDag>;
+    // using GaussianNetwork_M = GaussianNetwork<AdjMatrixDag>;
+    // using GaussianNetwork_L = GaussianNetwork<AdjListDag>;
 
     // template<typename DagType>
     // void GaussianNetwork<DagType>::requires(const DataFrame& df) {

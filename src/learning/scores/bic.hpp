@@ -10,7 +10,7 @@
 
 using factors::continuous::LinearGaussianCPD;
 using namespace dataset;
-using models::GaussianNetwork, models::GaussianNetwork_M, models::GaussianNetwork_L;
+using models::GaussianNetwork;
 using learning::parameter::MLE;
 
 namespace learning::scores {

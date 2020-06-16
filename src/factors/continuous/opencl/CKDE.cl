@@ -245,7 +245,7 @@ __kernel void square_double(__global double *m) {
 }
 
 
-__kernel void logpdf_values_1d_mat_partial_double(__constant double *train_vector,
+__kernel void logpdf_values_1d_mat_double(__constant double *train_vector,
                                            __private uint train_rows,
                                            __constant double *test_vector,
                                            __private uint test_offset,
@@ -261,7 +261,7 @@ __kernel void logpdf_values_1d_mat_partial_double(__constant double *train_vecto
     result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
-__kernel void substract_partial_double(__constant double *training_matrix,
+__kernel void substract_double(__constant double *training_matrix,
                                      __private uint training_physical_rows,
                                      __private uint training_offset,
                                      __private uint training_rows,
@@ -280,7 +280,7 @@ __kernel void substract_partial_double(__constant double *training_matrix,
 }
 
 
-__kernel void logpdf_values_mat_partial_column_double(__constant double *square_data,
+__kernel void logpdf_values_mat_column_double(__constant double *square_data,
                                                     __private uint square_cols,
                                                     __global double *sol_mat,
                                                     __private uint sol_rows,
@@ -299,7 +299,7 @@ __kernel void logpdf_values_mat_partial_column_double(__constant double *square_
     sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
 }
 
-__kernel void logpdf_values_mat_partial_row_double(__constant double *square_data,
+__kernel void logpdf_values_mat_row_double(__constant double *square_data,
                                                     __private uint square_cols,
                                                     __global double *sol_mat,
                                                     __private uint sol_rows,
@@ -560,7 +560,7 @@ __kernel void square_float(__global float *m) {
 }
 
 
-__kernel void logpdf_values_1d_mat_partial_float(__constant float *train_vector,
+__kernel void logpdf_values_1d_mat_float(__constant float *train_vector,
                                            __private uint train_rows,
                                            __constant float *test_vector,
                                            __private uint test_offset,
@@ -576,7 +576,7 @@ __kernel void logpdf_values_1d_mat_partial_float(__constant float *train_vector,
     result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
-__kernel void substract_partial_float(__constant float *training_matrix,
+__kernel void substract_float(__constant float *training_matrix,
                                      __private uint training_physical_rows,
                                      __private uint training_offset,
                                      __private uint training_rows,
@@ -595,7 +595,7 @@ __kernel void substract_partial_float(__constant float *training_matrix,
 }
 
 
-__kernel void logpdf_values_mat_partial_column_float(__constant float *square_data,
+__kernel void logpdf_values_mat_column_float(__constant float *square_data,
                                                     __private uint square_cols,
                                                     __global float *sol_mat,
                                                     __private uint sol_rows,
@@ -614,7 +614,7 @@ __kernel void logpdf_values_mat_partial_column_float(__constant float *square_da
     sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
 }
 
-__kernel void logpdf_values_mat_partial_row_float(__constant float *square_data,
+__kernel void logpdf_values_mat_row_float(__constant float *square_data,
                                                     __private uint square_cols,
                                                     __global float *sol_mat,
                                                     __private uint sol_rows,

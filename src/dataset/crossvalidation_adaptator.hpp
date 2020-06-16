@@ -15,17 +15,17 @@ using Buffer_ptr = std::shared_ptr<arrow::Buffer>;
 using arrow::NumericBuilder;
 
 template<typename T>
-using c_vecit = typename std::vector<T>::const_iterator;
+using const_vecit = typename std::vector<T>::const_iterator;
 
 namespace dataset {
 
 
     template<typename ArrowType>
     Array_ptr split_train(Array_ptr col, 
-                          c_vecit<int> begin, 
-                          c_vecit<int> end,
-                          c_vecit<int> test_begin,
-                          c_vecit<int> test_end) {
+                          const_vecit<int> begin, 
+                          const_vecit<int> end,
+                          const_vecit<int> test_begin,
+                          const_vecit<int> test_end) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         int rows_train = std::distance(begin, test_begin) + std::distance(test_end, end);
 
@@ -50,10 +50,10 @@ namespace dataset {
 
     template<typename ArrowType>
     Array_ptr split_train_null(Array_ptr col, 
-                               c_vecit<int> begin, 
-                               c_vecit<int> end,
-                               c_vecit<int> test_begin,
-                               c_vecit<int> test_end) {
+                               const_vecit<int> begin, 
+                               const_vecit<int> end,
+                               const_vecit<int> test_begin,
+                               const_vecit<int> test_end) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         int rows_train = std::distance(begin, test_begin) + std::distance(test_end, end);
 
@@ -85,8 +85,8 @@ namespace dataset {
 
     template<typename ArrowType>
     Array_ptr split_test(Array_ptr col,
-                         c_vecit<int> test_begin,
-                         c_vecit<int> test_end) {
+                         const_vecit<int> test_begin,
+                         const_vecit<int> test_end) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         int rows_test = std::distance(test_begin, test_end);
 
@@ -106,8 +106,8 @@ namespace dataset {
 
     template<typename ArrowType>
     Array_ptr split_test_null(Array_ptr col, 
-                              c_vecit<int> test_begin,
-                              c_vecit<int> test_end) {
+                              const_vecit<int> test_begin,
+                              const_vecit<int> test_end) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         int rows_test = std::distance(test_begin, test_end);
 
@@ -133,10 +133,10 @@ namespace dataset {
     template<typename ArrowType>
     std::pair<Array_ptr, Array_ptr> split_array_train_test(Array_ptr col,
                                                            bool include_null,
-                                                           c_vecit<int> begin, 
-                                                           c_vecit<int> end,
-                                                           c_vecit<int> test_begin,
-                                                           c_vecit<int> test_end) {
+                                                           const_vecit<int> begin, 
+                                                           const_vecit<int> end,
+                                                           const_vecit<int> test_begin,
+                                                           const_vecit<int> test_end) {
         if (include_null && col->null_count() > 0) {
             auto df_train = split_train_null<ArrowType>(col, begin, end, test_begin, test_end);
             auto df_test = split_test_null<ArrowType>(col, test_begin, test_end);
@@ -150,10 +150,10 @@ namespace dataset {
 
     std::pair<Array_ptr, Array_ptr> generate_cv_pair_column(Array_ptr col,
                                                             bool include_null,
-                                                            c_vecit<int> begin, 
-                                                            c_vecit<int> end,
-                                                            c_vecit<int> test_begin,
-                                                            c_vecit<int> test_end) {
+                                                            const_vecit<int> begin, 
+                                                            const_vecit<int> end,
+                                                            const_vecit<int> test_begin,
+                                                            const_vecit<int> test_end) {
         switch (col->type_id()) {
             case Type::DOUBLE:
                 return split_array_train_test<arrow::DoubleType>(col, include_null, begin, end, test_begin, test_end);
@@ -218,56 +218,51 @@ namespace dataset {
         int k;
         unsigned int m_seed;
         std::vector<int> indices;
-        std::vector<c_vecit<int>> limits;
+        std::vector<const_vecit<int>> limits;
         bool include_null;
     };
 
     class CrossValidation {
     public:
-
-        CrossValidation(const DataFrame df, int k) : CrossValidation(df, k, std::random_device{}(), false) {}
-        CrossValidation(const DataFrame df, int k, bool include_null) : CrossValidation(df, k, std::random_device{}(), include_null) {}
-        CrossValidation(const DataFrame df, int k, int seed) : CrossValidation(df, k, seed, false) {}
-
-        CrossValidation(const DataFrame df, int k, int seed, bool include_null) : 
+        CrossValidation(const DataFrame df, int k, int seed = std::random_device{}(), bool include_null = false) : 
                                                     df(df), 
                                                     prop(std::make_shared<CrossValidationProperties>(df, k, seed, include_null)) { }
     
-    class cv_iterator {
-    public:
-        using difference_type = std::iterator_traits<std::vector<int>::iterator>;
-        using value_type = std::pair<DataFrame, DataFrame>;
-        using reference = value_type&;
-        using pointer = value_type*;
-        // FIXME: Check the iterator category operations.
-        using iterator_category = std::random_access_iterator_tag; //or another tag
+        class cv_iterator {
+        public:
+            using difference_type = std::iterator_traits<std::vector<int>::iterator>;
+            using value_type = std::pair<DataFrame, DataFrame>;
+            using reference = value_type&;
+            using pointer = value_type*;
+            // FIXME: Check the iterator category operations.
+            using iterator_category = std::random_access_iterator_tag; //or another tag
 
-        cv_iterator(int i, const CrossValidation& cv) : i(i), cv(cv), updated_fold(false), current_fold() {}
+            cv_iterator(int i, const CrossValidation& cv) : i(i), cv(cv), updated_fold(false), current_fold() {}
 
-        reference operator*() const { 
-            if (!updated_fold) {
-                current_fold = cv.generate_cv_pair(i);
-                updated_fold = true;
+            reference operator*() const { 
+                if (!updated_fold) {
+                    current_fold = cv.generate_cv_pair(i);
+                    updated_fold = true;
+                }
+
+                return current_fold;
             }
 
-            return current_fold;
-        }
+            cv_iterator& operator++() { ++i; updated_fold = false; return *this; }
+            cv_iterator operator++(int) { ++i; updated_fold = false; return *this; }
+            // TODO: Improve equality.
+            bool operator==(const cv_iterator& rhs) const { return (i == rhs.i) && (cv.prop->k == rhs.cv.prop->k) && 
+                                                                (cv.prop->m_seed == rhs.cv.prop->m_seed) && (&cv.df == &rhs.cv.df);
+                                                            }
 
-        cv_iterator& operator++() { ++i; updated_fold = false; return *this; }
-        cv_iterator operator++(int) { ++i; updated_fold = false; return *this; }
-        // TODO: Improve equality.
-        bool operator==(const cv_iterator& rhs) const { return (i == rhs.i) && (cv.prop->k == rhs.cv.prop->k) && 
-                                                            (cv.prop->m_seed == rhs.cv.prop->m_seed) && (&cv.df == &rhs.cv.df);
-                                                        }
+            bool operator!=(const cv_iterator& rhs) const { return !(*this == rhs); }
 
-        bool operator!=(const cv_iterator& rhs) const { return !(*this == rhs); }
-
-    private:
-        int i;
-        const CrossValidation& cv;
-        mutable bool updated_fold;
-        mutable std::pair<DataFrame, DataFrame> current_fold;
-    };
+        private:
+            int i;
+            const CrossValidation& cv;
+            mutable bool updated_fold;
+            mutable std::pair<DataFrame, DataFrame> current_fold;
+        };
 
 
     cv_iterator begin() {

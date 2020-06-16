@@ -10,7 +10,7 @@
 using namespace dataset;
 
 using Eigen::VectorXd, Eigen::MatrixXd;;
-using models::GaussianNetwork, models::GaussianNetwork_M, models::GaussianNetwork_L;
+using models::GaussianNetwork;
 using learning::scores::BIC;
 // learning::scores::CVLikelihood;
 using graph::arc_vector;
@@ -25,40 +25,40 @@ namespace learning::algorithms {
                   std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, 
                   int max_indegree, double epsilon) {
 
-        auto rb = dataset::to_record_batch(data);
-        auto df = DataFrame(rb);
+        // auto rb = dataset::to_record_batch(data);
+        // auto df = DataFrame(rb);
 
-        auto blacklist_cpp = util::check_edge_list(df, blacklist);
-        auto whitelist_cpp = util::check_edge_list(df, whitelist);
+        // auto blacklist_cpp = util::check_edge_list(df, blacklist);
+        // auto whitelist_cpp = util::check_edge_list(df, whitelist);
 
-        auto nodes = df.column_names();
+        // auto nodes = df.column_names();
 
-        // GreedyHillClimbing<GaussianNetwork> hc;
-        GreedyHillClimbing<GaussianNetwork_M> hc;
+        // // GreedyHillClimbing<GaussianNetwork> hc;
+        // GreedyHillClimbing<GaussianNetwork_M> hc;
 
-        GaussianNetwork_M gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork_M(nodes, whitelist_cpp) :
-                                                           GaussianNetwork_M(nodes);
+        // GaussianNetwork_M gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork_M(nodes, whitelist_cpp) :
+        //                                                    GaussianNetwork_M(nodes);
 
-        // GaussianNetwork_L gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork_L(nodes, whitelist_cpp) :
-        //                                                    GaussianNetwork_L(nodes);
+        // // GaussianNetwork_L gbn = (whitelist_cpp.size() > 0) ? GaussianNetwork_L(nodes, whitelist_cpp) :
+        // //                                                    GaussianNetwork_L(nodes);
 
-        if (str_score == "bic") {
-            BIC bic(df);
-            // ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
-            ArcOperatorsType arc_op(bic, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
-            // BENCHMARK_PRE_SCOPE(10)
-            hc.estimate(arc_op, epsilon, gbn);
-            // BENCHMARK_POST_SCOPE(10)
-        } 
-        // else if (str_score == "predictive-l") {
-        //     CVLikelihood cv(df, 10);
-
-        //     ArcOperatorsType arc_op(cv, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+        // if (str_score == "bic") {
+        //     BIC bic(df);
+        //     // ArcOperatorsType<GaussianNetwork, BIC<GaussianNetwork>> arc_op(df, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+        //     ArcOperatorsType arc_op(bic, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+        //     // BENCHMARK_PRE_SCOPE(10)
         //     hc.estimate(arc_op, epsilon, gbn);
+        //     // BENCHMARK_POST_SCOPE(10)
+        // } 
+        // // else if (str_score == "predictive-l") {
+        // //     CVLikelihood cv(df, 10);
+
+        // //     ArcOperatorsType arc_op(cv, gbn, whitelist_cpp, blacklist_cpp, max_indegree);
+        // //     hc.estimate(arc_op, epsilon, gbn);
+        // // }
+        //  else {
+        //     throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
         // }
-         else {
-            throw std::invalid_argument("Wrong score \"" + str_score + "\". Currently supported scores: \"bic\".");
-        }
     }
     
     template<typename Model>

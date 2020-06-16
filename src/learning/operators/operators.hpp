@@ -8,7 +8,7 @@
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 
-using models::BayesianNetwork, models::BayesianNetworkType;
+using models::BayesianNetwork;
 using graph::arc_vector;
 
 namespace learning::operators {

@@ -1,5 +1,5 @@
-#ifndef PGM_OPENCL_CONFIG_HPP
-#define PGM_OPENCL_CONFIG_HPP
+#ifndef PGM_DATASET_OPENCL_CONFIG_HPP
+#define PGM_DATASET_OPENCL_CONFIG_HPP
 
 #include <fstream>
 #include <cmath>
@@ -26,10 +26,10 @@ namespace opencl {
         inline constexpr static const char* logsumexp_coeffs = "logsumexp_coeffs_double";
         inline constexpr static const char* solve = "solve_double";
         inline constexpr static const char* square = "square_double";
-        inline constexpr static const char* logpdf_values_1d_mat_partial = "logpdf_values_1d_mat_partial_double";
-        inline constexpr static const char* substract_partial = "substract_partial_double";
-        inline constexpr static const char* logpdf_values_mat_partial_column = "logpdf_values_mat_partial_column_double";
-        inline constexpr static const char* logpdf_values_mat_partial_row = "logpdf_values_mat_partial_row_double";
+        inline constexpr static const char* logpdf_values_1d_mat = "logpdf_values_1d_mat_double";
+        inline constexpr static const char* substract = "substract_double";
+        inline constexpr static const char* logpdf_values_mat_column = "logpdf_values_mat_column_double";
+        inline constexpr static const char* logpdf_values_mat_row = "logpdf_values_mat_row_double";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_double";
         inline constexpr static const char* substract_vectors = "substract_vectors_double";
     };
@@ -43,10 +43,10 @@ namespace opencl {
         inline constexpr static const char* logsumexp_coeffs = "logsumexp_coeffs_float";
         inline constexpr static const char* solve = "solve_float";
         inline constexpr static const char* square = "square_float";
-        inline constexpr static const char* logpdf_values_1d_mat_partial = "logpdf_values_1d_mat_partial_float";
-        inline constexpr static const char* substract_partial = "substract_partial_float";
-        inline constexpr static const char* logpdf_values_mat_partial_column = "logpdf_values_mat_partial_column_float";
-        inline constexpr static const char* logpdf_values_mat_partial_row = "logpdf_values_mat_partial_row_float";
+        inline constexpr static const char* logpdf_values_1d_mat = "logpdf_values_1d_mat_float";
+        inline constexpr static const char* substract = "substract_float";
+        inline constexpr static const char* logpdf_values_mat_column = "logpdf_values_mat_column_float";
+        inline constexpr static const char* logpdf_values_mat_row = "logpdf_values_mat_row_float";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_float";
         inline constexpr static const char* substract_vectors = "substract_vectors_float";
     };
@@ -428,4 +428,4 @@ namespace opencl {
 }
 
 
-#endif //PGM_OPENCL_CONFIG_HPP
+#endif //PGM_DATASET_OPENCL_CONFIG_HPP

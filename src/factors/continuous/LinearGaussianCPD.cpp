@@ -32,8 +32,9 @@ namespace factors::continuous {
 
 
     LinearGaussianCPD::LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence) :
-    m_variable(variable),
-    m_evidence(evidence)
+                                                                        m_variable(variable),
+                                                                        m_evidence(evidence),
+                                                                        m_fitted(false)
     {
         m_beta = VectorXd(evidence.size() + 1);
     };
@@ -42,6 +43,7 @@ namespace factors::continuous {
                                          const std::vector<double> beta, double variance) :
     m_variable(variable),
     m_evidence(evidence),
+    m_fitted(true),
     m_variance(variance)
 //    TODO: Error checking: Length of vectors
     {
@@ -64,6 +66,7 @@ namespace factors::continuous {
         
         m_beta = params.beta;
         m_variance = params.variance;
+        m_fitted = true;
     }
 
 
@@ -190,5 +193,32 @@ namespace factors::continuous {
             default:
                 throw py::value_error("Wrong data type to compute logpdf. (double) or (float) data is expected.");
         }
+    }
+
+    std::string LinearGaussianCPD::ToString() const {
+        std::stringstream stream;
+        stream << std::setprecision(3);
+        if (!m_evidence.empty()) {
+            stream << "[LinearGaussianCPD] P(" << m_variable << " | " << m_evidence[0];
+            for (auto& ev : m_evidence) {
+                stream << ", " << ev;
+            }
+            if (m_fitted) {
+                stream << ") = N(" << m_beta(0);
+                for (size_t i = 1; i < m_evidence.size(); ++i) {
+                    stream << " + " << m_beta(i) << "*" << m_evidence[i];
+                }
+                stream << ", " << m_variance << ")";
+            } else {
+                stream << ") not fitted";
+            }
+        } else {
+            if (m_fitted)
+                stream << "[LinearGaussianCPD] P(" << m_variable << ") = N(" 
+                                           << m_beta(0) << ", " << m_variance << ")";
+            else
+                stream << "[LinearGaussianCPD] P(" << m_variable << ") not fitted";
+        }
+        return stream.str();
     }
 }

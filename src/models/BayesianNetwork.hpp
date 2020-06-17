@@ -21,18 +21,19 @@ namespace models {
 
     // template<typename it> node_iterator(it b, it e) -> node_iterator<typename std::iterator_traits<Iterator>::value_type>;
 
-    template<typename DagType = AdjMatrixDag>
+    template<typename Derived>
     class BayesianNetwork {
     public:
+        using DagType = typename Derived::DagType;
+        using CPD = typename Derived::CPD;
         using node_descriptor = typename DagType::node_descriptor;
         using edge_descriptor = typename DagType::edge_descriptor;
 
         using node_iterator_t = typename DagType::node_iterator_t;
 
         BayesianNetwork(const std::vector<std::string>& nodes);
+        BayesianNetwork(const arc_vector& arcs);
         BayesianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs);
-
-        // static void requires(const DataFrame& df);
 
         int num_nodes() const {
             return g.num_nodes();
@@ -55,7 +56,7 @@ namespace models {
         }
 
         bool contains_node(const std::string& name) {
-            return indices.find(name) != indices.end();
+            return indices.count(name) > 0;
         }
 
         node_descriptor node(const std::string& node) const {
@@ -102,18 +103,7 @@ namespace models {
             return g.index(g.node(node));
         }
 
-        std::vector<std::string> get_parents(node_descriptor node) const {
-            std::vector<std::reference_wrapper<const std::string>> parents;
-            auto it_parents = g.get_parent_edges(node);
-
-            for (auto it = it_parents.first; it != it_parents.second; ++it) {
-                auto parent = g.source(*it);
-                auto parent_index = g.index(parent);
-                parents.push_back(m_nodes[parent_index]);
-            }
-
-            return parents;
-        }
+        std::vector<std::string> get_parents(node_descriptor node) const;
 
         std::vector<std::string> get_parents(int node_index) const {
             return get_parents(g.node(node_index));
@@ -123,16 +113,7 @@ namespace models {
             return get_parents(m_indices.at(node));
         }
 
-        std::vector<int> get_parent_indices(node_descriptor node) const {
-            std::vector<int> parent_indices;
-            auto it_parents = g.get_parent_edges(node);
-
-            for (auto it = it_parents.first; it != it_parents.second; ++it) {
-                parent_indices.push_back(g.index(g.source(*it)));
-            }
-
-            return parent_indices;
-        }
+        std::vector<int> get_parent_indices(node_descriptor node) const;
 
         std::vector<int> get_parent_indices(int node_index) const {
             return get_parent_indices(g.node(node_index));
@@ -142,27 +123,14 @@ namespace models {
             return get_parent_indices(m_indices.at(node));
         }
 
+        std::string parents_tostring(node_descriptor node) const;
 
-        std::string parents_string(node_descriptor node) const {
-            auto parents = this->get_parents(node);
-            if (!parents.empty()) {
-                std::string str = "[" + parents[0];
-                for (auto it = parents.begin() + 1; it != parents.end(); ++it) {
-                    str += ", " + *it;
-                }
-                str += "]";
-                return str;
-            } else {
-                return "[]";
-            }
+        std::string parents_tostring(int node_index) const {
+            return parents_tostring(g.node(node_index));
         }
 
-        std::string parents_string(int node_index) const {
-            return parents_string(g.node(node_index));
-        }
-
-        std::string parents_string(const std::string& node) const {
-            return parents_string(m_indices.at(node));
+        std::string parents_tostring(const std::string& node) const {
+            return parents_tostring(m_indices.at(node));
         }
 
         bool has_edge(node_descriptor source, node_descriptor dest) const {
@@ -217,20 +185,7 @@ namespace models {
             return can_add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        bool can_flip_edge(node_descriptor source, node_descriptor dest) {
-            if (num_parents(dest) == 0 || num_children(source) == 0) {
-                return true;
-            } else {
-                remove_edge(source, dest);
-                bool thereis_path = has_path(source, dest);
-                add_edge(source, dest);
-                if (thereis_path) {
-                    return false;
-                } else {
-                    return true;
-                }
-            }
-        }
+        bool can_flip_edge(node_descriptor source, node_descriptor dest) const;
 
         bool can_flip_edge(int source_index, int dest_index) {
             return can_flip_edge(node(source_index), node(dest_index));
@@ -252,9 +207,11 @@ namespace models {
             remove_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        void fit(const DataFrame& df) = 0;
-        VectorXd logpdf(const DataFrame& df) = 0;
-        double slogpdf(const DataFrame& df) = 0;
+        void add_cpds(const std::vector<CPD>& cpds);
+        
+        void fit(const DataFrame& df);
+        VectorXd logpdf(const DataFrame& df);
+        double slogpdf(const DataFrame& df);
 
         void print() const {
             std::cout << "Bayesian network: " << std::endl; 
@@ -262,17 +219,21 @@ namespace models {
                 std::cout << name(g.source(*eit)) << " -> " << name(g.target(*eit)) << std::endl;
         }
     protected:
-        template<typename T>
-        void compatible_cpd(T& cpd);
+        void compatible_cpd(CPD& cpd);
+        void check_fitted();
     private:
         DagType g;
         std::vector<std::string> m_nodes;
         // Change to FNV hash function?
         std::unordered_map<std::string, int> m_indices;
+        std::vector<CPD> m_cpds;
     };
 
-    template<typename DagType>
-    BayesianNetwork<DagType>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {
+    template<typename Derived>
+    BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {
+        if (nodes.empty()) {
+            throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
+        }
         int i = 0;
         for (const std::string& str : nodes) {
             m_indices.insert(std::make_pair(str, i));
@@ -280,11 +241,40 @@ namespace models {
         }
     };
 
-    template<typename DagType>
-    BayesianNetwork<DagType>::BayesianNetwork(const std::vector<std::string>& nodes, 
-                                                 const arc_vector& edges) 
+    template<typename Derived>
+    BayesianNetwork<Derived>::BayesianNetwork(const arc_vector& arcs)
+    {
+        if (arcs.empty()) {
+            throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
+        }
+
+        for (auto& arc : arcs) {
+            if (m_indices.count(arc.first) == 0) {
+                m_indices.insert(std::make_pair(arc.first, m_nodes.size()));
+                m_nodes.push_back(arc.first);
+            }
+
+            if (m_indices.count(arc.second) == 0) {
+                m_indices.insert(std::make_pair(arc.second, m_nodes.size()));
+                m_nodes.push_back(arc.second);
+            }
+        }
+
+        g = DagType(nodes.size());
+
+        for(auto& arc : arcs) {
+            g.add_edge(node(arc.first), node(arc.second));
+        }
+    };
+
+    template<typename Derived>
+    BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes, 
+                                              const arc_vector& edges) 
                                                  : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size())
     {
+        if (nodes.empty()) {
+            throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
+        }
         int i = 0;
         for (const std::string& str : nodes) {
             m_indices.insert(std::make_pair(str, i));
@@ -296,25 +286,81 @@ namespace models {
         }
     };
 
-    template<typename DagType>
-    template<typename T>
-    void BayesianNetwork<DagType>::compatible_cpd(T& cpd) {
-        if (!this->contains_node(cpd.variable())) {
+    template<typename Derived>
+    std::vector<std::string> BayesianNetwork<Derived>::get_parents(node_descriptor node) const {
+        std::vector<std::reference_wrapper<const std::string>> parents;
+        auto it_parents = g.get_parent_edges(node);
+
+        for (auto it = it_parents.first; it != it_parents.second; ++it) {
+            auto parent = g.source(*it);
+            auto parent_index = g.index(parent);
+            parents.push_back(m_nodes[parent_index]);
+        }
+
+        return parents;
+    }
+
+    template<typename Derived>
+    std::vector<int> BayesianNetwork<Derived>::get_parent_indices(node_descriptor node) const {
+        std::vector<int> parent_indices;
+        auto it_parents = g.get_parent_edges(node);
+
+        for (auto it = it_parents.first; it != it_parents.second; ++it) {
+            parent_indices.push_back(g.index(g.source(*it)));
+        }
+
+        return parent_indices;
+    }
+
+    template<typename Derived>
+    std::string BayesianNetwork<Derived>::parents_tostring(node_descriptor node) const {
+        auto parents = get_parents(node);
+        if (!parents.empty()) {
+            std::string str = "[" + parents[0];
+            for (auto it = parents.begin() + 1; it != parents.end(); ++it) {
+                str += ", " + *it;
+            }
+            str += "]";
+            return str;
+        } else {
+            return "[]";
+        } 
+    }
+
+    template<typename Derived>
+    bool BayesianNetwork<Derived>::can_flip_edge(node_descriptor source, node_descriptor dest) const {
+        if (num_parents(dest) == 0 || num_children(source) == 0) {
+            return true;
+        } else {
+            remove_edge(source, dest);
+            bool thereis_path = has_path(source, dest);
+            add_edge(source, dest);
+            if (thereis_path) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    template<typename Derived>
+    void BayesianNetwork<Derived>::compatible_cpd(CPD& cpd) {
+        if (!contains_node(cpd.variable())) {
             throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
         }
 
         auto& evidence = cpd.evidence();
 
         for (auto& ev : evidence) {
-            if (!this->contains_node(ev)) {
+            if (!contains_node(ev)) {
                 throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
             }
         }
 
-        auto parents = this->get_parents(cpd.variable());
+        auto parents = get_parents(cpd.variable());
         if (parents.size() != evidence.size()) {
             std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
-                                + "\nParents: " + this->parents_string(cpd.variable());
+                                + "\nParents: " + parents_tostring(cpd.variable());
 
             throw std::invalid_argument(err);
         }
@@ -328,58 +374,177 @@ namespace models {
         }
     }
 
-    template<typename DagType = AdjMatrixDag>
-    class GaussianNetwork : public BayesianNetwork<DagType> {
-    public:
-        GaussianNetwork(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes), m_cpds() {}
-        GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs), m_cpds() {}
-
-        void add_cpds(const std::vector<LinearGaussianCPD>& cpds) {
-
-            if (m_cpds.empty()) {
-                std::unordered_map<std::string, LinearGaussianCPD> map_index;
-                for (auto it = cpds.begin(); it != cpds.end(); ++it) {
-                    if (map_index.count(it->variable()) == 1) {
-                        throw std::invalid_argument("CPD for variable " + it->variable() + "is repeated.");
-                    }
-                    map_index[it->variable()] = it - cpds.begin();
+    template<typename Derived>
+    void BayesianNetwork<Derived>::add_cpds(const std::vector<CPD>& cpds) {
+        if (m_cpds.empty()) {
+            std::unordered_map<std::string, CPD> map_index;
+            for (auto it = cpds.begin(); it != cpds.end(); ++it) {
+                if (map_index.count(it->variable()) == 1) {
+                    throw std::invalid_argument("CPD for variable " + it->variable() + "is repeated.");
                 }
-                m_cpds.reserve(this->num_nodes());
-                for(auto& node : this->nodes()) {
-                    auto cpd_idx = map_index.find(node);
+                map_index[it->variable()] = it - cpds.begin();
+            }
+            m_cpds.reserve(num_nodes());
+            for(auto& node : nodes()) {
+                auto cpd_idx = map_index.find(node);
 
-                    if (cpd_idx != map_index.end()) {
-                        auto cpd = cpds[cpd_idx->second];
-                        this->compatible_cpd(cpd);
-                        m_cpds.push_back(cpd);
-                    } else {
-                        auto parents = this->get_parents(node);
-                        m_cpds.push_back(LinearGaussianCPD(node, parents));
-                    }
-                }
-            } else {
-                for(auto& cpd : cpds) {
-                    auto idx = this->index(cpd.variable());
-                    m_cpds[idx] = cpd;
+                if (cpd_idx != map_index.end()) {
+                    auto cpd = cpds[cpd_idx->second];
+                    static_cast<Derived*>(this)->compatible_cpd(cpd);
+                    m_cpds.push_back(cpd);
+                } else {
+                    auto parents = get_parents(node);
+                    m_cpds.push_back(LinearGaussianCPD(node, parents));
                 }
             }
-        } 
-    private:
-        std::vector<LinearGaussianCPD> m_cpds;
+        } else {
+            for(auto& cpd : cpds) {
+                auto idx = index(cpd.variable());
+                m_cpds[idx] = cpd;
+            }
+        }
+    }
+
+    template<typename Derived>
+    void BayesianNetwork<Derived>::fit(const DataFrame& df) {
+        if (m_cpds.empty()) {
+            m_cpds.reserve(m_nodes.size());
+
+            for (auto& node : m_nodes) {
+                auto parents = get_parents(node);
+                m_cpds.push_back(CPD(node, parents));
+                m_cpds.back().fit(df);
+            }
+        } else {
+            for (auto& cpd : m_cpds) {
+                if (!cpd.fitted()) {
+                    cpd.fit(df);
+                }
+            }
+        }
+    }
+
+    template<typename Derived>
+    void BayesianNetwork<Derived>::check_fitted() {
+        if (m_cpds.empty()) {
+            py::value_error("Model not fitted.");
+        } else {
+            bool all_fitted = true;
+            std::string err;
+            for (auto& cpd : m_cpds) {
+                if (!cpd.fitted()) {
+                    if (all_fitted) {
+                        err += "Some CPDs are not fitted:\n";
+                        all_fitted = false;
+                    }
+                    err += cpd.ToString() + "\n";
+                }
+            }
+            if (!all_fitted)
+                throw py::value_error(err);
+        }
+    }
+
+    template<typename Derived>
+    VectorXd BayesianNetwork<Derived>::logpdf(const DataFrame& df) {
+        check_fitted();
+
+        VectorXd accum = m_cpds[0].logpdf(df);
+        for (auto it = ++m_cpds.begin(); it != m_cpds.end(); ++it) {
+            accum += it->logpdf(df);
+        }
+        return accum;
+    }
+
+    template<typename Derived>
+    double BayesianNetwork<Derived>::slogpdf(const DataFrame& df) {
+        check_fitted();
+        
+        double accum = m_cpds[0].slogpdf(df);
+        for (auto it = ++m_cpds.begin(); it != m_cpds.end(); ++it) {
+            accum += it->slogpdf(df);
+        }
+        return accum;
+    }
+
+    void requires_continuous_data(const DataFrame& df);
+
+    template<typename D = AdjMatrixDag>
+    class GaussianNetwork : public BayesianNetwork<GaussianNetwork<D>> {
+    public:
+        using DagType = D;
+        using CPD = LinearGaussianCPD;
+        GaussianNetwork(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes) {}
+        GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs) {}
+
+        
+        static void requires(const DataFrame& df) {
+            requires_continuous_data(df);
+        }
     };
 
+    enum class NodeType {
+        LinearGaussianCPD,
+        CKDE
+    };
 
-    template<typename DagType = AdjMatrixDag>
-    class SemiparametricBN : public BayesianNetwork<DagType> {
+    template<typename D = AdjMatrixDag>
+    class SemiparametricBN : public BayesianNetwork<SemiparametricBN<D>> {
     public:
-        SemiparametricBN(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes), m_cpds() {}
-        SemiparametricBN(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs), m_cpds() {}
+        using DagType = D;
+        using CPD = SemiparametricCPD;
+        using node_descriptor = typename BayesianNetwork<SemiparametricBN<D>>::node_descriptor; 
 
-        void add_cpds(const std::vector<SemiparametricCPD> cpds) {
 
+        SemiparametricBN(const std::vector<std::string>& nodes, std::vector<NodeType> node_types) : 
+                                                                                BayesianNetwork<DagType>(nodes),
+                                                                                m_node_types(node_types) {}
+        SemiparametricBN(const arc_vector& arcs, std::vector<NodeType> node_types) : 
+                                                                            BayesianNetwork<DagType>(arcs),
+                                                                            m_node_types(node_types) {}
+        SemiparametricBN(const std::vector<std::string>& nodes, const arc_vector& arcs, 
+                            std::vector<NodeType> node_types) : BayesianNetwork<DagType>(nodes, arcs),
+                                                                m_node_types(node_types) {}
+
+        SemiparametricBN(const std::vector<std::string>& nodes) : 
+                                                    BayesianNetwork<DagType>(nodes),
+                                                    m_node_types(nodes.size()) {}
+        SemiparametricBN(const arc_vector& arcs) : 
+                                                    BayesianNetwork<DagType>(arcs),
+                                                    m_node_types(this->num_nodes()) {}
+        SemiparametricBN(const std::vector<std::string>& nodes, const arc_vector& arcs) : 
+                                                    BayesianNetwork<DagType>(nodes, arcs),
+                                                    m_node_types(nodes.size()) {}
+
+        static void requires(const DataFrame& df) {
+            requires_continuous_data(df);
+        }
+
+        NodeType node_type(node_descriptor node) const {
+            return node_type(index(node));
+        }
+        
+        NodeType node_type(int node_index) {
+            return m_node_types[node_index];
+        }
+
+        NodeType node_type(const std::string& node) const {
+            return node_type(this->index(node));
+        }
+
+        void set_node_type(node_descriptor node, NodeType new_type) {
+            set_node_type(index(node), new_type);
+        }
+
+        void set_node_type(int node_index, NodeType new_type) {
+            m_node_types[node_index] = new_type;
+        }
+
+        void set_node_type(const std::string& node, NodeType new_type) {
+            set_node_type(this->index(node), new_type);
         }
     private:
-        std::vector<SemiparametricCPD> m_cpds;
+        std::vector<NodeType> m_node_types;
     };
 
     // template<typename DagType = AdjMatrixDag>
@@ -392,29 +557,7 @@ namespace models {
     // using GaussianNetwork_M = GaussianNetwork<AdjMatrixDag>;
     // using GaussianNetwork_L = GaussianNetwork<AdjListDag>;
 
-    // template<typename DagType>
-    // void GaussianNetwork<DagType>::requires(const DataFrame& df) {
-    //     auto schema = df->schema();
 
-    //     if (schema->num_fields() == 0) {
-    //         throw std::invalid_argument("Provided dataset does not contain columns.");
-    //     }
-
-    //     auto dtid = schema->field(0)->type()->id();
-
-    //     if (dtid != Type::DOUBLE && dtid != Type::FLOAT) {
-    //         throw std::invalid_argument("Continuous data (double or float) is needed to learn Gaussian networks. "
-    //                                     "Column \"" + schema->field(0)->name() + "\" (DataType: " + schema->field(0)->type()->ToString() + ").");
-    //     }
-
-    //     for (auto i = 1; i < schema->num_fields(); ++i) {
-    //         auto new_dtid = schema->field(i)->type()->id();
-    //         if (dtid != new_dtid)
-    //             throw std::invalid_argument("All the columns should have the same data type. "
-    //                                         "Column \"" + schema->field(0)->name() + "\" (DataType: " + schema->field(0)->type()->ToString() + "). "
-    //                                         "Column \"" + schema->field(i)->name() + "\" (DataType: " + schema->field(i)->type()->ToString() + ").");
-    //     }
-    // }
 
 }
 

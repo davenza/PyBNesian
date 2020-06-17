@@ -16,6 +16,12 @@ namespace factors::continuous {
                 }, m_cpd);
     }
 
+    bool SemiparametricCPD::fitted() const { 
+        return std::visit([](auto& cpd) {
+                    return cpd.fitted();
+                }, m_cpd);
+    }
+
     void SemiparametricCPD::fit(py::handle pyobject) {
         auto rb = dataset::to_record_batch(pyobject);
         auto df = DataFrame(rb);

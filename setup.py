@@ -54,7 +54,7 @@ ext_modules = [
          'src/util/validate_dtype.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
         #  'src/learning/operators/operators.cpp',
-         'src/models/GaussianNetwork.cpp',
+         'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          ],
         include_dirs=[

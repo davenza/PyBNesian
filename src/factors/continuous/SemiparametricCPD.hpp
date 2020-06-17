@@ -19,6 +19,7 @@ namespace factors::continuous {
 
         const std::string& variable() const;
         const std::vector<std::string>& evidence() const;
+        bool fitted() const;
 
         void fit(py::handle pyobject);
         void fit(const DataFrame& df);

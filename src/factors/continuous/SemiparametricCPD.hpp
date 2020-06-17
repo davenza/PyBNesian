@@ -29,6 +29,8 @@ namespace factors::continuous {
         double slogpdf(py::handle pyobject) const;
         double slogpdf(const DataFrame& df) const;
 
+        std::string ToString() const;
+
     private:
         std::variant<LinearGaussianCPD, CKDE> m_cpd;
     };

@@ -51,4 +51,10 @@ namespace factors::continuous {
                     return cpd.slogpdf(df);
                 }, m_cpd);
     }
+
+    std::string SemiparametricCPD::ToString() const {
+        return std::visit([](auto& cpd) {
+                    return cpd.ToString();
+                }, m_cpd);
+    }
 }

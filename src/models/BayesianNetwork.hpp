@@ -19,7 +19,6 @@ using factors::continuous::SemiparametricCPD;
 namespace models {
 
 
-
     // template<typename it> node_iterator(it b, it e) -> node_iterator<typename std::iterator_traits<Iterator>::value_type>;
 
     template<typename DagType = AdjMatrixDag>
@@ -99,7 +98,11 @@ namespace models {
             return g.index(n);
         }
 
-        std::vector<std::reference_wrapper<const std::string>> get_parents(node_descriptor node) const {
+        int index(const std::string& node) const {
+            return g.index(g.node(node));
+        }
+
+        std::vector<std::string> get_parents(node_descriptor node) const {
             std::vector<std::reference_wrapper<const std::string>> parents;
             auto it_parents = g.get_parent_edges(node);
 
@@ -112,11 +115,11 @@ namespace models {
             return parents;
         }
 
-        std::vector<std::reference_wrapper<const std::string>> get_parents(int node_index) const {
+        std::vector<std::string> get_parents(int node_index) const {
             return get_parents(g.node(node_index));
         }
 
-        std::vector<std::reference_wrapper<const std::string>> get_parents(const std::string& node) const {
+        std::vector<std::string> get_parents(const std::string& node) const {
             return get_parents(m_indices.at(node));
         }
 
@@ -137,6 +140,29 @@ namespace models {
 
         std::vector<int> get_parent_indices(const std::string& node) const {
             return get_parent_indices(m_indices.at(node));
+        }
+
+
+        std::string parents_string(node_descriptor node) const {
+            auto parents = this->get_parents(node);
+            if (!parents.empty()) {
+                std::string str = "[" + parents[0];
+                for (auto it = parents.begin() + 1; it != parents.end(); ++it) {
+                    str += ", " + *it;
+                }
+                str += "]";
+                return str;
+            } else {
+                return "[]";
+            }
+        }
+
+        std::string parents_string(int node_index) const {
+            return parents_string(g.node(node_index));
+        }
+
+        std::string parents_string(const std::string& node) const {
+            return parents_string(m_indices.at(node));
         }
 
         bool has_edge(node_descriptor source, node_descriptor dest) const {
@@ -235,7 +261,9 @@ namespace models {
             for(auto [eit, eend] = g.edges(); eit != eend; ++eit)
                 std::cout << name(g.source(*eit)) << " -> " << name(g.target(*eit)) << std::endl;
         }
-
+    protected:
+        template<typename T>
+        void compatible_cpd(T& cpd);
     private:
         DagType g;
         std::vector<std::string> m_nodes;
@@ -268,6 +296,37 @@ namespace models {
         }
     };
 
+    template<typename DagType>
+    template<typename T>
+    void BayesianNetwork<DagType>::compatible_cpd(T& cpd) {
+        if (!this->contains_node(cpd.variable())) {
+            throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
+        }
+
+        auto& evidence = cpd.evidence();
+
+        for (auto& ev : evidence) {
+            if (!this->contains_node(ev)) {
+                throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
+            }
+        }
+
+        auto parents = this->get_parents(cpd.variable());
+        if (parents.size() != evidence.size()) {
+            std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
+                                + "\nParents: " + this->parents_string(cpd.variable());
+
+            throw std::invalid_argument(err);
+        }
+
+        std::unordered_set<std::string> evidence_set(evidence.begin(), evidence.end());
+        for (auto& parent : parents) {
+            if (evidence_set.find(parent) == evidence_set.end()) {
+                std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
+                                    + "\nParents: [";
+            }
+        }
+    }
 
     template<typename DagType = AdjMatrixDag>
     class GaussianNetwork : public BayesianNetwork<DagType> {
@@ -275,11 +334,33 @@ namespace models {
         GaussianNetwork(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes), m_cpds() {}
         GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs), m_cpds() {}
 
-        void add_cpds(const std::vector<LinearGaussianCPD> cpds) {
-            
-            for (auto& cpd : cpds) {
-                if (!this->contains_node(cpd.variable())) {
-                    throw std::invalid_argument("CPD ");
+        void add_cpds(const std::vector<LinearGaussianCPD>& cpds) {
+
+            if (m_cpds.empty()) {
+                std::unordered_map<std::string, LinearGaussianCPD> map_index;
+                for (auto it = cpds.begin(); it != cpds.end(); ++it) {
+                    if (map_index.count(it->variable()) == 1) {
+                        throw std::invalid_argument("CPD for variable " + it->variable() + "is repeated.");
+                    }
+                    map_index[it->variable()] = it - cpds.begin();
+                }
+                m_cpds.reserve(this->num_nodes());
+                for(auto& node : this->nodes()) {
+                    auto cpd_idx = map_index.find(node);
+
+                    if (cpd_idx != map_index.end()) {
+                        auto cpd = cpds[cpd_idx->second];
+                        this->compatible_cpd(cpd);
+                        m_cpds.push_back(cpd);
+                    } else {
+                        auto parents = this->get_parents(node);
+                        m_cpds.push_back(LinearGaussianCPD(node, parents));
+                    }
+                }
+            } else {
+                for(auto& cpd : cpds) {
+                    auto idx = this->index(cpd.variable());
+                    m_cpds[idx] = cpd;
                 }
             }
         } 

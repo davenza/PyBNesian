@@ -18,14 +18,16 @@ using factors::continuous::SemiparametricCPD;
 
 namespace models {
 
+    template<typename Model>
+    struct BN_traits {};
 
     // template<typename it> node_iterator(it b, it e) -> node_iterator<typename std::iterator_traits<Iterator>::value_type>;
 
     template<typename Derived>
     class BayesianNetwork {
     public:
-        using DagType = typename Derived::DagType;
-        using CPD = typename Derived::CPD;
+        using DagType = typename BN_traits<Derived>::DagType;
+        using CPD = typename BN_traits<Derived>::CPD;
         using node_descriptor = typename DagType::node_descriptor;
         using edge_descriptor = typename DagType::edge_descriptor;
 
@@ -545,6 +547,18 @@ namespace models {
         }
     private:
         std::vector<NodeType> m_node_types;
+    };
+
+    template<typename D>
+    struct BN_traits<GaussianNetwork<D>> {
+        using DagType = D;
+        using CPD = LinearGaussianCPD;
+    };
+
+    template<typename D>
+    struct BN_traits<SemiparametricBN<D>> {
+        using DagType = D;
+        using CPD = SemiparametricCPD;
     };
 
     // template<typename DagType = AdjMatrixDag>

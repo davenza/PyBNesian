@@ -8,33 +8,37 @@
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 
-using models::BayesianNetwork;
+using models::BayesianNetwork, models::SemiparametricBN, models::NodeType;
 using graph::arc_vector;
 
 namespace learning::operators {
 
-    template<typename Model, typename OperatorType>
+    template<typename Model>
+    class UpdatablePool;
+
+    template<typename Model>
     class Operator {
     public:
         Operator(double delta) : m_delta(delta) {}
 
-        virtual void apply(Model& m, OperatorType& op_type) = 0;
+        virtual void apply(Model& m, UpdatablePool<Model>& op_type) = 0;
         
         double delta() { return m_delta; }
     private:
         double m_delta;
     };
 
-    template<typename Model, typename OperatorType>
-    class AddArc : public Operator<Model, OperatorType> {
+    template<typename Model>
+    class AddArc : public Operator<Model> {
     public:
         AddArc(typename Model::node_descriptor source, 
                typename Model::node_descriptor dest,
-               double delta) :  Operator<Model, OperatorType>(delta), m_source(source), m_dest(dest) {}
+               double delta) :  Operator<Model>(delta), m_source(source), m_dest(dest) {}
         
-        void apply(Model& m, OperatorType& op_type) override {
+        void apply(Model& m, UpdatablePool<Model>& op_pool) override {
             m.add_edge(m_source, m_dest);
-            op_type.update_node_arcs_scores(m, m_dest);
+            // op_type.update_node_arcs_scores(m, m_dest);
+            UpdatablePool<Model>::update_scores(m, *this, op_pool);
         }
 
     private:
@@ -42,16 +46,18 @@ namespace learning::operators {
         typename Model::node_descriptor m_dest;
     };
 
-    template<typename Model, typename OperatorType>
-    class RemoveArc : public Operator<Model, OperatorType> {
+    template<typename Model>
+    class RemoveArc : public Operator<Model> {
     public:
         RemoveArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : Operator<Model, OperatorType>(delta), m_source(source), m_dest(dest) {}
+                  double delta) : Operator<Model>(delta), m_source(source), m_dest(dest) {}
         
-        void apply(Model& m, OperatorType& op_type) override {
+        void apply(Model& m, UpdatablePool<Model>& op_pool) override {
             m.remove_edge(m_source, m_dest);
-            op_type.update_node_arcs_scores(m, m_dest);
+            // op_type.update_node_arcs_scores(m, m_dest);
+
+            UpdatablePool<Model>::update_scores(m, *this, op_pool);
         }
 
     private:
@@ -59,41 +65,65 @@ namespace learning::operators {
         typename Model::node_descriptor m_dest;
     };
 
-    template<typename Model, typename OperatorType>
-    class FlipArc : public Operator<Model, OperatorType> {
+    template<typename Model>
+    class FlipArc : public Operator<Model> {
     public:
         FlipArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : Operator<Model, OperatorType>(delta), m_source(source), m_dest(dest) {}
+                  double delta) : Operator<Model>(delta), m_source(source), m_dest(dest) {}
 
-        void apply(Model& m, OperatorType& op_type) override {
+        void apply(Model& m, UpdatablePool<Model>& op_pool) override {
             m.remove_edge(m_source, m_dest);
             m.add_edge(m_dest, m_source);
 
-            op_type.update_node_arcs_scores(m, m_source);
-            op_type.update_node_arcs_scores(m, m_dest);
+            // op_type.update_node_arcs_scores(m, m_source);
+            // op_type.update_node_arcs_scores(m, m_dest);
+
+            UpdatablePool<Model>::update_scores(m, *this, op_pool);
         }
 
     private:
         typename Model::node_descriptor m_source;
         typename Model::node_descriptor m_dest;
+    };
+
+    template<typename DagType>
+    class ChangeNodeType : public Operator<SemiparametricBN<DagType>> {
+    public:
+        ChangeNodeType(typename SemiparametricBN<DagType>::node_descriptor node,
+                       NodeType new_node_type,
+                       double delta) : Operator<SemiparametricBN<DagType>>(delta),
+                                       m_node(node),
+                                       m_new_node_type(new_node_type) {}
+
+        void apply(SemiparametricBN<DagType>& m, UpdatablePool<SemiparametricBN<DagType>>& op_pool) override {
+            m.set_node_type(m_node, m_new_node_type);
+
+            // op_type.update_node_arcs_scores(m, m_node);
+            UpdatablePool<SemiparametricBN<DagType>>::update_scores(m, *this, op_pool);
+        }
+    private:
+        typename SemiparametricBN<DagType>::node_descriptor m_node;
+        NodeType m_new_node_type;
     };
 
     template<typename Model, typename Score>
     class ArcOperatorsType {
     public:
-        using AddArc_t = AddArc<Model, ArcOperatorsType<Model, Score>>;
-        using RemoveArc_t = RemoveArc<Model, ArcOperatorsType<Model, Score>>;
-        using FlipArc_t = FlipArc<Model, ArcOperatorsType<Model, Score>>;
+        using AddArc_t = AddArc<Model>;
+        using RemoveArc_t = RemoveArc<Model>;
+        using FlipArc_t = FlipArc<Model>;
 
         ArcOperatorsType(const Score& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree);
 
         void cache_scores(const Model& m);
         void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
 
-        std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max(Model& m);
+        // void update_scores(Model& model, AddArc)
+
+        std::unique_ptr<Operator<Model>> find_max(Model& m);
         template<bool limited_indigree>
-        std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> find_max_indegree(Model& m);
+        std::unique_ptr<Operator<Model>> find_max_indegree(Model& m);
 
         double score() {
             return local_score.sum();
@@ -109,7 +139,11 @@ namespace learning::operators {
     };
     
     template<typename Model, typename Score>
-    ArcOperatorsType<Model, Score>::ArcOperatorsType(const Score& score, const Model& model, arc_vector whitelist, arc_vector blacklist, int max_indegree) :
+    ArcOperatorsType<Model, Score>::ArcOperatorsType(const Score& score, 
+                                                     const Model& model, 
+                                                     arc_vector whitelist, 
+                                                     arc_vector blacklist, 
+                                                     int max_indegree) :
                                                     m_score(score),
                                                     delta(model.num_nodes(), model.num_nodes()),
                                                     valid_op(model.num_nodes(), model.num_nodes()), 
@@ -200,7 +234,7 @@ namespace learning::operators {
 
 
     template<typename Model, typename Score>
-    std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
+    std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
         if (max_indegree > 0)
             return find_max_indegree<true>(m);
         else
@@ -209,7 +243,7 @@ namespace learning::operators {
 
     template<typename Model, typename Score>
     template<bool limited_indegree>
-    std::unique_ptr<Operator<Model, ArcOperatorsType<Model, Score>>> ArcOperatorsType<Model, Score>::find_max_indegree(Model& m) {
+    std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max_indegree(Model& m) {
 
         auto delta_ptr = delta.data();
 
@@ -284,6 +318,52 @@ namespace learning::operators {
             }
         }
     }
+
+    // template<typename Model>
+    // class OperatorPoolBase {
+
+
+    // };
+
+    template<typename Model>
+    struct UpdatablePool {
+        
+        template<typename OperatorPool>
+        static void update_scores(Model& m, AddArc<Model>& op, OperatorPool& pool) {
+            pool.update_scores(m, op);
+        }
+
+        template<typename OperatorPool>
+        static void update_scores(Model& m, RemoveArc<Model>& op, OperatorPool& pool) {
+            pool.update_scores(m, op);
+        }
+        
+        template<typename OperatorPool>
+        static void update_scores(Model& m, FlipArc<Model>& op, OperatorPool& pool) {
+            pool.update_scores(m, op);
+        }
+
+        template<typename OperatorPool>
+        static void update_scores(Model& m, ChangeNodeType<Model>& op, OperatorPool& pool) {
+            pool.update_scores(m, op);
+        }
+    };
+
+    template<typename Model, typename... OperatorTypes>
+    class OperatorPool {
+    public:
+        OperatorPool(OperatorTypes... op_types) : m_op_types(op_types...) {};
+
+        void cache_scores(Model& model);
+        std::unique_ptr<Operator<Model>> find_max(Model& model);
+        void update_scores(Model& model, AddArc<Model>& op);
+        void update_scores(Model& model, RemoveArc<Model>& op);
+        void update_scores(Model& model, FlipArc<Model>& op);
+        void update_scores(Model& model, ChangeNodeType<Model>& op);
+
+    private:
+        std::tuple<OperatorTypes...> m_op_types;
+    };
 
     // template<typename Model, typename Score>
     // class ArcOperatorsType {

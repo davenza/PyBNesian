@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_SCORES_HPP
-#define PGM_DATASET_SCORES_HPP
+#ifndef PGM_DATASET_BIC_HPP
+#define PGM_DATASET_BIC_HPP
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <dataset/dataset.hpp>
@@ -58,4 +58,4 @@ namespace learning::scores {
     }
 }
 
-#endif //PGM_DATASET_SCORES_HPP
+#endif //PGM_DATASET_BIC_HPP

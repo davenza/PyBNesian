@@ -17,6 +17,12 @@ using adj_l = adjacency_list<setS, vecS, bidirectionalS, property<vertex_index_t
 
 namespace graph {
 
+    enum class DagType {
+        MATRIX,
+        LIST
+    };
+
+
     using arc_vector = std::vector<std::pair<std::string, std::string>>;
 
     template<typename Graph>

@@ -21,7 +21,11 @@ namespace models {
     template<typename Model>
     struct BN_traits {};
 
-    // template<typename it> node_iterator(it b, it e) -> node_iterator<typename std::iterator_traits<Iterator>::value_type>;
+    enum class BayesianNetworkType {
+        GBN,
+        SPBN
+    };
+
 
     template<typename Derived>
     class BayesianNetwork {
@@ -57,7 +61,7 @@ namespace models {
             return g.node(node_index);
         }
 
-        bool contains_node(const std::string& name) {
+        bool contains_node(const std::string& name) const {
             return indices.count(name) > 0;
         }
 
@@ -167,7 +171,7 @@ namespace models {
             add_edge(g.node(source), g.node(dest), g);
         }
 
-        void add_edge(const std::string& source, const std::string& dest) const {
+        void add_edge(const std::string& source, const std::string& dest) {
             add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
@@ -187,7 +191,7 @@ namespace models {
             return can_add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        bool can_flip_edge(node_descriptor source, node_descriptor dest) const;
+        bool can_flip_edge(node_descriptor source, node_descriptor dest);
 
         bool can_flip_edge(int source_index, int dest_index) {
             return can_flip_edge(node(source_index), node(dest_index));
@@ -205,15 +209,15 @@ namespace models {
             remove_edge(g.node(source), g.node(dest), g);
         }
 
-        void remove_edge(const std::string& source, const std::string& dest) const {
+        void remove_edge(const std::string& source, const std::string& dest) {
             remove_edge(m_indices.at(source), m_indices.at(dest));
         }
 
         void add_cpds(const std::vector<CPD>& cpds);
         
         void fit(const DataFrame& df);
-        VectorXd logpdf(const DataFrame& df);
-        double slogpdf(const DataFrame& df);
+        VectorXd logpdf(const DataFrame& df) const;
+        double slogpdf(const DataFrame& df) const;
 
         void print() const {
             std::cout << "Bayesian network: " << std::endl; 
@@ -221,8 +225,8 @@ namespace models {
                 std::cout << name(g.source(*eit)) << " -> " << name(g.target(*eit)) << std::endl;
         }
     protected:
-        void compatible_cpd(CPD& cpd);
-        void check_fitted();
+        void compatible_cpd(CPD& cpd) const;
+        void check_fitted() const;
     private:
         DagType g;
         std::vector<std::string> m_nodes;
@@ -330,10 +334,11 @@ namespace models {
     }
 
     template<typename Derived>
-    bool BayesianNetwork<Derived>::can_flip_edge(node_descriptor source, node_descriptor dest) const {
+    bool BayesianNetwork<Derived>::can_flip_edge(node_descriptor source, node_descriptor dest) {
         if (num_parents(dest) == 0 || num_children(source) == 0) {
             return true;
         } else {
+
             remove_edge(source, dest);
             bool thereis_path = has_path(source, dest);
             add_edge(source, dest);
@@ -346,7 +351,7 @@ namespace models {
     }
 
     template<typename Derived>
-    void BayesianNetwork<Derived>::compatible_cpd(CPD& cpd) {
+    void BayesianNetwork<Derived>::compatible_cpd(CPD& cpd) const {
         if (!contains_node(cpd.variable())) {
             throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
         }
@@ -427,7 +432,7 @@ namespace models {
     }
 
     template<typename Derived>
-    void BayesianNetwork<Derived>::check_fitted() {
+    void BayesianNetwork<Derived>::check_fitted() const {
         if (m_cpds.empty()) {
             py::value_error("Model not fitted.");
         } else {
@@ -448,7 +453,7 @@ namespace models {
     }
 
     template<typename Derived>
-    VectorXd BayesianNetwork<Derived>::logpdf(const DataFrame& df) {
+    VectorXd BayesianNetwork<Derived>::logpdf(const DataFrame& df) const {
         check_fitted();
 
         VectorXd accum = m_cpds[0].logpdf(df);
@@ -459,7 +464,7 @@ namespace models {
     }
 
     template<typename Derived>
-    double BayesianNetwork<Derived>::slogpdf(const DataFrame& df) {
+    double BayesianNetwork<Derived>::slogpdf(const DataFrame& df) const {
         check_fitted();
         
         double accum = m_cpds[0].slogpdf(df);
@@ -476,8 +481,10 @@ namespace models {
     public:
         using DagType = D;
         using CPD = LinearGaussianCPD;
-        GaussianNetwork(const std::vector<std::string>& nodes) : BayesianNetwork<DagType>(nodes) {}
-        GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : BayesianNetwork<DagType>(nodes, arcs) {}
+        GaussianNetwork(const std::vector<std::string>& nodes) : 
+                                            BayesianNetwork<GaussianNetwork<D>>(nodes) {}
+        GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : 
+                                            BayesianNetwork<GaussianNetwork<D>>(nodes, arcs) {}
 
         
         static void requires(const DataFrame& df) {
@@ -526,7 +533,7 @@ namespace models {
             return node_type(index(node));
         }
         
-        NodeType node_type(int node_index) {
+        NodeType node_type(int node_index) const {
             return m_node_types[node_index];
         }
 

@@ -13,19 +13,26 @@ using graph::arc_vector;
 
 namespace learning::operators {
 
-    template<typename Model>
-    class UpdatablePool;
-
+    enum class OperatorType {
+        ADD_ARC,
+        REMOVE_ARC,
+        FLIP_ARC,
+        CHANGE_NODE_TYPE
+    };
+    
     template<typename Model>
     class Operator {
     public:
-        Operator(double delta) : m_delta(delta) {}
+        Operator(double delta, OperatorType type) : m_delta(delta), m_type(type) {}
 
-        virtual void apply(Model& m, UpdatablePool<Model>& op_type) = 0;
+        virtual void apply(Model& m) = 0;
         
         double delta() { return m_delta; }
+        
+        OperatorType type() { return m_type; }
     private:
         double m_delta;
+        OperatorType m_type;
     };
 
     template<typename Model>
@@ -33,12 +40,10 @@ namespace learning::operators {
     public:
         AddArc(typename Model::node_descriptor source, 
                typename Model::node_descriptor dest,
-               double delta) :  Operator<Model>(delta), m_source(source), m_dest(dest) {}
+               double delta) :  Operator<Model>(delta, OperatorType::ADD_ARC), m_source(source), m_dest(dest) {}
         
-        void apply(Model& m, UpdatablePool<Model>& op_pool) override {
+        void apply(Model& m) override {
             m.add_edge(m_source, m_dest);
-            // op_type.update_node_arcs_scores(m, m_dest);
-            UpdatablePool<Model>::update_scores(m, *this, op_pool);
         }
 
     private:
@@ -51,13 +56,10 @@ namespace learning::operators {
     public:
         RemoveArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : Operator<Model>(delta), m_source(source), m_dest(dest) {}
+                  double delta) : Operator<Model>(delta, OperatorType::REMOVE_ARC), m_source(source), m_dest(dest) {}
         
-        void apply(Model& m, UpdatablePool<Model>& op_pool) override {
+        void apply(Model& m) override {
             m.remove_edge(m_source, m_dest);
-            // op_type.update_node_arcs_scores(m, m_dest);
-
-            UpdatablePool<Model>::update_scores(m, *this, op_pool);
         }
 
     private:
@@ -70,16 +72,11 @@ namespace learning::operators {
     public:
         FlipArc(typename Model::node_descriptor source, 
                   typename Model::node_descriptor dest,
-                  double delta) : Operator<Model>(delta), m_source(source), m_dest(dest) {}
+                  double delta) : Operator<Model>(delta, OperatorType::FLIP_ARC), m_source(source), m_dest(dest) {}
 
-        void apply(Model& m, UpdatablePool<Model>& op_pool) override {
+        void apply(Model& m) override {
             m.remove_edge(m_source, m_dest);
             m.add_edge(m_dest, m_source);
-
-            // op_type.update_node_arcs_scores(m, m_source);
-            // op_type.update_node_arcs_scores(m, m_dest);
-
-            UpdatablePool<Model>::update_scores(m, *this, op_pool);
         }
 
     private:
@@ -92,38 +89,52 @@ namespace learning::operators {
     public:
         ChangeNodeType(typename SemiparametricBN<DagType>::node_descriptor node,
                        NodeType new_node_type,
-                       double delta) : Operator<SemiparametricBN<DagType>>(delta),
+                       double delta) : Operator<SemiparametricBN<DagType>>(delta, OperatorType::CHANGE_NODE_TYPE),
                                        m_node(node),
                                        m_new_node_type(new_node_type) {}
 
-        void apply(SemiparametricBN<DagType>& m, UpdatablePool<SemiparametricBN<DagType>>& op_pool) override {
+        void apply(SemiparametricBN<DagType>& m) override {
             m.set_node_type(m_node, m_new_node_type);
-
-            // op_type.update_node_arcs_scores(m, m_node);
-            UpdatablePool<SemiparametricBN<DagType>>::update_scores(m, *this, op_pool);
         }
     private:
         typename SemiparametricBN<DagType>::node_descriptor m_node;
         NodeType m_new_node_type;
     };
 
+
+    enum class OperatorSetType {
+        ARCS,
+        NODE_TYPE
+    };
+
+
+    template<typename Model>
+    class OperatorSet {
+    public:
+        virtual void cache_scores(const Model& m) = 0;
+        virtual std::unique_ptr<Operator<Model>> find_max(Model& m) = 0;
+        virtual void update_scores(const Model& m, Operator<Model>& op) = 0;
+    };
+
+
     template<typename Model, typename Score>
-    class ArcOperatorsType {
+    class ArcOperatorSet : public OperatorSet<Model> {
     public:
         using AddArc_t = AddArc<Model>;
         using RemoveArc_t = RemoveArc<Model>;
         using FlipArc_t = FlipArc<Model>;
 
-        ArcOperatorsType(const Score& df, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree);
+        ArcOperatorSet(const Score& score, const Model& model, arc_vector whitelist, arc_vector blacklist, int indegree);
 
-        void cache_scores(const Model& m);
-        void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
-
-        // void update_scores(Model& model, AddArc)
-
-        std::unique_ptr<Operator<Model>> find_max(Model& m);
+        void cache_scores(const Model& m) override;
+        std::unique_ptr<Operator<Model>> find_max(Model& m) override;
+        
         template<bool limited_indigree>
         std::unique_ptr<Operator<Model>> find_max_indegree(Model& m);
+
+        void update_scores(const Model& m, Operator<Model>& op) override;
+
+        void update_node_arcs_scores(const Model& model, typename Model::node_descriptor dest_node);
 
         double score() {
             return local_score.sum();
@@ -137,9 +148,17 @@ namespace learning::operators {
         std::vector<int> sorted_idx;
         int max_indegree;
     };
-    
+
+    template<typename Model, typename Score> ArcOperatorSet(const Score& df, 
+                                                            const Model& model, 
+                                                            arc_vector whitelist, 
+                                                            arc_vector blacklist, 
+                                                            int indegree) -> 
+                                                ArcOperatorSet<Model, Score>;
+
+
     template<typename Model, typename Score>
-    ArcOperatorsType<Model, Score>::ArcOperatorsType(const Score& score, 
+    ArcOperatorSet<Model, Score>::ArcOperatorSet(const Score& score, 
                                                      const Model& model, 
                                                      arc_vector whitelist, 
                                                      arc_vector blacklist, 
@@ -194,7 +213,7 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorsType<Model, Score>::cache_scores(const Model& m) {
+    void ArcOperatorSet<Model, Score>::cache_scores(const Model& m) {
         
         for (int i = 0; i < m.num_nodes(); ++i) {
             auto parents = m.get_parent_indices(i);
@@ -234,7 +253,7 @@ namespace learning::operators {
 
 
     template<typename Model, typename Score>
-    std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max(Model& m) {
+    std::unique_ptr<Operator<Model>> ArcOperatorSet<Model, Score>::find_max(Model& m) {
         if (max_indegree > 0)
             return find_max_indegree<true>(m);
         else
@@ -243,7 +262,7 @@ namespace learning::operators {
 
     template<typename Model, typename Score>
     template<bool limited_indegree>
-    std::unique_ptr<Operator<Model>> ArcOperatorsType<Model, Score>::find_max_indegree(Model& m) {
+    std::unique_ptr<Operator<Model>> ArcOperatorSet<Model, Score>::find_max_indegree(Model& m) {
 
         auto delta_ptr = delta.data();
 
@@ -280,7 +299,25 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorsType<Model, Score>::update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node) {
+    void ArcOperatorSet<Model, Score>:: update_scores(const Model& m, Operator<Model>& op) {
+        switch(op.type()) {
+            case OperatorType::ADD_ARC:
+                std::cout << "Add arc" << std::endl;
+                break;
+            case OperatorType::REMOVE_ARC:
+                std::cout << "Remove arc" << std::endl;
+                break;
+            case OperatorType::FLIP_ARC:
+                std::cout << "Flip arc" << std::endl;
+                break;
+            case OperatorType::CHANGE_NODE_TYPE:
+                std::cout << "Change Node Type" << std::endl;
+                break;
+        }
+    }
+
+    template<typename Model, typename Score>
+    void ArcOperatorSet<Model, Score>::update_node_arcs_scores(const Model& model, typename Model::node_descriptor dest_node) {
 
         auto parents = model.get_parent_indices(dest_node);
         auto dest_idx = model.index(dest_node);
@@ -323,47 +360,50 @@ namespace learning::operators {
     // class OperatorPoolBase {
 
 
-    // };
-
     template<typename Model>
-    struct UpdatablePool {
-        
-        template<typename OperatorPool>
-        static void update_scores(Model& m, AddArc<Model>& op, OperatorPool& pool) {
-            pool.update_scores(m, op);
-        }
-
-        template<typename OperatorPool>
-        static void update_scores(Model& m, RemoveArc<Model>& op, OperatorPool& pool) {
-            pool.update_scores(m, op);
-        }
-        
-        template<typename OperatorPool>
-        static void update_scores(Model& m, FlipArc<Model>& op, OperatorPool& pool) {
-            pool.update_scores(m, op);
-        }
-
-        template<typename OperatorPool>
-        static void update_scores(Model& m, ChangeNodeType<Model>& op, OperatorPool& pool) {
-            pool.update_scores(m, op);
-        }
-    };
-
-    template<typename Model, typename... OperatorTypes>
     class OperatorPool {
     public:
-        OperatorPool(OperatorTypes... op_types) : m_op_types(op_types...) {};
+        OperatorPool(std::vector<std::unique_ptr<OperatorSet<Model>>> op_sets) : m_op_sets(op_sets) {
+            if (op_sets.empty()) {
+                throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
+            }
+        };
 
-        void cache_scores(Model& model);
-        std::unique_ptr<Operator<Model>> find_max(Model& model);
-        void update_scores(Model& model, AddArc<Model>& op);
-        void update_scores(Model& model, RemoveArc<Model>& op);
-        void update_scores(Model& model, FlipArc<Model>& op);
-        void update_scores(Model& model, ChangeNodeType<Model>& op);
-
+        void cache_scores(const Model& model);
+        std::unique_ptr<Operator<Model>> find_max(const Model& model);
+        void update_scores(const Model& model, Operator<Model>& op);
     private:
-        std::tuple<OperatorTypes...> m_op_types;
+        std::vector<std::unique_ptr<OperatorSet<Model>>> m_op_sets;
     };
+
+    template<typename Model>
+    void OperatorPool<Model>::cache_scores(const Model& model) {
+        for (auto& op_set : m_op_sets) {
+            op_set->cache_scores(model);
+        }
+    }
+
+    template<typename Model>
+    std::unique_ptr<Operator<Model>> OperatorPool<Model>::find_max(const Model& model) {
+        std::unique_ptr<Operator<Model>> max_op = m_op_sets[0]->find_max(model);
+
+        for (auto it = ++m_op_sets.begin(); it != m_op_sets.end(); ++it) {
+            auto new_op = (*it)->find_max(model);
+            if (new_op->delta() > max_op->delta()) {
+                max_op = std::move(new_op);
+            }
+        }
+
+        return max_op;
+    }
+
+    template<typename Model>
+    void OperatorPool<Model>::update_scores(const Model& model, Operator<Model>& op) {
+        for (auto& op_set : m_op_sets) {
+            op_set->update_scores(model, op);
+        }
+    }
+
 
     // template<typename Model, typename Score>
     // class ArcOperatorsType {

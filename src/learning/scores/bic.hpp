@@ -20,7 +20,7 @@ namespace learning::scores {
     public:
         inline static constexpr bool is_decomposable = true;
 
-        BIC(DataFrame& df) : m_df(df) {}
+        BIC(const DataFrame& df) : m_df(df) {}
 
         template<typename Model>
         double score(const Model& model);
@@ -38,7 +38,7 @@ namespace learning::scores {
         double local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
     
     private:
-        DataFrame& m_df;        
+        const DataFrame& m_df;        
     };
 
     template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int>>

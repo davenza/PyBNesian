@@ -23,7 +23,6 @@ namespace graph {
     };
 
 
-    using arc_vector = std::vector<std::pair<std::string, std::string>>;
 
     template<typename Graph>
     class Dag {

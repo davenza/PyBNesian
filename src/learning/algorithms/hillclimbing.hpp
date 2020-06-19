@@ -5,17 +5,14 @@
 
 #include <dataset/dataset.hpp>
 #include <graph/dag.hpp>
-
-#include <learning/operators/operators.hpp>
+#include <util/validate_dtype.hpp>
 
 
 namespace py = pybind11; 
 
 using dataset::DataFrame;
-using graph::arc_vector, graph::DagType;
-using models::BayesianNetworkType;
-using learning::scores::ScoreType;
-using learning::operators::OperatorSetType;
+using graph::DagType;
+using util::ArcVector;
 
 namespace learning::algorithms {
 
@@ -29,14 +26,14 @@ namespace learning::algorithms {
 
     // TODO: Include start graph.
     void hc(py::handle data, std::string bn_type, std::string score, std::vector<std::string> operators, 
-            std::vector<py::tuple> blacklist, std::vector<py::tuple> whitelist, 
+            std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, 
+            std::vector<py::tuple> type_whitelist,
                 int max_indegree, double epsilon, std::string dag_type);
 
-    template<typename Model>
     class GreedyHillClimbing {
 
     public:
-        template<typename Operators>
+        template<typename Operators, typename Model>
         void estimate(Operators& op_pool, double epsilon, const Model& start);
     };
 }

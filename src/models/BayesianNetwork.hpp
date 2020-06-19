@@ -6,24 +6,63 @@
 #include <graph/dag.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/SemiparametricCPD.hpp>
+#include <util/util_types.hpp>
 
 using dataset::DataFrame;
 using graph::AdjMatrixDag, graph::AdjListDag;
 using boost::source;
 
-using graph::arc_vector; 
-
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::SemiparametricCPD;
+
+using util::ArcVector;
 
 namespace models {
 
     template<typename Model>
     struct BN_traits {};
 
-    enum class BayesianNetworkType {
-        GBN,
-        SPBN
+    class BayesianNetworkType
+    {
+    public:
+        enum Value : uint8_t
+        {
+            GBN,
+            SPBN
+        };
+
+        struct Hash
+        {
+            inline std::size_t operator ()(BayesianNetworkType const bn_type) const
+            {
+                return static_cast<std::size_t>(bn_type.value);
+            }
+        };
+
+        using HashType = Hash;
+
+        BayesianNetworkType() = default;
+        constexpr BayesianNetworkType(Value bn_type) : value(bn_type) { }
+
+        operator Value() const { return value; }  
+        explicit operator bool() = delete;
+
+        constexpr bool operator==(BayesianNetworkType a) const { return value == a.value; }
+        constexpr bool operator!=(BayesianNetworkType a) const { return value != a.value; }
+
+        std::string ToString() const { 
+            switch(value) {
+                case Value::GBN:
+                    return "gbn";
+                case Value::SPBN:
+                    return "spbn";
+                default:
+                    throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
+            }
+        }
+
+    private:
+        Value value;
     };
 
 
@@ -38,8 +77,8 @@ namespace models {
         using node_iterator_t = typename DagType::node_iterator_t;
 
         BayesianNetwork(const std::vector<std::string>& nodes);
-        BayesianNetwork(const arc_vector& arcs);
-        BayesianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs);
+        BayesianNetwork(const ArcVector& arcs);
+        BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs);
 
         int num_nodes() const {
             return g.num_nodes();
@@ -248,7 +287,7 @@ namespace models {
     };
 
     template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const arc_vector& arcs)
+    BayesianNetwork<Derived>::BayesianNetwork(const ArcVector& arcs)
     {
         if (arcs.empty()) {
             throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
@@ -275,7 +314,7 @@ namespace models {
 
     template<typename Derived>
     BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes, 
-                                              const arc_vector& edges) 
+                                              const ArcVector& edges) 
                                                  : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size())
     {
         if (nodes.empty()) {
@@ -475,111 +514,6 @@ namespace models {
     }
 
     void requires_continuous_data(const DataFrame& df);
-
-    template<typename D = AdjMatrixDag>
-    class GaussianNetwork : public BayesianNetwork<GaussianNetwork<D>> {
-    public:
-        using DagType = D;
-        using CPD = LinearGaussianCPD;
-        GaussianNetwork(const std::vector<std::string>& nodes) : 
-                                            BayesianNetwork<GaussianNetwork<D>>(nodes) {}
-        GaussianNetwork(const std::vector<std::string>& nodes, const arc_vector& arcs) : 
-                                            BayesianNetwork<GaussianNetwork<D>>(nodes, arcs) {}
-
-        
-        static void requires(const DataFrame& df) {
-            requires_continuous_data(df);
-        }
-    };
-
-    enum class NodeType {
-        LinearGaussianCPD,
-        CKDE
-    };
-
-    template<typename D = AdjMatrixDag>
-    class SemiparametricBN : public BayesianNetwork<SemiparametricBN<D>> {
-    public:
-        using DagType = D;
-        using CPD = SemiparametricCPD;
-        using node_descriptor = typename BayesianNetwork<SemiparametricBN<D>>::node_descriptor; 
-
-
-        SemiparametricBN(const std::vector<std::string>& nodes, std::vector<NodeType> node_types) : 
-                                                                                BayesianNetwork<DagType>(nodes),
-                                                                                m_node_types(node_types) {}
-        SemiparametricBN(const arc_vector& arcs, std::vector<NodeType> node_types) : 
-                                                                            BayesianNetwork<DagType>(arcs),
-                                                                            m_node_types(node_types) {}
-        SemiparametricBN(const std::vector<std::string>& nodes, const arc_vector& arcs, 
-                            std::vector<NodeType> node_types) : BayesianNetwork<DagType>(nodes, arcs),
-                                                                m_node_types(node_types) {}
-
-        SemiparametricBN(const std::vector<std::string>& nodes) : 
-                                                    BayesianNetwork<DagType>(nodes),
-                                                    m_node_types(nodes.size()) {}
-        SemiparametricBN(const arc_vector& arcs) : 
-                                                    BayesianNetwork<DagType>(arcs),
-                                                    m_node_types(this->num_nodes()) {}
-        SemiparametricBN(const std::vector<std::string>& nodes, const arc_vector& arcs) : 
-                                                    BayesianNetwork<DagType>(nodes, arcs),
-                                                    m_node_types(nodes.size()) {}
-
-        static void requires(const DataFrame& df) {
-            requires_continuous_data(df);
-        }
-
-        NodeType node_type(node_descriptor node) const {
-            return node_type(index(node));
-        }
-        
-        NodeType node_type(int node_index) const {
-            return m_node_types[node_index];
-        }
-
-        NodeType node_type(const std::string& node) const {
-            return node_type(this->index(node));
-        }
-
-        void set_node_type(node_descriptor node, NodeType new_type) {
-            set_node_type(index(node), new_type);
-        }
-
-        void set_node_type(int node_index, NodeType new_type) {
-            m_node_types[node_index] = new_type;
-        }
-
-        void set_node_type(const std::string& node, NodeType new_type) {
-            set_node_type(this->index(node), new_type);
-        }
-    private:
-        std::vector<NodeType> m_node_types;
-    };
-
-    template<typename D>
-    struct BN_traits<GaussianNetwork<D>> {
-        using DagType = D;
-        using CPD = LinearGaussianCPD;
-    };
-
-    template<typename D>
-    struct BN_traits<SemiparametricBN<D>> {
-        using DagType = D;
-        using CPD = SemiparametricCPD;
-    };
-
-    // template<typename DagType = AdjMatrixDag>
-    // using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK, DagType>;
-
-
-    // template<typename DagType = AdjMatrixDag>
-    // using GaussianNetwork = BayesianNetwork<BayesianNetworkType::GAUSSIAN_NETWORK, DagType>;
-
-    // using GaussianNetwork_M = GaussianNetwork<AdjMatrixDag>;
-    // using GaussianNetwork_L = GaussianNetwork<AdjListDag>;
-
-
-
 }
 
 #endif //PGM_DATASET_BAYESIANNETWORK_HPP

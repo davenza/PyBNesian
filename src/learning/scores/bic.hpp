@@ -18,25 +18,30 @@ namespace learning::scores {
 
     class BIC {
     public:
-        inline static constexpr bool is_decomposable = true;
-
         BIC(const DataFrame& df) : m_df(df) {}
 
         template<typename Model>
-        double score(const Model& model);
+        double score(const Model& model) {
+            double s = 0;
+            for (auto node = 0; node < model.num_nodes(); ++node) {
+                s += local_score(model, node);
+            }
 
-        template<typename Model, typename VarType, typename EvidenceType, std::enable_if_t<is_decomposable, int> = 0>
-        double local_score(const Model& model,
-                            const VarType& variable, 
-                            const EvidenceType& evidence) const
-        {
-            return local_score(model, variable, evidence.begin(), evidence.end());
+            return s;
         }
 
-
-        template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
-        double local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
+        template<typename Model, typename VarType, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+        double local_score(const Model& model, const VarType& variable) const {
+            auto parents = model.get_parent_indices(variable);
+            return local_score(model, variable, parents.begin(), parents.end());
+        }
     
+        template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+        double local_score(const Model& model, 
+                           const VarType& variable, 
+                           const EvidenceIter evidence_begin, 
+                           const EvidenceIter evidence_end) const;
+
     private:
         const DataFrame& m_df;        
     };

@@ -11,36 +11,65 @@ namespace learning::scores {
 
     class CVLikelihood {
     public:
-        inline static constexpr bool is_decomposable = true;
 
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
         CVLikelihood(const DataFrame& df, int k, int seed) : m_cv(df, k, seed) {}
 
         template<typename Model>
-        double score(const Model& model);
+        double score(const Model& model) {
+            double s = 0;
+            for (auto node = 0; node < model.num_nodes(); ++node) {
+                s += local_score(model, node);
+            }
+            
+            return s;
+        }
 
+        template<typename Model, typename VarType, util::enable_if_gaussian_network_t<Model, int> = 0>
+        double local_score(const Model& model, const VarType& variable) const {
+            auto parents = model.get_parent_indices(variable);
+            return local_score(model, variable, parents.begin(), parents.end());
+        }
+        
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int> = 0>
-        double local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
+        double local_score(const Model& model, 
+                           const VarType& variable, 
+                           const EvidenceIter evidence_begin, 
+                           const EvidenceIter evidence_end) const;
 
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
-        double local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
+        double local_score(const Model& model, const VarType& variable) const {
+            auto parents = model.get_parent_indices(variable);
+            NodeType variable_type = model.node_type(variable);
+            
+            return local_score(variable, parents.begin(), parents.end(), variable_type);
+        }
+
+        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
+        double local_score(const Model& model, 
+                           const VarType& variable, 
+                           const EvidenceIter evidence_begin, 
+                           const EvidenceIter evidence_end) const {
+            NodeType variable_type = model.node_type(variable);
+            return local_score(variable, variable_type, evidence_begin, evidence_end);
+        }
 
         template<typename VarType, typename EvidenceIter>
-        double local_score(NodeType variable_type, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const;
-
+        double local_score(const VarType& variable, 
+                           NodeType variable_type, 
+                           const EvidenceIter evidence_begin, 
+                           const EvidenceIter evidence_end) const;
 
     private:
         CrossValidation m_cv;
     };
 
-
     template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
     double CVLikelihood::local_score(const Model&,
-                                        const VarType& variable, 
-                                        const EvidenceIter evidence_begin,
-                                        const EvidenceIter evidence_end) const {
+                                     const VarType& variable, 
+                                     const EvidenceIter evidence_begin,
+                                     const EvidenceIter evidence_end) const {
         
-
         LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
 
         double loglik = 0;
@@ -52,14 +81,11 @@ namespace learning::scores {
         return loglik;
     }
 
-    template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
-    double CVLikelihood::local_score(const Model& model, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const {
-        NodeType type = model.node_type(variable);
-        local_score(type, variable, evidence_begin, evidence_end);
-    }
-
     template<typename VarType, typename EvidenceIter>
-    double CVLikelihood::local_score(NodeType variable_type, const VarType& variable, const EvidenceIter evidence_begin, const EvidenceIter evidence_end) const {
+    double CVLikelihood::local_score(const VarType& variable, 
+                                     NodeType variable_type, 
+                                     const EvidenceIter evidence_begin, 
+                                     const EvidenceIter evidence_end) const {
 
         if (variable_type == NodeType::LinearGaussianCPD) {
             LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));

@@ -83,11 +83,11 @@ namespace dataset {
                                                             const_vecit<int> test_end) {
         switch(col->type_id()) {
             case Type::DOUBLE:
-                return split_array_train_test<arrow::DoubleArray>(col, include_null, train_begin, train_end, test_end);
+                return split_array_train_test<arrow::DoubleType>(col, include_null, train_begin, train_end, test_end);
             case Type::FLOAT:
-                return split_array_train_test<arrow::FloatArray>(col, include_null, train_begin, train_end, test_end);
+                return split_array_train_test<arrow::FloatType>(col, include_null, train_begin, train_end, test_end);
             default:
-                throw std::invalid_argument("Wrong data type in HoldOut.")
+                throw std::invalid_argument("Wrong data type in HoldOut.");
         }
     }
 
@@ -120,9 +120,9 @@ namespace dataset {
     class HoldOut {
     public:
         HoldOut(const DataFrame& df, double test_ratio, int seed = std::random_device{}(), bool include_null = false) :
-                                                                m_seed(seed), include_null(include_null) 
+                                                                m_seed(seed)
         {
-
+            std::vector<int> indices;
             if (df.null_count() == 0 || include_null) {
                 indices.resize(df->num_rows());
                 std::iota(indices.begin(), indices.end(), 0);
@@ -151,19 +151,19 @@ namespace dataset {
                                             "Generated test instances: " + std::to_string(test_rows));
             }
 
-            auto split_point = std::advance(indices.begin(), train_rows);
-            [m_train_df, m_test_df] = generate_holdout(df, indices.begin(), split_point, indices.end());
+            auto split_point = indices.begin();
+            std::advance(split_point, train_rows);
+            std::tie(m_train_df, m_test_df) = generate_holdout(df, include_null, indices.begin(), split_point, indices.end());
         }
 
-        const DataFrame& training_data() { return m_train_df; }
-        const DataFrame& test_data() { return m_test_df; }
+        const DataFrame& training_data() const { return m_train_df; }
+        const DataFrame& test_data() const { return m_test_df; }
 
     private:
-
         DataFrame m_train_df;
         DataFrame m_test_df;
         int m_seed;
-    }
+    };
 }
 
 #endif //PGM_DATASET_HOLDOUT_ADAPTATOR_HPP

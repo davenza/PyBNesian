@@ -48,7 +48,9 @@ namespace models {
         explicit operator bool() = delete;
 
         constexpr bool operator==(BayesianNetworkType a) const { return value == a.value; }
+        constexpr bool operator==(Value v) const { return value == v; }
         constexpr bool operator!=(BayesianNetworkType a) const { return value != a.value; }
+        constexpr bool operator!=(Value v) const { return value != v; }
 
         std::string ToString() const { 
             switch(value) {
@@ -96,16 +98,16 @@ namespace models {
             return m_indices;
         }
 
+        node_descriptor node(const std::string& node) const {
+            return g.node(m_indices.at(node));
+        }
+
         node_descriptor node(int node_index) const {
             return g.node(node_index);
         }
 
         bool contains_node(const std::string& name) const {
             return indices.count(name) > 0;
-        }
-
-        node_descriptor node(const std::string& node) const {
-            return g.node(m_indices.at(node));
         }
 
         const std::string& name(int node_index) const {
@@ -145,7 +147,7 @@ namespace models {
         }
 
         int index(const std::string& node) const {
-            return g.index(g.node(node));
+            return m_indices.at(node);
         }
 
         std::vector<std::string> get_parents(node_descriptor node) const;

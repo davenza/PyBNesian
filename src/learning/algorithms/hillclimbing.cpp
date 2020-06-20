@@ -6,13 +6,14 @@
 #include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>
+#include <learning/scores/holdout_likelihood.hpp>
 #include <learning/operators/operators.hpp>
 
 using namespace dataset;
 
 using Eigen::VectorXd, Eigen::MatrixXd;;
 using models::GaussianNetwork, models::BayesianNetworkType;
-using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood;
+using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
 using graph::DagType;
 using learning::operators::ArcOperatorSet, learning::operators::OperatorPool, learning::operators::OperatorSetType;
 using util::ArcVector;
@@ -20,6 +21,8 @@ using util::ArcVector;
 // #include <util/benchmark_basic.hpp>
 
 namespace learning::algorithms {
+
+    using OperatorSetTypeS = std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>;
 
     DagType check_valid_dag_string(std::string& dag_type) {
         if (dag_type == "matrix") return DagType::MATRIX;
@@ -46,11 +49,11 @@ namespace learning::algorithms {
         
     }
 
-    std::vector<OperatorSetType> check_valid_operators_string(std::vector<std::string>& operators) {
-        std::vector<OperatorSetType> ops(operators.size());
+    OperatorSetTypeS check_valid_operators_string(std::vector<std::string>& operators) {
+        std::unordered_set<OperatorSetType, typename OperatorSetType::HashType> ops(operators.size());
         for (auto& op : operators) {
-            if (op == "arcs") ops.push_back(OperatorSetType::ARCS);
-            else if (op == "node_type") ops.push_back(OperatorSetType::NODE_TYPE);
+            if (op == "arcs") ops.insert(OperatorSetType::ARCS);
+            else if (op == "node_type") ops.insert(OperatorSetType::NODE_TYPE);
             else
                 throw std::invalid_argument("Wrong operator set \"" + op + "\". Valid choices are:"
                                             "\"arcs\" (Changes in arcs; addition, removal and flip) or "
@@ -74,7 +77,8 @@ namespace learning::algorithms {
         }
     }
 
-    void check_valid_operators(BayesianNetworkType bn_type, std::vector<OperatorSetType>& operators) {
+    void check_valid_operators(BayesianNetworkType bn_type, OperatorSetTypeS& operators) 
+    {
         static std::unordered_map<BayesianNetworkType,
                                   std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>,
                                   typename BayesianNetworkType::HashType>
@@ -147,20 +151,85 @@ namespace learning::algorithms {
     //     }
     // }
 
-    // template<typename ...Args>
-    // void call_hc(const DataFrame& df, std::vector<std::string> nodes, const arc_vector& blacklist, const arc_vector& whitelist, 
-    //             int max_indegree, double epsilon, DagType& dag_type, Args... args) {
-    //     switch(dag_type) {
-    //         case DagType::MATRIX:
-    //             call_hc<AdjMatrixDag>(df, nodes, blacklist, whitelist, max_indegree, epsilon, args...);
-    //             break;
-    //         case DagType::LIST:
-    //             call_hc<AdjListDag>(df, nodes, blacklist, whitelist, max_indegree, epsilon, args...);
-    //             break;
-    //     }
-    // }
+    template<typename DagType>
+    void call_hc_validated_spbn(const DataFrame& df, 
+                               ArcVector arc_blacklist, 
+                               ArcVector arc_whitelist, 
+                               NodeTypeVector type_whitelist, 
+                               int max_indegree, 
+                               double epsilon,
+                               ScoreType score_type, 
+                               OperatorSetTypeS operators) 
+    {
+        using Model = SemiparametricBN<DagType>;
+        auto nodes = df.column_names();
+
+        Model m = Model(nodes, arc_whitelist, type_whitelist);
+
+        HoldoutLikelihood validation_score(df, 0.2);
+        CVLikelihood training_score(validation_score.training_data(), 10);
+
+        OperatorPool pool(m, training_score, operators, arc_blacklist, arc_whitelist, type_whitelist, max_indegree);
+        
+        GreedyHillClimbing hc;
+        hc.estimate_validation(df, pool, validation_score, epsilon, m);
+    }
+
+    void call_hc_validated_spbn(const DataFrame& df, 
+                                ArcVector arc_blacklist, 
+                                ArcVector arc_whitelist,
+                                NodeTypeVector type_whitelist,
+                                int max_indegree, 
+                                double epsilon, 
+                                DagType dag_type, 
+                                ScoreType score_type, 
+                                OperatorSetTypeS operators) 
+    {
+        switch(dag_type) {
+            case DagType::MATRIX:
+                call_hc_validated_spbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, type_whitelist,
+                                                     max_indegree, epsilon, score_type, operators);
+                break;
+            case DagType::LIST:
+                call_hc_validated_spbn<AdjListDag>(df, arc_blacklist, arc_whitelist, type_whitelist, 
+                                                   max_indegree, epsilon, score_type, operators);
+                break;
+        }
+    }
+
+    template<typename DagType>
+    void call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, double epsilon,
+                               ScoreType score_type, OperatorSetTypeS operators) 
+    {
+        using Model = GaussianNetwork<DagType>;
+        auto nodes = df.column_names();
+
+        Model m(nodes, arc_whitelist);
+
+        HoldoutLikelihood validation_score(df, 0.2);
+        CVLikelihood training_score(validation_score.training_data(), 10);
+
+        OperatorPool pool(m, training_score, operators, arc_blacklist, arc_whitelist, {}, max_indegree);
+        
+        GreedyHillClimbing hc;
+        hc.estimate_validation(df, pool, validation_score, epsilon, m);
+    }
+
+    void call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, double epsilon,
+                               DagType dag_type, ScoreType score_type, OperatorSetTypeS operators) 
+    {
+        switch(dag_type) {
+            case DagType::MATRIX:
+                call_hc_validated_gbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, epsilon, score_type, operators);
+                break;
+            case DagType::LIST:
+                call_hc_validated_gbn<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, epsilon, score_type, operators);
+                break;
+        }
+    }
     
     // TODO: Include start model.
+    // TODO: Include test ratio of holdout / number k-folds.
     void hc(py::handle data, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, std::vector<py::tuple> type_whitelist,
                   int max_indegree, double epsilon, std::string dag_type_str) {
@@ -181,22 +250,32 @@ namespace learning::algorithms {
 
         auto node_type_whitelist = util::check_node_type_list(df, type_whitelist);
 
-        auto nodes = df.column_names();
+        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
+            switch(bn_type) {
+                case BayesianNetworkType::GBN:
+                    call_hc_validated_gbn(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, epsilon, dag_type, score_type, operators_type);
+                    break;
+                // case BayesianNetworkType::SPBN:
+            }
+        } else {
 
-        switch(bn_type) {
-            case BayesianNetworkType::GBN:
-                call_hc_gbn();
-            case BayesianNetworkType::SPBN:
-        };
+        }
+
+        // switch(op) {
+        //     case BayesianNetworkType::GBN:
+        //         // call_hc_gbn();
+        //     case BayesianNetworkType::SPBN:
+        // };
 
     }
     
 
     
     template<typename Operators, typename Model>
-    void GreedyHillClimbing::estimate(Operators& op,
-                                             double epsilon,
-                                             const Model& start) {
+    void GreedyHillClimbing::estimate(const DataFrame& df,
+                                      Operators& op,
+                                      double epsilon,
+                                      const Model& start) {
 
 
         // Model::requires(df);
@@ -218,6 +297,42 @@ namespace learning::algorithms {
         // }
 
         // // std::cout << "Final score: " << op.score() << std::endl;
+    }
+
+    template<typename OperatorPool, typename ValidationScore, typename Model>
+    void estimate_validation(const DataFrame& df,
+                             OperatorPool& op_pool, 
+                             ValidationScore& validation_score, 
+                             double epsilon, 
+                             const Model& start) {
+        Model::requires(df);
+
+        auto current_model = start;
+        auto best_model = start;
+
+        VectorXd local_validation(current_model.num_nodes());
+        for (auto n = 0; n < current_model.num_nodes(); ++n) {
+            local_validation(n) = validation_score.local_score(current_model, n);
+        }
+        auto best_validation_score = local_validation.sum();
+
+        op_pool.cache_scores(current_model);
+        
+        while(true) {
+            auto best_op = op_pool.find_max(current_model);
+            if (!best_op || best_op->delta() <= epsilon) {
+                break;
+            }
+
+            // if (validation)
+
+            // if(validation_score.local_score())
+            best_op->apply(current_model);
+            op_pool.update_scores(current_model, best_op);
+            // std::cout << "New op" << std::endl;
+        }
+
+        // std::cout << "Final score: " << op.score() << std::endl;
     }
 
 

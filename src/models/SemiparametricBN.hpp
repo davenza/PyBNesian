@@ -3,9 +3,11 @@
 
 #include <models/BayesianNetwork.hpp>
 #include <graph/dag.hpp>
+#include <util/util_types.hpp>
 
 using graph::AdjMatrixDag;
 using models::BayesianNetwork;
+using util::NodeTypeVector;
 
 namespace models {
 
@@ -16,24 +18,38 @@ namespace models {
         using CPD = SemiparametricCPD;
         using node_descriptor = typename BayesianNetwork<SemiparametricBN<D>>::node_descriptor;
 
-        SemiparametricBN(const std::vector<std::string>& nodes, std::vector<NodeType> node_types) : 
-                                                                                BayesianNetwork<DagType>(nodes),
-                                                                                m_node_types(node_types) {}
-        SemiparametricBN(const ArcVector& arcs, std::vector<NodeType> node_types) : 
-                                                                            BayesianNetwork<DagType>(arcs),
-                                                                            m_node_types(node_types) {}
-        SemiparametricBN(const std::vector<std::string>& nodes, const ArcVector& arcs, 
-                            std::vector<NodeType> node_types) : BayesianNetwork<DagType>(nodes, arcs),
-                                                                m_node_types(node_types) {}
+        SemiparametricBN(const std::vector<std::string>& nodes, 
+                         NodeTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(nodes),
+                                                       m_node_types(nodes.size()) {
+            
+            for(auto& p : node_types) {
+                m_node_types[this->index(p.first)] = p.second;
+            }
+        }
+        SemiparametricBN(const ArcVector& arcs, 
+                         NodeTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(arcs),
+                                                       m_node_types(this->num_nodes()) {
+            for(auto& p : node_types) {
+                m_node_types[this->index(p.first)] = p.second;
+            }
+        }
+        SemiparametricBN(const std::vector<std::string>& nodes, 
+                         const ArcVector& arcs, 
+                         NodeTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(nodes, arcs),
+                                                       m_node_types(nodes.size()) {
+            for(auto& p : node_types) {
+                m_node_types[this->index(p.first)] = p.second;
+            }
+        }
 
         SemiparametricBN(const std::vector<std::string>& nodes) : 
-                                                    BayesianNetwork<DagType>(nodes),
+                                                    BayesianNetwork<SemiparametricBN<D>>(nodes),
                                                     m_node_types(nodes.size()) {}
         SemiparametricBN(const ArcVector& arcs) : 
-                                                    BayesianNetwork<DagType>(arcs),
+                                                    BayesianNetwork<SemiparametricBN<D>>(arcs),
                                                     m_node_types(this->num_nodes()) {}
         SemiparametricBN(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
-                                                    BayesianNetwork<DagType>(nodes, arcs),
+                                                    BayesianNetwork<SemiparametricBN<D>>(nodes, arcs),
                                                     m_node_types(nodes.size()) {}
 
         static void requires(const DataFrame& df) {

@@ -33,8 +33,11 @@ namespace learning::algorithms {
     class GreedyHillClimbing {
 
     public:
-        template<typename Operators, typename Model>
-        void estimate(Operators& op_pool, double epsilon, const Model& start);
+        template<typename OperatorPool, typename Model>
+        void estimate(const DataFrame& df, OperatorPool& op_pool, double epsilon, const Model& start);
+
+        template<typename OperatorPool, typename ValidationScore, typename Model>
+        void estimate_validation(const DataFrame& df, OperatorPool& op_pool, ValidationScore& validation_score, double epsilon, const Model& start);
     };
 }
 

@@ -30,7 +30,9 @@ namespace learning::scores {
         explicit operator bool() = delete;
 
         constexpr bool operator==(ScoreType a) const { return value == a.value; }
+        constexpr bool operator==(Value v) const { return value == v; }
         constexpr bool operator!=(ScoreType a) const { return value != a.value; }
+        constexpr bool operator!=(Value v) const { return value != v; }
 
         std::string ToString() const { 
             switch(value) {

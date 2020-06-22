@@ -69,7 +69,7 @@ namespace models {
         }
 
         void set_node_type(node_descriptor node, NodeType new_type) {
-            set_node_type(index(node), new_type);
+            set_node_type(this->index(node), new_type);
         }
 
         void set_node_type(int node_index, NodeType new_type) {

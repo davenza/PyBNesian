@@ -4,7 +4,10 @@
 #include <dataset/dataset.hpp>
 #include <dataset/holdout_adaptator.hpp>
 
+#include <learning/operators/operators.hpp>
+
 using dataset::HoldOut;
+using learning::operators::Operator, learning::operators::ArcOperator, learning::operators::ChangeNodeType, learning::operators::OperatorType;
 
 namespace learning::scores {
 
@@ -46,6 +49,68 @@ namespace learning::scores {
                            NodeType variable_type, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
+
+        template<typename Model>
+        double delta_score(const Model& model, Operator<Model>* op, VectorXd& current_local_scores) {
+            switch(op->type()) {
+                case OperatorType::ADD_ARC: {
+                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    auto target_index = model.index(dwn_op->target());
+                    auto parents = model.get_parent_indices(target_index);
+                    auto source_index = model.index(dwn_op->source());
+                    parents.push_back(source_index);
+
+                    double prev = current_local_scores(target_index);
+                    current_local_scores(target_index) = local_score(model, target_index, parents.begin(), parents.end());
+
+                    return current_local_scores(target_index) - prev;
+                }
+                case OperatorType::REMOVE_ARC: {
+                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    auto target_index = model.index(dwn_op->target());
+                    auto parents = model.get_parent_indices(target_index);
+                    auto source_index = model.index(dwn_op->source());
+
+                    std::iter_swap(std::find(parents.begin(), parents.end(), source_index), parents.end() - 1);
+
+                    double prev = current_local_scores(target_index);
+                    current_local_scores(target_index) = local_score(model, target_index, parents.begin(), parents.end() - 1);
+
+                    return current_local_scores(target_index) - prev;
+                }
+                case OperatorType::FLIP_ARC: {
+                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    auto target_index = model.index(dwn_op->target());
+                    auto target_parents = model.get_parent_indices(target_index);
+                    auto source_index = model.index(dwn_op->source());
+                    auto source_parents = model.get_parent_indices(source_index);
+
+                    std::iter_swap(std::find(target_parents.begin(), target_parents.end(), source_index), target_parents.end() - 1);
+                    source_parents.push_back(target_index);
+
+                    double prev_source = current_local_scores(source_index);
+                    double prev_target = current_local_scores(target_index);
+                    current_local_scores(source_index) = local_score(model, source_index, source_parents.begin(), source_parents.end());
+                    current_local_scores(target_index) = local_score(model, target_index, target_parents.begin(), target_parents.end() - 1);
+
+                    return current_local_scores(source_index) +
+                           current_local_scores(target_index) -
+                           prev_source -
+                           prev_target;
+                }
+                case OperatorType::CHANGE_NODE_TYPE: {
+                    auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
+                    auto node_index = dwn_op->node();
+                    auto new_node_type = dwn_op->node_type();
+                    auto parents = model.get_parent_indices(node_index);
+                    
+                    double prev = current_local_scores(node_index);
+                    current_local_scores(node_index) = local_score(node_index, new_node_type, parents.begin(), parents.end());
+                    return current_local_scores(node_index) - prev;
+                }
+            }
+        }
+    
 
         const DataFrame& training_data() const { return m_holdout.training_data(); }
         const DataFrame& test_data() const { return m_holdout.test_data(); }

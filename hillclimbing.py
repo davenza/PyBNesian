@@ -26,12 +26,15 @@ df = pd.DataFrame({
 
 pa_df = pa.RecordBatch.from_pandas(df)
 
-spambase = pd.read_csv('spambase.csv')
-spambase = spambase.astype(np.float64)
-spambase = spambase.drop("class", axis=1)
+hc(pa_df, "gbn", "bic", ["arcs"], [], [], [], 5, 0, 0, "matrix")
+
+
+# spambase = pd.read_csv('spambase.csv')
+# spambase = spambase.astype(np.float64)
+# spambase = spambase.drop("class", axis=1)
 
 # estimate(pa_df, "bic", [], [("a", "b"), ("b", "c"), ("c", "d")], 5, 10e-4)
-hc(spambase, "bic", [], [], 0, 10e-4)
+# hc(spambase, "bic", [], [], 0, 10e-4)
 
 # nodes = 500
 # iterations = 100

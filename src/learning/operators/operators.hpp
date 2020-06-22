@@ -14,11 +14,55 @@ using util::ArcVector;
 
 namespace learning::operators {
 
-    enum class OperatorType {
-        ADD_ARC,
-        REMOVE_ARC,
-        FLIP_ARC,
-        CHANGE_NODE_TYPE
+
+    class OperatorType {
+    public:
+        enum Value : uint8_t
+        {
+            ADD_ARC,
+            REMOVE_ARC,
+            FLIP_ARC,
+            CHANGE_NODE_TYPE
+        };
+
+        struct Hash
+        {
+            inline std::size_t operator ()(OperatorType const opset_type) const
+            {
+                return static_cast<std::size_t>(opset_type.value);
+            }
+        };
+
+        using HashType = Hash;
+
+        OperatorType() = default;
+        constexpr OperatorType(Value opset_type) : value(opset_type) { }
+
+        operator Value() const { return value; }  
+        explicit operator bool() = delete;
+
+        constexpr bool operator==(OperatorType a) const { return value == a.value; }
+        constexpr bool operator==(Value v) const { return value == v; }
+        constexpr bool operator!=(OperatorType a) const { return value != a.value; }
+        constexpr bool operator!=(Value v) const { return value != v; }
+
+        std::string ToString() const { 
+            switch(value) {
+                case Value::ADD_ARC:
+                    return "AddArc";
+                case Value::REMOVE_ARC:
+                    return "RemoveArc";
+                case Value::FLIP_ARC:
+                    return "FlipArc";
+                case Value::CHANGE_NODE_TYPE:
+                    return "ChangeNodeType";
+                default:
+                    throw std::invalid_argument("Unreachable code in OperatorSetType.");
+            }
+        }
+
+    private:
+        Value value;
     };
     
     template<typename Model>
@@ -27,10 +71,11 @@ namespace learning::operators {
         Operator(double delta, OperatorType type) : m_delta(delta), m_type(type) {}
 
         virtual void apply(Model& m) = 0;
+        virtual std::unique_ptr<Operator<Model>> opposite() = 0;
+
+        double delta() const { return m_delta; }
         
-        double delta() { return m_delta; }
-        
-        OperatorType type() { return m_type; }
+        OperatorType type() const { return m_type; }
     private:
         double m_delta;
         OperatorType m_type;
@@ -44,13 +89,16 @@ namespace learning::operators {
                     double delta,
                     OperatorType type) : Operator<Model>(delta, type), m_source(source), m_target(target) {}
 
-        typename Model::node_descriptor source() { return m_source; }
-        typename Model::node_descriptor target() { return m_target; }
+        typename Model::node_descriptor source() const { return m_source; }
+        typename Model::node_descriptor target() const { return m_target; }
 
     private:
         typename Model::node_descriptor m_source;
         typename Model::node_descriptor m_target;
     };
+
+    template<typename Model>
+    class RemoveArc;
 
     template<typename Model>
     class AddArc : public ArcOperator<Model> {
@@ -61,6 +109,10 @@ namespace learning::operators {
         
         void apply(Model& m) override {
             m.add_edge(this->source(), this->target());
+        }
+
+        std::unique_ptr<Operator<Model>> opposite() override {
+            return std::make_unique<RemoveArc<Model>>(this->source(), this->target(), -this->delta());
         }
     };
 
@@ -73,6 +125,10 @@ namespace learning::operators {
         
         void apply(Model& m) override {
             m.remove_edge(this->source(), this->target());
+        }
+
+        std::unique_ptr<Operator<Model>> opposite() override {
+            return std::make_unique<AddArc<Model>>(this->source(), this->target(), -this->delta());
         }
     };
 
@@ -87,26 +143,128 @@ namespace learning::operators {
             m.remove_edge(this->source(), this->target());
             m.add_edge(this->target(), this->source());
         }
+
+        std::unique_ptr<Operator<Model>> opposite() override {
+            return std::make_unique<FlipArc<Model>>(this->target(), this->source(), -this->delta());
+        }
     };
 
-    template<typename DagType>
-    class ChangeNodeType : public Operator<SemiparametricBN<DagType>> {
+    template<typename Model>
+    class ChangeNodeType : public Operator<Model> {
     public:
-        ChangeNodeType(typename SemiparametricBN<DagType>::node_descriptor node,
+
+        // static_assert(util::is_semiparametricbn_v<Model>, "ChangeNodeType operator can only be used with a SemiparametricBN.")
+        ChangeNodeType(typename Model::node_descriptor node,
                        NodeType new_node_type,
-                       double delta) : Operator<SemiparametricBN<DagType>>(delta, OperatorType::CHANGE_NODE_TYPE),
+                       double delta) : Operator<Model>(delta, OperatorType::CHANGE_NODE_TYPE),
                                        m_node(node),
                                        m_new_node_type(new_node_type) {}
 
-        void apply(SemiparametricBN<DagType>& m) override {
+        void apply(Model& m) override {
             m.set_node_type(m_node, m_new_node_type);
         }
 
-        typename SemiparametricBN<DagType>::node_descriptor node() { return m_node; }
-        NodeType node_type() { return m_new_node_type; }
+        std::unique_ptr<Operator<Model>> opposite() override {
+            return std::make_unique<ChangeNodeType<Model>>(m_node, m_new_node_type.opposite(), -this->delta());
+        }
+
+        typename Model::node_descriptor node() const { return m_node; }
+        NodeType node_type() const { return m_new_node_type; }
     private:
-        typename SemiparametricBN<DagType>::node_descriptor m_node;
+        typename Model::node_descriptor m_node;
         NodeType m_new_node_type;
+    };
+
+    template<typename Model>
+    class HashOperator {
+    public:
+        HashOperator(int num_nodes) : m_num_nodes(num_nodes) {}
+
+        inline std::size_t operator()(Operator<Model>* const op) const {
+            std::size_t h = op->type() * (m_num_nodes * m_num_nodes);
+            switch(op->type()) {
+                case OperatorType::ADD_ARC:
+                case OperatorType::REMOVE_ARC:
+                case OperatorType::FLIP_ARC: {
+                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    h += (dwn_op->source() * m_num_nodes) + (dwn_op->target());
+                }
+                break;
+                case OperatorType::CHANGE_NODE_TYPE: {
+                    auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
+                    h += (dwn_op->node_type() * m_num_nodes) + (dwn_op->node());
+                }
+                break;
+            }
+            return h;
+        }
+    private:
+        int m_num_nodes;
+    };
+
+    template<typename Model>
+    class OperatorPtrEqual {
+    public:
+        inline bool operator()(const Operator<Model>* lhs, const Operator<Model>* rhs) const {
+            bool eq = (lhs->type() == rhs->type());
+            if (!eq)
+                return false; 
+
+
+            switch(lhs->type()) {
+                case OperatorType::ADD_ARC:
+                case OperatorType::REMOVE_ARC:
+                case OperatorType::FLIP_ARC: {
+                    auto dwn_lhs = dynamic_cast<const ArcOperator<Model>*>(lhs);
+                    auto dwn_rhs = dynamic_cast<const ArcOperator<Model>*>(rhs);
+                    if ((dwn_lhs->source() == dwn_rhs->source()) && (dwn_lhs->target() == dwn_rhs->target()))
+                        return true;
+                    else
+                        return false;
+                }
+                case OperatorType::CHANGE_NODE_TYPE: {
+                    auto dwn_lhs = dynamic_cast<const ChangeNodeType<Model>*>(lhs);
+                    auto dwn_rhs = dynamic_cast<const ChangeNodeType<Model>*>(rhs);
+                    if ((dwn_lhs->node() == dwn_rhs->node()) && (dwn_lhs->node_type() == dwn_rhs->node_type()))
+                        return true;
+                    else
+                        return false;
+                }
+                default:
+                    throw std::invalid_argument("Unreachable code");
+            }
+        }
+    };
+
+    template<typename Model>
+    class OperatorTabuSet {
+    public:
+        OperatorTabuSet(const Model& model) {
+            HashOperator<Model> h(model.num_nodes());
+            OperatorPtrEqual eq;
+            m_map(10, h, eq);
+        }
+
+        void insert(std::unique_ptr<Operator<Model>> op) {
+            m_map.insert({op.get(), std::move(op)});
+        }
+
+        bool contains(std::unique_ptr<Operator<Model>>& op) const {
+            return m_map.count(op.get()) > 0;
+        }
+
+        void clear() {
+            m_map.clear();
+        }
+
+        bool empty() const {
+            return m_map.empty();
+        }
+
+    private:
+        using MapType = std::unordered_map<Operator<Model>*, std::unique_ptr<Operator<Model>>, HashOperator<Model>, OperatorPtrEqual<Model>>;
+
+        MapType m_map;
     };
 
     class OperatorSetType
@@ -160,6 +318,7 @@ namespace learning::operators {
     public:
         virtual void cache_scores(Model& model) = 0;
         virtual std::unique_ptr<Operator<Model>> find_max(Model& model) = 0;
+        virtual std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) = 0;
         virtual void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) = 0;
     };
 
@@ -175,9 +334,12 @@ namespace learning::operators {
 
         void cache_scores(Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model) override;
+        std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) override;
         
         template<bool limited_indigree>
         std::unique_ptr<Operator<Model>> find_max_indegree(Model& model);
+        template<bool limited_indigree>
+        std::unique_ptr<Operator<Model>> find_max_indegree(Model& model, OperatorTabuSet<Model>& tabu_set);
 
         void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) override;
 
@@ -281,7 +443,6 @@ namespace learning::operators {
         }
     }
 
-
     template<typename Model, typename Score>
     std::unique_ptr<Operator<Model>> ArcOperatorSet<Model, Score>::find_max(Model& model) {
         if (max_indegree > 0)
@@ -289,6 +450,15 @@ namespace learning::operators {
         else
             return find_max_indegree<false>(model);
     }
+
+    template<typename Model, typename Score>
+    std::unique_ptr<Operator<Model>> ArcOperatorSet<Model, Score>::find_max(Model& model, OperatorTabuSet<Model>& tabu_set) {
+        if (max_indegree > 0)
+            return find_max_indegree<true>(model, tabu_set);
+        else
+            return find_max_indegree<false>(model, tabu_set);
+    }
+
 
     template<typename Model, typename Score>
     template<bool limited_indegree>
@@ -322,6 +492,49 @@ namespace learning::operators {
                     }
                 }
                 return std::make_unique<AddArc_t>(model.node(source), model.node(dest), delta(source, dest));
+            }
+        }
+
+        return nullptr;
+    }
+
+    template<typename Model, typename Score>
+    template<bool limited_indegree>
+    std::unique_ptr<Operator<Model>> ArcOperatorSet<Model, Score>::find_max_indegree(Model& model,  OperatorTabuSet<Model>& tabu_set) {
+        auto delta_ptr = delta.data();
+
+        // TODO: Not checking sorted_idx empty
+        std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+            return delta_ptr[i1] >= delta_ptr[i2];
+        });
+
+        for(auto it = sorted_idx.begin(); it != sorted_idx.end(); ++it) {
+            auto idx = *it;
+            auto source = idx % model.num_nodes();
+            auto dest = idx / model.num_nodes();
+
+            if(model.has_edge(source, dest)) {
+                std::unique_ptr<Operator<Model>> op = std::make_unique<RemoveArc_t>(model.node(source), model.node(dest), delta(source, dest));
+                if (!tabu_set.contains(op))
+                    return std::move(op);
+            } else if (model.has_edge(dest, source) && model.can_flip_edge(dest, source)) {
+                if constexpr (limited_indegree) {
+                    if (model.num_parents(dest) >= max_indegree) {
+                        continue;
+                    }
+                }
+                std::unique_ptr<Operator<Model>> op = std::make_unique<FlipArc_t>(model.node(dest), model.node(source), delta(dest, source));
+                if (!tabu_set.contains(op))
+                    return std::move(op);
+            } else if (model.can_add_edge(source, dest)) {
+                if constexpr (limited_indegree) {
+                    if (model.num_parents(dest) >= max_indegree) {
+                        continue;
+                    }
+                }
+                std::unique_ptr<Operator<Model>> op = std::make_unique<AddArc_t>(model.node(source), model.node(dest), delta(source, dest));
+                if (!tabu_set.contains(op))
+                    return std::move(op);
             }
         }
 
@@ -401,7 +614,8 @@ namespace learning::operators {
                           const VectorXd& local_score) : m_score(score),
                                                          delta(model.num_nodes()),
                                                          valid_op(model.num_nodes()),
-                                                         m_local_score(local_score)
+                                                         m_local_score(local_score),
+                                                         sorted_idx()
         {
             auto val_ptr = valid_op.data();
             std::fill(val_ptr, val_ptr + model.num_nodes(), true);
@@ -412,20 +626,29 @@ namespace learning::operators {
                 delta(indices[node.first]) = std::numeric_limits<double>::lowest();;
                 valid_op(indices[node.first]) = false;
             }
+
+            auto valid_ops = model.num_nodes() - type_whitelist.size();
+            sorted_idx.reserve(valid_ops);
+            for (auto i = 0; i < model.num_nodes(); ++i) {
+                if(valid_op(i))
+                    sorted_idx.push_back(i);
+            }
+
         }
 
         void cache_scores(Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model) override;
+        std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) override;
         void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) override;
 
         void update_local_delta(Model& model, typename Model::node_descriptor node) {
-            update_local_delta(model.index(node));
+            update_local_delta(model, model.index(node));
         }
 
         void update_local_delta(Model& model, int node_index) {
             NodeType type = model.node_type(node_index);
             auto parents = model.get_parent_indices(node_index);
-            delta(node_index) = m_score.local_score(node_index, parents.begin(), parents.end(), type.opposite()) 
+            delta(node_index) = m_score.local_score(node_index, type.opposite(), parents.begin(), parents.end()) 
                                 - m_local_score(node_index);
         }
 
@@ -434,13 +657,14 @@ namespace learning::operators {
         VectorXd delta;
         VectorXb valid_op;
         const VectorXd& m_local_score;
+        std::vector<int> sorted_idx;
     };
 
     template<typename Model, typename Score>
     void ChangeNodeTypeSet<Model, Score>::cache_scores(Model& model) {
         for(auto i = 0; i < model.num_nodes(); ++i) {
             if(valid_op(i)) {
-                update_local_delta(i);
+                update_local_delta(model, i);
             }
         }
     }
@@ -449,8 +673,33 @@ namespace learning::operators {
     std::unique_ptr<Operator<Model>> ChangeNodeTypeSet<Model, Score>::find_max(Model& model) {
         auto delta_ptr = delta.data();
         auto max_element = std::max_element(delta_ptr, delta_ptr + model.num_nodes());
-        auto node_type = model.node_type(*max_element);
-        return std::make_unique<ChangeNodeType_t>(model.node(*max_element), node_type.opposite(), delta(*max_element));
+        int idx_max = std::distance(delta_ptr, max_element);
+        auto node_type = model.node_type(idx_max);
+
+        if(valid_op(idx_max))
+            return std::make_unique<ChangeNodeType_t>(model.node(idx_max), node_type.opposite(), *max_element);
+        else
+            return nullptr;
+    }
+
+    template<typename Model, typename Score>
+    std::unique_ptr<Operator<Model>> ChangeNodeTypeSet<Model, Score>::find_max(Model& model, OperatorTabuSet<Model>& tabu_set) {
+        auto delta_ptr = delta.data();
+        // TODO: Not checking sorted_idx empty
+        std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+            return delta_ptr[i1] >= delta_ptr[i2];
+        });
+
+        for(auto it = sorted_idx.begin(); it != sorted_idx.end(); ++it) {
+            int idx_max = *it;
+            auto node_type = model.node_type(idx_max);
+            std::unique_ptr<Operator<Model>> op = std::make_unique<ChangeNodeType_t>(model.node(idx_max), node_type.opposite(), delta(idx_max));
+            if (tabu_set.contains(op))
+                return std::move(op);
+
+        }
+
+        return nullptr;
     }
 
     template<typename Model, typename Score>
@@ -482,7 +731,33 @@ namespace learning::operators {
     template<typename Model, typename Score>
     class OperatorPool {
     public:
-        template<util::enable_if_semiparametricbn_t<Model, int> = 0>
+
+        template<typename = util::enable_if_gaussian_network_t<Model, int>>
+        OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
+                     ArcVector arc_whitelist, int max_indegree) : m_score(score),
+                                                                  local_score(model.num_nodes()),
+                                                                  m_op_sets(op_sets.size()),
+                                                                  max_indegree(max_indegree) 
+        {
+            if (op_sets.empty()) {
+                throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
+            }
+
+            for (auto& opset : op_sets) {
+                switch(opset) {
+                    case OperatorSetType::ARCS: {
+                        auto arcs = std::make_unique<ArcOperatorSet<Model, Score>>(model, score, arc_blacklist, arc_whitelist, 
+                                                                                        local_score, max_indegree);
+                        m_op_sets.push_back(std::move(arcs));
+                    }
+                        break;
+                    case OperatorSetType::NODE_TYPE:
+                        throw std::invalid_argument("Gaussian Bayesian networks cannot change node type.");
+                }
+            }
+        };
+
+        template<typename = util::enable_if_semiparametricbn_t<Model, int>>
         OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
                      ArcVector arc_whitelist, NodeTypeVector type_whitelist, int max_indegree) : m_score(score),
                                                                                                  local_score(model.num_nodes()),
@@ -512,10 +787,11 @@ namespace learning::operators {
 
         void cache_scores(Model& model);
         std::unique_ptr<Operator<Model>> find_max(Model& model);
+        std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set);
         void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op);
         
         void update_local_score(Model& model, typename Model::node_descriptor node) {
-            update_local_score(model.index(node));
+            update_local_score(model, model.index(node));
         }
         
         void update_local_score(Model& model, int index) {
@@ -539,7 +815,7 @@ namespace learning::operators {
         }
 
         for (auto& op_set : m_op_sets) {
-            op_set->cache_scores();
+            op_set->cache_scores(model);
         }
     }
 
@@ -550,7 +826,26 @@ namespace learning::operators {
         std::unique_ptr<Operator<Model>> max_op = nullptr;
 
         for (auto it = m_op_sets.begin(); it != m_op_sets.end(); ++it) {
-            auto new_op = (*it)->find_max();
+            auto new_op = (*it)->find_max(model);
+            if (new_op && new_op->delta() > max_delta) {
+                max_op = std::move(new_op);
+                max_delta = max_op->delta();
+            }
+        }
+
+        return max_op;
+    }
+
+    template<typename Model, typename Score>
+    std::unique_ptr<Operator<Model>> OperatorPool<Model, Score>::find_max(Model& model, OperatorTabuSet<Model>& tabu_set) {
+        if (tabu_set.empty())
+            return find_max(model);
+        
+        double max_delta = std::numeric_limits<double>::lowest();
+        std::unique_ptr<Operator<Model>> max_op = nullptr;
+
+        for (auto it = m_op_sets.begin(); it != m_op_sets.end(); ++it) {
+            auto new_op = (*it)->find_max(model, tabu_set);
             if (new_op && new_op->delta() > max_delta) {
                 max_op = std::move(new_op);
                 max_delta = max_op->delta();
@@ -583,7 +878,7 @@ namespace learning::operators {
         }
 
         for (auto& op_set : m_op_sets) {
-            op_set->update_scores(op);
+            op_set->update_scores(model, op);
         }
     }
 

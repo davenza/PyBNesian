@@ -27,18 +27,19 @@ namespace learning::algorithms {
     // TODO: Include start graph.
     void hc(py::handle data, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, std::vector<py::tuple> type_whitelist,
-                  int max_indegree, double epsilon, int patience, std::string dag_type_str);
+                  int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str);
 
     class GreedyHillClimbing {
 
     public:
         template<typename OperatorPool, typename Model>
-        void estimate(const DataFrame& df, OperatorPool& op_pool, double epsilon, const Model& start);
+        void estimate(const DataFrame& df, OperatorPool& op_pool, int max_iters, double epsilon, const Model& start);
 
         template<typename OperatorPool, typename ValidationScore, typename Model>
         void estimate_validation(const DataFrame& df, 
                                  OperatorPool& op_pool, 
                                  ValidationScore& validation_score, 
+                                 int max_iters,
                                  double epsilon, 
                                  int patience,
                                  const Model& start);

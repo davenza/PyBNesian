@@ -44,6 +44,9 @@ namespace factors::continuous {
 
         std::string ToString() const;
 
+        const VectorXd& beta() const { return m_beta; }
+        double variance() const { return m_variance; }
+
     private:
         std::string m_variable;
         std::vector<std::string> m_evidence;

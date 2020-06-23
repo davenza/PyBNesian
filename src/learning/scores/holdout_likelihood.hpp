@@ -29,11 +29,12 @@ namespace learning::scores {
         template<typename Model, typename VarType, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
             auto parents = model.get_parent_indices(variable);
-            return local_score(variable, parents.begin(), parents.end());
+            return local_score(model, variable, parents.begin(), parents.end());
         }
         
         template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
-        double local_score(const VarType& variable, 
+        double local_score(const Model& model,
+                           const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
@@ -42,6 +43,15 @@ namespace learning::scores {
             NodeType variable_type = model.node_type(variable);
             auto parents = model.get_parent_indices(variable);
             return local_score(variable, variable_type, parents.begin(), parents.end());
+        }
+
+        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
+        double local_score(const Model& model, 
+                           const VarType& variable, 
+                           const EvidenceIter evidence_begin, 
+                           const EvidenceIter evidence_end) const {
+            NodeType variable_type = model.node_type(variable);
+            return local_score(variable, variable_type, evidence_begin, evidence_end);
         }
 
         template<typename VarType, typename EvidenceIter>
@@ -108,6 +118,8 @@ namespace learning::scores {
                     current_local_scores(node_index) = local_score(node_index, new_node_type, parents.begin(), parents.end());
                     return current_local_scores(node_index) - prev;
                 }
+                default:
+                    throw std::invalid_argument("Unreachable code. Wrong operator in HoldoutLikelihood::delta_score().");
             }
         }
     
@@ -119,9 +131,10 @@ namespace learning::scores {
     };
 
     template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
-    double HoldoutLikelihood::local_score(const VarType& variable, 
-                       const EvidenceIter evidence_begin, 
-                       const EvidenceIter evidence_end) const {
+    double HoldoutLikelihood::local_score(const Model&,
+                                          const VarType& variable, 
+                                          const EvidenceIter evidence_begin, 
+                                          const EvidenceIter evidence_end) const {
         LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
         cpd.fit(training_data());
         return cpd.slogpdf(test_data());

@@ -37,12 +37,12 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
-        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
+        template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
             auto parents = model.get_parent_indices(variable);
             NodeType variable_type = model.node_type(variable);
             
-            return local_score(variable, parents.begin(), parents.end(), variable_type);
+            return local_score(variable, variable_type, parents.begin(), parents.end());
         }
 
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>

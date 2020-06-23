@@ -260,11 +260,9 @@ namespace models {
         VectorXd logpdf(const DataFrame& df) const;
         double slogpdf(const DataFrame& df) const;
 
-        void print() const {
-            std::cout << "Bayesian network: " << std::endl; 
-            for(auto [eit, eend] = g.edges(); eit != eend; ++eit)
-                std::cout << name(g.source(*eit)) << " -> " << name(g.target(*eit)) << std::endl;
-        }
+        template<typename Derived_>
+        friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
+
     protected:
         void compatible_cpd(CPD& cpd) const;
         void check_fitted() const;
@@ -275,6 +273,15 @@ namespace models {
         std::unordered_map<std::string, int> m_indices;
         std::vector<CPD> m_cpds;
     };
+
+    template<typename Derived_>
+    std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn) {
+        os << "Bayesian network: " << std::endl;
+        for(auto [eit, eend] = bn.g.edges(); eit != eend; ++eit)
+            os << bn.name(bn.g.source(*eit)) << " -> " << bn.name(bn.g.target(*eit)) << std::endl;
+        return os;
+    }
+
 
     template<typename Derived>
     BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {

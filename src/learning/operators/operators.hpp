@@ -76,6 +76,8 @@ namespace learning::operators {
         double delta() const { return m_delta; }
         
         OperatorType type() const { return m_type; }
+
+        virtual void print(std::ostream& out) const;
     private:
         double m_delta;
         OperatorType m_type;
@@ -114,6 +116,10 @@ namespace learning::operators {
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<RemoveArc<Model>>(this->source(), this->target(), -this->delta());
         }
+
+        void print(std::ostream& out) const override {
+            out << "AddArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
+        }
     };
 
     template<typename Model>
@@ -129,6 +135,10 @@ namespace learning::operators {
 
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<AddArc<Model>>(this->source(), this->target(), -this->delta());
+        }
+
+        void print(std::ostream& out) const override {
+            out << "RemoveArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
         }
     };
 
@@ -146,6 +156,10 @@ namespace learning::operators {
 
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<FlipArc<Model>>(this->target(), this->source(), -this->delta());
+        }
+
+        void print(std::ostream& out) const override {
+            out << "FlipArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
         }
     };
 
@@ -170,10 +184,20 @@ namespace learning::operators {
 
         typename Model::node_descriptor node() const { return m_node; }
         NodeType node_type() const { return m_new_node_type; }
+
+        void print(std::ostream& out) const override {
+            out << "ChangeNodeType(" << node() << ", " << node_type().ToString() << "; " << this->delta() << ")";
+        }
     private:
         typename Model::node_descriptor m_node;
         NodeType m_new_node_type;
     };
+
+    template<typename Model>
+    std::ostream& operator<<(std::ostream& out, const Operator<Model>& mc) {
+        mc.print(out);
+        return out;
+    }
 
     template<typename Model>
     class HashOperator {
@@ -239,11 +263,7 @@ namespace learning::operators {
     template<typename Model>
     class OperatorTabuSet {
     public:
-        OperatorTabuSet(const Model& model) {
-            HashOperator<Model> h(model.num_nodes());
-            OperatorPtrEqual eq;
-            m_map(10, h, eq);
-        }
+        OperatorTabuSet(const Model& model) : m_map(10, HashOperator<Model>(model.num_nodes()), OperatorPtrEqual<Model>()) { }
 
         void insert(std::unique_ptr<Operator<Model>> op) {
             m_map.insert({op.get(), std::move(op)});
@@ -736,13 +756,14 @@ namespace learning::operators {
         OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
                      ArcVector arc_whitelist, int max_indegree) : m_score(score),
                                                                   local_score(model.num_nodes()),
-                                                                  m_op_sets(op_sets.size()),
+                                                                  m_op_sets(),
                                                                   max_indegree(max_indegree) 
         {
             if (op_sets.empty()) {
                 throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
             }
 
+            m_op_sets.reserve(op_sets.size());
             for (auto& opset : op_sets) {
                 switch(opset) {
                     case OperatorSetType::ARCS: {
@@ -809,7 +830,7 @@ namespace learning::operators {
     };
 
     template<typename Model, typename Score>
-    void OperatorPool<Model, Score>::cache_scores(Model& model) {        
+    void OperatorPool<Model, Score>::cache_scores(Model& model) {
         for (int i = 0; i < model.num_nodes(); ++i) {
             local_score(i) = m_score.local_score(model, i);
         }

@@ -36,7 +36,9 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<LinearGaussianCPD>(continuous, "LinearGaussianCPD")
             .def(py::init<const std::string, const std::vector<std::string>>())
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
-            .def("fit", py::overload_cast<py::handle>(&LinearGaussianCPD::fit));
+            .def("fit", py::overload_cast<py::handle>(&LinearGaussianCPD::fit))
+            .def("logpdf", py::overload_cast<py::handle>(&LinearGaussianCPD::logpdf, py::const_))
+            .def("slogpdf", py::overload_cast<py::handle>(&LinearGaussianCPD::slogpdf, py::const_));
 
     py::class_<KDE>(continuous, "KDE")
              .def(py::init<std::vector<std::string>>())

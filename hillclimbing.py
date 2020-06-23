@@ -4,6 +4,12 @@ import numpy as np
 import pandas as pd
 from pgm_dataset.learning.algorithms import hc
 # from pgm_dataset import benchmark_sort_vec, benchmark_partial_sort_vec, benchmark_sort_set, benchmark_sort_priority, benchmark_sort_heap
+import time
+from pgmpy.estimators import GaussianValidationLikelihood, CachedHillClimbing
+from pgmpy.estimators.callbacks import DrawModel, SaveModel
+
+import os
+
 
 np.random.seed(0)
 
@@ -26,15 +32,32 @@ df = pd.DataFrame({
 
 pa_df = pa.RecordBatch.from_pandas(df)
 
-hc(pa_df, "gbn", "bic", ["arcs"], [], [], [], 5, 0, 0, "matrix")
+# tic = time.time()
+# hc(pa_df, "gbn", "predic-l", ["arcs"], [], [], [], 0, 0, 0, 0, "matrix")
+# toc = time.time()
+# print("Time: " + str((toc-tic)*1000) + "ms")
+
+# gv = GaussianValidationLikelihood(df, k=10, seed=0)
+# cb_draw = DrawModel('pgmpy_models/')
+# cb_save = DrawModel('pgmpy_models/')
+# ghc = CachedHillClimbing(df, scoring_method=gv)
+# gbn = ghc.estimate(callbacks=[cb_draw, cb_save], patience=0)
+
+spambase = pd.read_csv('spambase.csv')
+spambase = spambase.astype(np.float64)
+spambase = spambase.drop("class", axis=1)
+
+tic = time.time()
+hc(spambase, "gbn", "predic-l", ["arcs"], [], [], [], 0, 0, 0, 5, "matrix")
+toc = time.time()
+print("Time: " + str((toc-tic)*1000) + "ms")
 
 
-# spambase = pd.read_csv('spambase.csv')
-# spambase = spambase.astype(np.float64)
-# spambase = spambase.drop("class", axis=1)
-
-# estimate(pa_df, "bic", [], [("a", "b"), ("b", "c"), ("c", "d")], 5, 10e-4)
-# hc(spambase, "bic", [], [], 0, 10e-4)
+# gv = GaussianValidationLikelihood(spambase, k=10, seed=0)
+# cb_draw = DrawModel('pgmpy_models/')
+# cb_save = DrawModel('pgmpy_models/')
+# ghc = CachedHillClimbing(spambase, scoring_method=gv)
+# gbn = ghc.estimate(callbacks=[cb_draw, cb_save], patience=0)
 
 # nodes = 500
 # iterations = 100

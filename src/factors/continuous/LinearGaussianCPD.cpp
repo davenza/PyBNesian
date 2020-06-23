@@ -76,7 +76,7 @@ namespace factors::continuous {
                             const std::string& var, const std::vector<std::string>& evidence) {
         using CType = typename ArrowType::c_type;
         using ArrayVecType = Array<CType, Dynamic, 1>;
-
+        
         ArrayVecType means = ArrayVecType::Constant(df->num_rows(), beta[0]);
 
         int idx = 1;
@@ -87,8 +87,8 @@ namespace factors::continuous {
 
         auto var_array = df.to_eigen<false, ArrowType, false>(var);
 
-        double inv_variance = 1 / variance;
-        ArrayVecType logl = (inv_variance * (var_array->array() - means)).square();
+        double inv_std = 1 / std::sqrt(variance);
+        ArrayVecType logl = -0.5 * (inv_std * (var_array->array() - means)).square();
 
         logl += -0.5*std::log(variance) - 0.5*std::log(2*pi<CType>);
 

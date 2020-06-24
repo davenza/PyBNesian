@@ -2,12 +2,14 @@
 #define PGM_DATASET_DATASET_HPP
 
 #include <arrow/api.h>
+#include <arrow/python/pyarrow.h>
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
 #include <util/parameter_traits.hpp>
 #include <util/bit_util.hpp>
 
 
+namespace pyarrow = arrow::py;
 namespace py = pybind11;
 
 using Eigen::MatrixXd, Eigen::MatrixXf, Eigen::VectorXd, Eigen::VectorXf, Eigen::Matrix, Eigen::Dynamic, Eigen::Map,
@@ -27,6 +29,7 @@ namespace dataset {
     bool is_pandas_dataframe(py::handle pyobject);
 
     std::shared_ptr<RecordBatch> to_record_batch(py::handle pyobject);
+    py::object pandas_to_pyarrow_record_batch(py::handle pyobject);
 
     template<typename ArrowType>
     using EigenMatrix = std::unique_ptr<Matrix<typename ArrowType::c_type, Dynamic, Dynamic>>;
@@ -265,10 +268,11 @@ namespace dataset {
     class DataFrame {
     public:
 
-        DataFrame() : m_batch() {};
+        DataFrame() = default;
 
         DataFrame(std::shared_ptr<RecordBatch> rb);
 
+        const std::shared_ptr<RecordBatch>& record_batch() const { return m_batch; }
         std::vector<std::string> column_names() const;
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
@@ -746,7 +750,7 @@ namespace dataset {
         new_cols.reserve(std::distance(begin, end));
 
         append_schema(m_batch, b, begin, end);
-        append_columns(m_batch, begin, end);
+        append_columns(m_batch, new_cols, begin, end);
 
         auto r = b.Finish();
         if (!r.ok()) {
@@ -773,6 +777,65 @@ namespace dataset {
         return DataFrame(RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), new_cols));
     }
 }
+
+#include <iostream>
+
+namespace pybind11::detail {
+    template <> struct type_caster<dataset::DataFrame> {
+    public:
+        /**
+         * This macro establishes the name 'inty' in
+         * function signatures and declares a local variable
+         * 'value' of type inty
+         */
+        PYBIND11_TYPE_CASTER(dataset::DataFrame, _("DataFrame"));
+
+        /**
+         * Conversion part 1 (Python->C++): convert a PyObject into a inty
+         * instance or return false upon failure. The second argument
+         * indicates whether implicit conversions should be applied.
+         */
+        bool load(handle src, bool) {
+            PyObject* py_ptr = src.ptr();
+
+            if (pyarrow::is_batch(py_ptr)) {
+                auto result = pyarrow::unwrap_batch(py_ptr);
+                if (result.ok()) {
+                    value = result.ValueOrDie();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            else if (dataset::is_pandas_dataframe(src)) {
+                auto a = dataset::pandas_to_pyarrow_record_batch(src);
+                auto result = pyarrow::unwrap_batch(a.ptr());
+
+                if (result.ok()) {
+                    value = result.ValueOrDie();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        /**
+         * Conversion part 2 (C++ -> Python): convert an inty instance into
+         * a Python object. The second and third arguments are used to
+         * indicate the return value policy and parent object (for
+         * ``return_value_policy::reference_internal``) and are generally
+         * ignored by implicit casters.
+         */
+        static handle cast(dataset::DataFrame src, return_value_policy /* policy */, handle /* parent */) {
+            PyObject* wrapped_rb = pyarrow::wrap_batch(src.record_batch());
+            return wrapped_rb;
+        }
+    };
+} // namespace pybind11::detail
+
 
 
 #endif //PGM_DATASET_DATASET_HPP

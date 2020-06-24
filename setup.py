@@ -50,6 +50,8 @@ ext_modules = [
          'src/factors/continuous/CKDE.cpp',
          'src/factors/continuous/SemiparametricCPD.cpp',
          'src/dataset/dataset.cpp',
+         'src/dataset/crossvalidation_adaptator.cpp',
+         'src/dataset/holdout_adaptator.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
          'src/learning/algorithms/hillclimbing.cpp',

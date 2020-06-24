@@ -17,6 +17,8 @@ using arrow::NumericBuilder;
 template<typename T>
 using const_vecit = typename std::vector<T>::const_iterator;
 
+#include <iostream>
+
 namespace dataset {
 
 
@@ -153,16 +155,7 @@ namespace dataset {
                                                             const_vecit<int> begin, 
                                                             const_vecit<int> end,
                                                             const_vecit<int> test_begin,
-                                                            const_vecit<int> test_end) {
-        switch (col->type_id()) {
-            case Type::DOUBLE:
-                return split_array_train_test<arrow::DoubleType>(col, include_null, begin, end, test_begin, test_end);
-            case Type::FLOAT:
-                return split_array_train_test<arrow::FloatType>(col, include_null, begin, end, test_begin, test_end);
-            default:
-                throw std::invalid_argument("Wrong data type in CrossValidation.");
-        }
-    }
+                                                            const_vecit<int> test_end);
 
 
     class CrossValidationProperties {
@@ -224,9 +217,16 @@ namespace dataset {
 
     class CrossValidation {
     public:
-        CrossValidation(const DataFrame df, int k, int seed = std::random_device{}(), bool include_null = false) : 
-                                                    df(df), 
-                                                    prop(std::make_shared<CrossValidationProperties>(df, k, seed, include_null)) { }
+        CrossValidation(const DataFrame df, int k, bool include_null = false) : CrossValidation(df, k, std::random_device{}(), include_null) { }
+
+        CrossValidation(const DataFrame df, int k, int seed, bool include_null = false) : 
+                                                    m_df(df),
+                                                    prop(std::make_shared<CrossValidationProperties>(m_df, k, seed, include_null)) {
+
+                                                        std::cout << "k " << k << std::endl;
+                                                        std::cout << "seed " << seed << std::endl;
+                                                        std::cout << "include_null " << include_null << std::endl;
+                                                     }
     
         class cv_iterator {
         public:
@@ -244,7 +244,6 @@ namespace dataset {
                     current_fold = cv.generate_cv_pair(i);
                     updated_fold = true;
                 }
-
                 return current_fold;
             }
 
@@ -252,7 +251,7 @@ namespace dataset {
             cv_iterator operator++(int) { ++i; updated_fold = false; return *this; }
             // TODO: Improve equality.
             bool operator==(const cv_iterator& rhs) const { return (i == rhs.i) && (cv.prop->k == rhs.cv.prop->k) && 
-                                                                (cv.prop->m_seed == rhs.cv.prop->m_seed) && (&cv.df == &rhs.cv.df);
+                                                                (cv.prop->m_seed == rhs.cv.prop->m_seed) && (&cv.m_df == &rhs.cv.m_df);
                                                             }
 
             bool operator!=(const cv_iterator& rhs) const { return !(*this == rhs); }
@@ -265,59 +264,80 @@ namespace dataset {
         };
 
 
-    cv_iterator begin() {
-        return cv_iterator(0, *this);
-    }
-
-    cv_iterator end() {
-        return cv_iterator(prop->k, *this);
-    }
-
-    std::pair<DataFrame, DataFrame> fold(int fold) { return generate_cv_pair(fold); }
-
-    const DataFrame& data() const { return df; }
-
-    template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    CrossValidation loc(T cols) const { return CrossValidation(df.loc(cols), prop); }
-    template<typename V>
-    CrossValidation loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
-    CrossValidation loc(int i) const { return CrossValidation(df.loc(i), prop); }
-    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    CrossValidation loc(StringType name) const { return CrossValidation(df.loc(name), prop); }
-    template<typename ...Args>
-    CrossValidation loc(Args... args) const  { return CrossValidation(df.loc(args...), prop); }
-
-    private:
-        CrossValidation(const DataFrame df, const std::shared_ptr<CrossValidationProperties> prop) : df(df), prop(prop) {}
-        std::pair<DataFrame, DataFrame> generate_cv_pair(int fold) const;
-
-        const DataFrame df;
-        const std::shared_ptr<CrossValidationProperties> prop;
-    };
-
-    std::pair<DataFrame, DataFrame> CrossValidation::generate_cv_pair(int fold) const {
-        Array_vector train_cols;
-        train_cols.reserve(df->num_columns());
-        Array_vector test_cols;
-        test_cols.reserve(df->num_columns());
-
-        for (auto col : df->columns()) {
-            auto [train_col, test_col] = generate_cv_pair_column(col, prop->include_null, 
-                                                                    prop->indices.begin(), prop->indices.end(), 
-                                                                    prop->limits[fold], prop->limits[fold+1]);
-
-            train_cols.push_back(train_col);
-            test_cols.push_back(test_col);
+        cv_iterator begin() {
+            return cv_iterator(0, *this);
         }
 
-        int rows_train = std::distance(prop->indices.cbegin(), prop->limits[fold]) + std::distance(prop->limits[fold+1], prop->indices.cend());
-        int rows_test = std::distance(prop->limits[fold], prop->limits[fold+1]);
+        cv_iterator end() {
+            return cv_iterator(prop->k, *this);
+        }
 
-        auto rb_train = arrow::RecordBatch::Make(df->schema(), rows_train, train_cols);
-        auto rb_test = arrow::RecordBatch::Make(df->schema(), rows_test, test_cols);
+        std::pair<DataFrame, DataFrame> fold(int fold) { return generate_cv_pair(fold); }
 
-        return std::make_pair(rb_train, rb_test);
-    }
+        const DataFrame& data() const { return m_df; }
+
+        template<typename T, util::enable_if_index_container_t<T, int> = 0>
+        CrossValidation loc(T cols) const { return CrossValidation(m_df.loc(cols), prop); }
+        template<typename V>
+        CrossValidation loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
+        CrossValidation loc(int i) const { return CrossValidation(m_df.loc(i), prop); }
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        CrossValidation loc(StringType name) const { return CrossValidation(m_df.loc(name), prop); }
+        template<typename ...Args>
+        CrossValidation loc(Args... args) const  { return CrossValidation(m_df.loc(args...), prop); }
+
+
+        class cv_iterator_indices {
+        public:
+            using difference_type = std::iterator_traits<std::vector<int>::iterator>;
+            using value_type = std::pair<std::vector<int>, std::vector<int>>;
+            using reference = value_type&;
+            using pointer = value_type*;
+            // FIXME: Check the iterator category operations.
+            using iterator_category = std::random_access_iterator_tag; //or another tag
+
+            cv_iterator_indices(int i, const CrossValidation& cv) : i(i), cv(cv), updated_fold(false), current_fold() {}
+
+            reference operator*() const { 
+                if (!updated_fold) {
+                    current_fold = cv.generate_cv_pair_indices(i);
+                    updated_fold = true;
+                }
+                return current_fold;
+            }
+
+            cv_iterator_indices& operator++() { ++i; updated_fold = false; return *this; }
+            cv_iterator_indices operator++(int) { ++i; updated_fold = false; return *this; }
+            // TODO: Improve equality.
+            bool operator==(const cv_iterator_indices& rhs) const { return (i == rhs.i) && (cv.prop->k == rhs.cv.prop->k) && 
+                                                                (cv.prop->m_seed == rhs.cv.prop->m_seed) && (&cv.m_df == &rhs.cv.m_df);
+                                                            }
+
+            bool operator!=(const cv_iterator_indices& rhs) const { return !(*this == rhs); }
+
+        private:
+            int i;
+            const CrossValidation& cv;
+            mutable bool updated_fold;
+            mutable std::pair<std::vector<int>, std::vector<int>> current_fold;
+        };
+
+        cv_iterator_indices begin_indices() {
+            return cv_iterator_indices(0, *this);
+        }
+
+        cv_iterator_indices end_indices() {
+            return cv_iterator_indices(prop->k, *this);
+        }
+
+    private:
+        CrossValidation(const DataFrame df, const std::shared_ptr<CrossValidationProperties> prop) : m_df(df), prop(prop) {}
+        std::pair<DataFrame, DataFrame> generate_cv_pair(int fold) const;
+        std::pair<std::vector<int>, std::vector<int>> generate_cv_pair_indices(int fold) const;
+
+        const DataFrame m_df;
+        const std::shared_ptr<CrossValidationProperties> prop;
+    };
 }
 
 #endif //PGM_DATASET_CROSSVALIDATION_ADAPTATOR_HPP

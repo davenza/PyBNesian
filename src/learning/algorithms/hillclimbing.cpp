@@ -113,8 +113,8 @@ namespace learning::algorithms {
 
         Model m = Model(nodes, arc_whitelist, type_whitelist);
 
-        HoldoutLikelihood validation_score(df, 0.2);
-        CVLikelihood training_score(validation_score.training_data(), 10);
+        HoldoutLikelihood validation_score(df, 0.2, 0);
+        CVLikelihood training_score(validation_score.training_data(), 10, 0);
 
         OperatorPool pool(m, training_score, operators, arc_blacklist, arc_whitelist, type_whitelist, max_indegree);
         
@@ -305,7 +305,9 @@ namespace learning::algorithms {
         }
 
         op_pool.cache_scores(current_model);
-        std::cout << "Initial score: " << op_pool.score() << std::endl;
+        std::cout << "Initial score: " << std::fixed << std::setprecision(5) << op_pool.score() << std::endl;
+        std::cout << "Initial validation score: " << local_validation.sum() << std::endl;
+        std::cout << "Initial validation score fun: " << validation_score.score(current_model) << std::endl;
         int p = 0;
         double best_delta = 0;
 
@@ -318,10 +320,10 @@ namespace learning::algorithms {
                 break;
             }
 
-            std::cout << "Best op " << *best_op << std::endl;
+            std::cout << "Best op: " << *best_op << std::endl;
 
             double validation_delta = validation_score.delta_score(current_model, best_op.get(), local_validation);
-            std::cout << "Validation delta " << validation_delta << std::endl;
+            std::cout << "Validation delta: " << validation_delta << std::endl;
             if ((validation_delta + best_delta) > 0) {
                 p = 0;
                 best_delta = 0;
@@ -336,16 +338,16 @@ namespace learning::algorithms {
 
             best_op->apply(current_model);
             op_pool.update_scores(current_model, best_op);
-            // std::cout << "New op" << std::endl;
+            std::cout << "New score: " << op_pool.score() << std::endl;
+            std::cout << "New validation score: " << local_validation.sum() << std::endl;
+            std::cout << "New validation score fun: " << validation_score.score(current_model) << std::endl;
             ++iter;
         }
 
         std::cout << "Final score: " << op_pool.score() << std::endl;
-        std::cout << "Validation score: " << validation_score.score(best_model) << std::endl;
         std::cout << "Validation score: " << local_validation.sum() << std::endl;
+        std::cout << "Validation score fun: " << validation_score.score(best_model) << std::endl;
         std::cout << "Final model: " << best_model << std::endl;
-
-        // std::cout << "Final score: " << op.score() << std::endl;
     }
 
 

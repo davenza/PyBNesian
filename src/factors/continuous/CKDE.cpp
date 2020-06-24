@@ -6,13 +6,6 @@ using opencl::OpenCLConfig;
 
 namespace factors::continuous {
 
-
-    void KDE::fit(py::handle pyobject) {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-        fit(df);
-    }
-
     void KDE::fit(const DataFrame& df) {
         m_training_type = df.same_type(m_variables);
 
@@ -38,13 +31,6 @@ namespace factors::continuous {
         }
     }
 
-    VectorXd KDE::logpdf(py::handle pyobject) const {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-
-        return logpdf(df);
-    }
-
     VectorXd KDE::logpdf(const DataFrame& df) const {
         // FIXME: Check the model is fitted.
         auto type_id = df.same_type(m_variables);
@@ -63,13 +49,6 @@ namespace factors::continuous {
         }
     }
 
-    double KDE::slogpdf(py::handle pyobject) const {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-
-        return slogpdf(df);
-    }
-
     double KDE::slogpdf(const DataFrame& df) const {
         auto type_id = df.same_type(m_variables);
 
@@ -85,12 +64,6 @@ namespace factors::continuous {
             default:
                 throw std::runtime_error("Unreachable code.");
         }
-    }
-
-    void CKDE::fit(py::handle pyobject) {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-        fit(df);
     }
 
     void CKDE::fit(const DataFrame& df) {
@@ -112,13 +85,6 @@ namespace factors::continuous {
         m_fitted = true;
     }
 
-    VectorXd CKDE::logpdf(py::handle pyobject) const {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-
-        return logpdf(df);
-    }
-
     VectorXd CKDE::logpdf(const DataFrame& df) const {
         // FIXME: Check the model is fitted.
         auto type_id = df.same_type(m_variables);
@@ -135,13 +101,6 @@ namespace factors::continuous {
             default:
                 throw std::runtime_error("Unreachable code.");
         }
-    }
-
-    double CKDE::slogpdf(py::handle pyobject) const {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-
-        return slogpdf(df);
     }
 
     double CKDE::slogpdf(const DataFrame& df) const {

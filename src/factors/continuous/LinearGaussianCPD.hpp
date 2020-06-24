@@ -31,15 +31,12 @@ namespace factors::continuous {
         const std::vector<std::string>& evidence() const { return m_evidence; }
         bool fitted() const { return m_fitted; }
   
-        void fit(py::handle pyobject);
         void fit(const DataFrame& df);
 
         //FIXME: Check model is fitted before computing
-        VectorXd logpdf(py::handle pyobject) const;
         VectorXd logpdf(const DataFrame& df) const;
 
         //FIXME: Check model is fitted before computing
-        double slogpdf(py::handle pyobject) const;
         double slogpdf(const DataFrame& df) const;
 
         std::string ToString() const;

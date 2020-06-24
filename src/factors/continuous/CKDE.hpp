@@ -193,7 +193,6 @@ namespace factors::continuous {
             }
         }
 
-        void fit(py::handle pyobject);
         void fit(const DataFrame& df);
 
         template<typename ArrowType, typename EigenMatrix>
@@ -205,13 +204,11 @@ namespace factors::continuous {
         arrow::Type::type data_type() const { return m_training_type; }
         KDEBandwidth bandwidth_type() const { return m_bselector; }
 
-        VectorXd logpdf(py::handle pyobject) const;
         VectorXd logpdf(const DataFrame& df) const;
 
         template<typename ArrowType>
         cl::Buffer logpdf_buffer(const DataFrame& df) const;
 
-        double slogpdf(py::handle pyobject) const;
         double slogpdf(const DataFrame& df) const;
 
     private:
@@ -451,13 +448,8 @@ namespace factors::continuous {
         const std::vector<std::string>& evidence() const { return m_evidence; }
         bool fitted() const { return m_fitted; }
 
-        void fit(py::handle pyobject);
         void fit(const DataFrame& df);
-
-        VectorXd logpdf(py::handle pyobject) const;
         VectorXd logpdf(const DataFrame& df) const;
-
-        double slogpdf(py::handle pyobject) const;
         double slogpdf(const DataFrame& df) const;
 
         std::string ToString() const;

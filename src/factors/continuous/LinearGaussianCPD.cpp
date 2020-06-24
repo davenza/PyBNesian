@@ -53,12 +53,6 @@ namespace factors::continuous {
         std::memcpy(m_ptr, vec_ptr, sizeof(double) * beta.size());
     };
 
-    void LinearGaussianCPD::fit(py::handle dataset) {
-        auto rb = dataset::to_record_batch(dataset);
-        auto df = DataFrame(rb);
-        fit(df);
-    }
-
     void LinearGaussianCPD::fit(const DataFrame& df) {
         MLE<LinearGaussianCPD> mle;
 
@@ -138,13 +132,6 @@ namespace factors::continuous {
         return accum;
     }
 
-    VectorXd LinearGaussianCPD::logpdf(py::handle dataset) const {
-        auto rb = dataset::to_record_batch(dataset);
-        auto df = DataFrame(rb);
-
-        return logpdf(df);
-    }
-
     VectorXd LinearGaussianCPD::logpdf(const DataFrame& df) const {
         switch(df.col(m_variable)->type_id()) {
             case Type::DOUBLE: {
@@ -166,14 +153,6 @@ namespace factors::continuous {
             default:
                 throw py::value_error("Wrong data type to compute logpdf. (double) or (float) data is expected.");
         }
-    }
-
-
-    double LinearGaussianCPD::slogpdf(py::handle dataset) const {
-        auto rb = dataset::to_record_batch(dataset);
-        auto df = DataFrame(rb);
-
-        return slogpdf(df);
     }
 
     double LinearGaussianCPD::slogpdf(const DataFrame& df) const {

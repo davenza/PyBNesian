@@ -1,8 +1,6 @@
 #ifndef PGM_DATASET_CKDE_HPP
 #define PGM_DATASET_CKDE_HPP
 
-#include <iostream>
-
 #include <CL/cl2.hpp>
 #include <opencl/opencl_config.hpp>
 #include <pybind11/pybind11.h>
@@ -362,20 +360,20 @@ namespace factors::continuous {
     std::pair<cl::Buffer, uint64_t> KDE::allocate_mat(uint64_t m) const {
         using CType = typename ArrowType::c_type;
         auto& opencl = OpenCLConfig::get();
-        auto& device = opencl.device();
+        // auto& device = opencl.device();
 
-        cl_int err_code = CL_SUCCESS;
+        // cl_int err_code = CL_SUCCESS;
 
-        uint64_t max_alloc = device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>(&err_code);
-        if(err_code != CL_SUCCESS) {
-            throw std::runtime_error(std::string("Error while querying device info: ") +
-                                     opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
-        }
+        // uint64_t max_alloc = device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>(&err_code);
+        // if(err_code != CL_SUCCESS) {
+        //     throw std::runtime_error(std::string("Error while querying device info: ") +
+        //                              opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
+        // }
 
-        double work_factor = std::ceil(static_cast<double>(static_cast<uint64_t>(N)*static_cast<uint64_t>(m)*sizeof(CType))
-                                                            / static_cast<double>(max_alloc));
+        // double work_factor = std::ceil(static_cast<double>(static_cast<uint64_t>(N)*static_cast<uint64_t>(m)*sizeof(CType))
+        //                                                     / static_cast<double>(max_alloc));
 
-        uint64_t allocatable_m = std::ceil(static_cast<double>(m) / work_factor);
+        // uint64_t allocatable_m = std::ceil(static_cast<double>(m) / work_factor);
         // return std::make_pair(opencl.new_buffer<CType>(N*allocatable_m), allocatable_m);
 
         // FIXME: Benchmark what size increases the performance.

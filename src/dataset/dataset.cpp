@@ -1,4 +1,3 @@
-#include <iostream>
 #include <arrow/api.h>
 #include <arrow/util/align_util.h>
 #include <arrow/util/bit_util.h>
@@ -230,65 +229,3 @@ case Type::TypeID:                                                              
         return dt;
     }
 }
-
-
-
-// namespace pybind11:: detail {
-//     template <> struct type_caster<dataset::DataFrame> {
-//     public:
-//         /**
-//          * This macro establishes the name 'inty' in
-//          * function signatures and declares a local variable
-//          * 'value' of type inty
-//          */
-//         PYBIND11_TYPE_CASTER(dataset::DataFrame, _("DataFrame"));
-
-//         /**
-//          * Conversion part 1 (Python->C++): convert a PyObject into a inty
-//          * instance or return false upon failure. The second argument
-//          * indicates whether implicit conversions should be applied.
-//          */
-//         bool load(handle src, bool) {
-//             std::cout << "Calling load" << std::endl;
-//             PyObject* py_ptr = src.ptr();
-
-//             if (pyarrow::is_batch(py_ptr)) {
-//                 auto result = pyarrow::unwrap_batch(py_ptr);
-//                 if (result.ok()) {
-//                     value = result.ValueOrDie();
-//                     return true;
-//                 } else {
-//                     return false;
-//                 }
-//             }
-//             else if (dataset::is_pandas_dataframe(src)) {
-//                 auto a = dataset::pandas_to_pyarrow_record_batch(src);
-//                 auto result = pyarrow::unwrap_batch(a.ptr());
-
-//                 if (result.ok()) {
-//                     value = result.ValueOrDie();
-//                     return true;
-//                 } else {
-//                     return false;
-//                 }
-//             }
-
-//             return false;
-//         }
-
-//         /**
-//          * Conversion part 2 (C++ -> Python): convert an inty instance into
-//          * a Python object. The second and third arguments are used to
-//          * indicate the return value policy and parent object (for
-//          * ``return_value_policy::reference_internal``) and are generally
-//          * ignored by implicit casters.
-//          */
-//         static handle cast(dataset::DataFrame src, return_value_policy /* policy */, handle /* parent */) {
-//             PyObject* wrapped_rb = pyarrow::wrap_batch(src.record_batch());
-//             return wrapped_rb;
-//         }
-//     };
-// } // namespace pybind11::detail
-
-
-

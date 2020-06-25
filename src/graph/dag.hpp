@@ -1,7 +1,6 @@
 #ifndef PGM_DATASET_DAG_HPP
 #define PGM_DATASET_DAG_HPP
 
-#include <iostream>
 #include <pybind11/pybind11.h>
 #include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -44,8 +43,8 @@ namespace graph {
             return num_vertices(g);
         }
 
-        int num_arcs() const {
-            return num_edges(g);
+        int num_edges() const {
+            return boost::num_edges(g);
         }
 
         int num_parents(node_descriptor node) const {

@@ -77,6 +77,8 @@ namespace learning::operators {
         
         OperatorType type() const { return m_type; }
 
+        virtual std::string ToString(Model& m) const = 0;
+
         virtual void print(std::ostream& out) const;
     private:
         double m_delta;
@@ -116,6 +118,11 @@ namespace learning::operators {
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<RemoveArc<Model>>(this->source(), this->target(), -this->delta());
         }
+        
+        std::string ToString(Model& m) const override {
+            return "AddArc(" + m.name(this->source()) + " -> " + m.name(this->target()) + "; " + std::to_string(this->delta()) + ")";
+
+        }
 
         void print(std::ostream& out) const override {
             out << "AddArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
@@ -137,6 +144,11 @@ namespace learning::operators {
             return std::make_unique<AddArc<Model>>(this->source(), this->target(), -this->delta());
         }
 
+        std::string ToString(Model& m) const override {
+            return "RemoveArc(" + m.name(this->source()) + " -> " + m.name(this->target()) + "; " + std::to_string(this->delta()) + ")";
+
+        }
+
         void print(std::ostream& out) const override {
             out << "RemoveArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
         }
@@ -156,6 +168,11 @@ namespace learning::operators {
 
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<FlipArc<Model>>(this->target(), this->source(), -this->delta());
+        }
+
+        std::string ToString(Model& m) const override {
+            return "FlipArc(" + m.name(this->source()) + " -> " + m.name(this->target()) + "; " + std::to_string(this->delta()) + ")";
+
         }
 
         void print(std::ostream& out) const override {
@@ -184,6 +201,11 @@ namespace learning::operators {
 
         typename Model::node_descriptor node() const { return m_node; }
         NodeType node_type() const { return m_new_node_type; }
+
+        std::string ToString(Model& m) const override {
+            return "ChangeNodeType(" + m.name(node()) + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
+
+        }
 
         void print(std::ostream& out) const override {
             out << "ChangeNodeType(" << node() << ", " << node_type().ToString() << "; " << this->delta() << ")";
@@ -782,7 +804,7 @@ namespace learning::operators {
         OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
                      ArcVector arc_whitelist, NodeTypeVector type_whitelist, int max_indegree) : m_score(score),
                                                                                                  local_score(model.num_nodes()),
-                                                                                                 m_op_sets(op_sets.size()),
+                                                                                                 m_op_sets(),
                                                                                                  max_indegree(max_indegree) 
         {
             if (op_sets.empty()) {
@@ -794,6 +816,7 @@ namespace learning::operators {
                     case OperatorSetType::ARCS: {
                         auto arcs = std::make_unique<ArcOperatorSet<Model, Score>>(model, score, arc_blacklist, arc_whitelist, 
                                                                                         local_score, max_indegree);
+
                         m_op_sets.push_back(std::move(arcs));
                     }
                         break;
@@ -821,6 +844,14 @@ namespace learning::operators {
         
         double score() {
             return local_score.sum();
+        }
+
+        double score(Model& model) {
+            double s = 0;
+            for (int i = 0; i < model.num_nodes(); ++i) {
+                s += m_score.local_score(model, i);
+            }
+            return s;
         }
     private:
         const Score m_score;

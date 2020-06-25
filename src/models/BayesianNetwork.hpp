@@ -209,7 +209,7 @@ namespace models {
         }
 
         void add_edge(int source, int dest) {
-            add_edge(g.node(source), g.node(dest), g);
+            add_edge(g.node(source), g.node(dest));
         }
 
         void add_edge(const std::string& source, const std::string& dest) {

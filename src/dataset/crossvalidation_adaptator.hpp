@@ -17,8 +17,6 @@ using arrow::NumericBuilder;
 template<typename T>
 using const_vecit = typename std::vector<T>::const_iterator;
 
-#include <iostream>
-
 namespace dataset {
 
 
@@ -221,12 +219,7 @@ namespace dataset {
 
         CrossValidation(const DataFrame df, int k, int seed, bool include_null = false) : 
                                                     m_df(df),
-                                                    prop(std::make_shared<CrossValidationProperties>(m_df, k, seed, include_null)) {
-
-                                                        std::cout << "k " << k << std::endl;
-                                                        std::cout << "seed " << seed << std::endl;
-                                                        std::cout << "include_null " << include_null << std::endl;
-                                                     }
+                                                    prop(std::make_shared<CrossValidationProperties>(m_df, k, seed, include_null)) { }
     
         class cv_iterator {
         public:

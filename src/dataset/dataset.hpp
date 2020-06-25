@@ -778,8 +778,6 @@ namespace dataset {
     }
 }
 
-#include <iostream>
-
 namespace pybind11::detail {
     template <> struct type_caster<dataset::DataFrame> {
     public:

@@ -1,4 +1,3 @@
-#include <iostream>
 #include <pybind11/pybind11.h>
 #include <arrow/python/pyarrow.h>
 

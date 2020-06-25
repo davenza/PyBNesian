@@ -1,4 +1,3 @@
-#include <iostream>
 #include <Python.h>
 #include <arrow/api.h>
 #include <arrow/python/pyarrow.h>

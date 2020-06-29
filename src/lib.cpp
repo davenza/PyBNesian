@@ -6,13 +6,13 @@
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
-
 #include <graph/dag.hpp>
-
+#include <models/GaussianNetwork.hpp>
 #include <learning/scores/bic.hpp>
 // #include <learning/scores/bic.hpp>
 #include <learning/parameter/mle.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
+#include <util/util_types.hpp>
 
 namespace py = pybind11;
 
@@ -28,7 +28,7 @@ using factors::continuous::LinearGaussianCPD;
 using factors::continuous::KDE;
 using factors::continuous::CKDE;
 
-
+using util::ArcVector;
 
 PYBIND11_MODULE(pgm_dataset, m) {
 //    TODO: Check error
@@ -79,13 +79,14 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<LinearGaussianCPD>(continuous, "LinearGaussianCPD")
             .def(py::init<const std::string, const std::vector<std::string>>())
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
+            .def_property("beta", &LinearGaussianCPD::beta, &LinearGaussianCPD::setBeta)
+            .def_property("variance", &LinearGaussianCPD::variance, &LinearGaussianCPD::setVariance)
             .def("fit", &LinearGaussianCPD::fit)
             .def("logpdf", &LinearGaussianCPD::logpdf)
             .def("slogpdf", &LinearGaussianCPD::slogpdf);
 
     py::class_<KDE>(continuous, "KDE")
              .def(py::init<std::vector<std::string>>())
-        //      .def("fit", &KDE::fit) // errors for some reason
              .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
              .def("logpdf", &KDE::logpdf)
              .def("slogpdf", &KDE::slogpdf);
@@ -96,7 +97,19 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def("logpdf", &CKDE::logpdf)
              .def("slogpdf", &CKDE::slogpdf);
 
+    auto models = m.def_submodule("models", "Models submodule.");
+
+    py::class_<GaussianNetwork<>>(models, "GaussianNetwork")
+             .def(py::init<const std::vector<std::string>&>())
+             .def(py::init<const std::vector<std::string>&, const ArcVector&>());
+        
+
     auto learning = m.def_submodule("learning", "Learning submodule");
+    // auto scores = m.def_submodule("scores", "Learning scores submodule.");
+
+    // py::class_<BIC>(scores, "BIC")
+    //          .def(py::init<const DataFrame&>());
+
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 
     algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate");

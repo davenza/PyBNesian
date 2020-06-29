@@ -115,7 +115,7 @@ namespace dataset {
                 }
             }
 
-            auto rng = std::default_random_engine {m_seed};
+            std::mt19937 rng {m_seed};
             std::shuffle(indices.begin(), indices.end(), rng);
 
             int test_rows = std::round(indices.size()*test_ratio);

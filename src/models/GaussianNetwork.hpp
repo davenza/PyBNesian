@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_GAUSSIANNETWORK_HPP
 #define PGM_DATASET_GAUSSIANNETWORK_HPP
 
+#include <models/BayesianNetwork.hpp>
 #include <graph/dag.hpp>
 
 using graph::AdjMatrixDag;

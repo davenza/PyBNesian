@@ -17,6 +17,9 @@ using arrow::NumericBuilder;
 template<typename T>
 using const_vecit = typename std::vector<T>::const_iterator;
 
+#include<iostream>
+
+
 namespace dataset {
 
 
@@ -183,11 +186,11 @@ namespace dataset {
                 }
             }
 
-            auto rng = std::default_random_engine {m_seed};
+            std::mt19937 rng{m_seed};
             std::shuffle(indices.begin(), indices.end(), rng);
-
-            int fold_size = df->num_rows() / k;
-            int folds_extra = df->num_rows() % k;
+            
+            int fold_size = indices.size() / k;
+            int folds_extra = indices.size() % k;
             
             limits.reserve(k+1);
             limits.push_back(indices.begin());

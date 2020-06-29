@@ -42,7 +42,14 @@ namespace factors::continuous {
         std::string ToString() const;
 
         const VectorXd& beta() const { return m_beta; }
+        void setBeta(const VectorXd& new_beta) { 
+            if (static_cast<size_t>(new_beta.rows()) != (m_evidence.size() + 1))
+                throw std::invalid_argument("Wrong number of elements for the beta vector: " + std::to_string(new_beta.rows()) + 
+                                        ". Expected size: " + std::to_string((m_evidence.size() + 1)));
+            m_beta = new_beta; 
+        }
         double variance() const { return m_variance; }
+        void setVariance(double v) { m_variance = v; }
 
     private:
         std::string m_variable;

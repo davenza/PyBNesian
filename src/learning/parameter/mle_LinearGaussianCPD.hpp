@@ -183,74 +183,31 @@ namespace learning::parameter {
                                                                              EvidenceIter evidence_begin,
                                                                              EvidenceIter evidence_end) {
 
-        auto var_col = df.col(variable);
+        auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
+        auto type_id = df.same_type(variable, evidence_pair);
+        bool contains_null = df.null_count(variable, evidence_pair) > 0;
 
-        if (var_col) {
-            auto type = var_col->type();
-            auto type_id = type->id();
-            bool contains_null = (var_col->null_count() != 0);
+        if (type_id != Type::DOUBLE && type_id != Type::FLOAT) {
+            throw py::value_error("Wrong data type to fit the linear regression. (double) or (float) data is expected");
+        }
 
-            if (type_id != Type::DOUBLE && type_id != Type::FLOAT) {
-                throw py::value_error("Wrong data type to fit the linear regression. (double) or (float) data is expected.");
+        switch(type_id) {
+            case Type::DOUBLE: {
+                if (contains_null)
+                    return _fit<DoubleType, true>(df, variable, evidence_begin, evidence_end);
+                else
+                    return _fit<DoubleType, false>(df, variable, evidence_begin, evidence_end);
+                break;
             }
-
-            for (auto ev = evidence_begin; ev != evidence_end; ++ev) {
-                auto ev_col = df.col(*ev);
-
-                if constexpr (std::is_convertible_v<VarType, const std::string&> && 
-                              std::is_convertible_v<typename std::iterator_traits<EvidenceIter>::value_type, const std::string&>) 
-                {
-                    if (!ev_col)
-                        throw py::value_error("Variable \"" + static_cast<const std::string&>(*ev) + "\" not found in dataset.");
-                    else if (!type->Equals(ev_col->type()))
-                        throw py::value_error("\"" + variable + "\" has different data type than \"" + static_cast<const std::string&>(*ev) + "\"");
-                } 
-                else if constexpr (std::is_integral_v<VarType> && 
-                                     std::is_integral_v<typename std::iterator_traits<EvidenceIter>::value_type>) 
-                {
-                    if (!ev_col)
-                        throw py::value_error("Variable index [" + std::to_string(*ev) + "] not found in dataset.");
-                    else if (!type->Equals(ev_col->type()))
-                        throw py::value_error("Variable index [" + std::to_string(variable) + "] has different data type than "
-                                              "variable index [" + std::to_string(*ev) + "]");
-                } else {
-                    static_assert(!(std::is_convertible_v<VarType, const std::string&> && 
-                                    std::is_convertible_v<typename std::iterator_traits<EvidenceIter>::value_type, const std::string&>) ||
-                                  !(std::is_integral_v<VarType> && std::is_integral_v<typename std::iterator_traits<EvidenceIter>::value_type>), 
-                                    "Wrong arguments provided to MLE.estimate().");
-                }
-
-                contains_null = (contains_null || (ev_col->null_count() != 0));
+            case Type::FLOAT: {
+                if (contains_null)
+                    return _fit<FloatType, true>(df, variable, evidence_begin, evidence_end);
+                else
+                    return _fit<FloatType, false>(df, variable, evidence_begin, evidence_end);
+                break;
             }
-
-            switch(type_id) {
-                case Type::DOUBLE: {
-                    if (contains_null)
-                        return _fit<DoubleType, true>(df, variable, evidence_begin, evidence_end);
-                    else
-                        return _fit<DoubleType, false>(df, variable, evidence_begin, evidence_end);
-                    break;
-                }
-                case Type::FLOAT: {
-                    if (contains_null)
-                        return _fit<FloatType, true>(df, variable, evidence_begin, evidence_end);
-                    else
-                        return _fit<FloatType, false>(df, variable, evidence_begin, evidence_end);
-                    break;
-                }
-                default:
-                    throw std::invalid_argument("Unreachable code.");
-            }
-        } else {/*  */
-            if constexpr (std::is_convertible_v<VarType, const std::string&>)
-                throw py::value_error("Variable \"" + variable + "\" not found in dataset.");
-            else if constexpr (std::is_integral_v<VarType>)
-                throw py::value_error("Variable index [" + std::to_string(variable) + "] not found in dataset.");
-            else
-                static_assert(!(std::is_convertible_v<VarType, const std::string&> && 
-                                std::is_convertible_v<typename std::iterator_traits<EvidenceIter>::value_type, const std::string&>) ||
-                                !(std::is_integral_v<VarType> && std::is_integral_v<typename std::iterator_traits<EvidenceIter>::value_type>), 
-                                "Wrong arguments provided to MLE.estimate().");
+            default:
+                throw std::invalid_argument("Unreachable code.");
         }
     }
 

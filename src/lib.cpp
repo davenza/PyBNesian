@@ -79,6 +79,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<LinearGaussianCPD>(continuous, "LinearGaussianCPD")
             .def(py::init<const std::string, const std::vector<std::string>>())
             .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
+            .def_property_readonly("variable", &LinearGaussianCPD::variable)
+            .def_property_readonly("evidence", &LinearGaussianCPD::evidence)
             .def_property("beta", &LinearGaussianCPD::beta, &LinearGaussianCPD::setBeta)
             .def_property("variance", &LinearGaussianCPD::variance, &LinearGaussianCPD::setVariance)
             .def("fit", &LinearGaussianCPD::fit)
@@ -87,12 +89,21 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     py::class_<KDE>(continuous, "KDE")
              .def(py::init<std::vector<std::string>>())
+             .def_property_readonly("variables", &KDE::variables)
+             .def_property_readonly("n", &KDE::num_instances)
+             .def_property_readonly("d", &KDE::num_variables)
+             .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth)
              .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
              .def("logpdf", &KDE::logpdf)
              .def("slogpdf", &KDE::slogpdf);
 
     py::class_<CKDE>(continuous, "CKDE")
              .def(py::init<const std::string, const std::vector<std::string>>())
+             .def_property_readonly("variable", &CKDE::variable)
+             .def_property_readonly("evidence", &CKDE::evidence)
+             .def_property_readonly("n", &CKDE::num_instances)
+             .def_property_readonly("kde_joint", &CKDE::kde_joint)
+             .def_property_readonly("kde_marg", &CKDE::kde_marg)
              .def("fit", &CKDE::fit)
              .def("logpdf", &CKDE::logpdf)
              .def("slogpdf", &CKDE::slogpdf);

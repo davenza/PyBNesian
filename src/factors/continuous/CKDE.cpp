@@ -6,6 +6,15 @@ using opencl::OpenCLConfig;
 
 namespace factors::continuous {
 
+    void KDE::copy_bandwidth_opencl() {
+        auto d = m_variables.size();
+        auto llt_cov = m_bandwidth.llt();
+        auto llt_matrix = llt_cov.matrixLLT();
+
+        auto& opencl = OpenCLConfig::get();
+        m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), d*d);
+    }
+
     void KDE::fit(const DataFrame& df) {
         m_training_type = df.same_type(m_variables);
 

@@ -180,7 +180,7 @@ namespace opencl {
         err_code = m_queue.enqueueReadBuffer(from, CL_TRUE, 0, sizeof(T)*size, dest);
 
         if (err_code != CL_SUCCESS) {
-            throw std::runtime_error(std::string("Error reading buffer.") + 
+            throw std::runtime_error(std::string("Error reading buffer. ") + 
                                      opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
     }
@@ -191,7 +191,7 @@ namespace opencl {
         cl::Buffer b(m_context, flags,  sizeof(T)*size, NULL, &err_code);
 
         if (err_code != CL_SUCCESS) {
-            throw std::runtime_error(std::string("Error creating OpenCL buffer.") + 
+            throw std::runtime_error(std::string("Error creating OpenCL buffer. ") + 
                                                  opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
@@ -206,7 +206,7 @@ namespace opencl {
         err_code = m_queue.enqueueCopyBuffer(input, b, sizeof(T)*offset, 0, sizeof(T)*length);
 
         if (err_code != CL_SUCCESS) {
-            throw std::runtime_error(std::string("Error copying OpenCL buffer.") + 
+            throw std::runtime_error(std::string("Error copying OpenCL buffer. ") + 
                                                  opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 

@@ -17,7 +17,8 @@ using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 namespace factors::continuous {
     
     enum class KDEBandwidth {
-        SCOTT
+        SCOTT,
+        MANUAL
     };
 
     struct UnivariateKDE {
@@ -191,14 +192,29 @@ namespace factors::continuous {
             }
         }
 
+        const std::vector<std::string>& variables() const { return m_variables; }
         void fit(const DataFrame& df);
 
         template<typename ArrowType, typename EigenMatrix>
         void fit(EigenMatrix bandwidth, cl::Buffer training_data, arrow::Type::type training_type, int training_instances);
 
         const MatrixXd& bandwidth() const { return m_bandwidth; }
+        void setBandwidth(MatrixXd& new_bandwidth) { 
+            if (new_bandwidth.rows() != new_bandwidth.cols() || static_cast<size_t>(new_bandwidth.rows()) != m_variables.size())
+                throw std::invalid_argument("The bandwidth matrix must be a square matrix with shape "
+                            "(" + std::to_string(m_variables.size()) + ", " + std::to_string(m_variables.size()) + ")"); 
+            
+            m_bandwidth = new_bandwidth;
+            if (m_bandwidth.rows() > 0)
+                copy_bandwidth_opencl();
+            m_bselector = KDEBandwidth::MANUAL;
+        }
+        
         cl::Buffer& training_buffer() { return m_training; }
+        
         int num_instances() const { return N; }
+        int num_variables() const { return m_variables.size(); }
+
         arrow::Type::type data_type() const { return m_training_type; }
         KDEBandwidth bandwidth_type() const { return m_bselector; }
 
@@ -227,6 +243,8 @@ namespace factors::continuous {
 
         template<typename ArrowType, bool contains_null>
         void compute_bandwidth(const DataFrame& df, std::vector<std::string>& variables);
+
+        void copy_bandwidth_opencl();
 
         std::vector<std::string> m_variables;
         KDEBandwidth m_bselector;
@@ -264,7 +282,7 @@ namespace factors::continuous {
 
         auto& opencl = OpenCLConfig::get();
         m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), d*d);
-        
+
         auto training_data = df.to_eigen<false, ArrowType, contains_null>(m_variables);
         N = training_data->rows();
         m_training = opencl.copy_to_buffer(training_data->data(), N * d);
@@ -444,6 +462,11 @@ namespace factors::continuous {
 
         const std::string& variable() const { return m_variable; }
         const std::vector<std::string>& evidence() const { return m_evidence; }
+        int num_instances() const { return N; }
+
+        KDE& kde_joint() { return m_joint; }
+        KDE& kde_marg() { return m_marg; }
+
         bool fitted() const { return m_fitted; }
 
         void fit(const DataFrame& df);

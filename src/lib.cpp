@@ -7,6 +7,7 @@
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
 #include <graph/dag.hpp>
+#include <models/BayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <learning/scores/bic.hpp>
 // #include <learning/scores/bic.hpp>
@@ -28,7 +29,48 @@ using factors::continuous::LinearGaussianCPD;
 using factors::continuous::KDE;
 using factors::continuous::CKDE;
 
+using models::BayesianNetwork;
+
 using util::ArcVector;
+
+
+template<typename DerivedBN>
+void register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
+    using BaseClass = BayesianNetwork<DerivedBN>;
+    std::string base_name = std::string("BayesianNetwork<") + derivedbn_name + ">";
+    py::class_<BaseClass>(m, base_name.c_str())
+        .def("num_nodes", &BaseClass::num_nodes)
+        .def("num_edges", &BaseClass::num_edges)
+        .def("nodes", &BaseClass::nodes)
+        .def("indices", &BaseClass::indices)
+        .def("index", py::overload_cast<const std::string&>(&BaseClass::index, py::const_))
+        .def("contains_node", &BaseClass::contains_node)
+        .def("name", py::overload_cast<int>(&BaseClass::name, py::const_))
+        .def("num_parents", py::overload_cast<const std::string&>(&BaseClass::num_parents, py::const_))
+        .def("num_parents", py::overload_cast<int>(&BaseClass::num_parents, py::const_))
+        .def("num_children", py::overload_cast<const std::string&>(&BaseClass::num_children, py::const_))
+        .def("num_children", py::overload_cast<int>(&BaseClass::num_children, py::const_))
+        .def("parents", py::overload_cast<const std::string&>(&BaseClass::parents, py::const_))
+        .def("parents", py::overload_cast<int>(&BaseClass::parents, py::const_))
+        .def("parent_indices", py::overload_cast<const std::string&>(&BaseClass::parent_indices, py::const_))
+        .def("parent_indices", py::overload_cast<int>(&BaseClass::parent_indices, py::const_))
+        .def("has_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::has_edge, py::const_))
+        .def("has_edge", py::overload_cast<int, int>(&BaseClass::has_edge, py::const_))
+        .def("has_path", py::overload_cast<const std::string&, const std::string&>(&BaseClass::has_path, py::const_))
+        .def("has_path", py::overload_cast<int, int>(&BaseClass::has_path, py::const_))
+        .def("add_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::add_edge))
+        .def("add_edge", py::overload_cast<int, int>(&BaseClass::add_edge))
+        .def("can_add_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::can_add_edge, py::const_))
+        .def("can_add_edge", py::overload_cast<int, int>(&BaseClass::can_add_edge, py::const_))
+        .def("can_flip_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::can_flip_edge))
+        .def("can_flip_edge", py::overload_cast<int, int>(&BaseClass::can_flip_edge))
+        .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::remove_edge))
+        .def("remove_edge", py::overload_cast<int, int>(&BaseClass::remove_edge));
+
+    py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
+        .def(py::init<const std::vector<std::string>&>())
+        .def(py::init<const std::vector<std::string>&, const ArcVector&>());
+}
 
 PYBIND11_MODULE(pgm_dataset, m) {
 //    TODO: Check error
@@ -108,11 +150,20 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def("logpdf", &CKDE::logpdf)
              .def("slogpdf", &CKDE::slogpdf);
 
+    // //////////////////////////////
+    // Include SemiparametricCPD
+    // /////////////////////////////
+
     auto models = m.def_submodule("models", "Models submodule.");
 
-    py::class_<GaussianNetwork<>>(models, "GaussianNetwork")
-             .def(py::init<const std::vector<std::string>&>())
-             .def(py::init<const std::vector<std::string>&, const ArcVector&>());
+    register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
+    register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
+
+    // py::class_<GaussianNetwork<>>(models, "GaussianNetwork")
+    //          .def(py::init<const std::vector<std::string>&>())
+    //          .def(py::init<const std::vector<std::string>&, const ArcVector&>())
+    //          .def("num_nodes", &GaussianNetwork<>::num_nodes)
+    //          .def("num_edges", &GaussianNetwork<>::num_edges);
         
 
     auto learning = m.def_submodule("learning", "Learning submodule");

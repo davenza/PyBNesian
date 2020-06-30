@@ -28,7 +28,7 @@ namespace learning::scores {
 
         template<typename Model, typename VarType, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
-            auto parents = model.get_parent_indices(variable);
+            auto parents = model.parent_indices(variable);
             return local_score(model, variable, parents.begin(), parents.end());
         }
         
@@ -41,7 +41,7 @@ namespace learning::scores {
         template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
             NodeType variable_type = model.node_type(variable);
-            auto parents = model.get_parent_indices(variable);
+            auto parents = model.parent_indices(variable);
             return local_score(variable, variable_type, parents.begin(), parents.end());
         }
 
@@ -66,7 +66,7 @@ namespace learning::scores {
                 case OperatorType::ADD_ARC: {
                     auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                     auto target_index = model.index(dwn_op->target());
-                    auto parents = model.get_parent_indices(target_index);
+                    auto parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
                     parents.push_back(source_index);
 
@@ -78,7 +78,7 @@ namespace learning::scores {
                 case OperatorType::REMOVE_ARC: {
                     auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                     auto target_index = model.index(dwn_op->target());
-                    auto parents = model.get_parent_indices(target_index);
+                    auto parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
 
                     std::iter_swap(std::find(parents.begin(), parents.end(), source_index), parents.end() - 1);
@@ -91,9 +91,9 @@ namespace learning::scores {
                 case OperatorType::FLIP_ARC: {
                     auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                     auto target_index = model.index(dwn_op->target());
-                    auto target_parents = model.get_parent_indices(target_index);
+                    auto target_parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
-                    auto source_parents = model.get_parent_indices(source_index);
+                    auto source_parents = model.parent_indices(source_index);
 
                     std::iter_swap(std::find(target_parents.begin(), target_parents.end(), source_index), target_parents.end() - 1);
                     source_parents.push_back(target_index);
@@ -112,7 +112,7 @@ namespace learning::scores {
                     auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
                     auto node_index = dwn_op->node();
                     auto new_node_type = dwn_op->node_type();
-                    auto parents = model.get_parent_indices(node_index);
+                    auto parents = model.parent_indices(node_index);
                     
                     double prev = current_local_scores(node_index);
                     current_local_scores(node_index) = local_score(node_index, new_node_type, parents.begin(), parents.end());

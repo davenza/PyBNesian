@@ -455,7 +455,7 @@ namespace learning::operators {
     template<typename Model, typename Score>
     void ArcOperatorSet<Model, Score>::cache_scores(Model& model) {
         for (auto dest = 0; dest < model.num_nodes(); ++dest) {
-            std::vector<int> new_parents_dest = model.get_parent_indices(dest);
+            std::vector<int> new_parents_dest = model.parent_indices(dest);
             
             for (auto source = 0; source < model.num_nodes(); ++source) {
                 if(valid_op(source, dest)) {
@@ -464,7 +464,7 @@ namespace learning::operators {
                         double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - m_local_score(dest);
                         delta(source, dest) = d;
                     } else if (model.has_edge(dest, source)) {
-                        auto new_parents_source = model.get_parent_indices(source);
+                        auto new_parents_source = model.parent_indices(source);
                         std::iter_swap(std::find(new_parents_source.begin(), new_parents_source.end(), dest), new_parents_source.end() - 1);
                         
                         new_parents_dest.push_back(source);
@@ -609,7 +609,7 @@ namespace learning::operators {
     template<typename Model, typename Score>
     void ArcOperatorSet<Model, Score>::update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node) {
 
-        auto parents = model.get_parent_indices(dest_node);
+        auto parents = model.parent_indices(dest_node);
         auto dest_idx = model.index(dest_node);
         
         for (int i = 0; i < model.num_nodes(); ++i) {
@@ -620,13 +620,13 @@ namespace learning::operators {
                     double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - m_local_score(dest_idx);
                     delta(i, dest_idx) = d;
 
-                    auto new_parents_i = model.get_parent_indices(i);
+                    auto new_parents_i = model.parent_indices(i);
                     new_parents_i.push_back(dest_idx);
 
                     delta(dest_idx, i) = d + m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end())
                                             - m_local_score(i);
                 } else if (model.has_edge(dest_idx, i)) {
-                    auto new_parents_i = model.get_parent_indices(i);
+                    auto new_parents_i = model.parent_indices(i);
                     std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
                         
                     parents.push_back(i);
@@ -689,7 +689,7 @@ namespace learning::operators {
 
         void update_local_delta(Model& model, int node_index) {
             NodeType type = model.node_type(node_index);
-            auto parents = model.get_parent_indices(node_index);
+            auto parents = model.parent_indices(node_index);
             delta(node_index) = m_score.local_score(node_index, type.opposite(), parents.begin(), parents.end()) 
                                 - m_local_score(node_index);
         }

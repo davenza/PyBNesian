@@ -107,7 +107,7 @@ namespace models {
         }
 
         bool contains_node(const std::string& name) const {
-            return indices.count(name) > 0;
+            return m_indices.count(name) > 0;
         }
 
         const std::string& name(int node_index) const {
@@ -150,24 +150,24 @@ namespace models {
             return m_indices.at(node);
         }
 
-        std::vector<std::string> get_parents(node_descriptor node) const;
+        std::vector<std::string> parents(node_descriptor node) const;
 
-        std::vector<std::string> get_parents(int node_index) const {
-            return get_parents(g.node(node_index));
+        std::vector<std::string> parents(int node_index) const {
+            return parents(g.node(node_index));
         }
 
-        std::vector<std::string> get_parents(const std::string& node) const {
-            return get_parents(m_indices.at(node));
+        std::vector<std::string> parents(const std::string& node) const {
+            return parents(m_indices.at(node));
         }
 
-        std::vector<int> get_parent_indices(node_descriptor node) const;
+        std::vector<int> parent_indices(node_descriptor node) const;
 
-        std::vector<int> get_parent_indices(int node_index) const {
-            return get_parent_indices(g.node(node_index));
+        std::vector<int> parent_indices(int node_index) const {
+            return parent_indices(g.node(node_index));
         }
 
-        std::vector<int> get_parent_indices(const std::string& node) const {
-            return get_parent_indices(m_indices.at(node));
+        std::vector<int> parent_indices(const std::string& node) const {
+            return parent_indices(m_indices.at(node));
         }
 
         std::string parents_tostring(node_descriptor node) const;
@@ -247,7 +247,7 @@ namespace models {
         }
 
         void remove_edge(int source, int dest) {
-            remove_edge(g.node(source), g.node(dest), g);
+            remove_edge(g.node(source), g.node(dest));
         }
 
         void remove_edge(const std::string& source, const std::string& dest) {
@@ -341,8 +341,8 @@ namespace models {
     };
 
     template<typename Derived>
-    std::vector<std::string> BayesianNetwork<Derived>::get_parents(node_descriptor node) const {
-        std::vector<std::reference_wrapper<const std::string>> parents;
+    std::vector<std::string> BayesianNetwork<Derived>::parents(node_descriptor node) const {
+        std::vector<std::string> parents;
         auto it_parents = g.get_parent_edges(node);
 
         for (auto it = it_parents.first; it != it_parents.second; ++it) {
@@ -355,7 +355,7 @@ namespace models {
     }
 
     template<typename Derived>
-    std::vector<int> BayesianNetwork<Derived>::get_parent_indices(node_descriptor node) const {
+    std::vector<int> BayesianNetwork<Derived>::parent_indices(node_descriptor node) const {
         std::vector<int> parent_indices;
         auto it_parents = g.get_parent_edges(node);
 
@@ -368,7 +368,7 @@ namespace models {
 
     template<typename Derived>
     std::string BayesianNetwork<Derived>::parents_tostring(node_descriptor node) const {
-        auto parents = get_parents(node);
+        auto parents = parents(node);
         if (!parents.empty()) {
             std::string str = "[" + parents[0];
             for (auto it = parents.begin() + 1; it != parents.end(); ++it) {
@@ -412,7 +412,7 @@ namespace models {
             }
         }
 
-        auto parents = get_parents(cpd.variable());
+        auto parents = parents(cpd.variable());
         if (parents.size() != evidence.size()) {
             std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
                                 + "\nParents: " + parents_tostring(cpd.variable());
@@ -448,7 +448,7 @@ namespace models {
                     static_cast<Derived*>(this)->compatible_cpd(cpd);
                     m_cpds.push_back(cpd);
                 } else {
-                    auto parents = get_parents(node);
+                    auto parents = parents(node);
                     m_cpds.push_back(LinearGaussianCPD(node, parents));
                 }
             }
@@ -466,7 +466,7 @@ namespace models {
             m_cpds.reserve(m_nodes.size());
 
             for (auto& node : m_nodes) {
-                auto parents = get_parents(node);
+                auto parents = parents(node);
                 m_cpds.push_back(CPD(node, parents));
                 m_cpds.back().fit(df);
             }

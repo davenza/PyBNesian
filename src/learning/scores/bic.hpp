@@ -32,7 +32,7 @@ namespace learning::scores {
 
         template<typename Model, typename VarType, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
-            auto parents = model.get_parent_indices(variable);
+            auto parents = model.parent_indices(variable);
             return local_score(model, variable, parents.begin(), parents.end());
         }
     

@@ -27,7 +27,7 @@ namespace learning::scores {
 
         template<typename Model, typename VarType, util::enable_if_gaussian_network_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
-            auto parents = model.get_parent_indices(variable);
+            auto parents = model.parent_indices(variable);
             return local_score(model, variable, parents.begin(), parents.end());
         }
         
@@ -39,7 +39,7 @@ namespace learning::scores {
 
         template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
-            auto parents = model.get_parent_indices(variable);
+            auto parents = model.parent_indices(variable);
             NodeType variable_type = model.node_type(variable);
             
             return local_score(variable, variable_type, parents.begin(), parents.end());

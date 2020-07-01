@@ -14,6 +14,7 @@ namespace models {
         using CPD = LinearGaussianCPD;
         GaussianNetwork(const std::vector<std::string>& nodes) : 
                                             BayesianNetwork<GaussianNetwork<D>>(nodes) {}
+        GaussianNetwork(const ArcVector& arcs) : BayesianNetwork<GaussianNetwork<D>>(arcs) {}
         GaussianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
                                             BayesianNetwork<GaussianNetwork<D>>(nodes, arcs) {}
 

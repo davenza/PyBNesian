@@ -9,6 +9,7 @@
 #include <graph/dag.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
+#include <models/SemiparametricBN_NodeType.hpp>
 #include <learning/scores/bic.hpp>
 // #include <learning/scores/bic.hpp>
 #include <learning/parameter/mle.hpp>
@@ -30,12 +31,13 @@ using factors::continuous::KDE;
 using factors::continuous::CKDE;
 
 using models::BayesianNetwork;
+using models::NodeType;
 
 using util::ArcVector;
 
 
 template<typename DerivedBN>
-void register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
+py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
     using BaseClass = BayesianNetwork<DerivedBN>;
     std::string base_name = std::string("BayesianNetwork<") + derivedbn_name + ">";
     py::class_<BaseClass>(m, base_name.c_str())
@@ -67,9 +69,10 @@ void register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
         .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::remove_edge))
         .def("remove_edge", py::overload_cast<int, int>(&BaseClass::remove_edge));
 
-    py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
-        .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&>());
+    return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
+            .def(py::init<const std::vector<std::string>&>())
+            .def(py::init<const ArcVector&>())
+            .def(py::init<const std::vector<std::string>&, const ArcVector&>());
 }
 
 PYBIND11_MODULE(pgm_dataset, m) {
@@ -151,13 +154,18 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def("slogpdf", &CKDE::slogpdf);
 
     // //////////////////////////////
-    // Include SemiparametricCPD
+    // Include Different types of Graphs
     // /////////////////////////////
 
     auto models = m.def_submodule("models", "Models submodule.");
+    
+    // py::class<NodeType>(models, "NodeType")
+    //     .value("LinearGaussianCPD", NodeType::LinearGaussianCPD)
+    //     .value("CKDE", NodeType::CKDE);
 
     register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
     register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
+
 
     // py::class_<GaussianNetwork<>>(models, "GaussianNetwork")
     //          .def(py::init<const std::vector<std::string>&>())

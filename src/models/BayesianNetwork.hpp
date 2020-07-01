@@ -296,7 +296,7 @@ namespace models {
     };
 
     template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const ArcVector& arcs)
+    BayesianNetwork<Derived>::BayesianNetwork(const ArcVector& arcs) : g(0)
     {
         if (arcs.empty()) {
             throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
@@ -314,11 +314,13 @@ namespace models {
             }
         }
 
-        g = DagType(nodes.size());
+        g = DagType(m_nodes.size());
 
         for(auto& arc : arcs) {
             g.add_edge(node(arc.first), node(arc.second));
         }
+
+        g.check_acyclic();
     };
 
     template<typename Derived>
@@ -336,8 +338,15 @@ namespace models {
         }
 
         for(auto edge : edges) {
+            if (m_indices.count(edge.first) == 0) throw pybind11::index_error(
+                    "Node \"" + edge.first + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
+            
+            if (m_indices.count(edge.second) == 0) throw pybind11::index_error(
+                    "Node \"" + edge.second + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
             g.add_edge(node(edge.first), node(edge.second));
         }
+
+        g.check_acyclic();
     };
 
     template<typename Derived>
@@ -386,7 +395,6 @@ namespace models {
         if (num_parents(dest) == 0 || num_children(source) == 0) {
             return true;
         } else {
-
             remove_edge(source, dest);
             bool thereis_path = has_path(source, dest);
             add_edge(source, dest);

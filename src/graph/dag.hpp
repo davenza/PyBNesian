@@ -5,7 +5,7 @@
 #include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/depth_first_search.hpp>
-
+#include <boost/graph/topological_sort.hpp>
 
 namespace py = pybind11;
 using boost::adjacency_matrix, boost::adjacency_list, boost::directedS, boost:: bidirectionalS, boost::setS, boost::vecS, boost::property, boost::vertex_index_t,
@@ -20,8 +20,6 @@ namespace graph {
         MATRIX,
         LIST
     };
-
-
 
     template<typename Graph>
     class Dag {
@@ -99,6 +97,8 @@ namespace graph {
             boost::remove_edge(source, dest, g);
         }
 
+        void check_acyclic();
+
     private:
         Graph g;
     };
@@ -122,6 +122,12 @@ namespace graph {
             });
 
         return path;
+    }
+
+    template<typename Graph>
+    void Dag<Graph>::check_acyclic() {
+        std::vector<node_descriptor> res(num_nodes());
+        boost::topological_sort(g, res.begin());
     }
 
     using AdjMatrixDag = Dag<adj_m>;

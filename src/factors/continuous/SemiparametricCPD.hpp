@@ -7,6 +7,10 @@
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::CKDE;
 
+#include <models/SemiparametricBN_NodeType.hpp>
+
+using models::NodeType;
+
 namespace factors::continuous {
 
     class SemiparametricCPD {
@@ -21,17 +25,34 @@ namespace factors::continuous {
         const std::vector<std::string>& evidence() const;
         bool fitted() const;
 
-        void fit(py::handle pyobject);
         void fit(const DataFrame& df);
-
-        VectorXd logpdf(py::handle pyobject) const;
         VectorXd logpdf(const DataFrame& df) const;
-
-        double slogpdf(py::handle pyobject) const;
         double slogpdf(const DataFrame& df) const;
 
-        std::string ToString() const;
+        NodeType node_type() const {
+            if (std::holds_alternative<LinearGaussianCPD>(m_cpd))
+                return NodeType::LinearGaussianCPD;
+            else
+                return NodeType::CKDE;
+        }
 
+        LinearGaussianCPD as_lg() const {
+            try {
+                return std::get<LinearGaussianCPD>(m_cpd);
+            } catch(std::bad_variant_access) {
+                throw py::value_error("The SemiparametricBN is not a LinearGaussianCPD");
+            }
+        }
+
+        CKDE as_ckde() const {
+            try {
+                return std::get<CKDE>(m_cpd);
+            } catch(std::bad_variant_access) {
+                throw py::value_error("The SemiparametricBN is not a CKDE");
+            }
+        }
+
+        std::string ToString() const;
     private:
         std::variant<LinearGaussianCPD, CKDE> m_cpd;
     };

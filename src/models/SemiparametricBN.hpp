@@ -79,10 +79,35 @@ namespace models {
         void set_node_type(const std::string& node, NodeType new_type) {
             set_node_type(this->index(node), new_type);
         }
+
+        CPD create_cpd(const std::string& node) {
+            auto pa = this->parents(node);
+            switch(node_type(node)) {
+                case NodeType::LinearGaussianCPD:
+                    return LinearGaussianCPD(node, pa);
+                case NodeType::CKDE:
+                    return CKDE(node, pa);
+                default:
+                    throw std::runtime_error("Unreachable code.");
+            }
+        }
+
+    
+    protected:
+        void compatible_cpd(CPD& cpd) {
+            BayesianNetwork<SemiparametricBN<D>>::compatible_cpd();
+
+            int index = this->index(cpd.variable());
+            if (m_node_types[index] != cpd.node_type()) {
+                throw std::invalid_argument(
+                    "CPD defined with a different node type. Expected node type: " + m_node_types[index].ToString() +
+                    ". CPD node type: " + cpd.node_type().ToString());
+            }
+        }
+
     private:
         std::vector<NodeType> m_node_types;
     };
-
 
     template<typename D>
     struct BN_traits<SemiparametricBN<D>> {

@@ -257,6 +257,22 @@ namespace models {
         void add_cpds(const std::vector<CPD>& cpds);
         
         void fit(const DataFrame& df);
+        CPD create_cpd(const std::string& node) {
+            auto pa = parents(node);
+            return CPD(node, pa);
+        }
+
+        CPD& cpd(int index) {
+            if (!m_cpds.empty() && m_cpds[index].fitted())
+                return m_cpds[index];
+            else
+                throw py::value_error("CPD of variable \"" + name(index) + "\" not fitted/added.");
+        }
+
+        CPD& cpd(const std::string& node) {
+            return cpd(m_indices.at(node));
+        }
+
         VectorXd logpdf(const DataFrame& df) const;
         double slogpdf(const DataFrame& df) const;
 
@@ -281,7 +297,6 @@ namespace models {
             os << bn.name(bn.g.source(*eit)) << " -> " << bn.name(bn.g.target(*eit)) << std::endl;
         return os;
     }
-
 
     template<typename Derived>
     BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {
@@ -474,8 +489,8 @@ namespace models {
             m_cpds.reserve(m_nodes.size());
 
             for (auto& node : m_nodes) {
-                auto parents = parents(node);
-                m_cpds.push_back(CPD(node, parents));
+                auto cpd = static_cast<Derived*>(this)->create_cpd(node);
+                m_cpds.push_back(cpd);
                 m_cpds.back().fit(df);
             }
         } else {

@@ -22,34 +22,16 @@ namespace factors::continuous {
                 }, m_cpd);
     }
 
-    void SemiparametricCPD::fit(py::handle pyobject) {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-        fit(df);
-    }
-
     void SemiparametricCPD::fit(const DataFrame& df) {
         std::visit([&df](auto& cpd) {
             cpd.fit(df);
         }, m_cpd);
     }
 
-    VectorXd SemiparametricCPD::logpdf(py::handle pyobject) const {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-        return std::move(logpdf(df));
-    }
-
     VectorXd SemiparametricCPD::logpdf(const DataFrame& df) const {
         return std::visit([&df](auto& cpd) -> VectorXd&& {
                     return std::move(cpd.logpdf(df));
                 }, m_cpd);
-    }
-
-    double SemiparametricCPD::slogpdf(py::handle pyobject) const {
-        auto rb = dataset::to_record_batch(pyobject);
-        auto df = DataFrame(rb);
-        return slogpdf(df);
     }
 
     double SemiparametricCPD::slogpdf(const DataFrame& df) const {

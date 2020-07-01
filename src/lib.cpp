@@ -1,4 +1,6 @@
 #include <pybind11/pybind11.h>
+// To overload operators.
+#include <pybind11/operators.h>
 #include <arrow/python/pyarrow.h>
 
 #include <dataset/crossvalidation_adaptator.hpp>
@@ -67,7 +69,12 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("can_flip_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::can_flip_edge))
         .def("can_flip_edge", py::overload_cast<int, int>(&BaseClass::can_flip_edge))
         .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::remove_edge))
-        .def("remove_edge", py::overload_cast<int, int>(&BaseClass::remove_edge));
+        .def("remove_edge", py::overload_cast<int, int>(&BaseClass::remove_edge))
+        .def("fit", &BaseClass::fit)
+        .def("cpd", py::overload_cast<const std::string&>(&BaseClass::cpd))
+        .def("cpd", py::overload_cast<int>(&BaseClass::cpd))
+        .def("logpdf", &BaseClass::logpdf)
+        .def("slogpdf", &BaseClass::slogpdf);
 
     return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
             .def(py::init<const std::vector<std::string>&>())
@@ -153,19 +160,46 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def("logpdf", &CKDE::logpdf)
              .def("slogpdf", &CKDE::slogpdf);
 
+    py::class_<SemiparametricCPD>(continuous, "SemiparametricCPD")
+             .def(py::init<LinearGaussianCPD>())
+             .def(py::init<CKDE>())
+             .def_property_readonly("variable", &SemiparametricCPD::variable)
+             .def_property_readonly("evidence", &SemiparametricCPD::evidence)
+             .def("node_type", &SemiparametricCPD::node_type)
+             .def("as_lg", &SemiparametricCPD::as_lg)
+             .def("as_ckde", &SemiparametricCPD::as_ckde)
+             .def("fit", &SemiparametricCPD::fit)
+             .def("logpdf", &SemiparametricCPD::logpdf)
+             .def("slogpdf", &SemiparametricCPD::slogpdf);
+
+
     // //////////////////////////////
     // Include Different types of Graphs
     // /////////////////////////////
 
     auto models = m.def_submodule("models", "Models submodule.");
     
-    // py::class<NodeType>(models, "NodeType")
-    //     .value("LinearGaussianCPD", NodeType::LinearGaussianCPD)
-    //     .value("CKDE", NodeType::CKDE);
+    py::class_<NodeType>(models, "NodeType")
+                .def_property_readonly_static("LinearGaussianCPD", [](const py::object&) { 
+                    return NodeType(NodeType::LinearGaussianCPD);
+                })
+                .def_property_readonly_static("CKDE", [](const py::object&) { 
+                    return NodeType(NodeType::CKDE);
+                })
+                .def("opposite", &NodeType::opposite)
+                .def(py::self == py::self)
+                .def(py::self != py::self);
 
     register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
-    register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
+    auto spbn = register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
 
+    spbn.def(py::init<const std::vector<std::string>&, NodeTypeVector&>())
+        .def(py::init<const ArcVector&, NodeTypeVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcVector&, NodeTypeVector&>())
+        .def("node_type", py::overload_cast<const std::string&>(&SemiparametricBN<>::node_type, py::const_))
+        .def("node_type", py::overload_cast<int>(&SemiparametricBN<>::node_type, py::const_))
+        .def("set_node_type", py::overload_cast<const std::string&, NodeType>(&SemiparametricBN<>::set_node_type))
+        .def("set_node_type", py::overload_cast<int, NodeType>(&SemiparametricBN<>::set_node_type));
 
     // py::class_<GaussianNetwork<>>(models, "GaussianNetwork")
     //          .def(py::init<const std::vector<std::string>&>())

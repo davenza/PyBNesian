@@ -4,16 +4,16 @@ from pgm_dataset.models import GaussianNetwork
 
 
 def test_create_bn():
-    gbn = GaussianNetwork(['a', 'b'])
+    gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
 
-    assert gbn.num_nodes() == 2
+    assert gbn.num_nodes() == 4
     assert gbn.num_edges() == 0
-    assert gbn.nodes() == ['a', 'b']
+    assert gbn.nodes() == ['a', 'b', 'c', 'd']
 
-    gbn = GaussianNetwork(['a', 'b', 'c'], [('a', 'c')])
-    assert gbn.num_nodes() == 3
+    gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'c')])
+    assert gbn.num_nodes() == 4
     assert gbn.num_edges() == 1
-    assert gbn.nodes() == ['a', 'b', 'c']
+    assert gbn.nodes() == ['a', 'b', 'c', 'd']
 
     gbn = GaussianNetwork([('a', 'c'), ('b', 'd'), ('c', 'd')])
     assert gbn.num_nodes() == 4

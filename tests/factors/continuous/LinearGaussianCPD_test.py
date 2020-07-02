@@ -34,7 +34,9 @@ def fit_numpy(df, variable, evidence):
 def test_fit():
     for variable, evidence in [("a", []), ("b", ["a"]), ("c", ["a", "b"]), ("d", ["a", "b", "c"])]:
         cpd = LinearGaussianCPD(variable, evidence)
+        assert not cpd.fitted
         cpd.fit(df)
+        assert cpd.fitted
 
         npbeta, npvar = fit_numpy(df, variable, evidence)
         
@@ -57,7 +59,9 @@ def test_fit_null():
 
     for variable, evidence in [("a", []), ("b", ["a"]), ("c", ["a", "b"]), ("d", ["a", "b", "c"])]:
         cpd = LinearGaussianCPD(variable, evidence)
+        assert not cpd.fitted
         cpd.fit(df)
+        assert cpd.fitted
 
         npbeta, npvar = fit_numpy(df, variable, evidence)
         

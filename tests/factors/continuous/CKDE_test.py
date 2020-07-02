@@ -48,7 +48,9 @@ def test_fit():
             scipy_kde = gaussian_kde(npdata[:instances, :].T)
 
             cpd = CKDE(variable, evidence)
+            assert not cpd.fitted
             cpd.fit(df.iloc[:instances])
+            assert cpd.fitted
 
             kde_joint = cpd.kde_joint
             kde_marg = cpd.kde_marg
@@ -74,7 +76,9 @@ def test_fit_null():
         variables = [variable] + evidence
         for instances in [50, 1000, 10000]:            
             cpd = CKDE(variable, evidence)
+            assert not cpd.fitted
             cpd.fit(df.iloc[:instances])
+            assert cpd.fitted
 
             npdata = df.loc[:, variables].to_numpy()
             npdata_instances = npdata[:instances,:]

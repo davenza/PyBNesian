@@ -1,6 +1,7 @@
 import pytest
+import numpy as np
 import pyarrow as pa
-from pgm_dataset.factors.continuous import LinearGaussianCPD, CKDE
+from pgm_dataset.factors.continuous import LinearGaussianCPD, CKDE, SemiparametricCPD
 from pgm_dataset.models import SemiparametricBN, NodeType
 import util_test
 
@@ -121,15 +122,82 @@ def test_fit():
     with pytest.raises(ValueError) as ex:
         for n in spbn.nodes():
             cpd = spbn.cpd(n)
-    assert "not fitted" in str(ex.value)
+    assert "not added" in str(ex.value)
 
     spbn.fit(df)
 
     for n in spbn.nodes():
         cpd = spbn.cpd(n)
-        assert cpd.node_type() == NodeType.LinearGaussianCPD
+        assert cpd.node_type == NodeType.LinearGaussianCPD
 
         lg = cpd.as_lg()
         assert type(lg) == LinearGaussianCPD
+        assert lg.variable == n
+        assert lg.evidence == spbn.parents(n)
 
     spbn.fit(df)
+    
+    spbn.remove_edge('a', 'b')
+
+    cpd_b = spbn.cpd('b')
+    lg_b = cpd_b.as_lg()
+    assert lg_b.evidence != spbn.parents('b')
+
+    spbn.fit(df)
+    cpd_b = spbn.cpd('b')
+    lg_b = cpd_b.as_lg()
+    assert lg_b.evidence == spbn.parents('b')
+
+    spbn.set_node_type('c', NodeType.CKDE)
+
+    cpd_c = spbn.cpd('c')
+    assert cpd_c.node_type != spbn.node_type('c')
+
+    spbn.fit(df)
+    cpd_c = spbn.cpd('c')
+    assert cpd_c.node_type == spbn.node_type('c')
+
+
+def test_cpd():
+    spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')], [('d', NodeType.CKDE)])
+
+    with pytest.raises(ValueError) as ex:
+        spbn.cpd('a')
+    assert "not added" in str(ex.value)
+
+    spbn.fit(df)
+
+    assert hex(id(spbn.cpd('a'))) == hex(id(spbn.cpd('a')))
+    assert hex(id(spbn.cpd('b'))) == hex(id(spbn.cpd('b')))
+    assert hex(id(spbn.cpd('c'))) == hex(id(spbn.cpd('c')))
+    assert hex(id(spbn.cpd('d'))) == hex(id(spbn.cpd('d')))
+
+    # Its conversion is also a reference.
+    assert hex(id(spbn.cpd('a').as_lg())) == hex(id(spbn.cpd('a').as_lg()))
+    assert hex(id(spbn.cpd('b').as_lg())) == hex(id(spbn.cpd('b').as_lg()))
+    assert hex(id(spbn.cpd('c').as_lg())) == hex(id(spbn.cpd('c').as_lg()))
+    assert hex(id(spbn.cpd('d').as_ckde())) == hex(id(spbn.cpd('d').as_ckde()))
+
+
+def test_add_cpds():
+    spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')], [('d', NodeType.CKDE)])
+
+    with pytest.raises(ValueError) as ex:
+        spbn.add_cpds([CKDE('a', [])])
+    "CPD defined with a different node type" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        spbn.add_cpds([LinearGaussianCPD('d', ['a', 'b', 'c'])])
+    "CPD defined with a different node type" in str(ex.value)
+
+    lg = LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)
+    ckde = CKDE('d', ['a', 'b', 'c'])
+    assert lg.fitted
+    assert not ckde.fitted
+
+    spbn.add_cpds([lg, ckde])
+
+    assert not spbn.cpd('a').fitted
+    assert spbn.cpd('b').fitted
+    assert not spbn.cpd('c').fitted
+    assert not spbn.cpd('d').fitted

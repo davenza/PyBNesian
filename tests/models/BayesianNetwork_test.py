@@ -1,7 +1,11 @@
 import pytest
 import pyarrow as pa
+import numpy as np
 from pgm_dataset.models import GaussianNetwork
+from pgm_dataset.factors.continuous import LinearGaussianCPD
+import util_test
 
+df = util_test.generate_normal_data(10000)
 
 def test_create_bn():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
@@ -218,3 +222,115 @@ def test_edges():
     assert gbn.can_add_edge('c', 'b')
     assert not gbn.has_path('a', 'c')
     assert not gbn.has_path('b', 'c')
+
+def test_fit():
+    gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+
+    with pytest.raises(ValueError) as ex:
+        for n in gbn.nodes():
+            cpd = gbn.cpd(n)
+    assert "not added" in str(ex.value)
+
+    gbn.fit(df)
+
+    for n in gbn.nodes():
+        cpd = gbn.cpd(n)
+        assert cpd.variable == n
+        assert cpd.evidence == gbn.parents(n)
+
+    gbn.fit(df)
+    
+    gbn.remove_edge('a', 'b')
+
+    cpd_b = gbn.cpd('b')
+    assert cpd_b.evidence != gbn.parents('b')
+
+    gbn.fit(df)
+
+    cpd_b = gbn.cpd('b')
+    assert cpd_b.evidence == gbn.parents('b')
+
+def test_cpd():
+    gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+
+    with pytest.raises(ValueError) as ex:
+        gbn.cpd('a')
+    assert "not added" in str(ex.value)
+
+    gbn.add_cpds([LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)])
+
+    # Always return a reference
+    cpd_a = gbn.cpd('a')
+    # TODO: Is hex(id()) the correct way to check the validity of the reference ? Operator is ?
+    address_a = hex(id(cpd_a))
+    assert not cpd_a.fitted
+    gbn.cpd('a').fit(df)
+    assert cpd_a.fitted
+    assert address_a == hex(id(cpd_a))
+
+    cpd_b = gbn.cpd('b')
+    address_b = hex(id(cpd_b))
+    assert cpd_b.fitted
+    gbn.cpd('b').fit(df)
+    assert cpd_b.fitted
+    assert address_b == hex(id(cpd_b))
+
+    cpd_c = gbn.cpd('c')
+    address_c = hex(id(cpd_c))
+    assert not cpd_c.fitted
+    gbn.cpd('c').fit(df)
+    assert cpd_c.fitted
+    assert address_c == hex(id(cpd_c))
+
+    cpd_d = gbn.cpd('d')
+    address_d = hex(id(cpd_d))
+    assert not cpd_d.fitted
+    gbn.cpd('d').fit(df)
+    assert cpd_d.fitted
+    assert address_d == hex(id(cpd_d))
+
+def test_add_cpds():
+    gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+    
+    with pytest.raises(ValueError) as ex:
+        gbn.add_cpds([LinearGaussianCPD('e', [])])
+    assert "variable which is not present" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        gbn.add_cpds([LinearGaussianCPD('a', ['e'])])
+    assert "Evidence variable" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        gbn.add_cpds([LinearGaussianCPD('a', ['b'])])
+    assert "CPD do not have the model's parent set as evidence" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        gbn.add_cpds([LinearGaussianCPD('b', [])])
+    assert "CPD do not have the model's parent set as evidence" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        gbn.add_cpds([LinearGaussianCPD('b', ['c'])])
+    assert "CPD do not have the model's parent set as evidence" in str(ex.value)
+
+    lg = LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)
+    assert lg.fitted
+
+    gbn.add_cpds([lg])
+
+    cpd_b = gbn.cpd('b')
+    assert cpd_b.variable == 'b'
+    assert cpd_b.evidence == ['a']
+    assert cpd_b.fitted
+    assert np.all(cpd_b.beta == np.asarray([2.5, 1.65]))
+    assert cpd_b.variance == 4
+
+    cpd_a = gbn.cpd('a')
+    assert not cpd_a.fitted
+    cpd_c = gbn.cpd('c')
+    assert not cpd_c.fitted
+    cpd_d = gbn.cpd('d')
+    assert not cpd_d.fitted
+
+    with pytest.raises(ValueError) as ex:
+        gbn.add_cpds([LinearGaussianCPD('e', [])])
+    assert "variable which is not present" in str(ex.value)

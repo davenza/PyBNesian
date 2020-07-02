@@ -35,7 +35,9 @@ def test_fit():
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         for instances in [50, 1000, 10000]:
             cpd = KDE(variables)
+            assert not cpd.fitted
             cpd.fit(df.iloc[:instances,:])
+            assert cpd.fitted
 
             npdata = df.loc[:, variables].to_numpy()
             scipy_kde = gaussian_kde(npdata[:instances, :].T)
@@ -59,7 +61,9 @@ def test_fit_null():
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         for instances in [50, 1000, 10000]:
             cpd = KDE(variables)
+            assert not cpd.fitted
             cpd.fit(df.iloc[:instances,:])
+            assert cpd.fitted
 
             npdata = df.loc[:, variables].to_numpy()
             npdata_instances = npdata[:instances,:]

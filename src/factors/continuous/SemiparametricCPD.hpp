@@ -3,12 +3,10 @@
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <models/SemiparametricBN_NodeType.hpp>
 
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::CKDE;
-
-#include <models/SemiparametricBN_NodeType.hpp>
-
 using models::NodeType;
 
 namespace factors::continuous {
@@ -36,7 +34,7 @@ namespace factors::continuous {
                 return NodeType::CKDE;
         }
 
-        LinearGaussianCPD as_lg() const {
+        LinearGaussianCPD& as_lg() {
             try {
                 return std::get<LinearGaussianCPD>(m_cpd);
             } catch(std::bad_variant_access) {
@@ -44,7 +42,7 @@ namespace factors::continuous {
             }
         }
 
-        CKDE as_ckde() const {
+        CKDE& as_ckde() {
             try {
                 return std::get<CKDE>(m_cpd);
             } catch(std::bad_variant_access) {
@@ -56,7 +54,6 @@ namespace factors::continuous {
     private:
         std::variant<LinearGaussianCPD, CKDE> m_cpd;
     };
-
 }
 
 #endif //PGM_DATASET_SEMIPARAMETRICCPD_HPP

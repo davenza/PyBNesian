@@ -38,6 +38,8 @@ namespace factors::continuous {
             default:
                 throw py::value_error("Wrong data type to fit KDE. [double] or [float] data is expected.");
         }
+
+        m_fitted = true;
     }
 
     VectorXd KDE::logpdf(const DataFrame& df) const {

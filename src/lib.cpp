@@ -71,8 +71,9 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::remove_edge))
         .def("remove_edge", py::overload_cast<int, int>(&BaseClass::remove_edge))
         .def("fit", &BaseClass::fit)
-        .def("cpd", py::overload_cast<const std::string&>(&BaseClass::cpd))
-        .def("cpd", py::overload_cast<int>(&BaseClass::cpd))
+        .def("add_cpds", &BaseClass::add_cpds)
+        .def("cpd", py::overload_cast<const std::string&>(&BaseClass::cpd), py::return_value_policy::reference_internal)
+        .def("cpd", py::overload_cast<int>(&BaseClass::cpd), py::return_value_policy::reference_internal)
         .def("logpdf", &BaseClass::logpdf)
         .def("slogpdf", &BaseClass::slogpdf);
 
@@ -135,6 +136,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
             .def_property_readonly("evidence", &LinearGaussianCPD::evidence)
             .def_property("beta", &LinearGaussianCPD::beta, &LinearGaussianCPD::setBeta)
             .def_property("variance", &LinearGaussianCPD::variance, &LinearGaussianCPD::setVariance)
+            .def_property_readonly("fitted", &LinearGaussianCPD::fitted)
             .def("fit", &LinearGaussianCPD::fit)
             .def("logpdf", &LinearGaussianCPD::logpdf)
             .def("slogpdf", &LinearGaussianCPD::slogpdf);
@@ -145,6 +147,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def_property_readonly("n", &KDE::num_instances)
              .def_property_readonly("d", &KDE::num_variables)
              .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth)
+             .def_property_readonly("fitted", &KDE::fitted)
              .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
              .def("logpdf", &KDE::logpdf)
              .def("slogpdf", &KDE::slogpdf);
@@ -156,6 +159,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def_property_readonly("n", &CKDE::num_instances)
              .def_property_readonly("kde_joint", &CKDE::kde_joint)
              .def_property_readonly("kde_marg", &CKDE::kde_marg)
+             .def_property_readonly("fitted", &CKDE::fitted)
              .def("fit", &CKDE::fit)
              .def("logpdf", &CKDE::logpdf)
              .def("slogpdf", &CKDE::slogpdf);
@@ -165,13 +169,16 @@ PYBIND11_MODULE(pgm_dataset, m) {
              .def(py::init<CKDE>())
              .def_property_readonly("variable", &SemiparametricCPD::variable)
              .def_property_readonly("evidence", &SemiparametricCPD::evidence)
-             .def("node_type", &SemiparametricCPD::node_type)
-             .def("as_lg", &SemiparametricCPD::as_lg)
-             .def("as_ckde", &SemiparametricCPD::as_ckde)
+             .def_property_readonly("node_type", &SemiparametricCPD::node_type)
+             .def_property_readonly("fitted", &SemiparametricCPD::fitted)
+             .def("as_lg", &SemiparametricCPD::as_lg, py::return_value_policy::reference_internal)
+             .def("as_ckde", &SemiparametricCPD::as_ckde, py::return_value_policy::reference_internal)
              .def("fit", &SemiparametricCPD::fit)
              .def("logpdf", &SemiparametricCPD::logpdf)
              .def("slogpdf", &SemiparametricCPD::slogpdf);
-
+    
+    py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
+    py::implicitly_convertible<CKDE, SemiparametricCPD>();
 
     // //////////////////////////////
     // Include Different types of Graphs

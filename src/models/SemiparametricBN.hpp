@@ -91,11 +91,15 @@ namespace models {
                     throw std::runtime_error("Unreachable code.");
             }
         }
-
     
-    protected:
-        void compatible_cpd(CPD& cpd) {
-            BayesianNetwork<SemiparametricBN<D>>::compatible_cpd();
+        bool must_refit_cpd(const CPD& cpd) const {
+            bool must_refit = BayesianNetwork<SemiparametricBN<D>>::must_refit_cpd(cpd);
+            
+            return must_refit || (cpd.node_type() != m_node_types[this->index(cpd.variable())]);
+        }
+        
+        void compatible_cpd(const CPD& cpd) const {
+            BayesianNetwork<SemiparametricBN<D>>::compatible_cpd(cpd);
 
             int index = this->index(cpd.variable());
             if (m_node_types[index] != cpd.node_type()) {

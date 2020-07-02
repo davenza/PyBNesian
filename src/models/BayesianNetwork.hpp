@@ -255,18 +255,22 @@ namespace models {
         }
 
         void add_cpds(const std::vector<CPD>& cpds);
+
+        void compatible_cpd(const CPD& cpd) const;
         
         void fit(const DataFrame& df);
+        bool must_refit_cpd(const CPD& node) const;
+
         CPD create_cpd(const std::string& node) {
             auto pa = parents(node);
             return CPD(node, pa);
         }
 
         CPD& cpd(int index) {
-            if (!m_cpds.empty() && m_cpds[index].fitted())
+            if (!m_cpds.empty())
                 return m_cpds[index];
             else
-                throw py::value_error("CPD of variable \"" + name(index) + "\" not fitted/added.");
+                throw py::value_error("CPD of variable \"" + name(index) + "\" not added. Call add_cpds() or fit() to add the CPD.");
         }
 
         CPD& cpd(const std::string& node) {
@@ -280,7 +284,6 @@ namespace models {
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
 
     protected:
-        void compatible_cpd(CPD& cpd) const;
         void check_fitted() const;
     private:
         DagType g;
@@ -392,10 +395,10 @@ namespace models {
 
     template<typename Derived>
     std::string BayesianNetwork<Derived>::parents_tostring(node_descriptor node) const {
-        auto parents = parents(node);
-        if (!parents.empty()) {
-            std::string str = "[" + parents[0];
-            for (auto it = parents.begin() + 1; it != parents.end(); ++it) {
+        auto pa = parents(node);
+        if (!pa.empty()) {
+            std::string str = "[" + pa[0];
+            for (auto it = pa.begin() + 1; it != pa.end(); ++it) {
                 str += ", " + *it;
             }
             str += "]";
@@ -422,7 +425,7 @@ namespace models {
     }
 
     template<typename Derived>
-    void BayesianNetwork<Derived>::compatible_cpd(CPD& cpd) const {
+    void BayesianNetwork<Derived>::compatible_cpd(const CPD& cpd) const {
         if (!contains_node(cpd.variable())) {
             throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
         }
@@ -435,8 +438,8 @@ namespace models {
             }
         }
 
-        auto parents = parents(cpd.variable());
-        if (parents.size() != evidence.size()) {
+        auto pa = parents(cpd.variable());
+        if (pa.size() != evidence.size()) {
             std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
                                 + "\nParents: " + parents_tostring(cpd.variable());
 
@@ -444,35 +447,39 @@ namespace models {
         }
 
         std::unordered_set<std::string> evidence_set(evidence.begin(), evidence.end());
-        for (auto& parent : parents) {
+        for (auto& parent : pa) {
             if (evidence_set.find(parent) == evidence_set.end()) {
                 std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
                                     + "\nParents: [";
+                throw std::invalid_argument(err);
             }
         }
     }
 
     template<typename Derived>
     void BayesianNetwork<Derived>::add_cpds(const std::vector<CPD>& cpds) {
+        
+        for (auto& cpd : cpds) {
+            static_cast<Derived*>(this)->compatible_cpd(cpd);
+        }
+
         if (m_cpds.empty()) {
-            std::unordered_map<std::string, CPD> map_index;
+            std::unordered_map<std::string, typename std::vector<CPD>::const_iterator> map_index;
             for (auto it = cpds.begin(); it != cpds.end(); ++it) {
                 if (map_index.count(it->variable()) == 1) {
                     throw std::invalid_argument("CPD for variable " + it->variable() + "is repeated.");
                 }
-                map_index[it->variable()] = it - cpds.begin();
+                map_index[it->variable()] = it;
             }
             m_cpds.reserve(num_nodes());
             for(auto& node : nodes()) {
                 auto cpd_idx = map_index.find(node);
 
                 if (cpd_idx != map_index.end()) {
-                    auto cpd = cpds[cpd_idx->second];
-                    static_cast<Derived*>(this)->compatible_cpd(cpd);
+                    auto cpd = *(cpd_idx->second);
                     m_cpds.push_back(cpd);
                 } else {
-                    auto parents = parents(node);
-                    m_cpds.push_back(LinearGaussianCPD(node, parents));
+                    m_cpds.push_back(static_cast<Derived*>(this)->create_cpd(node));
                 }
             }
         } else {
@@ -495,10 +502,28 @@ namespace models {
             }
         } else {
             for (auto& cpd : m_cpds) {
-                if (!cpd.fitted()) {
+                if (static_cast<Derived*>(this)->must_refit_cpd(cpd)) {
+                    cpd = static_cast<Derived*>(this)->create_cpd(cpd.variable());
+                    cpd.fit(df);
+                } else if (!cpd.fitted()) {
                     cpd.fit(df);
                 }
             }
+        }
+    }
+
+    template<typename Derived>
+    bool BayesianNetwork<Derived>::must_refit_cpd(const CPD& cpd) const {
+        auto& node = cpd.variable();
+        auto& cpd_evidence = cpd.evidence();
+        auto parents = this->parents(node);
+        if (cpd_evidence.size() != parents.size())
+            return true;
+
+        if (std::is_permutation(cpd_evidence.begin(), cpd_evidence.end(), parents.begin(), parents.end())) {
+            return false;
+        } else {
+            return true;
         }
     }
 

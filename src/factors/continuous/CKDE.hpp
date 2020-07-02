@@ -165,7 +165,6 @@ namespace factors::continuous {
     
     class KDE {
     public:
-
         KDE() : m_variables(), 
                 m_bselector(KDEBandwidth::SCOTT), 
                 m_H_cholesky(), 
@@ -180,7 +179,8 @@ namespace factors::continuous {
             }
         }
 
-        KDE(std::vector<std::string> variables, KDEBandwidth b_selector) : m_variables(variables), 
+        KDE(std::vector<std::string> variables, KDEBandwidth b_selector) : m_variables(variables),
+                                                                            m_fitted(false),
                                                                             m_bselector(b_selector),
                                                                             m_H_cholesky(),
                                                                             m_training(),
@@ -214,6 +214,7 @@ namespace factors::continuous {
         
         int num_instances() const { return N; }
         int num_variables() const { return m_variables.size(); }
+        bool fitted() const { return m_fitted; }
 
         arrow::Type::type data_type() const { return m_training_type; }
         KDEBandwidth bandwidth_type() const { return m_bselector; }
@@ -247,6 +248,7 @@ namespace factors::continuous {
         void copy_bandwidth_opencl();
 
         std::vector<std::string> m_variables;
+        bool m_fitted;
         KDEBandwidth m_bselector;
         MatrixXd m_bandwidth;
         cl::Buffer m_H_cholesky;
@@ -458,6 +460,11 @@ namespace factors::continuous {
             for (auto it = evidence.begin(); it != evidence.end(); ++it) {
                 m_variables.push_back(*it);
             }
+
+            m_joint = KDE(m_variables);
+            if (!m_evidence.empty()) {
+                m_marg = KDE(m_evidence);
+            }
         }
 
         const std::string& variable() const { return m_variable; }
@@ -497,12 +504,10 @@ namespace factors::continuous {
 
     template<typename ArrowType>
     void CKDE::_fit(const DataFrame& df) {
-        m_joint = KDE(m_variables);
         m_joint.fit(df);
         N = m_joint.num_instances();
 
         if (!m_evidence.empty()) {
-            m_marg = KDE(m_evidence);
             auto& joint_bandwidth = m_joint.bandwidth();
             auto d = m_variables.size();
             auto marg_bandwidth = joint_bandwidth.bottomRightCorner(d-1, d-1);

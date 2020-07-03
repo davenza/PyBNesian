@@ -334,3 +334,28 @@ def test_add_cpds():
     with pytest.raises(ValueError) as ex:
         gbn.add_cpds([LinearGaussianCPD('e', [])])
     assert "variable which is not present" in str(ex.value)
+
+
+def test_logpdf():
+    gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+
+    gbn.fit(df)
+
+    test_df = util_test.generate_normal_data(5000)
+    ll = gbn.logpdf(test_df)
+    sll = gbn.slogpdf(test_df)
+
+    sum_ll = np.zeros((5000,))
+    sum_sll = 0
+    
+    for n in gbn.nodes():
+        cpd = gbn.cpd(n)
+        l = cpd.logpdf(test_df)
+        s = cpd.slogpdf(test_df)
+        assert np.all(np.isclose(s, l.sum()))
+        sum_ll += l
+        sum_sll += s
+    
+    assert np.all(np.isclose(ll, sum_ll))
+    assert np.isclose(sll, ll.sum())
+    assert sll == sum_sll

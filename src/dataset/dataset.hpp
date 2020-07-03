@@ -690,7 +690,7 @@ namespace dataset {
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const T arg) { 
-        return append_columns(rb, arrays, arg.begin(), arg.end()); 
+        append_columns(rb, arrays, arg.begin(), arg.end()); 
     }
 
     inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
@@ -716,7 +716,7 @@ namespace dataset {
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     inline void append_schema(const RecordBatch_ptr& rb, Array_vector& arrays, const T arg) { 
-        return append_schema(rb, arrays, arg.begin(), arg.end()); 
+        append_schema(rb, arrays, arg.begin(), arg.end()); 
     }
 
     template<typename ...Args>

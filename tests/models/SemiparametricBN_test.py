@@ -201,3 +201,27 @@ def test_add_cpds():
     assert spbn.cpd('b').fitted
     assert not spbn.cpd('c').fitted
     assert not spbn.cpd('d').fitted
+
+def test_logpdf():
+    spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+
+    spbn.fit(df)
+
+    test_df = util_test.generate_normal_data(5000)
+    ll = spbn.logpdf(test_df)
+    sll = spbn.slogpdf(test_df)
+
+    sum_ll = np.zeros((5000,))
+    sum_sll = 0
+    
+    for n in spbn.nodes():
+        cpd = spbn.cpd(n)
+        l = cpd.logpdf(test_df)
+        s = cpd.slogpdf(test_df)
+        assert np.all(np.isclose(s, l.sum()))
+        sum_ll += l
+        sum_sll += s
+    
+    assert np.all(np.isclose(ll, sum_ll))
+    assert np.isclose(sll, ll.sum())
+    assert sll == sum_sll

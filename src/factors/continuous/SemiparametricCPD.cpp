@@ -29,9 +29,9 @@ namespace factors::continuous {
     }
 
     VectorXd SemiparametricCPD::logpdf(const DataFrame& df) const {
-        return std::visit([&df](auto& cpd) -> VectorXd&& {
-                    return std::move(cpd.logpdf(df));
-                }, m_cpd);
+        return std::visit([&df](auto& cpd) -> VectorXd {
+                            return cpd.logpdf(df);
+                        }, m_cpd);
     }
 
     double SemiparametricCPD::slogpdf(const DataFrame& df) const {

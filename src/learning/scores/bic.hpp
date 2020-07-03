@@ -43,7 +43,7 @@ namespace learning::scores {
                            const EvidenceIter evidence_end) const;
 
     private:
-        const DataFrame& m_df;        
+        const DataFrame m_df;        
     };
 
     template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int>>
@@ -51,15 +51,15 @@ namespace learning::scores {
                             const VarType& variable, 
                             const EvidenceIter evidence_begin,
                             const EvidenceIter evidence_end) const {
-
         MLE<LinearGaussianCPD> mle;
 
         auto mle_params = mle.estimate(m_df, variable, evidence_begin, evidence_end);
 
-        auto rows = m_df->num_rows();
-        auto loglik = (1-rows) / 2 - (rows / 2)*std::log(2*util::pi<double>) - rows * std::log(std::sqrt(mle_params.variance));
+        auto rows = m_df.valid_count(variable, std::make_pair(evidence_begin, evidence_end));
+        auto num_evidence = std::distance(evidence_begin, evidence_end);
+        auto loglik = 0.5 * (1 + num_evidence - rows) - 0.5 * rows*std::log(2*util::pi<double>) - rows * std::log(std::sqrt(mle_params.variance));
 
-        return loglik - std::log(rows) * 0.5 * (std::distance(evidence_begin, evidence_end) + 2);
+        return loglik - std::log(rows) * 0.5 * (num_evidence + 2);
     }
 }
 

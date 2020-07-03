@@ -1,6 +1,5 @@
 
 #include <util/bit_util.hpp>
-#include <simd/simd_properties.hpp>
 #include <arrow/api.h>
 
 namespace util::bit_util {

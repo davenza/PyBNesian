@@ -71,7 +71,6 @@ namespace learning::scores {
                                      const EvidenceIter evidence_end) const {
         
         LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
-
         double loglik = 0;
         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
             cpd.fit(train_df);

@@ -13,6 +13,7 @@
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN_NodeType.hpp>
 #include <learning/scores/bic.hpp>
+#include <learning/scores/cv_likelihood.hpp>
 // #include <learning/scores/bic.hpp>
 #include <learning/parameter/mle.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
@@ -35,6 +36,7 @@ using factors::continuous::CKDE;
 using models::BayesianNetwork;
 using models::NodeType;
 using learning::scores::BIC;
+using learning::scores::CVLikelihood;
 
 using util::ArcVector;
 
@@ -220,7 +222,24 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("local_score", [](BIC& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
             return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
         });
-        // .def("local_score", &BIC::local_score<GaussianNetwork>);
+
+    py::class_<CVLikelihood>(scores, "CVLikelihood")
+        .def(py::init<const DataFrame&, int>())
+        .def(py::init<const DataFrame&, int, int>())
+        .def("score", &CVLikelihood::score<SemiparametricBN<>>)
+        .def("score", &CVLikelihood::score<GaussianNetwork<>>)
+        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, std::string var, std::vector<std::string> evidence) {
+            return self.local_score(g, var, evidence.begin(), evidence.end());
+        })
+        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, int idx, std::vector<int> evidence_idx) {
+            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
+        })
+        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, std::string var, std::vector<std::string> evidence) {
+            return self.local_score(g, var, evidence.begin(), evidence.end());
+        })
+        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
+            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
+        });
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 

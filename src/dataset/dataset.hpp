@@ -283,7 +283,7 @@ namespace dataset {
         DataFrame loc(const IndexIter begin, const IndexIter end) const;
         DataFrame loc(int i) const;
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        DataFrame loc(const StringType name) const;
+        DataFrame loc(const StringType& name) const;
         template<typename ...Args>
         DataFrame loc(Args... args) const;
 
@@ -298,7 +298,7 @@ namespace dataset {
         }
         arrow::Type::type same_type(int i) const { return m_batch->column(i)->type_id(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        arrow::Type::type same_type(const StringType name) const { return m_batch->GetColumnByName(name)->type_id(); }
+        arrow::Type::type same_type(const StringType& name) const { return m_batch->GetColumnByName(name)->type_id(); }
         template<typename ...Args>
         arrow::Type::type same_type(Args... args) const {
             auto v = indices_to_columns(args...);
@@ -307,11 +307,11 @@ namespace dataset {
 
         Array_ptr col(int i) const { return m_batch->column(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        Array_ptr col(const StringType name) const { return m_batch->GetColumnByName(name); }
+        Array_ptr col(const StringType& name) const { return m_batch->GetColumnByName(name); }
 
         const std::string& name(int i) const { return m_batch->column_name(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        const std::string& name(const StringType n) const { return n; }
+        const std::string& name(const StringType& n) const { return n; }
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         std::vector<std::string> names(const T n) const { return names(n.begin(), n.end()); }
@@ -345,7 +345,7 @@ namespace dataset {
             return m_batch->column(i)->null_bitmap(); 
         }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        Buffer_ptr combined_bitmap(const StringType name) const { 
+        Buffer_ptr combined_bitmap(const StringType& name) const { 
             return m_batch->GetColumnByName(name)->null_bitmap(); 
         }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
@@ -375,7 +375,7 @@ namespace dataset {
         }
         int64_t null_count(int i) const { return m_batch->column(i)->null_count(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        int64_t null_count(const StringType name) const { return m_batch->GetColumnByName(name)->null_count(); }
+        int64_t null_count(const StringType& name) const { return m_batch->GetColumnByName(name)->null_count(); }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         int64_t null_count(const IndexIter begin, const IndexIter end) const { 
             Array_vector v = indices_to_columns(begin, end); 
@@ -401,7 +401,7 @@ namespace dataset {
         }
         int64_t valid_count(int i) const { return m_batch->num_rows() - m_batch->column(i)->null_count(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        int64_t valid_count(const StringType name) const { return m_batch->num_rows() - m_batch->GetColumnByName(name)->null_count(); }
+        int64_t valid_count(const StringType& name) const { return m_batch->num_rows() - m_batch->GetColumnByName(name)->null_count(); }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         int64_t valid_count(const IndexIter begin, const IndexIter end) const {
             auto v = indices_to_columns(begin, end);
@@ -467,13 +467,13 @@ namespace dataset {
         }
 
         template<bool append_ones, typename ArrowType, bool contains_null, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        MapOrMatrixType<append_ones, ArrowType, contains_null> to_eigen(StringType name) const {
+        MapOrMatrixType<append_ones, ArrowType, contains_null> to_eigen(const StringType& name) const {
             auto col = m_batch->GetColumnByName(name);
             return dataset::to_eigen<append_ones, ArrowType, contains_null>(col);
         }
 
         template<bool append_ones, typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(Buffer_ptr bitmap, StringType name) const {
+        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(Buffer_ptr bitmap, const StringType& name) const {
             auto col = m_batch->GetColumnByName(name);
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
         }
@@ -571,7 +571,7 @@ namespace dataset {
             dataset::cov<ArrowType>(bitmap, m_batch->column(i));
         }
         template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        EigenMatrix<ArrowType> cov(const StringType name) const {
+        EigenMatrix<ArrowType> cov(const StringType& name) const {
             if (null_count(name) == 0) {
                 return cov<ArrowType, false>(name);
             } else {
@@ -579,11 +579,11 @@ namespace dataset {
             }
         }
         template<typename ArrowType, bool contains_null, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        EigenMatrix<ArrowType> cov(const StringType name) const {
+        EigenMatrix<ArrowType> cov(const StringType& name) const {
             dataset::cov<ArrowType, contains_null>(m_batch->GetColumnByName(name));
         }
         template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, const StringType name) const {
+        EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, const StringType& name) const {
             dataset::cov<ArrowType>(bitmap, m_batch->GetColumnByName(name));
         }
         template<typename ArrowType, typename ...Args>
@@ -732,7 +732,7 @@ namespace dataset {
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    DataFrame DataFrame::loc(const StringType name) const {
+    DataFrame DataFrame::loc(const StringType& name) const {
         arrow::SchemaBuilder b;
         b.AddField(m_batch->schema()->GetFieldByName(name));
         auto r = b.Finish();

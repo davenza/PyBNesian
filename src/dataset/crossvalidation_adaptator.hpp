@@ -17,6 +17,8 @@ using arrow::NumericBuilder;
 template<typename T>
 using const_vecit = typename std::vector<T>::const_iterator;
 
+#include <iostream>
+
 namespace dataset {
 
 
@@ -256,7 +258,6 @@ namespace dataset {
             mutable std::pair<DataFrame, DataFrame> current_fold;
         };
 
-
         cv_iterator begin() {
             return cv_iterator(0, *this);
         }
@@ -277,7 +278,9 @@ namespace dataset {
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         CrossValidation loc(StringType name) const { return CrossValidation(m_df.loc(name), prop); }
         template<typename ...Args>
-        CrossValidation loc(Args... args) const  { return CrossValidation(m_df.loc(args...), prop); }
+        CrossValidation loc(Args... args) const  {
+            return CrossValidation(m_df.loc(args...), prop); 
+        }
 
 
         class cv_iterator_indices {

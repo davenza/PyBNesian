@@ -690,7 +690,7 @@ namespace learning::operators {
         void update_local_delta(Model& model, int node_index) {
             NodeType type = model.node_type(node_index);
             auto parents = model.parent_indices(node_index);
-            delta(node_index) = m_score.local_score(node_index, type.opposite(), parents.begin(), parents.end()) 
+            delta(node_index) = m_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
                                 - m_local_score(node_index);
         }
 

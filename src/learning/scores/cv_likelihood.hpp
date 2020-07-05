@@ -42,7 +42,7 @@ namespace learning::scores {
             auto parents = model.parent_indices(variable);
             NodeType variable_type = model.node_type(variable);
             
-            return local_score(variable, variable_type, parents.begin(), parents.end());
+            return local_score(variable_type, variable, parents.begin(), parents.end());
         }
 
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
@@ -51,12 +51,12 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
             NodeType variable_type = model.node_type(variable);
-            return local_score(variable, variable_type, evidence_begin, evidence_end);
+            return local_score(variable_type, variable, evidence_begin, evidence_end);
         }
 
         template<typename VarType, typename EvidenceIter>
-        double local_score(const VarType& variable, 
-                           NodeType variable_type, 
+        double local_score(NodeType variable_type,
+                           const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
@@ -81,8 +81,8 @@ namespace learning::scores {
     }
 
     template<typename VarType, typename EvidenceIter>
-    double CVLikelihood::local_score(const VarType& variable, 
-                                     NodeType variable_type, 
+    double CVLikelihood::local_score(NodeType variable_type,
+                                     const VarType& variable, 
                                      const EvidenceIter evidence_begin, 
                                      const EvidenceIter evidence_end) const {
 

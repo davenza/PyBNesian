@@ -216,6 +216,12 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<BIC>(scores, "BIC")
         .def(py::init<const DataFrame&>())
         .def("score", &BIC::score<GaussianNetwork<>>)
+        .def("local_score", [](BIC& self, GaussianNetwork<> g, std::string var) {
+            return self.local_score(g, var);
+        })
+        .def("local_score", [](BIC& self, GaussianNetwork<> g, int idx) {
+            return self.local_score(g, idx);
+        })
         .def("local_score", [](BIC& self, GaussianNetwork<> g, std::string var, std::vector<std::string> evidence) {
             return self.local_score(g, var, evidence.begin(), evidence.end());
         })
@@ -228,6 +234,18 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def(py::init<const DataFrame&, int, int>())
         .def("score", &CVLikelihood::score<SemiparametricBN<>>)
         .def("score", &CVLikelihood::score<GaussianNetwork<>>)
+        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, std::string var) {
+            return self.local_score(g, var);
+        })
+        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, std::string var) {
+            return self.local_score(g, var);
+        })
+        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, int idx) {
+            return self.local_score(g, idx);
+        })
+        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, int idx) {
+            return self.local_score(g, idx);
+        })
         .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, std::string var, std::vector<std::string> evidence) {
             return self.local_score(g, var, evidence.begin(), evidence.end());
         })
@@ -239,6 +257,12 @@ PYBIND11_MODULE(pgm_dataset, m) {
         })
         .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
             return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
+        })
+        .def("local_score", [](CVLikelihood& self, NodeType node_type, std::string var, std::vector<std::string> evidence) {
+            return self.local_score(node_type, var, evidence.begin(), evidence.end());
+        })
+        .def("local_score", [](CVLikelihood& self, NodeType node_type, int idx, std::vector<int> evidence_idx) {
+            return self.local_score(node_type, idx, evidence_idx.begin(), evidence_idx.end());
         });
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");

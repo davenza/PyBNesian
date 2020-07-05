@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from scipy.stats import norm, gaussian_kde
 import pyarrow as pa
@@ -10,7 +11,6 @@ SIZE = 1000
 df = util_test.generate_normal_data(SIZE)
 
 seed = 0
-
 
 def numpy_local_score(node_type, data, variable, evidence):
     cv = CrossValidation(data, 10, seed)
@@ -49,6 +49,25 @@ def numpy_local_score(node_type, data, variable, evidence):
                 loglik += np.sum(k_joint.logpdf(test_node_data.to_numpy().T))
 
     return loglik
+
+def test_create():
+    s = CVLikelihood(df)
+    assert len(list(s.cv)) == 10
+    s = CVLikelihood(df, 5)
+    assert len(list(s.cv)) == 5
+    
+    s = CVLikelihood(df, 10, 0)
+    assert len(list(s.cv)) == 10
+    s2 = CVLikelihood(df, 10, 0)
+    assert len(list(s2.cv)) == 10
+
+    for (train_cv, test_cv), (train_cv2, test_cv2) in zip(s.cv, s2.cv):
+        assert train_cv.equals(train_cv2), "Train CV DataFrames with the same seed are not equal."
+        assert test_cv.equals(test_cv2), "Test CV DataFrames with the same seed are not equal."
+
+    with pytest.raises(ValueError) as ex:
+        s = CVLikelihood(df, SIZE+1)
+    assert "Cannot split" in str(ex.value)
 
 def test_local_score_gbn():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])

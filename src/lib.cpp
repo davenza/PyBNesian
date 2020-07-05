@@ -14,6 +14,7 @@
 #include <models/SemiparametricBN_NodeType.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>
+#include <learning/scores/holdout_likelihood.hpp>
 // #include <learning/scores/bic.hpp>
 #include <learning/parameter/mle.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
@@ -37,6 +38,7 @@ using models::BayesianNetwork;
 using models::NodeType;
 using learning::scores::BIC;
 using learning::scores::CVLikelihood;
+using learning::scores::HoldoutLikelihood;
 
 using util::ArcVector;
 
@@ -230,8 +232,14 @@ PYBIND11_MODULE(pgm_dataset, m) {
         });
 
     py::class_<CVLikelihood>(scores, "CVLikelihood")
-        .def(py::init<const DataFrame&, int>())
-        .def(py::init<const DataFrame&, int, int>())
+        .def(py::init<const DataFrame&, int>(),
+                py::arg("df"),
+                py::arg("k") = 10)
+        .def(py::init<const DataFrame&, int, int>(),
+                py::arg("df"),
+                py::arg("k") = 10,
+                py::arg("seed"))
+        .def_property_readonly("cv", &CVLikelihood::cv)
         .def("score", &CVLikelihood::score<SemiparametricBN<>>)
         .def("score", &CVLikelihood::score<GaussianNetwork<>>)
         .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, std::string var) {
@@ -264,6 +272,45 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("local_score", [](CVLikelihood& self, NodeType node_type, int idx, std::vector<int> evidence_idx) {
             return self.local_score(node_type, idx, evidence_idx.begin(), evidence_idx.end());
         });
+
+    py::class_<HoldoutLikelihood>(scores, "HoldoutLikelihood")
+        .def(py::init<const DataFrame&, double>(),
+                py::arg("df"),
+                py::arg("test_ratio") = 0.2)
+        .def(py::init<const DataFrame&, double, int>(),
+                py::arg("df"),
+                py::arg("test_ratio") = 0.2,
+                py::arg("seed"))
+        .def_property_readonly("holdout", &HoldoutLikelihood::holdout)
+        .def("training_data", &HoldoutLikelihood::training_data)
+        .def("test_data", &HoldoutLikelihood::test_data)
+        .def("score", &HoldoutLikelihood::score<SemiparametricBN<>>)
+        .def("score", &HoldoutLikelihood::score<GaussianNetwork<>>)
+        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, std::string var) {
+            return self.local_score(g, var);
+        })
+        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, std::string var) {
+            return self.local_score(g, var);
+        })
+        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, int idx) {
+            return self.local_score(g, idx);
+        })
+        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, int idx) {
+            return self.local_score(g, idx);
+        })
+        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, std::string var, std::vector<std::string> evidence) {
+            return self.local_score(g, var, evidence.begin(), evidence.end());
+        })
+        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, int idx, std::vector<int> evidence_idx) {
+            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
+        })
+        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, std::string var, std::vector<std::string> evidence) {
+            return self.local_score(g, var, evidence.begin(), evidence.end());
+        })
+        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
+            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
+        });
+
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 

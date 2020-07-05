@@ -60,6 +60,8 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
+        const CrossValidation& cv() { return m_cv; }
+
     private:
         CrossValidation m_cv;
     };

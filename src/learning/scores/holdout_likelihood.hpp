@@ -14,7 +14,8 @@ namespace learning::scores {
     class HoldoutLikelihood {
     public:
 
-        HoldoutLikelihood(const DataFrame& df, double test_ratio, int seed = std::random_device{}()) : m_holdout(df, test_ratio, seed) { }
+        HoldoutLikelihood(const DataFrame& df, double test_ratio) : m_holdout(df, test_ratio) { }
+        HoldoutLikelihood(const DataFrame& df, double test_ratio, int seed) : m_holdout(df, test_ratio, seed) { }
 
         template<typename Model>
         double score(const Model& model) {
@@ -126,6 +127,8 @@ namespace learning::scores {
 
         const DataFrame& training_data() const { return m_holdout.training_data(); }
         const DataFrame& test_data() const { return m_holdout.test_data(); }
+
+        const HoldOut& holdout() { return m_holdout; }
     private:
         HoldOut m_holdout;
     };

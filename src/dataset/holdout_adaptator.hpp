@@ -98,6 +98,10 @@ namespace dataset {
         HoldOut(const DataFrame& df, double test_ratio, int seed, bool include_null = false) :
                                                                 m_seed(seed)
         {
+            if (test_ratio <= 0 || test_ratio >= 1.0) {
+                throw std::invalid_argument("test_ratio must be a number between 0 and 1.");
+            }
+
             std::vector<int> indices;
             if (df.null_count() == 0 || include_null) {
                 indices.resize(df->num_rows());

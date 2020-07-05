@@ -165,6 +165,7 @@ namespace dataset {
                                                                                              indices(), 
                                                                                              limits(), 
                                                                                              include_null(include_null) {
+
             if (k > df->num_rows()) {
                 throw std::invalid_argument("Cannot split " + std::to_string(df->num_rows()) + " instances into " + std::to_string(k) + " folds.");
             }

@@ -56,7 +56,7 @@ ext_modules = [
          'src/util/validate_dtype.cpp',
          'src/learning/parameters/pybindings_mle.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
-        #  'src/learning/operators/operators.cpp',
+         'src/learning/operators/pybindings_operators.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          ],

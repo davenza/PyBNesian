@@ -18,6 +18,8 @@
 // #include <learning/scores/bic.hpp>
 #include <learning/parameters/mle.hpp>
 #include <learning/parameters/pybindings_mle.hpp>
+#include <learning/operators/operators.hpp>
+#include <learning/operators/pybindings_operators.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <util/util_types.hpp>
 
@@ -36,10 +38,12 @@ using factors::continuous::KDE;
 using factors::continuous::CKDE;
 using factors::FactorType;
 
-using models::BayesianNetwork;
+using models::BayesianNetwork, models::BayesianNetworkType;
 using learning::scores::BIC;
 using learning::scores::CVLikelihood;
 using learning::scores::HoldoutLikelihood;
+using learning::operators::AddArc, learning::operators::RemoveArc, learning::operators::FlipArc,
+      learning::operators::ChangeNodeType;
 
 using util::ArcVector;
 
@@ -91,7 +95,6 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
 
 template<typename Model>
 void register_ArcOperators(py::module& m, const char* model_name) {
-    
     std::string operator_name = std::string("Operator<") + model_name + ">";
     py::class_<Operator<Model>>(m, operator_name.c_str())
         .def("apply", &Operator<Model>::apply)
@@ -99,8 +102,28 @@ void register_ArcOperators(py::module& m, const char* model_name) {
         .def("delta", &Operator<Model>::delta)
         .def("type", &Operator<Model>::type);
 
-    // py::class_<ArcOperator<Model>>(m, std::string("Operator<") + model_name + ">")
-    //     .def(py::init);
+    std::string arcoperator_name = std::string("ArcOperator<") + model_name + ">";
+    py::class_<ArcOperator<Model>, Operator<Model>>(m, arcoperator_name.c_str())
+        .def("source", &ArcOperator<Model>::source)
+        .def("target", &ArcOperator<Model>::target);
+
+    std::string addarc_name = std::string("AddArc<") + model_name + ">";
+    py::class_<AddArc<Model>, ArcOperator<Model>>(m, addarc_name.c_str())
+        .def(py::init<const std::string&, const std::string&, double>())
+        .def("apply", &AddArc<Model>::apply)
+        .def("opposite", &AddArc<Model>::opposite);
+
+    std::string removearc_name = std::string("RemoveArc<") + model_name + ">";
+    py::class_<RemoveArc<Model>, ArcOperator<Model>>(m, removearc_name.c_str())
+        .def(py::init<const std::string&, const std::string&, double>())
+        .def("apply", &RemoveArc<Model>::apply)
+        .def("opposite", &RemoveArc<Model>::opposite);
+
+    std::string fliparc_name = std::string("FlipArc<") + model_name + ">";
+    py::class_<FlipArc<Model>, ArcOperator<Model>>(m, fliparc_name.c_str())
+        .def(py::init<const std::string&, const std::string&, double>())
+        .def("apply", &FlipArc<Model>::apply)
+        .def("opposite", &FlipArc<Model>::opposite);
 }
 
 PYBIND11_MODULE(pgm_dataset, m) {
@@ -217,6 +240,16 @@ PYBIND11_MODULE(pgm_dataset, m) {
     // /////////////////////////////
 
     auto models = m.def_submodule("models", "Models submodule.");
+
+    py::class_<BayesianNetworkType>(models, "BayesianNetworkType")
+        .def_property_readonly_static("GBN", [](const py::object&) { 
+            return BayesianNetworkType(BayesianNetworkType::GBN);
+        })
+        .def_property_readonly_static("SPBN", [](const py::object&) { 
+            return BayesianNetworkType(BayesianNetworkType::SPBN);
+        })
+        .def(py::self == py::self)
+        .def(py::self != py::self);
     
     register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
     auto spbn = register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
@@ -366,6 +399,18 @@ PYBIND11_MODULE(pgm_dataset, m) {
     register_ArcOperators<GaussianNetwork<>>(operators, "GaussianNetwork");
     register_ArcOperators<SemiparametricBN<>>(operators, "SemiparametricBN");
 
+    py::class_<ChangeNodeType<SemiparametricBN<>>, Operator<SemiparametricBN<>>>(m, "ChangeNodeType<SemiparametricBN>")
+        .def(py::init<const std::string&, FactorType, double>())
+        .def_property_readonly("node", &ChangeNodeType<SemiparametricBN<>>::node)
+        .def_property_readonly("node_type", &ChangeNodeType<SemiparametricBN<>>::node_type)
+        .def("apply", &ChangeNodeType<SemiparametricBN<>>::apply)
+        .def("opposite", &ChangeNodeType<SemiparametricBN<>>::opposite);
+
+
+    operators.def("AddArc", &learning::operators::addarc_wrapper_constructor, py::return_value_policy::move);
+    operators.def("RemoveArc", &learning::operators::removearc_wrapper_constructor, py::return_value_policy::move);
+    operators.def("FlipArc", &learning::operators::fliparc_wrapper_constructor, py::return_value_policy::move);
+    operators.def("ChangeNodeType", &learning::operators::changenodetype_wrapper_constructor, py::return_value_policy::move);
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 

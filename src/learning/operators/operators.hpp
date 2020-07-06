@@ -4,13 +4,15 @@
 #include <queue>
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
+#include <util/util_types.hpp>
+#include <util/bn_traits.hpp>
 
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 using VectorXb = Matrix<bool, Dynamic, 1>;
 
-using models::BayesianNetwork, models::SemiparametricBN, factors::FactorType;
-using util::ArcVector;
+using models::BayesianNetwork, factors::FactorType;
+using util::ArcVector, util::FactorTypeVector;
 
 namespace learning::operators {
 

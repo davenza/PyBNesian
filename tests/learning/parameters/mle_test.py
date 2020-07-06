@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pyarrow as pa
 from pgm_dataset.learning.parameters import MLE
-from pgm_dataset.models import NodeType
+from pgm_dataset.factors import FactorType
 import util_test
 
 SIZE = 10000
@@ -29,13 +29,13 @@ def numpy_fit_mle_lg(data, variable, evidence):
 
 def test_mle_create():
     with pytest.raises(ValueError) as ex:
-        mle = MLE(NodeType.CKDE)
+        mle = MLE(FactorType.CKDE)
     "MLE not available" in str(ex.value)
 
-    mle = MLE(NodeType.LinearGaussianCPD)
+    mle = MLE(FactorType.LinearGaussianCPD)
 
 def test_mle_lg():
-    mle = MLE(NodeType.LinearGaussianCPD)
+    mle = MLE(FactorType.LinearGaussianCPD)
 
     p = mle.estimate(df, "a", [])
     np_beta, np_var = numpy_fit_mle_lg(df, "a", [])

@@ -7,7 +7,7 @@
 
 using graph::AdjMatrixDag;
 using models::BayesianNetwork;
-using util::NodeTypeVector;
+using util::FactorTypeVector;
 
 namespace models {
 
@@ -19,73 +19,73 @@ namespace models {
         using node_descriptor = typename BayesianNetwork<SemiparametricBN<D>>::node_descriptor;
 
         SemiparametricBN(const std::vector<std::string>& nodes, 
-                         NodeTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(nodes),
-                                                       m_node_types(nodes.size()) {
+                         FactorTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(nodes),
+                                                       m_factor_types(nodes.size()) {
             
             for(auto& p : node_types) {
-                m_node_types[this->index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
         SemiparametricBN(const ArcVector& arcs, 
-                         NodeTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(arcs),
-                                                       m_node_types(this->num_nodes()) {
+                         FactorTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(arcs),
+                                                       m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
-                m_node_types[this->index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
         SemiparametricBN(const std::vector<std::string>& nodes, 
                          const ArcVector& arcs, 
-                         NodeTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(nodes, arcs),
-                                                       m_node_types(nodes.size()) {
+                         FactorTypeVector& node_types) : BayesianNetwork<SemiparametricBN<D>>(nodes, arcs),
+                                                       m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
-                m_node_types[this->index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
 
         SemiparametricBN(const std::vector<std::string>& nodes) : 
                                                     BayesianNetwork<SemiparametricBN<D>>(nodes),
-                                                    m_node_types(nodes.size()) {}
+                                                    m_factor_types(nodes.size()) {}
         SemiparametricBN(const ArcVector& arcs) : 
                                                     BayesianNetwork<SemiparametricBN<D>>(arcs),
-                                                    m_node_types(this->num_nodes()) {}
+                                                    m_factor_types(this->num_nodes()) {}
         SemiparametricBN(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
                                                     BayesianNetwork<SemiparametricBN<D>>(nodes, arcs),
-                                                    m_node_types(nodes.size()) {}
+                                                    m_factor_types(nodes.size()) {}
 
         static void requires(const DataFrame& df) {
             requires_continuous_data(df);
         }
 
-        NodeType node_type(node_descriptor node) const {
+        FactorType node_type(node_descriptor node) const {
             return node_type(index(node));
         }
         
-        NodeType node_type(int node_index) const {
-            return m_node_types[node_index];
+        FactorType node_type(int node_index) const {
+            return m_factor_types[node_index];
         }
 
-        NodeType node_type(const std::string& node) const {
+        FactorType node_type(const std::string& node) const {
             return node_type(this->index(node));
         }
 
-        void set_node_type(node_descriptor node, NodeType new_type) {
+        void set_node_type(node_descriptor node, FactorType new_type) {
             set_node_type(this->index(node), new_type);
         }
 
-        void set_node_type(int node_index, NodeType new_type) {
-            m_node_types[node_index] = new_type;
+        void set_node_type(int node_index, FactorType new_type) {
+            m_factor_types[node_index] = new_type;
         }
 
-        void set_node_type(const std::string& node, NodeType new_type) {
+        void set_node_type(const std::string& node, FactorType new_type) {
             set_node_type(this->index(node), new_type);
         }
 
         CPD create_cpd(const std::string& node) {
             auto pa = this->parents(node);
             switch(node_type(node)) {
-                case NodeType::LinearGaussianCPD:
+                case FactorType::LinearGaussianCPD:
                     return LinearGaussianCPD(node, pa);
-                case NodeType::CKDE:
+                case FactorType::CKDE:
                     return CKDE(node, pa);
                 default:
                     throw std::runtime_error("Unreachable code.");
@@ -95,22 +95,22 @@ namespace models {
         bool must_refit_cpd(const CPD& cpd) const {
             bool must_refit = BayesianNetwork<SemiparametricBN<D>>::must_refit_cpd(cpd);
             
-            return must_refit || (cpd.node_type() != m_node_types[this->index(cpd.variable())]);
+            return must_refit || (cpd.node_type() != m_factor_types[this->index(cpd.variable())]);
         }
         
         void compatible_cpd(const CPD& cpd) const {
             BayesianNetwork<SemiparametricBN<D>>::compatible_cpd(cpd);
 
             int index = this->index(cpd.variable());
-            if (m_node_types[index] != cpd.node_type()) {
+            if (m_factor_types[index] != cpd.node_type()) {
                 throw std::invalid_argument(
-                    "CPD defined with a different node type. Expected node type: " + m_node_types[index].ToString() +
+                    "CPD defined with a different node type. Expected node type: " + m_factor_types[index].ToString() +
                     ". CPD node type: " + cpd.node_type().ToString());
             }
         }
 
     private:
-        std::vector<NodeType> m_node_types;
+        std::vector<FactorType> m_factor_types;
     };
 
     template<typename D>

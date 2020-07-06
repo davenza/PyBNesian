@@ -9,7 +9,7 @@ using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 using VectorXb = Matrix<bool, Dynamic, 1>;
 
-using models::BayesianNetwork, models::SemiparametricBN, models::NodeType;
+using models::BayesianNetwork, models::SemiparametricBN, factors::FactorType;
 using util::ArcVector;
 
 namespace learning::operators {
@@ -186,7 +186,7 @@ namespace learning::operators {
 
         // static_assert(util::is_semiparametricbn_v<Model>, "ChangeNodeType operator can only be used with a SemiparametricBN.")
         ChangeNodeType(typename Model::node_descriptor node,
-                       NodeType new_node_type,
+                       FactorType new_node_type,
                        double delta) : Operator<Model>(delta, OperatorType::CHANGE_NODE_TYPE),
                                        m_node(node),
                                        m_new_node_type(new_node_type) {}
@@ -200,7 +200,7 @@ namespace learning::operators {
         }
 
         typename Model::node_descriptor node() const { return m_node; }
-        NodeType node_type() const { return m_new_node_type; }
+        FactorType node_type() const { return m_new_node_type; }
 
         std::string ToString(Model& m) const override {
             return "ChangeNodeType(" + m.name(node()) + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
@@ -212,7 +212,7 @@ namespace learning::operators {
         }
     private:
         typename Model::node_descriptor m_node;
-        NodeType m_new_node_type;
+        FactorType m_new_node_type;
     };
 
     template<typename Model>
@@ -652,7 +652,7 @@ namespace learning::operators {
 
         ChangeNodeTypeSet(Model& model, 
                           const Score& score, 
-                          NodeTypeVector& type_whitelist,
+                          FactorTypeVector& type_whitelist,
                           const VectorXd& local_score) : m_score(score),
                                                          delta(model.num_nodes()),
                                                          valid_op(model.num_nodes()),
@@ -688,7 +688,7 @@ namespace learning::operators {
         }
 
         void update_local_delta(Model& model, int node_index) {
-            NodeType type = model.node_type(node_index);
+            FactorType type = model.node_type(node_index);
             auto parents = model.parent_indices(node_index);
             delta(node_index) = m_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
                                 - m_local_score(node_index);
@@ -802,7 +802,7 @@ namespace learning::operators {
 
         template<typename = util::enable_if_semiparametricbn_t<Model, int>>
         OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
-                     ArcVector arc_whitelist, NodeTypeVector type_whitelist, int max_indegree) : m_score(score),
+                     ArcVector arc_whitelist, FactorTypeVector type_whitelist, int max_indegree) : m_score(score),
                                                                                                  local_score(model.num_nodes()),
                                                                                                  m_op_sets(),
                                                                                                  max_indegree(max_indegree) 

@@ -3,9 +3,9 @@
 
 #include <dataset/dataset.hpp>
 #include <dataset/crossvalidation_adaptator.hpp>
-#include <models/SemiparametricBN_NodeType.hpp>
+#include <factors/factors.hpp>
 
-using models::NodeType;
+using factors::FactorType;
 
 namespace learning::scores {
 
@@ -40,7 +40,7 @@ namespace learning::scores {
         template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
             auto parents = model.parent_indices(variable);
-            NodeType variable_type = model.node_type(variable);
+            FactorType variable_type = model.node_type(variable);
             
             return local_score(variable_type, variable, parents.begin(), parents.end());
         }
@@ -50,12 +50,12 @@ namespace learning::scores {
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
-            NodeType variable_type = model.node_type(variable);
+            FactorType variable_type = model.node_type(variable);
             return local_score(variable_type, variable, evidence_begin, evidence_end);
         }
 
         template<typename VarType, typename EvidenceIter>
-        double local_score(NodeType variable_type,
+        double local_score(FactorType variable_type,
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
@@ -83,12 +83,12 @@ namespace learning::scores {
     }
 
     template<typename VarType, typename EvidenceIter>
-    double CVLikelihood::local_score(NodeType variable_type,
+    double CVLikelihood::local_score(FactorType variable_type,
                                      const VarType& variable, 
                                      const EvidenceIter evidence_begin, 
                                      const EvidenceIter evidence_end) const {
 
-        if (variable_type == NodeType::LinearGaussianCPD) {
+        if (variable_type == FactorType::LinearGaussianCPD) {
             LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
 
             double loglik = 0;

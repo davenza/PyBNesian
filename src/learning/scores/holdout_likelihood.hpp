@@ -41,7 +41,7 @@ namespace learning::scores {
 
         template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
-            NodeType variable_type = model.node_type(variable);
+            FactorType variable_type = model.node_type(variable);
             auto parents = model.parent_indices(variable);
             return local_score(variable, variable_type, parents.begin(), parents.end());
         }
@@ -51,13 +51,13 @@ namespace learning::scores {
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
-            NodeType variable_type = model.node_type(variable);
+            FactorType variable_type = model.node_type(variable);
             return local_score(variable, variable_type, evidence_begin, evidence_end);
         }
 
         template<typename VarType, typename EvidenceIter>
         double local_score(const VarType& variable, 
-                           NodeType variable_type, 
+                           FactorType variable_type, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
@@ -145,10 +145,10 @@ namespace learning::scores {
 
     template<typename VarType, typename EvidenceIter>
     double HoldoutLikelihood::local_score(const VarType& variable, 
-                                          NodeType variable_type, 
+                                          FactorType variable_type, 
                                           const EvidenceIter evidence_begin, 
                                           const EvidenceIter evidence_end) const {
-        if (variable_type == NodeType::LinearGaussianCPD) {
+        if (variable_type == FactorType::LinearGaussianCPD) {
             LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
             cpd.fit(training_data());
             return cpd.slogpdf(test_data());

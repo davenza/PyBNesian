@@ -1,13 +1,13 @@
 #ifndef PGM_DATASET_SEMIPARAMETRICCPD_HPP
 #define PGM_DATASET_SEMIPARAMETRICCPD_HPP
 
+#include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
-#include <models/SemiparametricBN_NodeType.hpp>
 
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::CKDE;
-using models::NodeType;
+using factors::FactorType;
 
 namespace factors::continuous {
 
@@ -27,11 +27,11 @@ namespace factors::continuous {
         VectorXd logpdf(const DataFrame& df) const;
         double slogpdf(const DataFrame& df) const;
 
-        NodeType node_type() const {
+        FactorType node_type() const {
             if (std::holds_alternative<LinearGaussianCPD>(m_cpd))
-                return NodeType::LinearGaussianCPD;
+                return FactorType::LinearGaussianCPD;
             else
-                return NodeType::CKDE;
+                return FactorType::CKDE;
         }
 
         LinearGaussianCPD& as_lg() {

@@ -8,15 +8,16 @@
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <factors/factors.hpp>
 #include <graph/dag.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
-#include <models/SemiparametricBN_NodeType.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>
 #include <learning/scores/holdout_likelihood.hpp>
 // #include <learning/scores/bic.hpp>
 #include <learning/parameters/mle.hpp>
+#include <learning/parameters/pybindings_mle.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <util/util_types.hpp>
 
@@ -33,9 +34,9 @@ using namespace ::graph;
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::KDE;
 using factors::continuous::CKDE;
+using factors::FactorType;
 
 using models::BayesianNetwork;
-using models::NodeType;
 using learning::scores::BIC;
 using learning::scores::CVLikelihood;
 using learning::scores::HoldoutLikelihood;
@@ -131,6 +132,18 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("test_data", &HoldOut::test_data);
 
     auto factors = m.def_submodule("factors", "Factors submodule.");
+    
+    py::class_<FactorType>(factors, "FactorType")
+        .def_property_readonly_static("LinearGaussianCPD", [](const py::object&) { 
+            return FactorType(FactorType::LinearGaussianCPD);
+        })
+        .def_property_readonly_static("CKDE", [](const py::object&) { 
+            return FactorType(FactorType::CKDE);
+        })
+        .def("opposite", &FactorType::opposite)
+        .def(py::self == py::self)
+        .def(py::self != py::self);
+
     auto continuous = factors.def_submodule("continuous", "Continuous factors submodule.");
 
     py::class_<LinearGaussianCPD>(continuous, "LinearGaussianCPD")
@@ -191,27 +204,16 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     auto models = m.def_submodule("models", "Models submodule.");
     
-    py::class_<NodeType>(models, "NodeType")
-        .def_property_readonly_static("LinearGaussianCPD", [](const py::object&) { 
-            return NodeType(NodeType::LinearGaussianCPD);
-        })
-        .def_property_readonly_static("CKDE", [](const py::object&) { 
-            return NodeType(NodeType::CKDE);
-        })
-        .def("opposite", &NodeType::opposite)
-        .def(py::self == py::self)
-        .def(py::self != py::self);
-
     register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
     auto spbn = register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
 
-    spbn.def(py::init<const std::vector<std::string>&, NodeTypeVector&>())
-        .def(py::init<const ArcVector&, NodeTypeVector&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&, NodeTypeVector&>())
+    spbn.def(py::init<const std::vector<std::string>&, FactorTypeVector&>())
+        .def(py::init<const ArcVector&, FactorTypeVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcVector&, FactorTypeVector&>())
         .def("node_type", py::overload_cast<const std::string&>(&SemiparametricBN<>::node_type, py::const_))
         .def("node_type", py::overload_cast<int>(&SemiparametricBN<>::node_type, py::const_))
-        .def("set_node_type", py::overload_cast<const std::string&, NodeType>(&SemiparametricBN<>::set_node_type))
-        .def("set_node_type", py::overload_cast<int, NodeType>(&SemiparametricBN<>::set_node_type));
+        .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN<>::set_node_type))
+        .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN<>::set_node_type));
       
     auto learning = m.def_submodule("learning", "Learning submodule");
     auto scores = learning.def_submodule("scores", "Learning scores submodule.");
@@ -267,10 +269,10 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
             return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
         })
-        .def("local_score", [](CVLikelihood& self, NodeType node_type, std::string var, std::vector<std::string> evidence) {
+        .def("local_score", [](CVLikelihood& self, FactorType node_type, std::string var, std::vector<std::string> evidence) {
             return self.local_score(node_type, var, evidence.begin(), evidence.end());
         })
-        .def("local_score", [](CVLikelihood& self, NodeType node_type, int idx, std::vector<int> evidence_idx) {
+        .def("local_score", [](CVLikelihood& self, FactorType node_type, int idx, std::vector<int> evidence_idx) {
             return self.local_score(node_type, idx, evidence_idx.begin(), evidence_idx.end());
         });
 

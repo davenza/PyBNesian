@@ -6,7 +6,7 @@
 namespace py = pybind11;
 
 using namespace dataset;
-using util::ArcVector, util::NodeTypeVector;
+using util::ArcVector, util::FactorTypeVector;
 
 namespace util {
 
@@ -40,10 +40,10 @@ namespace util {
         return res;
     }
 
-    NodeTypeVector check_node_type_list(const DataFrame& df, const std::vector<py::tuple>& list) {
+    FactorTypeVector check_node_type_list(const DataFrame& df, const std::vector<py::tuple>& list) {
         auto schema = df->schema();
 
-        NodeTypeVector res;
+        FactorTypeVector res;
         res.reserve(list.size());
 
         for (auto tup : list) {
@@ -58,8 +58,8 @@ namespace util {
                     throw std::invalid_argument("Node " + s + " not present in the data set.");
 
                 auto n = tup[1].cast<std::string>();
-                if (n == "LG") res.push_back(std::pair(std::move(s), NodeType::LinearGaussianCPD));
-                else if (n == "CKDE") res.push_back(std::pair(std::move(s), NodeType::CKDE));
+                if (n == "LG") res.push_back(std::pair(std::move(s), FactorType::LinearGaussianCPD));
+                else if (n == "CKDE") res.push_back(std::pair(std::move(s), FactorType::CKDE));
                 else
                     throw std::invalid_argument("Wrong node type \"" + n + "\"specified. The possible alternatives are " 
                                 "\"LG\" (Linear Gaussian CPD) or \"CKDE\" (Conditional KDE CPD).");

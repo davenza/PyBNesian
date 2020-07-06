@@ -277,7 +277,7 @@ namespace learning::algorithms {
             }
 
             best_op->apply(current_model);
-            op.update_scores(current_model, best_op);
+            op.update_scores(current_model, best_op.get());
         //     // std::cout << "New op" << std::endl;
             ++iter;
         }
@@ -334,7 +334,7 @@ namespace learning::algorithms {
                 tabu_set.insert(best_op->opposite());
             }
 
-            op_pool.update_scores(current_model, best_op);
+            op_pool.update_scores(current_model, best_op.get());
             ++iter;
         }
 

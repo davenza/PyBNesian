@@ -89,6 +89,20 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
             .def(py::init<const std::vector<std::string>&, const ArcVector&>());
 }
 
+template<typename Model>
+void register_ArcOperators(py::module& m, const char* model_name) {
+    
+    std::string operator_name = std::string("Operator<") + model_name + ">";
+    py::class_<Operator<Model>>(m, operator_name.c_str())
+        .def("apply", &Operator<Model>::apply)
+        .def("opposite", &Operator<Model>::opposite)
+        .def("delta", &Operator<Model>::delta)
+        .def("type", &Operator<Model>::type);
+
+    // py::class_<ArcOperator<Model>>(m, std::string("Operator<") + model_name + ">")
+    //     .def(py::init);
+}
+
 PYBIND11_MODULE(pgm_dataset, m) {
     pyarrow::import_pyarrow();
 
@@ -132,7 +146,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("test_data", &HoldOut::test_data);
 
     auto factors = m.def_submodule("factors", "Factors submodule.");
-    
+
     py::class_<FactorType>(factors, "FactorType")
         .def_property_readonly_static("LinearGaussianCPD", [](const py::object&) { 
             return FactorType(FactorType::LinearGaussianCPD);
@@ -316,12 +330,9 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     auto parameters = learning.def_submodule("parameters", "Learning parameters submodule.");
 
-    // TODO Fit LinearGaussianCPD with ParamsClass.
-
     parameters.def("MLE", &learning::parameters::mle_python_wrapper, py::return_value_policy::move);
-    // py::class_(parameters, "MLE")
-    //     .def(py::init<NodeType>());
 
+    // TODO Fit LinearGaussianCPD with ParamsClass.
     py::class_<LinearGaussianCPD::ParamsClass>(parameters, "MLELinearGaussianParams")
         .def_readwrite("beta", &LinearGaussianCPD::ParamsClass::beta)
         .def_readwrite("variance", &LinearGaussianCPD::ParamsClass::variance);
@@ -333,6 +344,27 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, int idx, std::vector<int> evidence_idx) {
             return self.estimate(df, idx, evidence_idx.begin(), evidence_idx.end());
         });
+
+    auto operators = learning.def_submodule("operators", "Learning operators submodule");
+
+    py::class_<OperatorType>(operators, "OperatorType")
+        .def_property_readonly_static("ADD_ARC", [](const py::object&) { 
+            return OperatorType(OperatorType::ADD_ARC);
+        })
+        .def_property_readonly_static("REMOVE_ARC", [](const py::object&) { 
+            return OperatorType(OperatorType::REMOVE_ARC);
+        })
+        .def_property_readonly_static("FLIP_ARC", [](const py::object&) { 
+            return OperatorType(OperatorType::FLIP_ARC);
+        })
+        .def_property_readonly_static("CHANGE_NODE_TYPE", [](const py::object&) { 
+            return OperatorType(OperatorType::CHANGE_NODE_TYPE);
+        })
+        .def(py::self == py::self)
+        .def(py::self != py::self);
+
+    register_ArcOperators<GaussianNetwork<>>(operators, "GaussianNetwork");
+    register_ArcOperators<SemiparametricBN<>>(operators, "SemiparametricBN");
 
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");

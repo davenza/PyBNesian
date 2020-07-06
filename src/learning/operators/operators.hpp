@@ -361,7 +361,7 @@ namespace learning::operators {
         virtual void cache_scores(Model& model) = 0;
         virtual std::unique_ptr<Operator<Model>> find_max(Model& model) = 0;
         virtual std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) = 0;
-        virtual void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) = 0;
+        virtual void update_scores(Model& model, Operator<Model>* op) = 0;
     };
 
     template<typename Model, typename Score>
@@ -383,7 +383,7 @@ namespace learning::operators {
         template<bool limited_indigree>
         std::unique_ptr<Operator<Model>> find_max_indegree(Model& model, OperatorTabuSet<Model>& tabu_set);
 
-        void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) override;
+        void update_scores(Model& model, Operator<Model>* op) override;
 
         void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
 
@@ -584,22 +584,22 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorSet<Model, Score>:: update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) {
+    void ArcOperatorSet<Model, Score>:: update_scores(Model& model, Operator<Model>* op) {
         switch(op->type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                 update_node_arcs_scores(model, dwn_op->target());
             }
                 break;
             case OperatorType::FLIP_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                 update_node_arcs_scores(model, dwn_op->source());
                 update_node_arcs_scores(model, dwn_op->target());
             }
                 break;
             case OperatorType::CHANGE_NODE_TYPE: {
-                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
                 update_node_arcs_scores(model, dwn_op->node());
             }
                 break;
@@ -681,7 +681,7 @@ namespace learning::operators {
         void cache_scores(Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) override;
-        void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) override;
+        void update_scores(Model& model, Operator<Model>* op) override;
 
         void update_local_delta(Model& model, typename Model::node_descriptor node) {
             update_local_delta(model, model.index(node));
@@ -745,22 +745,22 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ChangeNodeTypeSet<Model, Score>::update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) {
+    void ChangeNodeTypeSet<Model, Score>::update_scores(Model& model, Operator<Model>* op) {
         switch(op->type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                 update_local_delta(model, dwn_op->target());
             }
                 break;
             case OperatorType::FLIP_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                 update_local_delta(model, dwn_op->source());
                 update_local_delta(model, dwn_op->target());
             }
                 break;
             case OperatorType::CHANGE_NODE_TYPE: {
-                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
                 int index = model.index(dwn_op->node());
                 delta(index) = -dwn_op->delta();
             }
@@ -832,7 +832,7 @@ namespace learning::operators {
         void cache_scores(Model& model);
         std::unique_ptr<Operator<Model>> find_max(Model& model);
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set);
-        void update_scores(Model& model, std::unique_ptr<Operator<Model>>& op);
+        void update_scores(Model& model, Operator<Model>* op);
         
         void update_local_score(Model& model, typename Model::node_descriptor node) {
             update_local_score(model, model.index(node));
@@ -908,22 +908,22 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void OperatorPool<Model, Score>::update_scores(Model& model, std::unique_ptr<Operator<Model>>& op) {
+    void OperatorPool<Model, Score>::update_scores(Model& model, Operator<Model>* op) {
         switch(op->type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                 update_local_score(model, dwn_op->target());
             }
                 break;
             case OperatorType::FLIP_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
                 update_local_score(model, dwn_op->source());
                 update_local_score(model, dwn_op->target());
             }
                 break;
             case OperatorType::CHANGE_NODE_TYPE: {
-                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op.get());
+                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
                 update_local_score(model, dwn_op->node());
             }
                 break;

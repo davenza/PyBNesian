@@ -77,7 +77,7 @@ namespace learning::operators {
         
         OperatorType type() const { return m_type; }
 
-        virtual std::string ToString(Model& m) const = 0;
+        virtual std::string ToString() const = 0;
 
         virtual void print(std::ostream& out) const;
     private:
@@ -88,17 +88,17 @@ namespace learning::operators {
     template<typename Model>
     class ArcOperator : public Operator<Model> {
     public:
-        ArcOperator(typename Model::node_descriptor source, 
-                    typename Model::node_descriptor target,
+        ArcOperator(const std::string& source, 
+                    const std::string& target,
                     double delta,
                     OperatorType type) : Operator<Model>(delta, type), m_source(source), m_target(target) {}
 
-        typename Model::node_descriptor source() const { return m_source; }
-        typename Model::node_descriptor target() const { return m_target; }
+        const std::string& source() const { return m_source; }
+        const std::string& target() const { return m_target; }
 
     private:
-        typename Model::node_descriptor m_source;
-        typename Model::node_descriptor m_target;
+        const std::string& m_source;
+        const std::string& m_target;
     };
 
     template<typename Model>
@@ -107,8 +107,8 @@ namespace learning::operators {
     template<typename Model>
     class AddArc : public ArcOperator<Model> {
     public:
-        AddArc(typename Model::node_descriptor source, 
-               typename Model::node_descriptor target,
+        AddArc(const std::string& source, 
+               const std::string& target,
                double delta) :  ArcOperator<Model>(source, target, delta, OperatorType::ADD_ARC) {}
         
         void apply(Model& m) override {
@@ -119,8 +119,8 @@ namespace learning::operators {
             return std::make_unique<RemoveArc<Model>>(this->source(), this->target(), -this->delta());
         }
         
-        std::string ToString(Model& m) const override {
-            return "AddArc(" + m.name(this->source()) + " -> " + m.name(this->target()) + "; " + std::to_string(this->delta()) + ")";
+        std::string ToString() const override {
+            return "AddArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
 
         }
 
@@ -132,8 +132,8 @@ namespace learning::operators {
     template<typename Model>
     class RemoveArc : public ArcOperator<Model> {
     public:
-        RemoveArc(typename Model::node_descriptor source, 
-                  typename Model::node_descriptor target,
+        RemoveArc(const std::string& source, 
+                  const std::string& target,
                   double delta) : ArcOperator<Model>(source, target, delta, OperatorType::REMOVE_ARC) {}
         
         void apply(Model& m) override {
@@ -144,8 +144,8 @@ namespace learning::operators {
             return std::make_unique<AddArc<Model>>(this->source(), this->target(), -this->delta());
         }
 
-        std::string ToString(Model& m) const override {
-            return "RemoveArc(" + m.name(this->source()) + " -> " + m.name(this->target()) + "; " + std::to_string(this->delta()) + ")";
+        std::string ToString() const override {
+            return "RemoveArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
 
         }
 
@@ -157,8 +157,8 @@ namespace learning::operators {
     template<typename Model>
     class FlipArc : public ArcOperator<Model> {
     public:
-        FlipArc(typename Model::node_descriptor source, 
-                typename Model::node_descriptor target,
+        FlipArc(const std::string& source, 
+                const std::string& target,
                 double delta) : ArcOperator<Model>(source, target, delta, OperatorType::FLIP_ARC) {}
 
         void apply(Model& m) override {
@@ -170,8 +170,8 @@ namespace learning::operators {
             return std::make_unique<FlipArc<Model>>(this->target(), this->source(), -this->delta());
         }
 
-        std::string ToString(Model& m) const override {
-            return "FlipArc(" + m.name(this->source()) + " -> " + m.name(this->target()) + "; " + std::to_string(this->delta()) + ")";
+        std::string ToString() const override {
+            return "FlipArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
 
         }
 
@@ -185,7 +185,7 @@ namespace learning::operators {
     public:
 
         // static_assert(util::is_semiparametricbn_v<Model>, "ChangeNodeType operator can only be used with a SemiparametricBN.")
-        ChangeNodeType(typename Model::node_descriptor node,
+        ChangeNodeType(const std::string& node,
                        FactorType new_node_type,
                        double delta) : Operator<Model>(delta, OperatorType::CHANGE_NODE_TYPE),
                                        m_node(node),
@@ -199,11 +199,11 @@ namespace learning::operators {
             return std::make_unique<ChangeNodeType<Model>>(m_node, m_new_node_type.opposite(), -this->delta());
         }
 
-        typename Model::node_descriptor node() const { return m_node; }
+        const std::string& node() const { return m_node; }
         FactorType node_type() const { return m_new_node_type; }
 
-        std::string ToString(Model& m) const override {
-            return "ChangeNodeType(" + m.name(node()) + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
+        std::string ToString() const override {
+            return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
 
         }
 
@@ -211,7 +211,7 @@ namespace learning::operators {
             out << "ChangeNodeType(" << node() << ", " << node_type().ToString() << "; " << this->delta() << ")";
         }
     private:
-        typename Model::node_descriptor m_node;
+        const std::string& m_node;
         FactorType m_new_node_type;
     };
 
@@ -224,28 +224,27 @@ namespace learning::operators {
     template<typename Model>
     class HashOperator {
     public:
-        HashOperator(int num_nodes) : m_num_nodes(num_nodes) {}
-
         inline std::size_t operator()(Operator<Model>* const op) const {
-            std::size_t h = op->type() * (m_num_nodes * m_num_nodes);
             switch(op->type()) {
                 case OperatorType::ADD_ARC:
                 case OperatorType::REMOVE_ARC:
                 case OperatorType::FLIP_ARC: {
                     auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                    h += (dwn_op->source() * m_num_nodes) + (dwn_op->target());
+                    auto hasher = std::hash<std::string>{};
+                    return (hasher(dwn_op->source()) << (op->type()+1)) ^ hasher(dwn_op->target());
                 }
                 break;
                 case OperatorType::CHANGE_NODE_TYPE: {
                     auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
-                    h += (dwn_op->node_type() * m_num_nodes) + (dwn_op->node());
+                    auto hasher = std::hash<std::string>{};
+
+                    return hasher(dwn_op->node()) * dwn_op->node_type();
                 }
                 break;
+                default:
+                    throw std::invalid_argument("[HashOperator] Wrong Operator.");
             }
-            return h;
         }
-    private:
-        int m_num_nodes;
     };
 
     template<typename Model>
@@ -285,7 +284,7 @@ namespace learning::operators {
     template<typename Model>
     class OperatorTabuSet {
     public:
-        OperatorTabuSet(const Model& model) : m_map(10, HashOperator<Model>(model.num_nodes()), OperatorPtrEqual<Model>()) { }
+        OperatorTabuSet() : m_map() { }
 
         void insert(std::unique_ptr<Operator<Model>> op) {
             m_map.insert({op.get(), std::move(op)});
@@ -385,7 +384,7 @@ namespace learning::operators {
 
         void update_scores(Model& model, Operator<Model>* op) override;
 
-        void update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node);
+        void update_node_arcs_scores(Model& model, const std::string& dest_node);
 
     private:
         const Score& m_score;
@@ -519,21 +518,21 @@ namespace learning::operators {
             auto dest = idx / model.num_nodes();
 
             if(model.has_edge(source, dest)) {
-                return std::make_unique<RemoveArc_t>(model.node(source), model.node(dest), delta(source, dest));
+                return std::make_unique<RemoveArc_t>(model.name(source), model.name(dest), delta(source, dest));
             } else if (model.has_edge(dest, source) && model.can_flip_edge(dest, source)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_unique<FlipArc_t>(model.node(dest), model.node(source), delta(dest, source));
+                return std::make_unique<FlipArc_t>(model.name(dest), model.name(source), delta(dest, source));
             } else if (model.can_add_edge(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_unique<AddArc_t>(model.node(source), model.node(dest), delta(source, dest));
+                return std::make_unique<AddArc_t>(model.name(source), model.name(dest), delta(source, dest));
             }
         }
 
@@ -556,7 +555,7 @@ namespace learning::operators {
             auto dest = idx / model.num_nodes();
 
             if(model.has_edge(source, dest)) {
-                std::unique_ptr<Operator<Model>> op = std::make_unique<RemoveArc_t>(model.node(source), model.node(dest), delta(source, dest));
+                std::unique_ptr<Operator<Model>> op = std::make_unique<RemoveArc_t>(model.name(source), model.name(dest), delta(source, dest));
                 if (!tabu_set.contains(op))
                     return std::move(op);
             } else if (model.has_edge(dest, source) && model.can_flip_edge(dest, source)) {
@@ -565,7 +564,7 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::unique_ptr<Operator<Model>> op = std::make_unique<FlipArc_t>(model.node(dest), model.node(source), delta(dest, source));
+                std::unique_ptr<Operator<Model>> op = std::make_unique<FlipArc_t>(model.name(dest), model.name(source), delta(dest, source));
                 if (!tabu_set.contains(op))
                     return std::move(op);
             } else if (model.can_add_edge(source, dest)) {
@@ -574,7 +573,7 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::unique_ptr<Operator<Model>> op = std::make_unique<AddArc_t>(model.node(source), model.node(dest), delta(source, dest));
+                std::unique_ptr<Operator<Model>> op = std::make_unique<AddArc_t>(model.name(source), model.name(dest), delta(source, dest));
                 if (!tabu_set.contains(op))
                     return std::move(op);
             }
@@ -607,10 +606,10 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorSet<Model, Score>::update_node_arcs_scores(Model& model, typename Model::node_descriptor dest_node) {
+    void ArcOperatorSet<Model, Score>::update_node_arcs_scores(Model& model, const std::string& dest_node) {
 
-        auto parents = model.parent_indices(dest_node);
         auto dest_idx = model.index(dest_node);
+        auto parents = model.parent_indices(dest_idx);
         
         for (int i = 0; i < model.num_nodes(); ++i) {
             if (valid_op(i, dest_idx)) {
@@ -683,7 +682,7 @@ namespace learning::operators {
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) override;
         void update_scores(Model& model, Operator<Model>* op) override;
 
-        void update_local_delta(Model& model, typename Model::node_descriptor node) {
+        void update_local_delta(Model& model, const std::string& node) {
             update_local_delta(model, model.index(node));
         }
 
@@ -719,7 +718,7 @@ namespace learning::operators {
         auto node_type = model.node_type(idx_max);
 
         if(valid_op(idx_max))
-            return std::make_unique<ChangeNodeType_t>(model.node(idx_max), node_type.opposite(), *max_element);
+            return std::make_unique<ChangeNodeType_t>(model.name(idx_max), node_type.opposite(), *max_element);
         else
             return nullptr;
     }
@@ -735,7 +734,7 @@ namespace learning::operators {
         for(auto it = sorted_idx.begin(); it != sorted_idx.end(); ++it) {
             int idx_max = *it;
             auto node_type = model.node_type(idx_max);
-            std::unique_ptr<Operator<Model>> op = std::make_unique<ChangeNodeType_t>(model.node(idx_max), node_type.opposite(), delta(idx_max));
+            std::unique_ptr<Operator<Model>> op = std::make_unique<ChangeNodeType_t>(model.name(idx_max), node_type.opposite(), delta(idx_max));
             if (tabu_set.contains(op))
                 return std::move(op);
 
@@ -834,7 +833,7 @@ namespace learning::operators {
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set);
         void update_scores(Model& model, Operator<Model>* op);
         
-        void update_local_score(Model& model, typename Model::node_descriptor node) {
+        void update_local_score(Model& model, const std::string& node) {
             update_local_score(model, model.index(node));
         }
         

@@ -111,7 +111,7 @@ namespace learning::scores {
                 }
                 case OperatorType::CHANGE_NODE_TYPE: {
                     auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
-                    auto node_index = dwn_op->node();
+                    auto node_index = model.index(dwn_op->node());
                     auto new_node_type = dwn_op->node_type();
                     auto parents = model.parent_indices(node_index);
                     
@@ -124,7 +124,6 @@ namespace learning::scores {
             }
         }
     
-
         const DataFrame& training_data() const { return m_holdout.training_data(); }
         const DataFrame& test_data() const { return m_holdout.test_data(); }
 

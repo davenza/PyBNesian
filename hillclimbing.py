@@ -88,7 +88,7 @@ spambase = spambase.astype(np.float64)
 spambase = spambase.drop("class", axis=1)
 
 tic = time.time()
-hc(spambase, "spbn", "predic-l", ["arcs", "node_type"], [], [], [], 0, 0, 0, 5, "matrix")
+hc(spambase, "gbn", "bic", ["arcs"], [], [], [], 0, 0, 0, 5, "matrix")
 toc = time.time()
 print("Time: " + str((toc-tic)*1000) + "ms")
 

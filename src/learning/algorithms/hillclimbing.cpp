@@ -308,7 +308,7 @@ namespace learning::algorithms {
         int p = 0;
         double validation_offset = 0;
 
-        OperatorTabuSet<Model> tabu_set(current_model);
+        OperatorTabuSet<Model> tabu_set;
         
         auto iter = 0;
         while(iter < max_iters) {
@@ -317,7 +317,7 @@ namespace learning::algorithms {
                 break;
             }
 
-            std::cout << "Best op: " << best_op->ToString(current_model) << std::endl;
+            std::cout << "Best op: " << best_op->ToString() << std::endl;
 
             double validation_delta = validation_score.delta_score(current_model, best_op.get(), local_validation);
             
@@ -342,6 +342,4 @@ namespace learning::algorithms {
         std::cout << "Validation score fun: " << validation_score.score(best_model) << std::endl;
         std::cout << "Final model: " << best_model << std::endl;
     }
-
-
 }

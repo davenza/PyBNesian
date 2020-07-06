@@ -16,7 +16,7 @@
 #include <learning/scores/cv_likelihood.hpp>
 #include <learning/scores/holdout_likelihood.hpp>
 // #include <learning/scores/bic.hpp>
-#include <learning/parameter/mle.hpp>
+#include <learning/parameters/mle.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <util/util_types.hpp>
 
@@ -144,6 +144,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("fit", &LinearGaussianCPD::fit)
         .def("logpdf", &LinearGaussianCPD::logpdf, py::return_value_policy::move)
         .def("slogpdf", &LinearGaussianCPD::slogpdf);
+
 
     py::class_<KDE>(continuous, "KDE")
         .def(py::init<std::vector<std::string>>())
@@ -309,6 +310,26 @@ PYBIND11_MODULE(pgm_dataset, m) {
         })
         .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
             return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
+        });
+
+    auto parameters = learning.def_submodule("parameters", "Learning parameters submodule.");
+
+    // TODO Fit LinearGaussianCPD with ParamsClass.
+
+    parameters.def("MLE", &learning::parameters::mle_python_wrapper, py::return_value_policy::move);
+    // py::class_(parameters, "MLE")
+    //     .def(py::init<NodeType>());
+
+    py::class_<LinearGaussianCPD::ParamsClass>(parameters, "MLELinearGaussianParams")
+        .def_readwrite("beta", &LinearGaussianCPD::ParamsClass::beta)
+        .def_readwrite("variance", &LinearGaussianCPD::ParamsClass::variance);
+
+    py::class_<MLE<LinearGaussianCPD>>(parameters, "MLE<LinearGaussianCPD>")
+        .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, std::string var, std::vector<std::string> evidence) {
+            return self.estimate(df, var, evidence.begin(), evidence.end());
+        })
+        .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, int idx, std::vector<int> evidence_idx) {
+            return self.estimate(df, idx, evidence_idx.begin(), evidence_idx.end());
         });
 
 

@@ -2,11 +2,11 @@
 #define PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
-#include <learning/parameter/mle.hpp>
+#include <learning/parameters/mle.hpp>
 
 using factors::continuous::LinearGaussianCPD;
 
-namespace learning::parameter {
+namespace learning::parameters {
 
     template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceIter>
     typename LinearGaussianCPD::ParamsClass _fit_1parent(const DataFrame& df,

@@ -54,6 +54,7 @@ ext_modules = [
          'src/dataset/holdout_adaptator.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
+         'src/learning/parameters/mle_base.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
         #  'src/learning/operators/operators.cpp',
          'src/models/BayesianNetwork.cpp',

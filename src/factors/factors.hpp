@@ -3,13 +3,8 @@
 
 namespace factors {
 
-    template<typename Derived>
-    class Factor {
-    public:
-        Factor(const std::string variable, const std::vector<std::string> evidence);
 
-    private:
-    };
+
 }
 
 

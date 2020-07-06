@@ -4,14 +4,14 @@
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
-#include <learning/parameter/mle.hpp>
+#include <learning/parameters/mle.hpp>
 #include <util/math_constants.hpp>
 #include <util/bn_traits.hpp>
 
 using factors::continuous::LinearGaussianCPD;
 using namespace dataset;
 using models::GaussianNetwork;
-using learning::parameter::MLE;
+using learning::parameters::MLE;
 
 namespace learning::scores {
 

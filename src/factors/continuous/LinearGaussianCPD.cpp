@@ -6,7 +6,7 @@
 #include <util/bit_util.hpp>
 #include <util/math_constants.hpp>
 #include <Eigen/Dense>
-#include <learning/parameter/mle.hpp>
+#include <learning/parameters/mle.hpp>
 
 #include <arrow/compute/kernels/cast.h>
 #include <arrow/compute/context.h>
@@ -21,7 +21,7 @@ using Eigen::Matrix, Eigen::Array, Eigen::Dynamic, Eigen::Map, Eigen::MatrixBase
 
 using dataset::DataFrame;
 
-using learning::parameter::MLE;
+using learning::parameters::MLE;
 using util::pi;
 
 typedef std::shared_ptr<arrow::Array> Array_ptr;
@@ -55,7 +55,7 @@ namespace factors::continuous {
     void LinearGaussianCPD::fit(const DataFrame& df) {
         MLE<LinearGaussianCPD> mle;
 
-        auto params = mle.estimate(df, m_variable, m_evidence);
+        auto params = mle.estimate(df, m_variable, m_evidence.begin(), m_evidence.end());
         
         m_beta = params.beta;
         m_variance = params.variance;

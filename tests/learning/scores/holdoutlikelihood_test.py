@@ -11,7 +11,6 @@ df = util_test.generate_normal_data(SIZE)
 seed = 0
 
 def numpy_local_score(node_type, training_data, test_data, variable, evidence):
-
     if isinstance(variable, str):
         node_data = training_data.loc[:, [variable] + evidence].dropna()
         variable_data = node_data.loc[:, variable]

@@ -15,6 +15,8 @@ namespace learning::operators {
     py::object removearc_wrapper_constructor(BayesianNetworkType bn, std::string source, std::string dest, double delta);
     py::object fliparc_wrapper_constructor(BayesianNetworkType bn, std::string source, std::string dest, double delta);
     py::object changenodetype_wrapper_constructor(BayesianNetworkType bn, std::string node, FactorType new_factor, double delta);
+    
+    py::object operatortabuset_wrapper_constructor(BayesianNetworkType bn);
 }
 
 #endif //PGM_DATASET_PYBINDINGS_OPERATORS_HPP

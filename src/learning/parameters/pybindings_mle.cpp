@@ -8,8 +8,8 @@ namespace learning::parameters {
     py::object mle_python_wrapper(FactorType f) {
         switch(f) {
             case FactorType::LinearGaussianCPD: {
-                auto mle = std::make_unique<MLE<LinearGaussianCPD>>();
-                auto pyobject = py::cast(mle.get());
+                auto* mle = new MLE<LinearGaussianCPD>();
+                auto pyobject = py::cast(mle);
                 return std::move(pyobject);
             }
             default:

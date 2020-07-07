@@ -43,7 +43,9 @@ using learning::scores::BIC;
 using learning::scores::CVLikelihood;
 using learning::scores::HoldoutLikelihood;
 using learning::operators::AddArc, learning::operators::RemoveArc, learning::operators::FlipArc,
-      learning::operators::ChangeNodeType;
+      learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, 
+      learning::operators::OperatorSetType, learning::operators::OperatorSet, 
+      learning::operators::ArcOperatorSet;
 
 using util::ArcVector;
 
@@ -52,22 +54,23 @@ template<typename DerivedBN>
 py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
     using BaseClass = BayesianNetwork<DerivedBN>;
     std::string base_name = std::string("BayesianNetwork<") + derivedbn_name + ">";
+    // TODO: Implement copy operation.
     py::class_<BaseClass>(m, base_name.c_str())
         .def("num_nodes", &BaseClass::num_nodes)
         .def("num_edges", &BaseClass::num_edges)
-        .def("nodes", &BaseClass::nodes)
-        .def("indices", &BaseClass::indices)
+        .def("nodes", &BaseClass::nodes, py::return_value_policy::reference_internal)
+        .def("indices", &BaseClass::indices, py::return_value_policy::reference_internal)
         .def("index", py::overload_cast<const std::string&>(&BaseClass::index, py::const_))
         .def("contains_node", &BaseClass::contains_node)
-        .def("name", py::overload_cast<int>(&BaseClass::name, py::const_))
+        .def("name", py::overload_cast<int>(&BaseClass::name, py::const_), py::return_value_policy::reference_internal)
         .def("num_parents", py::overload_cast<const std::string&>(&BaseClass::num_parents, py::const_))
         .def("num_parents", py::overload_cast<int>(&BaseClass::num_parents, py::const_))
         .def("num_children", py::overload_cast<const std::string&>(&BaseClass::num_children, py::const_))
         .def("num_children", py::overload_cast<int>(&BaseClass::num_children, py::const_))
-        .def("parents", py::overload_cast<const std::string&>(&BaseClass::parents, py::const_), py::return_value_policy::move)
-        .def("parents", py::overload_cast<int>(&BaseClass::parents, py::const_), py::return_value_policy::move)
-        .def("parent_indices", py::overload_cast<const std::string&>(&BaseClass::parent_indices, py::const_), py::return_value_policy::move)
-        .def("parent_indices", py::overload_cast<int>(&BaseClass::parent_indices, py::const_), py::return_value_policy::move)
+        .def("parents", py::overload_cast<const std::string&>(&BaseClass::parents, py::const_), py::return_value_policy::take_ownership)
+        .def("parents", py::overload_cast<int>(&BaseClass::parents, py::const_), py::return_value_policy::take_ownership)
+        .def("parent_indices", py::overload_cast<const std::string&>(&BaseClass::parent_indices, py::const_), py::return_value_policy::take_ownership)
+        .def("parent_indices", py::overload_cast<int>(&BaseClass::parent_indices, py::const_), py::return_value_policy::take_ownership)
         .def("has_edge", py::overload_cast<const std::string&, const std::string&>(&BaseClass::has_edge, py::const_))
         .def("has_edge", py::overload_cast<int, int>(&BaseClass::has_edge, py::const_))
         .def("has_path", py::overload_cast<const std::string&, const std::string&>(&BaseClass::has_path, py::const_))
@@ -84,7 +87,7 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("add_cpds", &BaseClass::add_cpds)
         .def("cpd", py::overload_cast<const std::string&>(&BaseClass::cpd), py::return_value_policy::reference_internal)
         .def("cpd", py::overload_cast<int>(&BaseClass::cpd), py::return_value_policy::reference_internal)
-        .def("logpdf", &BaseClass::logpdf, py::return_value_policy::move)
+        .def("logpdf", &BaseClass::logpdf, py::return_value_policy::take_ownership)
         .def("slogpdf", &BaseClass::slogpdf);
 
     return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
@@ -97,33 +100,75 @@ template<typename Model>
 void register_ArcOperators(py::module& m, const char* model_name) {
     std::string operator_name = std::string("Operator<") + model_name + ">";
     py::class_<Operator<Model>>(m, operator_name.c_str())
+        .def_property_readonly("delta", &Operator<Model>::delta)
+        .def_property_readonly("type", &Operator<Model>::type)
         .def("apply", &Operator<Model>::apply)
-        .def("opposite", &Operator<Model>::opposite)
-        .def("delta", &Operator<Model>::delta)
-        .def("type", &Operator<Model>::type);
+        .def("opposite", &Operator<Model>::opposite, py::return_value_policy::take_ownership);
 
     std::string arcoperator_name = std::string("ArcOperator<") + model_name + ">";
     py::class_<ArcOperator<Model>, Operator<Model>>(m, arcoperator_name.c_str())
-        .def("source", &ArcOperator<Model>::source)
-        .def("target", &ArcOperator<Model>::target);
+        .def_property_readonly("source", &ArcOperator<Model>::source)
+        .def_property_readonly("target", &ArcOperator<Model>::target);
 
     std::string addarc_name = std::string("AddArc<") + model_name + ">";
     py::class_<AddArc<Model>, ArcOperator<Model>>(m, addarc_name.c_str())
-        .def(py::init<const std::string&, const std::string&, double>())
+        .def(py::init<std::string, std::string, double>())
         .def("apply", &AddArc<Model>::apply)
-        .def("opposite", &AddArc<Model>::opposite);
+        .def("opposite", &AddArc<Model>::opposite, py::return_value_policy::take_ownership);
 
     std::string removearc_name = std::string("RemoveArc<") + model_name + ">";
     py::class_<RemoveArc<Model>, ArcOperator<Model>>(m, removearc_name.c_str())
-        .def(py::init<const std::string&, const std::string&, double>())
+        .def(py::init<std::string, std::string, double>())
         .def("apply", &RemoveArc<Model>::apply)
-        .def("opposite", &RemoveArc<Model>::opposite);
+        .def("opposite", &RemoveArc<Model>::opposite, py::return_value_policy::take_ownership);
 
     std::string fliparc_name = std::string("FlipArc<") + model_name + ">";
     py::class_<FlipArc<Model>, ArcOperator<Model>>(m, fliparc_name.c_str())
-        .def(py::init<const std::string&, const std::string&, double>())
+        .def(py::init<std::string, std::string, double>())
         .def("apply", &FlipArc<Model>::apply)
-        .def("opposite", &FlipArc<Model>::opposite);
+        .def("opposite", &FlipArc<Model>::opposite, py::return_value_policy::take_ownership);
+}
+
+template<typename Model>
+void register_OperatorTabuSet(py::module& m, const char* model_name) {
+    std::string name = std::string("OperatorTabuSet<") + model_name + ">";
+
+    // TODO: Implement copy operation.
+    py::class_<OperatorTabuSet<Model>>(m, name.c_str())
+        .def(py::init<>())
+        .def("insert", py::overload_cast<Operator<Model>*>(&OperatorTabuSet<Model>::insert))
+        .def("contains", py::overload_cast<Operator<Model>*>(&OperatorTabuSet<Model>::contains, py::const_))
+        .def("clear", &OperatorTabuSet<Model>::clear)
+        .def("empty", &OperatorTabuSet<Model>::empty);
+}
+
+template<typename Model>
+void register_OperatorSet(py::module& m, const char* model_name) {
+    std::string name = std::string("OperatorSet<") + model_name + ">";
+
+    py::class_<OperatorSet<Model>>(m, name.c_str())
+        .def("cache_scores", &OperatorSet<Model>::cache_scores)
+        .def("find_max", [](OperatorSet<Model>& self, Model& model) { return self.find_max(model); }, 
+            py::return_value_policy::take_ownership)
+        .def("find_max", [](OperatorSet<Model>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
+            return self.find_max(model, tabu); 
+        }, py::return_value_policy::take_ownership)
+        .def("update_scores", &OperatorSet<Model>::update_scores);
+
+    // if constexpr (util::is_gaussian_network_v<Model>) {
+    //     std::string arc_bic_name = std::string("ArcOperatorSet<") + model_name + ", BIC>";
+
+
+    //     py::class_<ArcOperatorSet<Model, BIC>, OperatorSet<Model>>(m, arc_bic_name.c_str())
+    //         .def(py::init<Model&, const BIC, ArcVector&, ArcVector&, const VectorXd&, int>())
+    //         .def("cache_scores", &ArcOperatorSet<Model, BIC>::cache_scores)
+    //         .def("find_max", [](ArcOperatorSet<Model, BIC>& self, Model& model) { return self.find_max(model); }, 
+    //             py::return_value_policy::take_ownership)
+    //         .def("find_max", [](ArcOperatorSet<Model, BIC>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
+    //             return self.find_max(model, tabu); 
+    //         }, py::return_value_policy::take_ownership)
+    //         .def("update_scores", &ArcOperatorSet<Model, BIC>::update_scores);
+    // }
 }
 
 PYBIND11_MODULE(pgm_dataset, m) {
@@ -144,9 +189,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
                     py::arg("seed"), 
                     py::arg("include_null") = false)
         .def("__iter__", [](CrossValidation& self) { 
-                    return py::make_iterator(self.begin(), self.end()); }, 
-            py::keep_alive<0, 1>())
-        .def("fold", &CrossValidation::fold)
+                    return py::make_iterator(self.begin(), self.end()); }, py::keep_alive<0, 1>())
+        .def("fold", &CrossValidation::fold, py::return_value_policy::take_ownership)
         .def("loc", [](CrossValidation& self, std::string name) { return self.loc(name); })
         .def("loc", [](CrossValidation& self, int idx) { return self.loc(idx); })
         .def("loc", [](CrossValidation& self, std::vector<std::string> v) { return self.loc(v); })
@@ -165,8 +209,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
                     py::arg("test_ratio") = 0.2, 
                     py::arg("seed"), 
                     py::arg("include_null") = false)
-        .def("training_data", &HoldOut::training_data)
-        .def("test_data", &HoldOut::test_data);
+        .def("training_data", &HoldOut::training_data, py::return_value_policy::reference_internal)
+        .def("test_data", &HoldOut::test_data, py::return_value_policy::reference_internal);
 
     auto factors = m.def_submodule("factors", "Factors submodule.");
 
@@ -192,9 +236,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property("variance", &LinearGaussianCPD::variance, &LinearGaussianCPD::setVariance)
         .def_property_readonly("fitted", &LinearGaussianCPD::fitted)
         .def("fit", &LinearGaussianCPD::fit)
-        .def("logpdf", &LinearGaussianCPD::logpdf, py::return_value_policy::move)
+        .def("logpdf", &LinearGaussianCPD::logpdf, py::return_value_policy::take_ownership)
         .def("slogpdf", &LinearGaussianCPD::slogpdf);
-
 
     py::class_<KDE>(continuous, "KDE")
         .def(py::init<std::vector<std::string>>())
@@ -204,7 +247,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth)
         .def_property_readonly("fitted", &KDE::fitted)
         .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
-        .def("logpdf", &KDE::logpdf, py::return_value_policy::move)
+        .def("logpdf", &KDE::logpdf, py::return_value_policy::take_ownership)
         .def("slogpdf", &KDE::slogpdf);
 
     py::class_<CKDE>(continuous, "CKDE")
@@ -216,7 +259,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property_readonly("kde_marg", &CKDE::kde_marg)
         .def_property_readonly("fitted", &CKDE::fitted)
         .def("fit", &CKDE::fit)
-        .def("logpdf", &CKDE::logpdf, py::return_value_policy::move)
+        .def("logpdf", &CKDE::logpdf, py::return_value_policy::take_ownership)
         .def("slogpdf", &CKDE::slogpdf);
 
     py::class_<SemiparametricCPD>(continuous, "SemiparametricCPD")
@@ -229,7 +272,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("as_lg", &SemiparametricCPD::as_lg, py::return_value_policy::reference_internal)
         .def("as_ckde", &SemiparametricCPD::as_ckde, py::return_value_policy::reference_internal)
         .def("fit", &SemiparametricCPD::fit)
-        .def("logpdf", &SemiparametricCPD::logpdf, py::return_value_policy::move)
+        .def("logpdf", &SemiparametricCPD::logpdf, py::return_value_policy::take_ownership)
         .def("slogpdf", &SemiparametricCPD::slogpdf);
     
     py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
@@ -332,8 +375,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
                 py::arg("test_ratio") = 0.2,
                 py::arg("seed"))
         .def_property_readonly("holdout", &HoldoutLikelihood::holdout)
-        .def("training_data", &HoldoutLikelihood::training_data)
-        .def("test_data", &HoldoutLikelihood::test_data)
+        .def("training_data", &HoldoutLikelihood::training_data, py::return_value_policy::reference_internal)
+        .def("test_data", &HoldoutLikelihood::test_data, py::return_value_policy::reference_internal)
         .def("score", &HoldoutLikelihood::score<SemiparametricBN<>>)
         .def("score", &HoldoutLikelihood::score<GaussianNetwork<>>)
         .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, std::string var) {
@@ -363,7 +406,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     auto parameters = learning.def_submodule("parameters", "Learning parameters submodule.");
 
-    parameters.def("MLE", &learning::parameters::mle_python_wrapper, py::return_value_policy::move);
+    parameters.def("MLE", &learning::parameters::mle_python_wrapper, py::return_value_policy::take_ownership);
 
     // TODO Fit LinearGaussianCPD with ParamsClass.
     py::class_<LinearGaussianCPD::ParamsClass>(parameters, "MLELinearGaussianParams")
@@ -373,10 +416,10 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<MLE<LinearGaussianCPD>>(parameters, "MLE<LinearGaussianCPD>")
         .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, std::string var, std::vector<std::string> evidence) {
             return self.estimate(df, var, evidence.begin(), evidence.end());
-        })
+        }, py::return_value_policy::take_ownership)
         .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, int idx, std::vector<int> evidence_idx) {
             return self.estimate(df, idx, evidence_idx.begin(), evidence_idx.end());
-        });
+        }, py::return_value_policy::take_ownership);
 
     auto operators = learning.def_submodule("operators", "Learning operators submodule");
 
@@ -400,17 +443,35 @@ PYBIND11_MODULE(pgm_dataset, m) {
     register_ArcOperators<SemiparametricBN<>>(operators, "SemiparametricBN");
 
     py::class_<ChangeNodeType<SemiparametricBN<>>, Operator<SemiparametricBN<>>>(m, "ChangeNodeType<SemiparametricBN>")
-        .def(py::init<const std::string&, FactorType, double>())
+        .def(py::init<std::string, FactorType, double>())
         .def_property_readonly("node", &ChangeNodeType<SemiparametricBN<>>::node)
         .def_property_readonly("node_type", &ChangeNodeType<SemiparametricBN<>>::node_type)
         .def("apply", &ChangeNodeType<SemiparametricBN<>>::apply)
         .def("opposite", &ChangeNodeType<SemiparametricBN<>>::opposite);
 
+    operators.def("AddArc", &learning::operators::addarc_wrapper_constructor, py::return_value_policy::take_ownership);
+    operators.def("RemoveArc", &learning::operators::removearc_wrapper_constructor, py::return_value_policy::take_ownership);
+    operators.def("FlipArc", &learning::operators::fliparc_wrapper_constructor, py::return_value_policy::take_ownership);
+    operators.def("ChangeNodeType", &learning::operators::changenodetype_wrapper_constructor, py::return_value_policy::take_ownership);
 
-    operators.def("AddArc", &learning::operators::addarc_wrapper_constructor, py::return_value_policy::move);
-    operators.def("RemoveArc", &learning::operators::removearc_wrapper_constructor, py::return_value_policy::move);
-    operators.def("FlipArc", &learning::operators::fliparc_wrapper_constructor, py::return_value_policy::move);
-    operators.def("ChangeNodeType", &learning::operators::changenodetype_wrapper_constructor, py::return_value_policy::move);
+    register_OperatorTabuSet<GaussianNetwork<>>(operators, "GaussianNetwork");
+    register_OperatorTabuSet<SemiparametricBN<>>(operators, "SemiparametricBN");
+
+    operators.def("OperatorTabuSet", &learning::operators::operatortabuset_wrapper_constructor, py::return_value_policy::take_ownership);
+
+    py::class_<OperatorSetType>(operators, "OperatorSetType")
+        .def_property_readonly_static("ARCS", [](const py::object&) { 
+            return OperatorSetType(OperatorSetType::ARCS);
+        })
+        .def_property_readonly_static("NODE_TYPE", [](const py::object&) { 
+            return OperatorSetType(OperatorSetType::NODE_TYPE);
+        })
+        .def(py::self == py::self)
+        .def(py::self != py::self);
+
+    register_OperatorSet<GaussianNetwork<>>(operators, "GaussianNetwork");
+
+
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 

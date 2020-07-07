@@ -74,14 +74,11 @@ namespace learning::operators {
 
         virtual void apply(Model& m) = 0;
         virtual std::unique_ptr<Operator<Model>> opposite() = 0;
-
         double delta() const { return m_delta; }
-        
         OperatorType type() const { return m_type; }
+        virtual std::unique_ptr<Operator<Model>> copy() const = 0;
 
         virtual std::string ToString() const = 0;
-
-        virtual void print(std::ostream& out) const;
     private:
         double m_delta;
         OperatorType m_type;
@@ -90,8 +87,8 @@ namespace learning::operators {
     template<typename Model>
     class ArcOperator : public Operator<Model> {
     public:
-        ArcOperator(const std::string& source, 
-                    const std::string& target,
+        ArcOperator(std::string source, 
+                    std::string target,
                     double delta,
                     OperatorType type) : Operator<Model>(delta, type), m_source(source), m_target(target) {}
 
@@ -99,8 +96,8 @@ namespace learning::operators {
         const std::string& target() const { return m_target; }
 
     private:
-        const std::string& m_source;
-        const std::string& m_target;
+        std::string m_source;
+        std::string m_target;
     };
 
     template<typename Model>
@@ -109,76 +106,64 @@ namespace learning::operators {
     template<typename Model>
     class AddArc : public ArcOperator<Model> {
     public:
-        AddArc(const std::string& source, 
-               const std::string& target,
+        AddArc(std::string source, 
+               std::string target,
                double delta) :  ArcOperator<Model>(source, target, delta, OperatorType::ADD_ARC) {}
-        
+    
         void apply(Model& m) override {
             m.add_edge(this->source(), this->target());
         }
-
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<RemoveArc<Model>>(this->source(), this->target(), -this->delta());
         }
-        
+        std::unique_ptr<Operator<Model>> copy() const override {
+            return std::make_unique<AddArc<Model>>(this->source(), this->target(), this->delta());
+        }
         std::string ToString() const override {
             return "AddArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
-
-        }
-
-        void print(std::ostream& out) const override {
-            out << "AddArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
         }
     };
 
     template<typename Model>
     class RemoveArc : public ArcOperator<Model> {
     public:
-        RemoveArc(const std::string& source, 
-                  const std::string& target,
+        RemoveArc(std::string source, 
+                  std::string target,
                   double delta) : ArcOperator<Model>(source, target, delta, OperatorType::REMOVE_ARC) {}
         
         void apply(Model& m) override {
             m.remove_edge(this->source(), this->target());
         }
-
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<AddArc<Model>>(this->source(), this->target(), -this->delta());
         }
-
+        std::unique_ptr<Operator<Model>> copy() const override {
+            return std::make_unique<RemoveArc<Model>>(this->source(), this->target(), this->delta());
+        }
         std::string ToString() const override {
             return "RemoveArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
-
-        }
-
-        void print(std::ostream& out) const override {
-            out << "RemoveArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
         }
     };
 
     template<typename Model>
     class FlipArc : public ArcOperator<Model> {
     public:
-        FlipArc(const std::string& source, 
-                const std::string& target,
+        FlipArc(std::string source, 
+                std::string target,
                 double delta) : ArcOperator<Model>(source, target, delta, OperatorType::FLIP_ARC) {}
 
         void apply(Model& m) override {
             m.remove_edge(this->source(), this->target());
             m.add_edge(this->target(), this->source());
         }
-
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<FlipArc<Model>>(this->target(), this->source(), -this->delta());
         }
-
+        std::unique_ptr<Operator<Model>> copy() const override {
+            return std::make_unique<FlipArc<Model>>(this->source(), this->target(), this->delta());
+        }
         std::string ToString() const override {
             return "FlipArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
-
-        }
-
-        void print(std::ostream& out) const override {
-            out << "FlipArc(" << this->source() << " -> " << this->target() << "; " << this->delta() << ")";
         }
     };
 
@@ -187,41 +172,30 @@ namespace learning::operators {
     public:
 
         // static_assert(util::is_semiparametricbn_v<Model>, "ChangeNodeType operator can only be used with a SemiparametricBN.")
-        ChangeNodeType(const std::string& node,
+        ChangeNodeType(std::string node,
                        FactorType new_node_type,
                        double delta) : Operator<Model>(delta, OperatorType::CHANGE_NODE_TYPE),
                                        m_node(node),
                                        m_new_node_type(new_node_type) {}
 
+        const std::string& node() const { return m_node; }
+        FactorType node_type() const { return m_new_node_type; }
         void apply(Model& m) override {
             m.set_node_type(m_node, m_new_node_type);
         }
-
         std::unique_ptr<Operator<Model>> opposite() override {
             return std::make_unique<ChangeNodeType<Model>>(m_node, m_new_node_type.opposite(), -this->delta());
         }
-
-        const std::string& node() const { return m_node; }
-        FactorType node_type() const { return m_new_node_type; }
-
+        std::unique_ptr<Operator<Model>> copy() const override {
+            return std::make_unique<ChangeNodeType<Model>>(m_node, m_new_node_type, this->delta());
+        }
         std::string ToString() const override {
             return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
-
-        }
-
-        void print(std::ostream& out) const override {
-            out << "ChangeNodeType(" << node() << ", " << node_type().ToString() << "; " << this->delta() << ")";
         }
     private:
-        const std::string& m_node;
+        std::string m_node;
         FactorType m_new_node_type;
     };
-
-    template<typename Model>
-    std::ostream& operator<<(std::ostream& out, const Operator<Model>& mc) {
-        mc.print(out);
-        return out;
-    }
 
     template<typename Model>
     class HashOperator {
@@ -288,24 +262,47 @@ namespace learning::operators {
     public:
         OperatorTabuSet() : m_map() { }
 
+        OperatorTabuSet(const OperatorTabuSet& other) : m_map() {
+            for (auto& pair : other.m_map) {
+                auto copy = pair.second->copy();
+                m_map.insert({copy.get(), pair.second->copy()});
+            }
+        }
+
+        OperatorTabuSet& operator=(const OperatorTabuSet& other) {
+            clear();
+            for (auto& pair : other.m_map) {
+                auto copy = pair.second->copy();
+                m_map.insert({copy.get(), pair.second->copy()});
+            }
+        }
+
+        OperatorTabuSet(OperatorTabuSet&& other) : m_map(std::move(other.m_map)) {}
+        OperatorTabuSet& operator=(OperatorTabuSet&& other) { m_map = std::move(other.m_map); }
+
         void insert(std::unique_ptr<Operator<Model>> op) {
             m_map.insert({op.get(), std::move(op)});
         }
-
+        void insert(Operator<Model>* op) {
+            insert(op->copy());
+        }
         bool contains(std::unique_ptr<Operator<Model>>& op) const {
             return m_map.count(op.get()) > 0;
         }
-
+        bool contains(Operator<Model>* op) const {
+            return m_map.count(op) > 0;
+        }
         void clear() {
             m_map.clear();
         }
-
         bool empty() const {
             return m_map.empty();
         }
-
     private:
-        using MapType = std::unordered_map<Operator<Model>*, std::unique_ptr<Operator<Model>>, HashOperator<Model>, OperatorPtrEqual<Model>>;
+        using MapType = std::unordered_map<Operator<Model>*, 
+                                           std::unique_ptr<Operator<Model>>, 
+                                           HashOperator<Model>, 
+                                           OperatorPtrEqual<Model>>;
 
         MapType m_map;
     };
@@ -383,7 +380,7 @@ namespace learning::operators {
         std::unique_ptr<Operator<Model>> find_max_indegree(Model& model);
         template<bool limited_indigree>
         std::unique_ptr<Operator<Model>> find_max_indegree(Model& model, OperatorTabuSet<Model>& tabu_set);
-
+ 
         void update_scores(Model& model, Operator<Model>* op) override;
 
         void update_node_arcs_scores(Model& model, const std::string& dest_node);

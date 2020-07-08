@@ -352,14 +352,73 @@ namespace learning::operators {
         Value value;
     };
 
+    class LocalScoreCache {
+    public:
+
+        template<typename Model>
+        LocalScoreCache(Model& m) : m_local_score(m.num_nodes()) {}
+
+
+        template<typename Model, typename Score>
+        void cache_local_scores(const Model& model, Score& score) {
+            for (int i = 0; i < model.num_nodes(); ++i) {
+                m_local_score(i) = score.local_score(model, i);
+            }
+        }
+
+        template<typename Model, typename Score>
+        void update_local_score(const Model& model, Score& score, int index) {
+            m_local_score(index) = score.local_score(model, index);
+        }
+
+        template<typename Model, typename Score>
+        void update_local_score(const Model& model, Score& score, Operator<Model>& op) {
+            switch(op.type()) {
+                case OperatorType::ADD_ARC:
+                case OperatorType::REMOVE_ARC: {
+                    auto& dwn_op = dynamic_cast<ArcOperator<Model>&>(op);
+                    update_local_score(model, score, model.index(dwn_op.target()));
+                }
+                    break;
+                case OperatorType::FLIP_ARC: {
+                    auto& dwn_op = dynamic_cast<ArcOperator<Model>&>(op);
+                    update_local_score(model, score, model.index(dwn_op.source()));
+                    update_local_score(model, score, model.index(dwn_op.target()));
+                }
+                    break;
+                case OperatorType::CHANGE_NODE_TYPE: {
+                    auto& dwn_op = dynamic_cast<ChangeNodeType<Model>&>(op);
+                    update_local_score(model, score, model.index(dwn_op.node()));
+                }
+                    break;
+            }
+        }
+
+        double sum() {
+            return m_local_score.sum();
+        }
+
+        double local_score(int index) {
+            return m_local_score(index);
+        }
+
+    private:
+        VectorXd m_local_score;
+    };
+
 
     template<typename Model>
     class OperatorSet {
     public:
-        virtual void cache_scores(Model& model) = 0;
+        virtual void cache_scores(const Model& model) = 0;
         virtual std::unique_ptr<Operator<Model>> find_max(Model& model) = 0;
         virtual std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) = 0;
-        virtual void update_scores(Model& model, Operator<Model>* op) = 0;
+        virtual void update_scores(const Model& model, Operator<Model>& op) = 0;
+        virtual void set_local_score_cache(std::shared_ptr<LocalScoreCache> local_cache) {
+            m_local_cache = local_cache;
+        }
+    protected:
+        std::shared_ptr<LocalScoreCache> m_local_cache;
     };
 
     template<typename Model, typename Score>
@@ -369,10 +428,10 @@ namespace learning::operators {
         using RemoveArc_t = RemoveArc<Model>;
         using FlipArc_t = FlipArc<Model>;
 
-        ArcOperatorSet(Model& model, const Score& score, ArcVector& whitelist, ArcVector& blacklist, 
-                       const VectorXd& local_score, int max_indegree);
+        ArcOperatorSet(Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist, 
+                       int max_indegree);
 
-        void cache_scores(Model& model) override;
+        void cache_scores(const Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) override;
         
@@ -381,15 +440,14 @@ namespace learning::operators {
         template<bool limited_indigree>
         std::unique_ptr<Operator<Model>> find_max_indegree(Model& model, OperatorTabuSet<Model>& tabu_set);
  
-        void update_scores(Model& model, Operator<Model>* op) override;
+        void update_scores(const Model& model, Operator<Model>& op) override;
 
-        void update_node_arcs_scores(Model& model, const std::string& dest_node);
+        void update_node_arcs_scores(const Model& model, const std::string& dest_node);
 
     private:
-        const Score& m_score;
+        const Score m_score;
         MatrixXd delta;
         MatrixXb valid_op;
-        const VectorXd& m_local_score;
         std::vector<int> sorted_idx;
         int max_indegree;
     };
@@ -397,14 +455,12 @@ namespace learning::operators {
 
     template<typename Model, typename Score>
     ArcOperatorSet<Model, Score>::ArcOperatorSet(Model& model,
-                                                 const Score& score,
+                                                 const Score score,
                                                  ArcVector& blacklist,
-                                                 ArcVector& whitelist, 
-                                                 const VectorXd& local_score,
+                                                 ArcVector& whitelist,
                                                  int max_indegree) : m_score(score),
                                                                      delta(model.num_nodes(), model.num_nodes()),
                                                                      valid_op(model.num_nodes(), model.num_nodes()), 
-                                                                     m_local_score(local_score), 
                                                                      sorted_idx(),
                                                                      max_indegree(max_indegree)
     {
@@ -451,7 +507,7 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorSet<Model, Score>::cache_scores(Model& model) {
+    void ArcOperatorSet<Model, Score>::cache_scores(const Model& model) {
         for (auto dest = 0; dest < model.num_nodes(); ++dest) {
             std::vector<int> new_parents_dest = model.parent_indices(dest);
             
@@ -459,7 +515,8 @@ namespace learning::operators {
                 if(valid_op(source, dest)) {
                     if (model.has_edge(source, dest)) {
                         std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
-                        double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - m_local_score(dest);
+                        double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - 
+                                    this->m_local_cache->local_score(dest);
                         delta(source, dest) = d;
                     } else if (model.has_edge(dest, source)) {
                         auto new_parents_source = model.parent_indices(source);
@@ -468,13 +525,13 @@ namespace learning::operators {
                         new_parents_dest.push_back(source);
                         double d = m_score.local_score(model, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
                                    m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
-                                   - m_local_score(source) - m_local_score(dest);
+                                   - this->m_local_cache->local_score(source) - this->m_local_cache->local_score(dest);
                         new_parents_dest.pop_back();
                         delta(dest, source) = d;
                     } else {
                         new_parents_dest.push_back(source);
                         double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
-                                    - m_local_score(dest);
+                                    - this->m_local_cache->local_score(dest);
                         new_parents_dest.pop_back();
                         delta(source, dest) = d;
                     }
@@ -582,30 +639,30 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorSet<Model, Score>:: update_scores(Model& model, Operator<Model>* op) {
-        switch(op->type()) {
+    void ArcOperatorSet<Model, Score>:: update_scores(const Model& model, Operator<Model>& op) {
+        switch(op.type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                update_node_arcs_scores(model, dwn_op->target());
+                auto& dwn_op = dynamic_cast<ArcOperator<Model>&>(op);
+                update_node_arcs_scores(model, dwn_op.target());
             }
                 break;
             case OperatorType::FLIP_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                update_node_arcs_scores(model, dwn_op->source());
-                update_node_arcs_scores(model, dwn_op->target());
+                auto& dwn_op = dynamic_cast<ArcOperator<Model>&>(op);
+                update_node_arcs_scores(model, dwn_op.source());
+                update_node_arcs_scores(model, dwn_op.target());
             }
                 break;
             case OperatorType::CHANGE_NODE_TYPE: {
-                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
-                update_node_arcs_scores(model, dwn_op->node());
+                auto& dwn_op = dynamic_cast<ChangeNodeType<Model>&>(op);
+                update_node_arcs_scores(model, dwn_op.node());
             }
                 break;
         }
     }
 
     template<typename Model, typename Score>
-    void ArcOperatorSet<Model, Score>::update_node_arcs_scores(Model& model, const std::string& dest_node) {
+    void ArcOperatorSet<Model, Score>::update_node_arcs_scores(const Model& model, const std::string& dest_node) {
 
         auto dest_idx = model.index(dest_node);
         auto parents = model.parent_indices(dest_idx);
@@ -615,14 +672,15 @@ namespace learning::operators {
 
                 if (model.has_edge(i, dest_idx)) {
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
-                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - m_local_score(dest_idx);
+                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
+                               this->m_local_cache->local_score(dest_idx);
                     delta(i, dest_idx) = d;
 
                     auto new_parents_i = model.parent_indices(i);
                     new_parents_i.push_back(dest_idx);
 
                     delta(dest_idx, i) = d + m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end())
-                                            - m_local_score(i);
+                                            - this->m_local_cache->local_score(i);
                 } else if (model.has_edge(dest_idx, i)) {
                     auto new_parents_i = model.parent_indices(i);
                     std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
@@ -630,12 +688,12 @@ namespace learning::operators {
                     parents.push_back(i);
                     double d = m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end() - 1) + 
                                 m_score.local_score(model, dest_idx, parents.begin(), parents.end()) 
-                                - m_local_score(i) - m_local_score(dest_idx);
+                                - this->m_local_cache->local_score(i) - this->m_local_cache->local_score(dest_idx);
                     parents.pop_back();
                     delta(dest_idx, i) = d;
                 } else {
                     parents.push_back(i);
-                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end()) - m_local_score(dest_idx);
+                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end()) - this->m_local_cache->local_score(dest_idx);
                     parents.pop_back();
                     delta(i, dest_idx) = d;
                 }
@@ -649,13 +707,11 @@ namespace learning::operators {
         using ChangeNodeType_t = ChangeNodeType<Model>;
 
         ChangeNodeTypeSet(Model& model, 
-                          const Score& score, 
-                          FactorTypeVector& type_whitelist,
-                          const VectorXd& local_score) : m_score(score),
-                                                         delta(model.num_nodes()),
-                                                         valid_op(model.num_nodes()),
-                                                         m_local_score(local_score),
-                                                         sorted_idx()
+                          const Score score, 
+                          FactorTypeVector& type_whitelist) : m_score(score),
+                                                              delta(model.num_nodes()),
+                                                              valid_op(model.num_nodes()),
+                                                              sorted_idx()
         {
             auto val_ptr = valid_op.data();
             std::fill(val_ptr, val_ptr + model.num_nodes(), true);
@@ -676,32 +732,31 @@ namespace learning::operators {
 
         }
 
-        void cache_scores(Model& model) override;
+        void cache_scores(const Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model) override;
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set) override;
-        void update_scores(Model& model, Operator<Model>* op) override;
+        void update_scores(const Model& model, Operator<Model>& op) override;
 
-        void update_local_delta(Model& model, const std::string& node) {
+        void update_local_delta(const Model& model, const std::string& node) {
             update_local_delta(model, model.index(node));
         }
 
-        void update_local_delta(Model& model, int node_index) {
+        void update_local_delta(const Model& model, int node_index) {
             FactorType type = model.node_type(node_index);
             auto parents = model.parent_indices(node_index);
             delta(node_index) = m_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
-                                - m_local_score(node_index);
+                                - this->m_local_cache->local_score(node_index);
         }
 
     private:
-        const Score& m_score;
+        const Score m_score;
         VectorXd delta;
         VectorXb valid_op;
-        const VectorXd& m_local_score;
         std::vector<int> sorted_idx;
     };
 
     template<typename Model, typename Score>
-    void ChangeNodeTypeSet<Model, Score>::cache_scores(Model& model) {
+    void ChangeNodeTypeSet<Model, Score>::cache_scores(const Model& model) {
         for(auto i = 0; i < model.num_nodes(); ++i) {
             if(valid_op(i)) {
                 update_local_delta(model, i);
@@ -743,24 +798,24 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void ChangeNodeTypeSet<Model, Score>::update_scores(Model& model, Operator<Model>* op) {
-        switch(op->type()) {
+    void ChangeNodeTypeSet<Model, Score>::update_scores(const Model& model, Operator<Model>& op) {
+        switch(op.type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                update_local_delta(model, dwn_op->target());
+                auto& dwn_op = dynamic_cast<ArcOperator<Model>&>(op);
+                update_local_delta(model, dwn_op.target());
             }
                 break;
             case OperatorType::FLIP_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                update_local_delta(model, dwn_op->source());
-                update_local_delta(model, dwn_op->target());
+                auto& dwn_op = dynamic_cast<ArcOperator<Model>&>(op);
+                update_local_delta(model, dwn_op.source());
+                update_local_delta(model, dwn_op.target());
             }
                 break;
             case OperatorType::CHANGE_NODE_TYPE: {
-                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
-                int index = model.index(dwn_op->node());
-                delta(index) = -dwn_op->delta();
+                auto& dwn_op = dynamic_cast<ChangeNodeType<Model>&>(op);
+                int index = model.index(dwn_op.node());
+                delta(index) = -dwn_op.delta();
             }
                 break;
         }
@@ -774,10 +829,11 @@ namespace learning::operators {
 
         template<typename = util::enable_if_gaussian_network_t<Model, int>>
         OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
-                     ArcVector arc_whitelist, int max_indegree) : m_score(score),
-                                                                  local_score(model.num_nodes()),
-                                                                  m_op_sets(),
-                                                                  max_indegree(max_indegree) 
+                     ArcVector arc_whitelist, int max_indegree) 
+                        : m_score(score),
+                          local_cache(std::make_shared<LocalScoreCache>(model)),
+                          m_op_sets(),
+                          max_indegree(max_indegree) 
         {
             if (op_sets.empty()) {
                 throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
@@ -788,7 +844,8 @@ namespace learning::operators {
                 switch(opset) {
                     case OperatorSetType::ARCS: {
                         auto arcs = std::make_unique<ArcOperatorSet<Model, Score>>(model, score, arc_blacklist, arc_whitelist, 
-                                                                                        local_score, max_indegree);
+                                                                                   max_indegree);
+                        arcs->set_local_score_cache(local_cache);
                         m_op_sets.push_back(std::move(arcs));
                     }
                         break;
@@ -800,10 +857,11 @@ namespace learning::operators {
 
         template<typename = util::enable_if_semiparametricbn_t<Model, int>>
         OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
-                     ArcVector arc_whitelist, FactorTypeVector type_whitelist, int max_indegree) : m_score(score),
-                                                                                                 local_score(model.num_nodes()),
-                                                                                                 m_op_sets(),
-                                                                                                 max_indegree(max_indegree) 
+                     ArcVector arc_whitelist, FactorTypeVector type_whitelist, int max_indegree) 
+                        : m_score(score),
+                          local_cache(std::make_shared<LocalScoreCache>(model)),
+                          m_op_sets(),
+                          max_indegree(max_indegree) 
         {
             if (op_sets.empty()) {
                 throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
@@ -813,13 +871,15 @@ namespace learning::operators {
                 switch(opset) {
                     case OperatorSetType::ARCS: {
                         auto arcs = std::make_unique<ArcOperatorSet<Model, Score>>(model, score, arc_blacklist, arc_whitelist, 
-                                                                                        local_score, max_indegree);
+                                                                                   max_indegree);
 
+                        arcs->set_local_score_cache(local_cache);
                         m_op_sets.push_back(std::move(arcs));
                     }
                         break;
                     case OperatorSetType::NODE_TYPE: {
-                        auto change_node_type = std::make_unique<ChangeNodeTypeSet<Model, Score>>(model, score, type_whitelist, local_score);
+                        auto change_node_type = std::make_unique<ChangeNodeTypeSet<Model, Score>>(model, score, type_whitelist);
+                        change_node_type->set_local_score_cache(local_cache);
                         m_op_sets.push_back(std::move(change_node_type));
                     }
                         break;
@@ -827,21 +887,13 @@ namespace learning::operators {
             }
         };
 
-        void cache_scores(Model& model);
+        void cache_scores(const Model& model);
         std::unique_ptr<Operator<Model>> find_max(Model& model);
         std::unique_ptr<Operator<Model>> find_max(Model& model, OperatorTabuSet<Model>& tabu_set);
-        void update_scores(Model& model, Operator<Model>* op);
-        
-        void update_local_score(Model& model, const std::string& node) {
-            update_local_score(model, model.index(node));
-        }
-        
-        void update_local_score(Model& model, int index) {
-            local_score(index) = m_score.local_score(model, index);
-        }
-        
+        void update_scores(const Model& model, Operator<Model>& op);
+               
         double score() {
-            return local_score.sum();
+            return local_cache->sum();
         }
 
         double score(Model& model) {
@@ -853,16 +905,14 @@ namespace learning::operators {
         }
     private:
         const Score m_score;
-        VectorXd local_score;
+        std::shared_ptr<LocalScoreCache> local_cache;
         std::vector<std::unique_ptr<OperatorSet<Model>>> m_op_sets;
         int max_indegree;
     };
 
     template<typename Model, typename Score>
-    void OperatorPool<Model, Score>::cache_scores(Model& model) {
-        for (int i = 0; i < model.num_nodes(); ++i) {
-            local_score(i) = m_score.local_score(model, i);
-        }
+    void OperatorPool<Model, Score>::cache_scores(const Model& model) {
+        local_cache->cache_local_scores(model, m_score);
 
         for (auto& op_set : m_op_sets) {
             op_set->cache_scores(model);
@@ -906,27 +956,8 @@ namespace learning::operators {
     }
 
     template<typename Model, typename Score>
-    void OperatorPool<Model, Score>::update_scores(Model& model, Operator<Model>* op) {
-        switch(op->type()) {
-            case OperatorType::ADD_ARC:
-            case OperatorType::REMOVE_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                update_local_score(model, dwn_op->target());
-            }
-                break;
-            case OperatorType::FLIP_ARC: {
-                auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
-                update_local_score(model, dwn_op->source());
-                update_local_score(model, dwn_op->target());
-            }
-                break;
-            case OperatorType::CHANGE_NODE_TYPE: {
-                auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
-                update_local_score(model, dwn_op->node());
-            }
-                break;
-        }
-
+    void OperatorPool<Model, Score>::update_scores(const Model& model, Operator<Model>& op) {
+        local_cache->update_local_score(model, m_score, op);
         for (auto& op_set : m_op_sets) {
             op_set->update_scores(model, op);
         }

@@ -45,7 +45,7 @@ using learning::scores::HoldoutLikelihood;
 using learning::operators::AddArc, learning::operators::RemoveArc, learning::operators::FlipArc,
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, 
       learning::operators::OperatorSetType, learning::operators::OperatorSet, 
-      learning::operators::ArcOperatorSet;
+      learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
 
 using util::ArcVector;
 
@@ -142,6 +142,42 @@ void register_OperatorTabuSet(py::module& m, const char* model_name) {
         .def("empty", &OperatorTabuSet<Model>::empty);
 }
 
+template<typename Model, typename Score>
+void register_ArcOperatorSet(py::module& m, const char* model_name, const char* score_name) {
+    std::string arc_score_name = std::string("ArcOperatorSet<") + model_name + "," + score_name + ">";
+
+    py::class_<ArcOperatorSet<Model, Score>, OperatorSet<Model>>(m, arc_score_name.c_str())
+        .def("cache_scores", &ArcOperatorSet<Model, Score>::cache_scores)
+        .def("find_max", [](ArcOperatorSet<Model, Score>& self, Model& model) { return self.find_max(model); }, 
+            py::return_value_policy::take_ownership)
+        .def("find_max", [](ArcOperatorSet<Model, Score>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
+            return self.find_max(model, tabu); 
+        }, py::return_value_policy::take_ownership)
+        .def("update_scores", &ArcOperatorSet<Model, Score>::update_scores);
+
+    m.def("ArcOperatorSet", [](Model& m, Score score, ArcVector& blacklist, ArcVector& whitelist, int max_indegree) {
+        return ArcOperatorSet(m, score, blacklist, whitelist, max_indegree);
+    });
+}
+
+template<typename Model, typename Score>
+void register_ChangeNodeTypeSet(py::module& m, const char* model_name, const char* score_name) {
+    std::string changenodetype_score_name = std::string("ChangeNodeTypeSet<") + model_name + "," + score_name + ">";
+
+    py::class_<ChangeNodeTypeSet<Model, Score>, OperatorSet<Model>>(m, changenodetype_score_name.c_str())
+        .def("cache_scores", &ChangeNodeTypeSet<Model, Score>::cache_scores)
+        .def("find_max", [](ChangeNodeTypeSet<Model, Score>& self, Model& model) { return self.find_max(model); }, 
+            py::return_value_policy::take_ownership)
+        .def("find_max", [](ChangeNodeTypeSet<Model, Score>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
+            return self.find_max(model, tabu); 
+        }, py::return_value_policy::take_ownership)
+        .def("update_scores", &ChangeNodeTypeSet<Model, Score>::update_scores);
+
+    m.def("ChangeNodeTypeSet", [](Model& m, const Score score, FactorTypeVector& whitelist_type) {
+        return ChangeNodeTypeSet(m, score, whitelist_type);
+    });
+}
+
 template<typename Model>
 void register_OperatorSet(py::module& m, const char* model_name) {
     std::string name = std::string("OperatorSet<") + model_name + ">";
@@ -155,21 +191,15 @@ void register_OperatorSet(py::module& m, const char* model_name) {
         }, py::return_value_policy::take_ownership)
         .def("update_scores", &OperatorSet<Model>::update_scores);
 
-    // if constexpr (util::is_gaussian_network_v<Model>) {
-    //     std::string arc_bic_name = std::string("ArcOperatorSet<") + model_name + ", BIC>";
-
-
-    //     py::class_<ArcOperatorSet<Model, BIC>, OperatorSet<Model>>(m, arc_bic_name.c_str())
-    //         .def(py::init<Model&, const BIC, ArcVector&, ArcVector&, const VectorXd&, int>())
-    //         .def("cache_scores", &ArcOperatorSet<Model, BIC>::cache_scores)
-    //         .def("find_max", [](ArcOperatorSet<Model, BIC>& self, Model& model) { return self.find_max(model); }, 
-    //             py::return_value_policy::take_ownership)
-    //         .def("find_max", [](ArcOperatorSet<Model, BIC>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
-    //             return self.find_max(model, tabu); 
-    //         }, py::return_value_policy::take_ownership)
-    //         .def("update_scores", &ArcOperatorSet<Model, BIC>::update_scores);
-    // }
+    if constexpr (util::is_gaussian_network_v<Model>) {
+        register_ArcOperatorSet<Model, BIC>(m, model_name, "BIC");
+        register_ArcOperatorSet<Model, CVLikelihood>(m, model_name, "CVLikelihood");
+    } else if constexpr (util::is_semiparametricbn_v<Model>) {
+        register_ArcOperatorSet<Model, CVLikelihood>(m, model_name, "CVLikelihood");
+        register_ChangeNodeTypeSet<Model, CVLikelihood>(m, model_name, "CVLikelihood");
+    }
 }
+
 
 PYBIND11_MODULE(pgm_dataset, m) {
     pyarrow::import_pyarrow();
@@ -470,7 +500,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def(py::self != py::self);
 
     register_OperatorSet<GaussianNetwork<>>(operators, "GaussianNetwork");
-
+    register_OperatorSet<SemiparametricBN<>>(operators, "SemiparametricBN");
 
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");

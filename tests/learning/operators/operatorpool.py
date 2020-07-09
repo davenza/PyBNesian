@@ -28,3 +28,14 @@
 
 #     hc = GreedyHillClimbing()
 #     hc.estimate(df, pool, 0, 0, gbn)
+
+
+
+###################################
+###################################
+
+import pyarrow as pa
+from pgm_dataset.learning.operators import OperatorSet
+
+class AddArcSet(OperatorSet):
+    pass

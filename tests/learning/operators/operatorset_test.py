@@ -15,11 +15,19 @@ def test_create():
     bic = BIC(df)
     arc_gbn_bic = ArcOperatorSet(gbn, bic, [], [], 0)
 
-    cv = CVLikelihood(df)
-    arc_gbn_cv = ArcOperatorSet(gbn, cv, [], [], 0)
+    arc_gbn_bic.cache_scores(gbn)
+    # op = arc_gbn_bic.find_max()
+    # arc_gbn_bic.update_scores(op)
+
+    # cv = CVLikelihood(df)
+    # arc_gbn_cv = ArcOperatorSet(gbn, cv, [], [], 0)
 
 
-    with pytest.raises(TypeError) as ex:
-        node_gbn = ChangeNodeTypeSet(gbn, bic, [], [], 0)
-    "incompatible function arguments." in str(ex.value)
+
+    # with pytest.raises(TypeError) as ex:
+    #     node_gbn = ChangeNodeTypeSet(gbn, bic, [], [], 0)
+    # "incompatible function arguments." in str(ex.value)
+
+
+
     # pass

@@ -513,7 +513,7 @@ namespace learning::operators {
             
             for (auto source = 0; source < model.num_nodes(); ++source) {
                 if(valid_op(source, dest)) {
-                    if (model.has_edge(source, dest)) {
+                    if (model.has_edge(source, dest)) {            
                         std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
                         double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - 
                                     this->m_local_cache->local_score(dest);
@@ -832,8 +832,7 @@ namespace learning::operators {
                      ArcVector arc_whitelist, int max_indegree) 
                         : m_score(score),
                           local_cache(std::make_shared<LocalScoreCache>(model)),
-                          m_op_sets(),
-                          max_indegree(max_indegree) 
+                          m_op_sets()
         {
             if (op_sets.empty()) {
                 throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
@@ -860,8 +859,7 @@ namespace learning::operators {
                      ArcVector arc_whitelist, FactorTypeVector type_whitelist, int max_indegree) 
                         : m_score(score),
                           local_cache(std::make_shared<LocalScoreCache>(model)),
-                          m_op_sets(),
-                          max_indegree(max_indegree) 
+                          m_op_sets()
         {
             if (op_sets.empty()) {
                 throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
@@ -907,7 +905,6 @@ namespace learning::operators {
         const Score m_score;
         std::shared_ptr<LocalScoreCache> local_cache;
         std::vector<std::unique_ptr<OperatorSet<Model>>> m_op_sets;
-        int max_indegree;
     };
 
     template<typename Model, typename Score>

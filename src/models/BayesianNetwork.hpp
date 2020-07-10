@@ -67,9 +67,55 @@ namespace models {
         Value value;
     };
 
+    class BayesianNetworkBase {
+    public:
+        virtual int num_nodes() const = 0;
+        virtual int num_edges() const = 0;
+        virtual const std::vector<std::string>& nodes() const = 0;
+        virtual const std::unordered_map<std::string, int>& indices() const = 0;
+        virtual bool contains_node(const std::string& name) const = 0;
+        virtual const std::string& name(int node_index) const = 0;
+        virtual int num_parents(int node_index) const = 0;
+        virtual int num_parents(const std::string& node) const = 0;
+        virtual int num_children(int node_index) const = 0;
+        virtual int num_children(const std::string& node) const = 0;
+        virtual int index(const std::string& node) const = 0;
+        virtual std::vector<std::string> parents(int node_index) const = 0;
+        virtual std::vector<std::string> parents(const std::string& node) const = 0;
+        virtual std::vector<int> parent_indices(int node_index) const = 0;
+        virtual std::vector<int> parent_indices(const std::string& node) const = 0;
+        virtual std::string parents_tostring(int node_index) const = 0;
+        virtual std::string parents_tostring(const std::string& node) const = 0;
+        virtual bool has_edge(int source, int dest) const = 0;
+        virtual bool has_edge(const std::string& source, const std::string& dest) const = 0;
+        virtual bool has_path(int source_index, int dest_index) const = 0;
+        virtual bool has_path(const std::string& source, const std::string& dest) const = 0;
+        virtual void add_edge(int source, int dest) = 0;
+        virtual void add_edge(const std::string& source, const std::string& dest) = 0;
+        virtual bool can_add_edge(int source_index, int dest_index) const = 0;
+        virtual bool can_add_edge(const std::string& source, const std::string& dest) const = 0;
+        virtual bool can_flip_edge(int source_index, int dest_index) = 0;
+        virtual bool can_flip_edge(const std::string& source, const std::string& dest) = 0;
+        virtual void remove_edge(int source, int dest) = 0;
+        virtual void remove_edge(const std::string& source, const std::string& dest) = 0;
+        virtual void fit(const DataFrame& df) = 0;
+        virtual VectorXd logpdf(const DataFrame& df) const = 0;
+        virtual double slogpdf(const DataFrame& df) const = 0;
+
+        // friend std::ostream& operator<<(std::ostream &os, const BayesianNetworkBase& bn);
+    };
+
+    class SemiparametricBNBase {
+    public:
+        virtual FactorType node_type(int node_index) const = 0;
+        virtual FactorType node_type(const std::string& node) const = 0;
+        virtual void set_node_type(int node_index, FactorType new_type) = 0;
+        virtual void set_node_type(const std::string& node, FactorType new_type) = 0;
+    };
+
 
     template<typename Derived>
-    class BayesianNetwork {
+    class BayesianNetwork : public BayesianNetworkBase {
     public:
         using DagType = typename BN_traits<Derived>::DagType;
         using CPD = typename BN_traits<Derived>::CPD;
@@ -82,19 +128,19 @@ namespace models {
         BayesianNetwork(const ArcVector& arcs);
         BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs);
 
-        int num_nodes() const {
+        int num_nodes() const override {
             return g.num_nodes();
         }
 
-        int num_edges() const {
+        int num_edges() const override {
             return g.num_edges();
         }
 
-        const std::vector<std::string>& nodes() const {
+        const std::vector<std::string>& nodes() const override {
             return m_nodes;
         }
 
-        const std::unordered_map<std::string, int>& indices() const {
+        const std::unordered_map<std::string, int>& indices() const override {
             return m_indices;
         }
 
@@ -106,11 +152,11 @@ namespace models {
             return g.node(node_index);
         }
 
-        bool contains_node(const std::string& name) const {
+        bool contains_node(const std::string& name) const override {
             return m_indices.count(name) > 0;
         }
 
-        const std::string& name(int node_index) const {
+        const std::string& name(int node_index) const override {
             return m_nodes[node_index];
         }
 
@@ -122,11 +168,11 @@ namespace models {
             return g.num_parents(node);
         }
 
-        int num_parents(int node_index) const {
+        int num_parents(int node_index) const override {
             return num_parents(g.node(node_index));
         }
 
-        int num_parents(const std::string& node) const {
+        int num_parents(const std::string& node) const override {
             return num_parents(m_indices.at(node));
         }
 
@@ -134,11 +180,11 @@ namespace models {
             return g.num_children(node);
         }
 
-        int num_children(int node_index) const {
+        int num_children(int node_index) const override {
             return num_children(g.node(node_index));
         }
 
-        int num_children(const std::string& node) const {
+        int num_children(const std::string& node) const override {
             return num_children(m_indices.at(node));
         }
 
@@ -146,37 +192,37 @@ namespace models {
             return g.index(n);
         }
 
-        int index(const std::string& node) const {
+        int index(const std::string& node) const override {
             return m_indices.at(node);
         }
 
         std::vector<std::string> parents(node_descriptor node) const;
 
-        std::vector<std::string> parents(int node_index) const {
+        std::vector<std::string> parents(int node_index) const override {
             return parents(g.node(node_index));
         }
 
-        std::vector<std::string> parents(const std::string& node) const {
+        std::vector<std::string> parents(const std::string& node) const override {
             return parents(m_indices.at(node));
         }
 
         std::vector<int> parent_indices(node_descriptor node) const;
 
-        std::vector<int> parent_indices(int node_index) const {
+        std::vector<int> parent_indices(int node_index) const override {
             return parent_indices(g.node(node_index));
         }
 
-        std::vector<int> parent_indices(const std::string& node) const {
+        std::vector<int> parent_indices(const std::string& node) const override {
             return parent_indices(m_indices.at(node));
         }
 
         std::string parents_tostring(node_descriptor node) const;
 
-        std::string parents_tostring(int node_index) const {
+        std::string parents_tostring(int node_index) const override {
             return parents_tostring(g.node(node_index));
         }
 
-        std::string parents_tostring(const std::string& node) const {
+        std::string parents_tostring(const std::string& node) const override {
             return parents_tostring(m_indices.at(node));
         }
 
@@ -184,11 +230,11 @@ namespace models {
             return g.has_edge(source, dest);
         }
 
-        bool has_edge(int source, int dest) const {
+        bool has_edge(int source, int dest) const override {
             return has_edge(g.node(source), g.node(dest));
         }
 
-        bool has_edge(const std::string& source, const std::string& dest) const {
+        bool has_edge(const std::string& source, const std::string& dest) const override {
             return has_edge(m_indices.at(source), m_indices.at(dest));
         }
 
@@ -196,11 +242,11 @@ namespace models {
             return g.has_path(source, dest);
         }
         
-        bool has_path(int source_index, int dest_index) const {
+        bool has_path(int source_index, int dest_index) const override {
             return has_path(g.node(source_index), g.node(dest_index));
         }
         
-        bool has_path(const std::string& source, const std::string& dest) const {
+        bool has_path(const std::string& source, const std::string& dest) const override {
             return has_path(m_indices.at(source), m_indices.at(dest));
         }
 
@@ -208,11 +254,11 @@ namespace models {
             g.add_edge(source, dest);
         }
 
-        void add_edge(int source, int dest) {
+        void add_edge(int source, int dest) override {
             add_edge(g.node(source), g.node(dest));
         }
 
-        void add_edge(const std::string& source, const std::string& dest) {
+        void add_edge(const std::string& source, const std::string& dest) override {
             add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
@@ -224,21 +270,21 @@ namespace models {
             return false;
         }
 
-        bool can_add_edge(int source_index, int dest_index) const {
+        bool can_add_edge(int source_index, int dest_index) const override {
             return can_add_edge(node(source_index), node(dest_index));
         }
 
-        bool can_add_edge(const std::string& source, const std::string& dest) const {
+        bool can_add_edge(const std::string& source, const std::string& dest) const override {
             return can_add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
         bool can_flip_edge(node_descriptor source, node_descriptor dest);
 
-        bool can_flip_edge(int source_index, int dest_index) {
+        bool can_flip_edge(int source_index, int dest_index) override {
             return can_flip_edge(node(source_index), node(dest_index));
         }
 
-        bool can_flip_edge(const std::string& source, const std::string& dest) {
+        bool can_flip_edge(const std::string& source, const std::string& dest) override {
             return can_flip_edge(m_indices.at(source), m_indices.at(dest));
         }
 
@@ -246,11 +292,11 @@ namespace models {
             g.remove_edge(source, dest);
         }
 
-        void remove_edge(int source, int dest) {
+        void remove_edge(int source, int dest) override {
             remove_edge(g.node(source), g.node(dest));
         }
 
-        void remove_edge(const std::string& source, const std::string& dest) {
+        void remove_edge(const std::string& source, const std::string& dest) override {
             remove_edge(m_indices.at(source), m_indices.at(dest));
         }
 
@@ -258,7 +304,7 @@ namespace models {
 
         void compatible_cpd(const CPD& cpd) const;
         
-        void fit(const DataFrame& df);
+        void fit(const DataFrame& df) override;
         bool must_refit_cpd(const CPD& node) const;
 
         CPD create_cpd(const std::string& node) {
@@ -277,8 +323,8 @@ namespace models {
             return cpd(m_indices.at(node));
         }
 
-        VectorXd logpdf(const DataFrame& df) const;
-        double slogpdf(const DataFrame& df) const;
+        VectorXd logpdf(const DataFrame& df) const override;
+        double slogpdf(const DataFrame& df) const override;
 
         template<typename Derived_>
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);

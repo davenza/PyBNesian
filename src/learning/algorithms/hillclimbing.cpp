@@ -15,8 +15,9 @@ using Eigen::VectorXd, Eigen::MatrixXd;;
 using models::GaussianNetwork, models::BayesianNetworkType;
 using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
 using graph::DagType;
-using learning::operators::ArcOperatorSet, learning::operators::OperatorPool, learning::operators::OperatorSetType,
-      learning::operators::OperatorTabuSet;
+using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
+      learning::operators::OperatorPool, learning::operators::OperatorSetType,
+      learning::operators::OperatorTabuSet, learning::operators::OperatorSet;
 using util::ArcVector;
 
 // #include <util/benchmark_basic.hpp>
@@ -116,7 +117,11 @@ namespace learning::algorithms {
         HoldoutLikelihood validation_score(df, 0.2, 0);
         CVLikelihood training_score(validation_score.training_data(), 10, 0);
 
-        OperatorPool pool(m, training_score, operators, arc_blacklist, arc_whitelist, type_whitelist, max_indegree);
+        auto arc_set = std::make_shared<ArcOperatorSet<CVLikelihood>>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
+        auto nodetype_set = std::make_shared<ChangeNodeTypeSet<CVLikelihood>>(m, training_score, type_whitelist);
+
+        std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set), std::move(nodetype_set)};
+        OperatorPool<CVLikelihood> pool(m, training_score, std::move(v));
         
         GreedyHillClimbing hc;
         hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
@@ -157,7 +162,8 @@ namespace learning::algorithms {
         HoldoutLikelihood validation_score(df, 0.2);
         CVLikelihood training_score(validation_score.training_data(), 10);
 
-        OperatorPool pool(m, training_score, operators, arc_blacklist, arc_whitelist, max_indegree);
+        auto arc_set = std::make_shared<ArcOperatorSet<CVLikelihood>>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
+        OperatorPool pool(m, training_score, {std::move(arc_set)});
         
         GreedyHillClimbing hc;
         hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
@@ -190,7 +196,8 @@ namespace learning::algorithms {
         switch(score_type) {
             case ScoreType::BIC: {
                 BIC score(df);
-                OperatorPool pool(m, score, operators, arc_blacklist, arc_whitelist, max_indegree);
+                auto arc_set = std::make_shared<ArcOperatorSet<BIC>>(m, score, arc_blacklist, arc_whitelist, max_indegree);
+                OperatorPool pool(m, score, {std::move(arc_set)});
                 hc.estimate(df, pool, max_iters, epsilon, m);
             }
                 break;
@@ -308,7 +315,7 @@ namespace learning::algorithms {
         int p = 0;
         double validation_offset = 0;
 
-        OperatorTabuSet<Model> tabu_set;
+        OperatorTabuSet tabu_set;
         
         auto iter = 0;
         while(iter < max_iters) {

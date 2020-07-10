@@ -62,10 +62,10 @@ namespace learning::scores {
                            const EvidenceIter evidence_end) const;
 
         template<typename Model>
-        double delta_score(const Model& model, Operator<Model>* op, VectorXd& current_local_scores) {
+        double delta_score(const Model& model, Operator* op, VectorXd& current_local_scores) {
             switch(op->type()) {
                 case OperatorType::ADD_ARC: {
-                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    auto dwn_op = dynamic_cast<ArcOperator*>(op);
                     auto target_index = model.index(dwn_op->target());
                     auto parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
@@ -77,7 +77,7 @@ namespace learning::scores {
                     return current_local_scores(target_index) - prev;
                 }
                 case OperatorType::REMOVE_ARC: {
-                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    auto dwn_op = dynamic_cast<ArcOperator*>(op);
                     auto target_index = model.index(dwn_op->target());
                     auto parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
@@ -90,7 +90,7 @@ namespace learning::scores {
                     return current_local_scores(target_index) - prev;
                 }
                 case OperatorType::FLIP_ARC: {
-                    auto dwn_op = dynamic_cast<ArcOperator<Model>*>(op);
+                    auto dwn_op = dynamic_cast<ArcOperator*>(op);
                     auto target_index = model.index(dwn_op->target());
                     auto target_parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
@@ -110,7 +110,7 @@ namespace learning::scores {
                            prev_target;
                 }
                 case OperatorType::CHANGE_NODE_TYPE: {
-                    auto dwn_op = dynamic_cast<ChangeNodeType<Model>*>(op);
+                    auto dwn_op = dynamic_cast<ChangeNodeType*>(op);
                     auto node_index = model.index(dwn_op->node());
                     auto new_node_type = dwn_op->node_type();
                     auto parents = model.parent_indices(node_index);

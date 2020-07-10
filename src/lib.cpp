@@ -19,7 +19,7 @@
 #include <learning/parameters/mle.hpp>
 #include <learning/parameters/pybindings_mle.hpp>
 #include <learning/operators/operators.hpp>
-#include <learning/operators/pybindings_operators.hpp>
+// #include <learning/operators/pybindings_operators.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <util/util_types.hpp>
 
@@ -45,7 +45,8 @@ using learning::scores::HoldoutLikelihood;
 using learning::operators::AddArc, learning::operators::RemoveArc, learning::operators::FlipArc,
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, 
       learning::operators::OperatorSetType, learning::operators::OperatorSet, 
-      learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
+      learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
+      learning::operators::OperatorPool;
 
 using util::ArcVector;
 
@@ -96,116 +97,212 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
             .def(py::init<const std::vector<std::string>&, const ArcVector&>());
 }
 
-template<typename Model>
-void register_ArcOperators(py::module& m, const char* model_name) {
-    std::string operator_name = std::string("Operator<") + model_name + ">";
-    py::class_<Operator<Model>>(m, operator_name.c_str())
-        .def_property_readonly("delta", &Operator<Model>::delta)
-        .def_property_readonly("type", &Operator<Model>::type)
-        .def("apply", &Operator<Model>::apply)
-        .def("opposite", &Operator<Model>::opposite, py::return_value_policy::take_ownership);
+void register_ArcOperators(py::module& m) {
+    py::class_<Operator, std::shared_ptr<Operator>>(m, "Operator")
+        .def_property_readonly("delta", &Operator::delta)
+        .def_property_readonly("type", &Operator::type)
+        .def("apply", &Operator::apply)
+        .def("opposite", &Operator::opposite, py::return_value_policy::take_ownership);
 
-    std::string arcoperator_name = std::string("ArcOperator<") + model_name + ">";
-    py::class_<ArcOperator<Model>, Operator<Model>>(m, arcoperator_name.c_str())
-        .def_property_readonly("source", &ArcOperator<Model>::source)
-        .def_property_readonly("target", &ArcOperator<Model>::target);
+    py::class_<ArcOperator, Operator, std::shared_ptr<ArcOperator>>(m, "ArcOperator")
+        .def_property_readonly("source", &ArcOperator::source)
+        .def_property_readonly("target", &ArcOperator::target);
 
-    std::string addarc_name = std::string("AddArc<") + model_name + ">";
-    py::class_<AddArc<Model>, ArcOperator<Model>>(m, addarc_name.c_str())
+    py::class_<AddArc, ArcOperator, std::shared_ptr<AddArc>>(m, "AddArc")
         .def(py::init<std::string, std::string, double>())
-        .def("apply", &AddArc<Model>::apply)
-        .def("opposite", &AddArc<Model>::opposite, py::return_value_policy::take_ownership);
+        .def("apply", &AddArc::apply)
+        .def("opposite", &AddArc::opposite, py::return_value_policy::take_ownership);
 
-    std::string removearc_name = std::string("RemoveArc<") + model_name + ">";
-    py::class_<RemoveArc<Model>, ArcOperator<Model>>(m, removearc_name.c_str())
+    py::class_<RemoveArc, ArcOperator, std::shared_ptr<RemoveArc>>(m, "RemoveArc")
         .def(py::init<std::string, std::string, double>())
-        .def("apply", &RemoveArc<Model>::apply)
-        .def("opposite", &RemoveArc<Model>::opposite, py::return_value_policy::take_ownership);
+        .def("apply", &RemoveArc::apply)
+        .def("opposite", &RemoveArc::opposite, py::return_value_policy::take_ownership);
 
-    std::string fliparc_name = std::string("FlipArc<") + model_name + ">";
-    py::class_<FlipArc<Model>, ArcOperator<Model>>(m, fliparc_name.c_str())
+    py::class_<FlipArc, ArcOperator, std::shared_ptr<FlipArc>>(m, "FlipArc")
         .def(py::init<std::string, std::string, double>())
-        .def("apply", &FlipArc<Model>::apply)
-        .def("opposite", &FlipArc<Model>::opposite, py::return_value_policy::take_ownership);
+        .def("apply", &FlipArc::apply)
+        .def("opposite", &FlipArc::opposite, py::return_value_policy::take_ownership);
 }
 
-template<typename Model>
-void register_OperatorTabuSet(py::module& m, const char* model_name) {
-    std::string name = std::string("OperatorTabuSet<") + model_name + ">";
+void register_OperatorTabuSet(py::module& m) {
 
     // TODO: Implement copy operation.
-    py::class_<OperatorTabuSet<Model>>(m, name.c_str())
+    py::class_<OperatorTabuSet>(m, "OperatorTabuSet")
         .def(py::init<>())
-        .def("insert", py::overload_cast<Operator<Model>*>(&OperatorTabuSet<Model>::insert))
-        .def("contains", py::overload_cast<Operator<Model>*>(&OperatorTabuSet<Model>::contains, py::const_))
-        .def("clear", &OperatorTabuSet<Model>::clear)
-        .def("empty", &OperatorTabuSet<Model>::empty);
+        .def("insert", py::overload_cast<std::shared_ptr<Operator>>(&OperatorTabuSet::insert))
+        .def("contains", py::overload_cast<std::shared_ptr<Operator>&>(&OperatorTabuSet::contains, py::const_))
+        .def("clear", &OperatorTabuSet::clear)
+        .def("empty", &OperatorTabuSet::empty);
 }
 
-template<typename Model, typename Score>
-void register_ArcOperatorSet(py::module& m, const char* model_name, const char* score_name) {
-    std::string arc_score_name = std::string("ArcOperatorSet<") + model_name + "," + score_name + ">";
 
-    py::class_<ArcOperatorSet<Model, Score>, OperatorSet<Model>>(m, arc_score_name.c_str());
-        // .def("cache_scores", &ArcOperatorSet<Model, Score>::cache_scores)
-        // .def("find_max", [](ArcOperatorSet<Model, Score>& self, Model& model) { return self.find_max(model); }, 
-        //     py::return_value_policy::take_ownership)
-        // .def("find_max", [](ArcOperatorSet<Model, Score>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
-        //     return self.find_max(model, tabu); 
-        // }, py::return_value_policy::take_ownership)
-        // .def("update_scores", &ArcOperatorSet<Model, Score>::update_scores);
+#define DEF_CALLMETHOD_BN(DerivedClass, method_name)                                    \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn) {                 \
+        self.method_name(gbn);                                                          \
+    })                                                                                  \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn) {               \
+        self.method_name(spbn);                                                         \
+    })                                                                                  \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn) {       \
+        self.method_name(gbn);                                                          \
+    })                                                                                  \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn) {     \
+        self.method_name(spbn);                                                         \
+    })
 
-    m.def("ArcOperatorSet", [](Model& m, Score score, ArcVector& blacklist, ArcVector& whitelist, int max_indegree) {
-        return ArcOperatorSet(m, score, blacklist, whitelist, max_indegree);
-    });
+#define DEF_RETURNMETHOD_BN(DerivedClass, method_name)                                  \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn) {                 \
+        return self.method_name(gbn);                                                   \
+    })                                                                                  \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn) {               \
+        return self.method_name(spbn);                                                  \
+    })                                                                                  \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn) {       \
+        return self.method_name(gbn);                                                   \
+    })                                                                                  \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn) {     \
+        return self.method_name(spbn);                                                  \
+    })                                                                                      
+
+#define DEF_RETURNMETHOD_BN_TABU(DerivedClass, method_name)                                                 \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn, OperatorTabuSet& tabu) {              \
+        return self.method_name(gbn, tabu);                                                                 \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn, OperatorTabuSet& tabu) {            \
+        return self.method_name(spbn, tabu);                                                                \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn, OperatorTabuSet& tabu) {    \
+        return self.method_name(gbn, tabu);                                                                 \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn, OperatorTabuSet& tabu) {  \
+        return self.method_name(spbn, tabu);                                                                \
+    })       
+
+#define DEF_CALLMETHOD_BN_OPERATOR(DerivedClass, method_name)                                               \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn, Operator& op) {                       \
+        return self.method_name(gbn, op);                                                                   \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn, Operator& op) {                     \
+        return self.method_name(spbn, op);                                                                  \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn, Operator& op) {             \
+        return self.method_name(gbn, op);                                                                   \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn, Operator& op) {           \
+        return self.method_name(spbn, op);                                                                  \
+    })       
+
+
+#define DEF_BASE_CALLMETHOD_BN(BaseClass, DerivedClass, method_name)                                        \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn) {                                     \
+        self.BaseClass::method_name(gbn);                                                                   \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn) {                                   \
+        self.BaseClass::method_name(spbn);                                                                  \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn) {                           \
+        self.BaseClass::method_name(gbn);                                                                   \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn) {                         \
+        self.BaseClass::method_name(spbn);                                                                  \
+    })
+
+#define DEF_BASE_RETURNMETHOD_BN(BaseClass, DerivedClass, method_name)                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn) {                                     \
+        return self.BaseClass::method_name(gbn);                                                            \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn) {                                   \
+        return self.BaseClass::method_name(spbn);                                                           \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn) {                           \
+        return self.BaseClass::method_name(gbn);                                                            \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn) {                         \
+        return self.BaseClass::method_name(spbn);                                                           \
+    })                                                                                      
+
+#define DEF_BASE_RETURNMETHOD_BN_TABU(BaseClass, DerivedClass, method_name)                                 \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn, OperatorTabuSet& tabu) {              \
+        return self.BaseClass::method_name(gbn, tabu);                                                      \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn, OperatorTabuSet& tabu) {            \
+        return self.BaseClass::method_name(spbn, tabu);                                                     \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn, OperatorTabuSet& tabu) {    \
+        return self.BaseClass::method_name(gbn, tabu);                                                      \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn, OperatorTabuSet& tabu) {  \
+        return self.BaseClass::method_name(spbn, tabu);                                                     \
+    })       
+
+#define DEF_BASE_CALLMETHOD_BN_OPERATOR(BaseClass, DerivedClass, method_name)                               \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<>& gbn, Operator& op) {                       \
+        return self.BaseClass::method_name(gbn, op);                                                        \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<>& spbn, Operator& op) {                     \
+        return self.BaseClass::method_name(spbn, op);                                                       \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, GaussianNetwork<AdjListDag>& gbn, Operator& op) {             \
+        return self.BaseClass::method_name(gbn, op);                                                        \
+    })                                                                                                      \
+    .def(#method_name, [](DerivedClass& self, SemiparametricBN<AdjListDag>& spbn, Operator& op) {           \
+        return self.BaseClass::method_name(spbn, op);                                                       \
+    })       
+
+
+void register_OperatorSet(py::module& m) {
+
+    py::class_<OperatorSet, std::shared_ptr<OperatorSet>>(m, "OperatorSet")
+        .def(py::init<>())
+        DEF_CALLMETHOD_BN(OperatorSet, cache_scores)
+        DEF_RETURNMETHOD_BN(OperatorSet, find_max)
+        DEF_RETURNMETHOD_BN_TABU(OperatorSet, find_max)
+        DEF_CALLMETHOD_BN_OPERATOR(OperatorSet, update_scores);
 }
 
-template<typename Model, typename Score>
-void register_ChangeNodeTypeSet(py::module& m, const char* model_name, const char* score_name) {
-    std::string changenodetype_score_name = std::string("ChangeNodeTypeSet<") + model_name + "," + score_name + ">";
+template<typename Score>
+void register_ArcOperatorSet(py::module& m, const char* score_name) {
+    std::string arc_score_name = std::string("ArcOperatorSet<") + score_name + ">";
 
-    py::class_<ChangeNodeTypeSet<Model, Score>, OperatorSet<Model>>(m, changenodetype_score_name.c_str());
-        // .def("cache_scores", &ChangeNodeTypeSet<Model, Score>::cache_scores)
-        // .def("find_max", [](ChangeNodeTypeSet<Model, Score>& self, Model& model) { return self.find_max(model); }, 
-        //     py::return_value_policy::take_ownership)
-        // .def("find_max", [](ChangeNodeTypeSet<Model, Score>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
-        //     return self.find_max(model, tabu); 
-        // }, py::return_value_policy::take_ownership)
-        // .def("update_scores", &ChangeNodeTypeSet<Model, Score>::update_scores);
-
-    m.def("ChangeNodeTypeSet", [](Model& m, const Score score, FactorTypeVector& whitelist_type) {
-        return ChangeNodeTypeSet(m, score, whitelist_type);
-    });
+    py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Score>>>(m, arc_score_name.c_str())
+        .def(py::init<GaussianNetwork<>&, const Score, ArcVector&, ArcVector&, int>())
+        .def(py::init<SemiparametricBN<>&, const Score, ArcVector&, ArcVector&, int>())
+        .def(py::init<GaussianNetwork<AdjListDag>&, const Score, ArcVector&, ArcVector&, int>())
+        .def(py::init<SemiparametricBN<AdjListDag>&, const Score, ArcVector&, ArcVector&, int>())
+        DEF_CALLMETHOD_BN(ArcOperatorSet<Score>, cache_scores)
+        DEF_RETURNMETHOD_BN(ArcOperatorSet<Score>, find_max)
+        DEF_RETURNMETHOD_BN_TABU(ArcOperatorSet<Score>, find_max)
+        DEF_CALLMETHOD_BN_OPERATOR(ArcOperatorSet<Score>, update_scores);
 }
 
-// template<typename Model, typename Score>
-// void register_OperatorPool(py::module& m, const char* model_name, const char* score_name) {
-//     std::string changenodetype_score_name = std::string("OperatorPool<") + model_name + "," + score_name + ">";
+template<typename Score>
+void register_ChangeNodeTypeSet(py::module& m, const char* score_name) {
+    std::string changenodetype_score_name = std::string("ChangeNodeTypeSet<") + score_name + ">";
+
+    py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeTypeSet<Score>>>(m, changenodetype_score_name.c_str())
+        .def(py::init<SemiparametricBN<>&, const Score, FactorTypeVector&>())
+        .def(py::init<SemiparametricBN<AdjListDag>&, const Score, FactorTypeVector&>())
+        DEF_BASE_CALLMETHOD_BN(OperatorSet, ChangeNodeTypeSet<Score>, cache_scores)
+        DEF_BASE_RETURNMETHOD_BN(OperatorSet, ChangeNodeTypeSet<Score>, find_max)
+        DEF_BASE_RETURNMETHOD_BN_TABU(OperatorSet, ChangeNodeTypeSet<Score>, find_max)
+        DEF_BASE_CALLMETHOD_BN_OPERATOR(OperatorSet, ChangeNodeTypeSet<Score>, update_scores);
+}
+
+template<typename Score>
+void register_OperatorPool(py::module& m, const char* score_name) {
+    std::string changenodetype_score_name = std::string("OperatorPool<") + score_name + ">";
     
-//     py::class_<OperatorPool<Model, Score>>(m, changenodetype_score_name.c_str());
-// }
-
-template<typename Model>
-void register_OperatorSet(py::module& m, const char* model_name) {
-    std::string name = std::string("OperatorSet<") + model_name + ">";
-
-    py::class_<OperatorSet<Model>>(m, name.c_str());
-        // .def("cache_scores", &OperatorSet<Model>::cache_scores)
-        // .def("find_max", [](OperatorSet<Model>& self, Model& model) { return self.find_max(model); }, 
-        //     py::return_value_policy::take_ownership)
-        // .def("find_max", [](OperatorSet<Model>& self, Model& model, OperatorTabuSet<Model>& tabu) { 
-        //     return self.find_max(model, tabu); 
-        // }, py::return_value_policy::take_ownership)
-        // .def("update_scores", &OperatorSet<Model>::update_scores);
-
-    if constexpr (util::is_gaussian_network_v<Model>) {
-        register_ArcOperatorSet<Model, BIC>(m, model_name, "BIC");
-        register_ArcOperatorSet<Model, CVLikelihood>(m, model_name, "CVLikelihood");
-    } else if constexpr (util::is_semiparametricbn_v<Model>) {
-        register_ArcOperatorSet<Model, CVLikelihood>(m, model_name, "CVLikelihood");
-        register_ChangeNodeTypeSet<Model, CVLikelihood>(m, model_name, "CVLikelihood");
-    }
+    py::class_<OperatorPool<Score>>(m, changenodetype_score_name.c_str())
+        .def(py::init<GaussianNetwork<>&, Score, std::vector<std::shared_ptr<OperatorSet>>>())
+        .def(py::init<SemiparametricBN<>&, Score, std::vector<std::shared_ptr<OperatorSet>>>())
+        .def(py::init<GaussianNetwork<AdjListDag>&, Score, std::vector<std::shared_ptr<OperatorSet>>>())
+        .def(py::init<SemiparametricBN<AdjListDag>&, Score, std::vector<std::shared_ptr<OperatorSet>>>())
+        DEF_CALLMETHOD_BN(OperatorPool<Score>, cache_scores)
+        DEF_RETURNMETHOD_BN(OperatorPool<Score>, find_max)
+        DEF_RETURNMETHOD_BN_TABU(OperatorPool<Score>, find_max)
+        DEF_CALLMETHOD_BN_OPERATOR(OperatorPool<Score>, update_scores);
 }
+
 
 
 PYBIND11_MODULE(pgm_dataset, m) {
@@ -476,25 +573,22 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def(py::self == py::self)
         .def(py::self != py::self);
 
-    register_ArcOperators<GaussianNetwork<>>(operators, "GaussianNetwork");
-    register_ArcOperators<SemiparametricBN<>>(operators, "SemiparametricBN");
+    register_ArcOperators(operators);
 
-    py::class_<ChangeNodeType<SemiparametricBN<>>, Operator<SemiparametricBN<>>>(m, "ChangeNodeType<SemiparametricBN>")
+    py::class_<ChangeNodeType, Operator, std::shared_ptr<ChangeNodeType>>(m, "ChangeNodeType")
         .def(py::init<std::string, FactorType, double>())
-        .def_property_readonly("node", &ChangeNodeType<SemiparametricBN<>>::node)
-        .def_property_readonly("node_type", &ChangeNodeType<SemiparametricBN<>>::node_type)
-        .def("apply", &ChangeNodeType<SemiparametricBN<>>::apply)
-        .def("opposite", &ChangeNodeType<SemiparametricBN<>>::opposite);
+        .def_property_readonly("node", &ChangeNodeType::node)
+        .def_property_readonly("node_type", &ChangeNodeType::node_type)
+        .def("apply", &ChangeNodeType::apply)
+        .def("opposite", &ChangeNodeType::opposite);
 
-    operators.def("AddArc", &learning::operators::addarc_wrapper_constructor, py::return_value_policy::take_ownership);
-    operators.def("RemoveArc", &learning::operators::removearc_wrapper_constructor, py::return_value_policy::take_ownership);
-    operators.def("FlipArc", &learning::operators::fliparc_wrapper_constructor, py::return_value_policy::take_ownership);
-    operators.def("ChangeNodeType", &learning::operators::changenodetype_wrapper_constructor, py::return_value_policy::take_ownership);
 
-    register_OperatorTabuSet<GaussianNetwork<>>(operators, "GaussianNetwork");
-    register_OperatorTabuSet<SemiparametricBN<>>(operators, "SemiparametricBN");
+    register_OperatorTabuSet(operators);
 
-    operators.def("OperatorTabuSet", &learning::operators::operatortabuset_wrapper_constructor, py::return_value_policy::take_ownership);
+    register_OperatorSet(operators);
+    register_ArcOperatorSet<BIC>(operators, "BIC");
+    register_ArcOperatorSet<CVLikelihood>(operators, "CVLikelihood");
+    register_ChangeNodeTypeSet<CVLikelihood>(operators, "CVLikelihood");
 
     py::class_<OperatorSetType>(operators, "OperatorSetType")
         .def_property_readonly_static("ARCS", [](const py::object&) { 
@@ -506,8 +600,6 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def(py::self == py::self)
         .def(py::self != py::self);
 
-    register_OperatorSet<GaussianNetwork<>>(operators, "GaussianNetwork");
-    register_OperatorSet<SemiparametricBN<>>(operators, "SemiparametricBN");
 
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");

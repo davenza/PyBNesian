@@ -1,20 +1,11 @@
-#include <limits>
 #include <learning/operators/operators.hpp>
 
+using learning::operators::AddArc;
 
 namespace learning::operators {
 
-
-    template<typename Model, typename Score>
-    void ArcOperatorsType<Model, Score>::cache_scores(const DataFrame& df, const Model& m) {
-        
-        using node_descriptor = Model::node_descriptor;
-
-        for (auto i = 0; i < df.num_columns(); ++i) {
-            auto col = df->column(i);
-
-
-        }
-
+    std::shared_ptr<Operator> AddArc::opposite() {
+        return std::make_shared<RemoveArc>(this->source(), this->target(), -this->delta());
     }
+
 }

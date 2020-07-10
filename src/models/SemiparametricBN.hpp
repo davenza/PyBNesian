@@ -6,13 +6,13 @@
 #include <util/util_types.hpp>
 
 using graph::AdjMatrixDag;
-using models::BayesianNetwork;
+using models::BayesianNetwork, models::SemiparametricBNBase;
 using util::FactorTypeVector;
 
 namespace models {
 
     template<typename D = AdjMatrixDag>
-    class SemiparametricBN : public BayesianNetwork<SemiparametricBN<D>> {
+    class SemiparametricBN : public BayesianNetwork<SemiparametricBN<D>>, public SemiparametricBNBase {
     public:
         using DagType = D;
         using CPD = SemiparametricCPD;

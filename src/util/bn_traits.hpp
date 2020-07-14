@@ -59,6 +59,9 @@ namespace util {
 
     template<typename Model, typename Score, typename R = void>
     using enable_if_compatible_score_t = std::enable_if_t<is_compatible_score_v<Model, Score>, R>;
+    
+    template<typename Model, typename Score, typename R = void>
+    using enable_if_not_compatible_score_t = std::enable_if_t<!is_compatible_score_v<Model, Score>, R>;
 }
 
 

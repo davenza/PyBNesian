@@ -11,13 +11,17 @@ using models::BayesianNetworkType;
 
 namespace learning::operators {
 
-    py::object addarc_wrapper_constructor(BayesianNetworkType bn, std::string source, std::string dest, double delta);
-    py::object removearc_wrapper_constructor(BayesianNetworkType bn, std::string source, std::string dest, double delta);
-    py::object fliparc_wrapper_constructor(BayesianNetworkType bn, std::string source, std::string dest, double delta);
-    py::object changenodetype_wrapper_constructor(BayesianNetworkType bn, std::string node, FactorType new_factor, double delta);
+    template<typename Model, typename Score>
+    ArcOperatorSet<Score> ArcOperatorSet_constructor(Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
+                       int max_indegree) {
+        return ArcOperatorSet(model, score, whitelist, blacklist, max_indegree);
+    }
     
-    py::object operatortabuset_wrapper_constructor(BayesianNetworkType bn);
 
+    template<typename Model, typename Score>
+    ChangeNodeTypeSet<Score> ChangeNodeTypeSet_constructor(Model& model, const Score score, FactorTypeVector& type_whitelist) {
+        return ChangeNodeTypeSet(model, score, type_whitelist);
+    }
 
     // template<typename Model, typename Score>
     // ArcOperatorSet<Model, Score> arcoperatorset_wrapper_constructor(Model& model,

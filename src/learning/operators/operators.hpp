@@ -390,30 +390,54 @@ namespace learning::operators {
     private:
         VectorXd m_local_score;
     };
+    
+    template<typename... Types>
+    class OperatorSetInterface {};
 
-
-    #define OPERATORSET_INTERFACE(DerivedClass)                                                             \
-        virtual void cache_scores(DerivedClass&) {                                                          \
-            throw std::invalid_argument("OperatorSet::cache_scores() not implemented" );                    \
-        }                                                                                                   \
-        virtual std::shared_ptr<Operator> find_max(DerivedClass&) {                                         \
-            throw std::invalid_argument("OperatorSet::find_max() not implemented");                         \
-        }                                                                                                   \
-        virtual std::shared_ptr<Operator> find_max(DerivedClass&, OperatorTabuSet&) {                       \
-            throw std::invalid_argument("OperatorSet::find_max() not implemented");                         \
-        }                                                                                                   \
-        virtual void update_scores(DerivedClass&, Operator&) {                                              \
-            throw std::invalid_argument("OperatorSet::update_scores() not implemented");                    \
-        }
-
-    class OperatorSet {
+    template<typename Type>
+    class OperatorSetInterface<Type> {
     public:
+        virtual void cache_scores(Type&) {
+            throw std::invalid_argument("OperatorSet::cache_scores() not implemented." );
+        }
+        virtual std::shared_ptr<Operator> find_max(Type&) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        }
+        virtual std::shared_ptr<Operator> find_max(Type&, OperatorTabuSet&) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        }
+        virtual void update_scores(Type&, Operator&) {
+            throw std::invalid_argument("OperatorSet::update_scores() not implemented.");
+        }
+    };
 
-        OPERATORSET_INTERFACE(GaussianNetwork<>)
-        OPERATORSET_INTERFACE(GaussianNetwork<AdjListDag>)
-        OPERATORSET_INTERFACE(SemiparametricBN<>)
-        OPERATORSET_INTERFACE(SemiparametricBN<AdjListDag>)
+    template<typename Type, typename... Types>
+    class OperatorSetInterface<Type, Types...> : public OperatorSetInterface<Types...> {
+    public:
+        using Base = OperatorSetInterface<Types...>;
+        using Base::cache_scores;
+        using Base::find_max;
+        using Base::update_scores;
+        virtual void cache_scores(Type&) {
+            throw std::invalid_argument("OperatorSet::cache_scores() not implemented.");
+        }
+        virtual std::shared_ptr<Operator> find_max(Type&) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        }
+        virtual std::shared_ptr<Operator> find_max(Type&, OperatorTabuSet&) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        }
+        virtual void update_scores(Type&, Operator&) {
+            throw std::invalid_argument("OperatorSet::update_scores() not implemented.");
+        }
+    };
 
+    class OperatorSet : public OperatorSetInterface<GaussianNetwork<>, 
+                                                    GaussianNetwork<AdjListDag>,
+                                                    SemiparametricBN<>,
+                                                    SemiparametricBN<AdjListDag>>
+    {
+    public:
         void set_local_score_cache(std::shared_ptr<LocalScoreCache> local_cache) {
             m_local_cache = local_cache;
         }
@@ -423,48 +447,80 @@ namespace learning::operators {
         std::shared_ptr<LocalScoreCache> m_local_cache;
     };
 
-    #define OPERATORSET_INTERFACE_OVERRIDE(DerivedClass)                                              \
-        void cache_scores(DerivedClass& model) override {                                             \
-            if constexpr (util::is_compatible_score_v<DerivedClass, Score>) {                         \
-                cache_scores<DerivedClass>(model);                                                    \
-            } else {                                                                                  \
-                throw std::invalid_argument("OperatorSet::cache_scores() not implemented" );          \
-            }                                                                                         \
-        }                                                                                             \
-        std::shared_ptr<Operator> find_max(DerivedClass& model) override {                            \
-            if constexpr (util::is_compatible_score_v<DerivedClass, Score>) {                          \
-                return find_max<DerivedClass>(model);                                                 \
-            } else {                                                                                  \
-                throw std::invalid_argument("OperatorSet::find_max() not implemented");               \
-            }                                                                                         \
-        }                                                                                             \
-        std::shared_ptr<Operator> find_max(DerivedClass& model, OperatorTabuSet& tabu_set) override { \
-            if constexpr (util::is_compatible_score_v<DerivedClass, Score>) {                          \
-                return find_max<DerivedClass>(model, tabu_set);                                       \
-            } else {                                                                                  \
-                throw std::invalid_argument("OperatorSet::find_max() not implemented");               \
-            }                                                                                         \
-        }                                                                                             \ 
-        void update_scores(DerivedClass& model, Operator& op) override {                              \
-            if constexpr (util::is_compatible_score_v<DerivedClass, Score>) {                          \
-                return update_scores<DerivedClass>(model, op);                                        \
-            } else {                                                                                  \
-                throw std::invalid_argument("OperatorSet::update_scores() not implemented");          \
-            }                                                                                         \
-        }                                                                                            
+    template<typename Derived, bool EnableOverride, typename... Types>
+    class OperatorSetImplDetail {};
+
+    template<template<typename> typename Derived, typename Score, typename Type>
+    class OperatorSetImplDetail<Derived<Score>, true, Type>  : public OperatorSet {
+    public:
+        void cache_scores(Type& m) override {
+            static_cast<Derived<Score>*>(this)->cache_scores(m);
+        }
+        std::shared_ptr<Operator> find_max(Type& m) override {
+            return static_cast<Derived<Score>*>(this)->find_max(m);
+        }
+        std::shared_ptr<Operator> find_max(Type& m, OperatorTabuSet& tabu) override {
+            return static_cast<Derived<Score>*>(this)->find_max(m, tabu);
+        }
+        void update_scores(Type& m, Operator& op) override {
+            static_cast<Derived<Score>*>(this)->update_scores(m, op);
+        }
+    };
+
+    template<template<typename> typename Derived, typename Score, typename Type>
+    class OperatorSetImplDetail<Derived<Score>, false, Type>  : public OperatorSet {};
+
+    template<template<typename> typename Derived, typename Score, typename Type, typename... Types>
+    class OperatorSetImplDetail<Derived<Score>, true, Type, Types...> : 
+                public OperatorSetImplDetail<Derived<Score>, 
+                                             util::is_compatible_score_v<typename std::tuple_element<0, std::tuple<Types...>>::type,
+                                                                         Score>,
+                                             Types...> {
+    public:
+        void cache_scores(Type& m) override {
+            static_cast<Derived<Score>*>(this)->cache_scores(m);
+        }
+        std::shared_ptr<Operator> find_max(Type& m) override {
+            return static_cast<Derived<Score>*>(this)->find_max(m);
+        }
+        std::shared_ptr<Operator> find_max(Type& m, OperatorTabuSet& tabu) override {
+            return static_cast<Derived<Score>*>(this)->find_max(m, tabu);
+        }
+        void update_scores(Type& m, Operator& op) override {
+            static_cast<Derived<Score>*>(this)->update_scores(m, op);
+        }
+    };
+
+    template<template<typename> typename Derived, typename Score, typename Type, typename... Types>
+    class OperatorSetImplDetail<Derived<Score>, false, Type, Types...> : 
+                public OperatorSetImplDetail<Derived<Score>, 
+                                             util::is_compatible_score_v<typename std::tuple_element<0, std::tuple<Types...>>::type,
+                                                                         Score>,
+                                             Types...> { };
+
+    template<typename Derived, typename Type, typename... Types>
+    class OperatorSetImpl {};
+
+    template<template<typename> typename Derived, typename Score, typename Type, typename... Types>
+    class OperatorSetImpl<Derived<Score>, Type, Types...> 
+            : public OperatorSetImplDetail<Derived<Score>, 
+                                           util::is_compatible_score_v<typename std::tuple_element<0, std::tuple<Types...>>::type,
+                                                                        Score>,
+                                           Type,
+                                           Types...> { };
 
     template<typename Score>
-    class ArcOperatorSet : public OperatorSet {
+    class ArcOperatorSet : public OperatorSetImpl<ArcOperatorSet<Score>,
+                                                  GaussianNetwork<>,
+                                                  GaussianNetwork<AdjListDag>,
+                                                  SemiparametricBN<>,
+                                                  SemiparametricBN<AdjListDag>>
+    {
     public:
 
         template<typename Model>
         ArcOperatorSet(Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
                        int max_indegree);
-
-        OPERATORSET_INTERFACE_OVERRIDE(GaussianNetwork<>)
-        OPERATORSET_INTERFACE_OVERRIDE(GaussianNetwork<AdjListDag>)
-        OPERATORSET_INTERFACE_OVERRIDE(SemiparametricBN<>)
-        OPERATORSET_INTERFACE_OVERRIDE(SemiparametricBN<AdjListDag>)
 
         template<typename Model>
         void cache_scores(Model& model);
@@ -481,7 +537,6 @@ namespace learning::operators {
         void update_scores(Model& model, Operator& op);
         template<typename Model>
         void update_node_arcs_scores(Model& model, const std::string& dest_node);
-
     private:
         const Score m_score;
         MatrixXd delta;
@@ -746,7 +801,9 @@ namespace learning::operators {
     }
 
     template<typename Score>
-    class ChangeNodeTypeSet : public OperatorSet {
+    class ChangeNodeTypeSet : public OperatorSetImpl<ChangeNodeTypeSet<Score>,
+                                                     SemiparametricBN<>,
+                                                     SemiparametricBN<AdjListDag>> {
     public:
         template<typename Model>
         ChangeNodeTypeSet(Model& model, 
@@ -773,9 +830,6 @@ namespace learning::operators {
                     sorted_idx.push_back(i);
             }
         }
-
-        OPERATORSET_INTERFACE_OVERRIDE(SemiparametricBN<>)
-        OPERATORSET_INTERFACE_OVERRIDE(SemiparametricBN<AdjListDag>)
 
         template<typename Model>
         void cache_scores(Model& model);
@@ -876,12 +930,9 @@ namespace learning::operators {
         }
     }
 
-    using OperatorSetTypeS = std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>;
-
     template<typename Score>
     class OperatorPool {
     public:
-
         template<typename Model>
         OperatorPool(Model& model, 
                      const Score score, 
@@ -893,64 +944,7 @@ namespace learning::operators {
                 op_set->set_local_score_cache(local_cache);
             }
         }
-        // template<typename Model, typename = util::enable_if_gaussian_network_t<Model, int>>
-        // OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
-        //              ArcVector arc_whitelist, int max_indegree) 
-        //                 : m_score(score),
-        //                   local_cache(std::make_shared<LocalScoreCache>(model)),
-        //                   m_op_sets()
-        // {
-        //     if (op_sets.empty()) {
-        //         throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
-        //     }
-
-        //     m_op_sets.reserve(op_sets.size());
-        //     for (auto& opset : op_sets) {
-        //         switch(opset) {
-        //             case OperatorSetType::ARCS: {
-        //                 auto arcs = std::make_shared<ArcOperatorSet<Score>>(model, score, arc_blacklist, arc_whitelist, 
-        //                                                                            max_indegree);
-        //                 arcs->set_local_score_cache(local_cache);
-        //                 m_op_sets.push_back(std::move(arcs));
-        //             }
-        //                 break;
-        //             case OperatorSetType::NODE_TYPE:
-        //                 throw std::invalid_argument("Gaussian Bayesian networks cannot change node type.");
-        //         }
-        //     }
-        // };
-
-        // template<typename Model, typename = util::enable_if_semiparametricbn_t<Model, int>>
-        // OperatorPool(Model& model, const Score& score, OperatorSetTypeS op_sets, ArcVector arc_blacklist, 
-        //              ArcVector arc_whitelist, FactorTypeVector type_whitelist, int max_indegree) 
-        //                 : m_score(score),
-        //                   local_cache(std::make_shared<LocalScoreCache>(model)),
-        //                   m_op_sets()
-        // {
-        //     if (op_sets.empty()) {
-        //         throw std::invalid_argument("Cannot create an OperatorPool without any OperatorType.");
-        //     }
-
-        //     for (auto& opset : op_sets) {
-        //         switch(opset) {
-        //             case OperatorSetType::ARCS: {
-        //                 auto arcs = std::make_shared<ArcOperatorSet<Score>>(model, score, arc_blacklist, arc_whitelist, 
-        //                                                                            max_indegree);
-
-        //                 arcs->set_local_score_cache(local_cache);
-        //                 m_op_sets.push_back(std::move(arcs));
-        //             }
-        //                 break;
-        //             case OperatorSetType::NODE_TYPE: {
-        //                 auto change_node_type = std::make_shared<ChangeNodeTypeSet<Score>>(model, score, type_whitelist);
-        //                 change_node_type->set_local_score_cache(local_cache);
-        //                 m_op_sets.push_back(std::move(change_node_type));
-        //             }
-        //                 break;
-        //         }
-        //     }
-        // };
-
+        
         template<typename Model>
         void cache_scores(Model& model);
         template<typename Model>

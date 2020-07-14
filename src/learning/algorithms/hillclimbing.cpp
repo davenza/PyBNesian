@@ -17,7 +17,8 @@ using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLi
 using graph::DagType;
 using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
       learning::operators::OperatorPool, learning::operators::OperatorSetType,
-      learning::operators::OperatorTabuSet, learning::operators::OperatorSet;
+      learning::operators::OperatorTabuSet, learning::operators::OperatorSet,
+      learning::operators::OperatorSetImplDetail;
 using util::ArcVector;
 
 // #include <util/benchmark_basic.hpp>
@@ -116,15 +117,38 @@ namespace learning::algorithms {
 
         HoldoutLikelihood validation_score(df, 0.2, 0);
         CVLikelihood training_score(validation_score.training_data(), 10, 0);
+        
+        // static_assert(std::is_base_of_v<OperatorSet, OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>,
+        //                                                                    true,
+        //                                                                    GaussianNetwork<>
+        //                                                                    >
+        //                                 >, 
+        // "OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>, GaussianNetwork<>> is not derived from OperatorSet");
+
+        // static_assert(std::is_base_of_v<OperatorSet, OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>,
+        //                                                                    true,
+        //                                                                    GaussianNetwork<>,
+        //                                                                    GaussianNetwork<AdjListDag>
+        //                                                                    >
+        //                                 >, 
+        // "OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>, GaussianNetwork<>> is not derived from OperatorSet");
+
+        static_assert(std::is_base_of_v<OperatorSet, ArcOperatorSet<CVLikelihood>>, "ArcOperatorSet<CVLikelihood> is not derived from OperatorSet");
+        static_assert(std::is_base_of_v<OperatorSet, ChangeNodeTypeSet<CVLikelihood>>, "ChangeNodeTypeSet<CVLikelihood> is not derived from OperatorSet");
 
         auto arc_set = std::make_shared<ArcOperatorSet<CVLikelihood>>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
         auto nodetype_set = std::make_shared<ChangeNodeTypeSet<CVLikelihood>>(m, training_score, type_whitelist);
 
-        std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set), std::move(nodetype_set)};
-        OperatorPool<CVLikelihood> pool(m, training_score, std::move(v));
+
+        // std::vector<std::shared_ptr<OperatorSet>> v;
+        // v.push_back(std::move(arc_set));
+        // v.push_back(std::move(nodetype_set));
+
+
+        // OperatorPool<CVLikelihood> pool(m, training_score, std::move(v));
         
-        GreedyHillClimbing hc;
-        hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
+        // GreedyHillClimbing hc;
+        // hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
     }
 
     void call_hc_validated_spbn(const DataFrame& df, 
@@ -163,7 +187,10 @@ namespace learning::algorithms {
         CVLikelihood training_score(validation_score.training_data(), 10);
 
         auto arc_set = std::make_shared<ArcOperatorSet<CVLikelihood>>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
-        OperatorPool pool(m, training_score, {std::move(arc_set)});
+
+        std::vector<std::shared_ptr<OperatorSet>> v;
+        v.push_back(std::move(arc_set));
+        OperatorPool pool(m, training_score, std::move(v));
         
         GreedyHillClimbing hc;
         hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
@@ -196,8 +223,10 @@ namespace learning::algorithms {
         switch(score_type) {
             case ScoreType::BIC: {
                 BIC score(df);
+                std::vector<std::shared_ptr<OperatorSet>> v;
                 auto arc_set = std::make_shared<ArcOperatorSet<BIC>>(m, score, arc_blacklist, arc_whitelist, max_indegree);
-                OperatorPool pool(m, score, {std::move(arc_set)});
+                v.push_back(std::move(arc_set));
+                OperatorPool pool(m, score, std::move(v));
                 hc.estimate(df, pool, max_iters, epsilon, m);
             }
                 break;

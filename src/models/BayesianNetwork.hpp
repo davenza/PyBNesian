@@ -102,7 +102,6 @@ namespace models {
         virtual VectorXd logpdf(const DataFrame& df) const = 0;
         virtual double slogpdf(const DataFrame& df) const = 0;
 
-        // friend std::ostream& operator<<(std::ostream &os, const BayesianNetworkBase& bn);
     };
 
     class SemiparametricBNBase {

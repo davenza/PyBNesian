@@ -38,7 +38,7 @@ using factors::continuous::KDE;
 using factors::continuous::CKDE;
 using factors::FactorType;
 
-using models::BayesianNetwork, models::BayesianNetworkType;
+using models::BayesianNetworkBase, models::BayesianNetwork, models::BayesianNetworkType;
 using learning::scores::BIC;
 using learning::scores::CVLikelihood;
 using learning::scores::HoldoutLikelihood;
@@ -58,7 +58,7 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
     using BaseClass = BayesianNetwork<DerivedBN>;
     std::string base_name = std::string("BayesianNetwork<") + derivedbn_name + ">";
     // TODO: Implement copy operation.
-    py::class_<BaseClass>(m, base_name.c_str())
+    py::class_<BaseClass, BayesianNetworkBase>(m, base_name.c_str())
         .def("num_nodes", &BaseClass::num_nodes)
         .def("num_edges", &BaseClass::num_edges)
         .def("nodes", &BaseClass::nodes, py::return_value_policy::reference_internal)
@@ -172,10 +172,6 @@ py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Sc
     std::string arc_score_name = std::string("ArcOperatorSet<") + score_name + ">";
     auto op_set = [&m, &arc_score_name, score_name]() {
         if constexpr (sizeof...(Models) == 0) {
-            m.def("ArcOperatorSet", [](Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
-                       int max_indegree) {
-                return ArcOperatorSet_constructor(model, score, whitelist, blacklist, max_indegree);
-            });
             py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Score>>> op_set(m, arc_score_name.c_str());
             op_set.def(py::init<Model&, const Score, ArcVector&, ArcVector&, int>());
             return op_set;
@@ -184,12 +180,10 @@ py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Sc
         }
     }();
 
-    if constexpr (sizeof...(Models) == 0) {
-        m.def("ArcOperatorSet", [](Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
+    m.def("ArcOperatorSet", [](Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
                     int max_indegree) {
-            return ArcOperatorSet_constructor(model, score, whitelist, blacklist, max_indegree);
-        });
-    }
+        return ArcOperatorSet_constructor(model, score, whitelist, blacklist, max_indegree);
+    });
 
     op_set.def("cache_scores", [](ArcOperatorSet<Score>& self, Model& model) {
         if constexpr(util::is_compatible_score_v<Model, Score>) {
@@ -236,11 +230,11 @@ py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeType
         }
     }();
 
-    if constexpr (sizeof...(Models) == 0) {
-        m.def("ChangeNodeTypeSet", [](Model& model, const Score score, FactorTypeVector& type_whitelist) {
-            return ChangeNodeTypeSet_constructor(model, score, type_whitelist);
-        });
-    }
+
+    m.def("ChangeNodeTypeSet", [](Model& model, const Score score, FactorTypeVector& type_whitelist) {
+        return ChangeNodeTypeSet_constructor(model, score, type_whitelist);
+    });
+
 
     op_set.def("cache_scores", [](ChangeNodeTypeSet<Score>& self, Model& model) {
         if constexpr(util::is_compatible_score_v<Model, Score>) {
@@ -428,8 +422,42 @@ PYBIND11_MODULE(pgm_dataset, m) {
         })
         .def(py::self == py::self)
         .def(py::self != py::self);
-    
+
+    py::class_<BayesianNetworkBase>(models, "BayesianNetworkBase")
+        .def("num_nodes", &BayesianNetworkBase::num_nodes)
+        .def("num_edges", &BayesianNetworkBase::num_edges)
+        .def("nodes", &BayesianNetworkBase::nodes, py::return_value_policy::reference_internal)
+        .def("indices", &BayesianNetworkBase::indices, py::return_value_policy::reference_internal)
+        .def("index", py::overload_cast<const std::string&>(&BayesianNetworkBase::index, py::const_))
+        .def("contains_node", &BayesianNetworkBase::contains_node)
+        .def("name", py::overload_cast<int>(&BayesianNetworkBase::name, py::const_), py::return_value_policy::reference_internal)
+        .def("num_parents", py::overload_cast<const std::string&>(&BayesianNetworkBase::num_parents, py::const_))
+        .def("num_parents", py::overload_cast<int>(&BayesianNetworkBase::num_parents, py::const_))
+        .def("num_children", py::overload_cast<const std::string&>(&BayesianNetworkBase::num_children, py::const_))
+        .def("num_children", py::overload_cast<int>(&BayesianNetworkBase::num_children, py::const_))
+        .def("parents", py::overload_cast<const std::string&>(&BayesianNetworkBase::parents, py::const_), py::return_value_policy::take_ownership)
+        .def("parents", py::overload_cast<int>(&BayesianNetworkBase::parents, py::const_), py::return_value_policy::take_ownership)
+        .def("parent_indices", py::overload_cast<const std::string&>(&BayesianNetworkBase::parent_indices, py::const_), py::return_value_policy::take_ownership)
+        .def("parent_indices", py::overload_cast<int>(&BayesianNetworkBase::parent_indices, py::const_), py::return_value_policy::take_ownership)
+        .def("has_edge", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::has_edge, py::const_))
+        .def("has_edge", py::overload_cast<int, int>(&BayesianNetworkBase::has_edge, py::const_))
+        .def("has_path", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::has_path, py::const_))
+        .def("has_path", py::overload_cast<int, int>(&BayesianNetworkBase::has_path, py::const_))
+        .def("add_edge", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::add_edge))
+        .def("add_edge", py::overload_cast<int, int>(&BayesianNetworkBase::add_edge))
+        .def("can_add_edge", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::can_add_edge, py::const_))
+        .def("can_add_edge", py::overload_cast<int, int>(&BayesianNetworkBase::can_add_edge, py::const_))
+        .def("can_flip_edge", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::can_flip_edge))
+        .def("can_flip_edge", py::overload_cast<int, int>(&BayesianNetworkBase::can_flip_edge))
+        .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::remove_edge))
+        .def("remove_edge", py::overload_cast<int, int>(&BayesianNetworkBase::remove_edge))
+        .def("fit", &BayesianNetworkBase::fit)
+        .def("logpdf", &BayesianNetworkBase::logpdf, py::return_value_policy::take_ownership)
+        .def("slogpdf", &BayesianNetworkBase::slogpdf);
+
     register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
+    register_BayesianNetwork<GaussianNetwork<AdjListDag>>(models, "GaussianNetwork_L");
+    
     auto spbn = register_BayesianNetwork<SemiparametricBN<>>(models, "SemiparametricBN");
 
     spbn.def(py::init<const std::vector<std::string>&, FactorTypeVector&>())
@@ -439,6 +467,16 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("node_type", py::overload_cast<int>(&SemiparametricBN<>::node_type, py::const_))
         .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN<>::set_node_type))
         .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN<>::set_node_type));
+    
+    auto spbn_l = register_BayesianNetwork<SemiparametricBN<AdjListDag>>(models, "SemiparametricBN_L");
+
+    spbn_l.def(py::init<const std::vector<std::string>&, FactorTypeVector&>())
+        .def(py::init<const ArcVector&, FactorTypeVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcVector&, FactorTypeVector&>())
+        .def("node_type", py::overload_cast<const std::string&>(&SemiparametricBN<AdjListDag>::node_type, py::const_))
+        .def("node_type", py::overload_cast<int>(&SemiparametricBN<AdjListDag>::node_type, py::const_))
+        .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN<AdjListDag>::set_node_type))
+        .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN<AdjListDag>::set_node_type));
       
     auto learning = m.def_submodule("learning", "Learning submodule");
     auto scores = learning.def_submodule("scores", "Learning scores submodule.");
@@ -625,8 +663,6 @@ PYBIND11_MODULE(pgm_dataset, m) {
         })
         .def(py::self == py::self)
         .def(py::self != py::self);
-
-
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 

@@ -172,8 +172,12 @@ namespace learning::operators {
         const std::string& node() const { return m_node; }
         FactorType node_type() const { return m_new_node_type; }
         void apply(BayesianNetworkBase& m) override {
-            auto& spbn = dynamic_cast<SemiparametricBNBase&>(m);
-            spbn.set_node_type(m_node, m_new_node_type);
+            try {
+                auto& spbn = dynamic_cast<SemiparametricBNBase&>(m);
+                spbn.set_node_type(m_node, m_new_node_type);
+            } catch (const std::bad_cast&) {
+                throw std::invalid_argument("ChangeNodeType can only be applied to SemiparametricBN.");
+            }
         }
         std::shared_ptr<Operator> opposite() override {
             return std::make_shared<ChangeNodeType>(m_node, m_new_node_type.opposite(), -this->delta());
@@ -438,12 +442,14 @@ namespace learning::operators {
                                                     SemiparametricBN<AdjListDag>>
     {
     public:
-        void set_local_score_cache(std::shared_ptr<LocalScoreCache> local_cache) {
-            m_local_cache = local_cache;
+        void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
+            m_local_cache = score_cache;
         }
-
-        std::shared_ptr<LocalScoreCache>& local_cache() { return m_local_cache; }
+        
     protected:
+        bool owns_local_cache() {
+            return m_local_cache.use_count() == 1;
+        }
         std::shared_ptr<LocalScoreCache> m_local_cache;
     };
 
@@ -603,6 +609,14 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     void ArcOperatorSet<Score>::cache_scores(Model& model) {
+        if (this->m_local_cache == nullptr) {
+            auto lc = std::make_shared<LocalScoreCache>(model);
+            this->set_local_score_cache(lc);
+            this->m_local_cache->cache_local_scores(model, m_score);
+        } else if (this->owns_local_cache()) {
+            this->m_local_cache->cache_local_scores(model, m_score);
+        }
+
         for (auto dest = 0; dest < model.num_nodes(); ++dest) {
             std::vector<int> new_parents_dest = model.parent_indices(dest);
             
@@ -638,6 +652,10 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max(Model& model) {
+        if (this->m_local_cache == nullptr) {
+            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
+        }
+
         if (max_indegree > 0)
             return find_max_indegree<Model, true>(model);
         else
@@ -647,6 +665,10 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max(Model& model, OperatorTabuSet& tabu_set) {
+        if (this->m_local_cache == nullptr) {
+            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
+        }
+
         if (max_indegree > 0)
             return find_max_indegree<Model, true>(model, tabu_set);
         else
@@ -657,7 +679,6 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model, bool limited_indegree>
     std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max_indegree(Model& model) {
-
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -738,6 +759,14 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     void ArcOperatorSet<Score>::update_scores(Model& model, Operator& op) {
+        if (this->m_local_cache == nullptr) {
+            auto lc = std::make_shared<LocalScoreCache>(model);
+            this->set_local_score_cache(lc);
+            this->m_local_cache->update_local_score(model, m_score, op);
+        } else if(this->owns_local_cache()) {
+            this->m_local_cache->update_local_score(model, m_score, op);
+        }
+
         switch(op.type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {
@@ -863,6 +892,14 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     void ChangeNodeTypeSet<Score>::cache_scores(Model& model) {
+        if (this->m_local_cache == nullptr) {
+            auto lc = std::make_shared<LocalScoreCache>(model);
+            this->set_local_score_cache(lc);
+            this->m_local_cache->cache_local_scores(model, m_score);
+        } else if (this->owns_local_cache()) {
+            this->m_local_cache->cache_local_scores(model, m_score);
+        }
+
         for(auto i = 0; i < model.num_nodes(); ++i) {
             if(valid_op(i)) {
                 update_local_delta(model, i);
@@ -873,6 +910,9 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     std::shared_ptr<Operator> ChangeNodeTypeSet<Score>::find_max(Model& model) {
+        if (this->m_local_cache == nullptr) {
+            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
+        }
         auto delta_ptr = delta.data();
         auto max_element = std::max_element(delta_ptr, delta_ptr + model.num_nodes());
         int idx_max = std::distance(delta_ptr, max_element);
@@ -887,6 +927,9 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     std::shared_ptr<Operator> ChangeNodeTypeSet<Score>::find_max(Model& model, OperatorTabuSet& tabu_set) {
+        if (this->m_local_cache == nullptr) {
+            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
+        }
         auto delta_ptr = delta.data();
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
@@ -908,6 +951,13 @@ namespace learning::operators {
     template<typename Score>
     template<typename Model>
     void ChangeNodeTypeSet<Score>::update_scores(Model& model, Operator& op) {
+        if (this->m_local_cache == nullptr) {
+            auto lc = std::make_shared<LocalScoreCache>(model);
+            this->set_local_score_cache(lc);
+            this->m_local_cache->update_local_score(model, m_score, op);
+        } else if(this->owns_local_cache()) {
+            this->m_local_cache->update_local_score(model, m_score, op);
+        }
         switch(op.type()) {
             case OperatorType::ADD_ARC:
             case OperatorType::REMOVE_ARC: {

@@ -16,8 +16,8 @@ def test_create():
     arc_gbn_bic = ArcOperatorSet(gbn, bic, [], [], 0)
 
     arc_gbn_bic.cache_scores(gbn)
-    # op = arc_gbn_bic.find_max()
-    # arc_gbn_bic.update_scores(op)
+    op = arc_gbn_bic.find_max(gbn)
+    arc_gbn_bic.update_scores(gbn, op)
 
     # cv = CVLikelihood(df)
     # arc_gbn_cv = ArcOperatorSet(gbn, cv, [], [], 0)

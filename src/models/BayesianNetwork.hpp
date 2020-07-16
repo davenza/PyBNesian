@@ -101,7 +101,7 @@ namespace models {
         virtual void fit(const DataFrame& df) = 0;
         virtual VectorXd logpdf(const DataFrame& df) const = 0;
         virtual double slogpdf(const DataFrame& df) const = 0;
-
+        virtual std::string ToString() const = 0;
     };
 
     class SemiparametricBNBase {

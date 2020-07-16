@@ -62,6 +62,10 @@ namespace learning::scores {
 
         const CrossValidation& cv() { return m_cv; }
 
+        std::string ToString() const {
+            return "CVLikelihood";
+        }
+
     private:
         CrossValidation m_cv;
     };

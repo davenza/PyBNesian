@@ -48,7 +48,8 @@ using learning::operators::AddArc, learning::operators::RemoveArc, learning::ope
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
       learning::operators::OperatorPool;
 
-using learning::operators::ArcOperatorSet_constructor, learning::operators::ChangeNodeTypeSet_constructor;
+using learning::operators::ArcOperatorSet_constructor, learning::operators::ChangeNodeTypeSet_constructor, 
+      learning::operators::OperatorPool_constructor;
 
 using util::ArcVector;
 
@@ -104,7 +105,15 @@ void register_ArcOperators(py::module& m) {
         .def_property_readonly("delta", &Operator::delta)
         .def_property_readonly("type", &Operator::type)
         .def("apply", &Operator::apply)
-        .def("opposite", &Operator::opposite, py::return_value_policy::take_ownership);
+        .def("opposite", &Operator::opposite, py::return_value_policy::take_ownership)
+        .def("__eq__", [](const Operator& self, const Operator& other) {
+            return self == other;
+        }, py::is_operator())
+        .def("__ne__", [](const Operator& self, const Operator& other) {
+            return self != other;
+        }, py::is_operator());
+        // .def(py::self == py::self)
+        // .def(py::self != py::self);
 
     py::class_<ArcOperator, Operator, std::shared_ptr<ArcOperator>>(m, "ArcOperator")
         .def_property_readonly("source", &ArcOperator::source)
@@ -114,16 +123,28 @@ void register_ArcOperators(py::module& m) {
         .def(py::init<std::string, std::string, double>())
         .def("apply", &AddArc::apply)
         .def("opposite", &AddArc::opposite, py::return_value_policy::take_ownership);
+        // .def(py::self == py::self)
+        // .def(py::self != py::self)
+        // .def("__eq__", [](const AddArc& self, const Operator& a) {
+        //     return self == a;
+        // }, py::is_operator)
+        // .def("__ne__", [](const AddArc& self, const Operator& a) {
+        //     return self != a;
+        // }, py::is_operator);
 
     py::class_<RemoveArc, ArcOperator, std::shared_ptr<RemoveArc>>(m, "RemoveArc")
         .def(py::init<std::string, std::string, double>())
         .def("apply", &RemoveArc::apply)
         .def("opposite", &RemoveArc::opposite, py::return_value_policy::take_ownership);
+        // .def(py::self == py::self)
+        // .def(py::self != py::self);
 
     py::class_<FlipArc, ArcOperator, std::shared_ptr<FlipArc>>(m, "FlipArc")
         .def(py::init<std::string, std::string, double>())
         .def("apply", &FlipArc::apply)
         .def("opposite", &FlipArc::opposite, py::return_value_policy::take_ownership);
+        // .def(py::self == py::self)
+        // .def(py::self != py::self);
 }
 
 void register_OperatorTabuSet(py::module& m) {
@@ -183,7 +204,8 @@ py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Sc
     m.def("ArcOperatorSet", [](Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
                     int max_indegree) {
         return ArcOperatorSet_constructor(model, score, whitelist, blacklist, max_indegree);
-    });
+    }, py::arg("model"), py::arg("score"), 
+       py::arg("whitelist") = ArcVector(), py::arg("blacklist") = ArcVector(), py::arg("max_indegree") = 0);
 
     op_set.def("cache_scores", [](ArcOperatorSet<Score>& self, Model& model) {
         if constexpr(util::is_compatible_score_v<Model, Score>) {
@@ -218,7 +240,8 @@ py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Sc
 }
 
 template<typename Score, typename Model, typename... Models>
-py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeTypeSet<Score>>> register_ChangeNodeTypeSet(py::module& m, const char* score_name) {
+py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeTypeSet<Score>>> 
+register_ChangeNodeTypeSet(py::module& m, const char* score_name) {
     std::string nodetype_score_name = std::string("ChangeNodeTypeSet<") + score_name + ">";
     auto op_set = [&m, &nodetype_score_name, score_name]() {
         if constexpr (sizeof...(Models) == 0) {
@@ -233,7 +256,7 @@ py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeType
 
     m.def("ChangeNodeTypeSet", [](Model& model, const Score score, FactorTypeVector& type_whitelist) {
         return ChangeNodeTypeSet_constructor(model, score, type_whitelist);
-    });
+    }, py::arg("model"), py::arg("score"), py::arg("type_whitelist") = FactorTypeVector());
 
 
     op_set.def("cache_scores", [](ChangeNodeTypeSet<Score>& self, Model& model) {
@@ -282,6 +305,12 @@ py::class_<OperatorPool<Score>> register_OperatorPool(py::module& m, const char*
             return register_OperatorPool<Score, Models...>(m, score_name);
         }
     }();
+
+    m.def("OperatorPool", [](Model& model, const Score score, std::vector<std::shared_ptr<OperatorSet>>& op_sets) {
+        return OperatorPool_constructor(model, score, op_sets);
+    }, py::arg("model"), py::arg("score"), py::arg("op_sets"));
+
+
 
     pool.def("cache_scores", [](OperatorPool<Score>& self, Model& model) {
         self.cache_scores(model);
@@ -620,6 +649,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property_readonly("node_type", &ChangeNodeType::node_type)
         .def("apply", &ChangeNodeType::apply)
         .def("opposite", &ChangeNodeType::opposite);
+        // .def(py::self == py::self)
+        // .def(py::self != py::self);
 
 
     register_OperatorTabuSet(operators);

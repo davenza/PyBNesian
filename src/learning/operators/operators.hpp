@@ -68,7 +68,8 @@ namespace learning::operators {
     private:
         Value value;
     };
-    
+
+
     class Operator {
     public:
         Operator(double delta, OperatorType type) : m_delta(delta), m_type(type) {}
@@ -80,6 +81,11 @@ namespace learning::operators {
         virtual std::shared_ptr<Operator> copy() const = 0;
 
         virtual std::string ToString() const = 0;
+
+        bool operator==(const Operator& a) const;
+        bool operator!=(const Operator& a) const {
+            return !(*this == a);
+        }
     private:
         double m_delta;
         OperatorType m_type;
@@ -116,6 +122,17 @@ namespace learning::operators {
         std::string ToString() const override {
             return "AddArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
         }
+
+        // bool operator==(const Operator& a) const {
+        //     return a.type() == OperatorType::ADD_ARC && (*this == dynamic_cast<const AddArc&>(a));
+        // }
+        // bool operator!=(const Operator& a) const {
+        //     return !(*this == a);
+        // }
+        // bool operator==(const AddArc& a) const {
+        //     return this->source() == a.source() && this->target() == a.target();
+        // }
+        // bool operator!=(const AddArc& v) const { return !(*this == v); }        
     };
 
     class RemoveArc : public ArcOperator {
@@ -136,6 +153,11 @@ namespace learning::operators {
         std::string ToString() const override {
             return "RemoveArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
         }
+
+        // bool operator==(const RemoveArc& a) const {
+        //     return this->source() == a.source() && this->target() == a.target();
+        // }
+        // bool operator!=(const RemoveArc& v) const { return !(*this == v); }        
     };
 
     class FlipArc : public ArcOperator {
@@ -157,6 +179,11 @@ namespace learning::operators {
         std::string ToString() const override {
             return "FlipArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
         }
+
+        // bool operator==(const FlipArc& a) const {
+        //     return this->source() == a.source() && this->target() == a.target();
+        // }
+        // bool operator!=(const FlipArc& v) const { return !(*this == v); }     
     };
 
     class ChangeNodeType : public Operator {
@@ -188,6 +215,11 @@ namespace learning::operators {
         std::string ToString() const override {
             return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
         }
+
+        // bool operator==(const ChangeNodeType& a) const {
+        //     return this->node() == a.node() && this->node_type() == a.node_type();
+        // }
+        // bool operator!=(const ChangeNodeType& v) const { return !(*this == v); }     
     private:
         std::string m_node;
         FactorType m_new_node_type;
@@ -564,43 +596,47 @@ namespace learning::operators {
                                                                      sorted_idx(),
                                                                      max_indegree(max_indegree)
     {
-        auto num_nodes = model.num_nodes();
-        auto val_ptr = valid_op.data();
+        if constexpr(!util::is_compatible_score_v<Model, Score>) {
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + model.ToString() + ".");
+        } else {
+            auto num_nodes = model.num_nodes();
+            auto val_ptr = valid_op.data();
 
-        std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
+            std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
 
-        auto indices = model.indices();
-        auto valid_ops = (num_nodes * num_nodes) - 2*whitelist.size() - blacklist.size() - num_nodes;
+            auto indices = model.indices();
+            auto valid_ops = (num_nodes * num_nodes) - 2*whitelist.size() - blacklist.size() - num_nodes;
 
-        for(auto whitelist_edge : whitelist) {
-            auto source_index = indices[whitelist_edge.first];
-            auto dest_index = indices[whitelist_edge.second];
+            for(auto whitelist_edge : whitelist) {
+                auto source_index = indices[whitelist_edge.first];
+                auto dest_index = indices[whitelist_edge.second];
 
-            valid_op(source_index, dest_index) = false;
-            valid_op(dest_index, source_index) = false;
-            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-            delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
-        }
-        
-        for(auto blacklist_edge : blacklist) {
-            auto source_index = indices[blacklist_edge.first];
-            auto dest_index = indices[blacklist_edge.second];
+                valid_op(source_index, dest_index) = false;
+                valid_op(dest_index, source_index) = false;
+                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+                delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
+            }
+            
+            for(auto blacklist_edge : blacklist) {
+                auto source_index = indices[blacklist_edge.first];
+                auto dest_index = indices[blacklist_edge.second];
 
-            valid_op(source_index, dest_index) = false;
-            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-        }
+                valid_op(source_index, dest_index) = false;
+                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+            }
 
-        for (int i = 0; i < num_nodes; ++i) {
-            valid_op(i, i) = false;
-            delta(i, i) = std::numeric_limits<double>::lowest();
-        }
+            for (int i = 0; i < num_nodes; ++i) {
+                valid_op(i, i) = false;
+                delta(i, i) = std::numeric_limits<double>::lowest();
+            }
 
-        sorted_idx.reserve(valid_ops);
+            sorted_idx.reserve(valid_ops);
 
-        for (int i = 0; i < num_nodes; ++i) {
-            for (int j = 0; j < num_nodes; ++j) {
-                if (valid_op(i, j)) {
-                    sorted_idx.push_back(i + j * num_nodes);
+            for (int i = 0; i < num_nodes; ++i) {
+                for (int j = 0; j < num_nodes; ++j) {
+                    if (valid_op(i, j)) {
+                        sorted_idx.push_back(i + j * num_nodes);
+                    }
                 }
             }
         }
@@ -989,6 +1025,9 @@ namespace learning::operators {
                      std::vector<std::shared_ptr<OperatorSet>> op_sets) : m_score(score),
                                                                           local_cache(std::make_shared<LocalScoreCache>(model)),
                                                                           m_op_sets(std::move(op_sets)) {
+            if (m_op_sets.empty()) {
+                throw std::invalid_argument("op_sets argument cannot be empty.");
+            }
             
             for (auto& op_set : m_op_sets) {
                 op_set->set_local_score_cache(local_cache);

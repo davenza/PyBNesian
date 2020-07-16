@@ -109,6 +109,10 @@ namespace models {
             }
         }
 
+        std::string ToString() const {
+            return "SemiparametricBN";
+        }
+
     private:
         std::vector<FactorType> m_factor_types;
     };

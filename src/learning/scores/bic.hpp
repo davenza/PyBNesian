@@ -42,6 +42,10 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
+        std::string ToString() const {
+            return "BIC";
+        }
+
     private:
         const DataFrame m_df;        
     };

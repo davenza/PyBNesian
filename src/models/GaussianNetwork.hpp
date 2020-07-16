@@ -22,6 +22,10 @@ namespace models {
         static void requires(const DataFrame& df) {
             requires_continuous_data(df);
         }
+
+        std::string ToString() const {
+            return "GaussianNetwork";
+        }
     };
 
     template<typename D>

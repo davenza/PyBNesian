@@ -23,6 +23,13 @@ namespace learning::operators {
         return ChangeNodeTypeSet(model, score, type_whitelist);
     }
 
+    template<typename Model, typename Score>
+    OperatorPool<Score> OperatorPool_constructor(Model& model, const Score score, 
+                                            std::vector<std::shared_ptr<OperatorSet>>& op_sets) {
+        return OperatorPool(model, score, op_sets);
+    }
+
+
     // template<typename Model, typename Score>
     // ArcOperatorSet<Model, Score> arcoperatorset_wrapper_constructor(Model& model,
     //                                              const Score score,

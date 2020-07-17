@@ -251,7 +251,7 @@ namespace learning::algorithms {
     
     // TODO: Include start model.
     // TODO: Include test ratio of holdout / number k-folds.
-    void hc(py::handle data, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
+    void hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, std::vector<py::tuple> type_whitelist,
                   int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str) {
         
@@ -263,8 +263,6 @@ namespace learning::algorithms {
         learning::algorithms::check_valid_score(bn_type, score_type);
         learning::algorithms::check_valid_operators(bn_type, operators_type);
         
-        auto rb = dataset::to_record_batch(data);
-        auto df = DataFrame(rb);
 
         auto arc_blacklist_cpp = util::check_edge_list(df, arc_blacklist);
         auto arc_whitelist_cpp = util::check_edge_list(df, arc_whitelist);
@@ -291,9 +289,9 @@ namespace learning::algorithms {
     
 
     
-    template<typename OperatorPool, typename Model>
+    template<typename OpSet, typename Model>
     void GreedyHillClimbing::estimate(const DataFrame& df,
-                                      OperatorPool& op,
+                                      OpSet& op,
                                       int max_iters,
                                       double epsilon,
                                       const Model& start) {
@@ -322,9 +320,9 @@ namespace learning::algorithms {
         std::cout << "Final model: " << current_model << std::endl;
     }
 
-    template<typename OperatorPool, typename ValidationScore, typename Model>
+    template<typename OpSet, typename ValidationScore, typename Model>
     void GreedyHillClimbing::estimate_validation(const DataFrame& df,
-                             OperatorPool& op_pool, 
+                             OpSet& op_pool, 
                              ValidationScore& validation_score, 
                              int max_iters,
                              double epsilon, 

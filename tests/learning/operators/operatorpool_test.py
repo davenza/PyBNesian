@@ -24,20 +24,22 @@ def test_find_max():
     cv = CVLikelihood(df)
     arcs = ArcOperatorSet(spbn, cv)
     node_type = ChangeNodeTypeSet(spbn, cv)
-    pool = OperatorPool(spbn, cv, [arcs, node_type])
+    
+    arcs.cache_scores(spbn)
+    node_type.cache_scores(spbn)
+    
+    arcs_max = arcs.find_max(spbn)
+    node_max = node_type.find_max(spbn)
 
+    
+    pool = OperatorPool(spbn, cv, [arcs, node_type])
     pool.cache_scores(spbn)
 
     op_combined = pool.find_max(spbn)
-
-    arcs_max = arcs.find_max(spbn)
-    node_max = node_type.find_max(spbn)
 
     if arcs_max.delta >= node_max.delta:
         assert op_combined == arcs_max
     else:
         assert op_combined == node_max
-
-    # assert op_combined.delta == max(arcs.find_max(spbn).delta, node_type.find_max(spbn).delta)
 
     

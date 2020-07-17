@@ -113,6 +113,10 @@ namespace models {
             return "SemiparametricBN";
         }
 
+        constexpr BayesianNetworkType type() const override {
+            return BayesianNetworkType::SPBN;
+        }
+
     private:
         std::vector<FactorType> m_factor_types;
     };

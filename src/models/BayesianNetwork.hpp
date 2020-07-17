@@ -55,9 +55,9 @@ namespace models {
         std::string ToString() const { 
             switch(value) {
                 case Value::GBN:
-                    return "gbn";
+                    return "GaussianNetwork";
                 case Value::SPBN:
-                    return "spbn";
+                    return "SemiparametricBN";
                 default:
                     throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
             }
@@ -102,6 +102,7 @@ namespace models {
         virtual VectorXd logpdf(const DataFrame& df) const = 0;
         virtual double slogpdf(const DataFrame& df) const = 0;
         virtual std::string ToString() const = 0;
+        virtual BayesianNetworkType type() const = 0;
     };
 
     class SemiparametricBNBase {

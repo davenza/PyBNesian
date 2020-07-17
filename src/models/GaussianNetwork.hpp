@@ -26,6 +26,10 @@ namespace models {
         std::string ToString() const {
             return "GaussianNetwork";
         }
+
+        constexpr BayesianNetworkType type() const override {
+            return BayesianNetworkType::GBN;
+        }
     };
 
     template<typename D>

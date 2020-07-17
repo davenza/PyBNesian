@@ -3,22 +3,30 @@
 
 #include <dataset/dataset.hpp>
 #include <dataset/holdout_adaptator.hpp>
-
+#include <models/GaussianNetwork.hpp>
+#include <models/SemiparametricBN.hpp>
+#include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 
 using dataset::HoldOut;
+using models::GaussianNetwork, models::SemiparametricBN;
+using learning::scores::ScoreImpl;
 using learning::operators::Operator, learning::operators::ArcOperator, learning::operators::ChangeNodeType, learning::operators::OperatorType;
 
 namespace learning::scores {
 
-    class HoldoutLikelihood {
+    class HoldoutLikelihood : public ScoreImpl<HoldoutLikelihood,
+                                               GaussianNetwork<>,
+                                               GaussianNetwork<AdjListDag>,
+                                               SemiparametricBN<>,
+                                               SemiparametricBN<AdjListDag>> {
     public:
 
         HoldoutLikelihood(const DataFrame& df, double test_ratio) : m_holdout(df, test_ratio) { }
         HoldoutLikelihood(const DataFrame& df, double test_ratio, int seed) : m_holdout(df, test_ratio, seed) { }
 
         template<typename Model>
-        double score(const Model& model) {
+        double score(const Model& model) const {
             double s = 0;
             for (auto node = 0; node < model.num_nodes(); ++node) {
                 s += local_score(model, node);
@@ -62,10 +70,10 @@ namespace learning::scores {
                            const EvidenceIter evidence_end) const;
 
         template<typename Model>
-        double delta_score(const Model& model, Operator* op, VectorXd& current_local_scores) {
+        double delta_score(const Model& model, const Operator* op, VectorXd& current_local_scores) const {
             switch(op->type()) {
                 case OperatorType::ADD_ARC: {
-                    auto dwn_op = dynamic_cast<ArcOperator*>(op);
+                    auto dwn_op = dynamic_cast<const ArcOperator*>(op);
                     auto target_index = model.index(dwn_op->target());
                     auto parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
@@ -77,7 +85,7 @@ namespace learning::scores {
                     return current_local_scores(target_index) - prev;
                 }
                 case OperatorType::REMOVE_ARC: {
-                    auto dwn_op = dynamic_cast<ArcOperator*>(op);
+                    auto dwn_op = dynamic_cast<const ArcOperator*>(op);
                     auto target_index = model.index(dwn_op->target());
                     auto parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
@@ -90,7 +98,7 @@ namespace learning::scores {
                     return current_local_scores(target_index) - prev;
                 }
                 case OperatorType::FLIP_ARC: {
-                    auto dwn_op = dynamic_cast<ArcOperator*>(op);
+                    auto dwn_op = dynamic_cast<const ArcOperator*>(op);
                     auto target_index = model.index(dwn_op->target());
                     auto target_parents = model.parent_indices(target_index);
                     auto source_index = model.index(dwn_op->source());
@@ -110,7 +118,7 @@ namespace learning::scores {
                            prev_target;
                 }
                 case OperatorType::CHANGE_NODE_TYPE: {
-                    auto dwn_op = dynamic_cast<ChangeNodeType*>(op);
+                    auto dwn_op = dynamic_cast<const ChangeNodeType*>(op);
                     auto node_index = model.index(dwn_op->node());
                     auto new_node_type = dwn_op->node_type();
                     auto parents = model.parent_indices(node_index);
@@ -128,6 +136,18 @@ namespace learning::scores {
         const DataFrame& test_data() const { return m_holdout.test_data(); }
 
         const HoldOut& holdout() { return m_holdout; }
+
+        std::string ToString() const {
+            return "HoldoutLikelihood";
+        }
+
+        bool is_decomposable() const override {
+            return true;
+        }
+
+        ScoreType type() const override {
+            return ScoreType::BIC;
+        }
     private:
         HoldOut m_holdout;
     };

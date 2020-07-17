@@ -433,17 +433,17 @@ namespace learning::operators {
     template<typename Type>
     class OperatorSetInterface<Type> {
     public:
-        virtual void cache_scores(Type&) {
-            throw std::invalid_argument("OperatorSet::cache_scores() not implemented." );
+        virtual void cache_scores(Type& m) {
+            throw std::invalid_argument("OperatorSet::cache_scores() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual std::shared_ptr<Operator> find_max(Type&) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        virtual std::shared_ptr<Operator> find_max(Type& m) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual std::shared_ptr<Operator> find_max(Type&, OperatorTabuSet&) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        virtual std::shared_ptr<Operator> find_max(Type& m, OperatorTabuSet&) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual void update_scores(Type&, Operator&) {
-            throw std::invalid_argument("OperatorSet::update_scores() not implemented.");
+        virtual void update_scores(Type& m, Operator&) {
+            throw std::invalid_argument("OperatorSet::update_scores() not implemented for model " + m.type().ToString() + ".");
         }
     };
 

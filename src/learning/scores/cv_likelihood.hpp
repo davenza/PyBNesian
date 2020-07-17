@@ -4,19 +4,26 @@
 #include <dataset/dataset.hpp>
 #include <dataset/crossvalidation_adaptator.hpp>
 #include <factors/factors.hpp>
+#include <learning/scores/scores.hpp>
 
+using learning::scores::ScoreImpl;
 using factors::FactorType;
+using models::GaussianNetwork, models::SemiparametricBN;
 
 namespace learning::scores {
 
-    class CVLikelihood {
+    class CVLikelihood : public ScoreImpl<CVLikelihood, 
+                                   GaussianNetwork<>, 
+                                   GaussianNetwork<AdjListDag>, 
+                                   SemiparametricBN<>,
+                                   SemiparametricBN<AdjListDag>> {
     public:
 
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
         CVLikelihood(const DataFrame& df, int k, int seed) : m_cv(df, k, seed) {}
 
         template<typename Model>
-        double score(const Model& model) {
+        double score(const Model& model) const {
             double s = 0;
             for (auto node = 0; node < model.num_nodes(); ++node) {
                 s += local_score(model, node);
@@ -64,6 +71,14 @@ namespace learning::scores {
 
         std::string ToString() const {
             return "CVLikelihood";
+        }
+
+        bool is_decomposable() const override {
+            return true;
+        }
+
+        ScoreType type() const override {
+            return ScoreType::PREDICTIVE_LIKELIHOOD;
         }
 
     private:

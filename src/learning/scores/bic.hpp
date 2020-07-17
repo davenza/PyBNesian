@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_BIC_HPP
 #define PGM_DATASET_BIC_HPP
 
+#include <learning/scores/scores.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
@@ -8,6 +9,7 @@
 #include <util/math_constants.hpp>
 #include <util/bn_traits.hpp>
 
+using learning::scores::ScoreType, learning::scores::ScoreImpl;
 using factors::continuous::LinearGaussianCPD;
 using namespace dataset;
 using models::GaussianNetwork;
@@ -16,12 +18,12 @@ using learning::parameters::MLE;
 namespace learning::scores {
 
 
-    class BIC {
+    class BIC : public ScoreImpl<BIC, GaussianNetwork<>, GaussianNetwork<AdjListDag>> {
     public:
         BIC(const DataFrame& df) : m_df(df) {}
 
         template<typename Model>
-        double score(const Model& model) {
+        double score(const Model& model) const {
             double s = 0;
             for (auto node = 0; node < model.num_nodes(); ++node) {
                 s += local_score(model, node);
@@ -30,13 +32,13 @@ namespace learning::scores {
             return s;
         }
 
-        template<typename Model, typename VarType, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+        template<typename Model, typename VarType, util::enable_if_gaussian_network_t<Model, int> = 0>
         double local_score(const Model& model, const VarType& variable) const {
             auto parents = model.parent_indices(variable);
             return local_score(model, variable, parents.begin(), parents.end());
         }
     
-        template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int> = 0>
         double local_score(const Model& model, 
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
@@ -46,11 +48,19 @@ namespace learning::scores {
             return "BIC";
         }
 
+        bool is_decomposable() const override {
+            return true;
+        }
+
+        ScoreType type() const override {
+            return ScoreType::BIC;
+        }
+
     private:
         const DataFrame m_df;        
     };
 
-    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int>>
+    template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int>>
     double BIC::local_score(const Model&,
                             const VarType& variable, 
                             const EvidenceIter evidence_begin,

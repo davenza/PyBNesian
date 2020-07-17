@@ -19,6 +19,8 @@ namespace learning::operators {
                     auto& a_dwn = dynamic_cast<const ChangeNodeType&>(a);
                     return this_dwn.node() == a_dwn.node() && this_dwn.node_type() == a_dwn.node_type();
                 }
+                default:
+                    throw std::runtime_error("Wrong operator type declared");
             }
         } else {
             return false;

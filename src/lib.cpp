@@ -700,5 +700,5 @@ PYBIND11_MODULE(pgm_dataset, m) {
     algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate");
     // py::class_<GreedyHillClimbing>(algorithms, "GreedyHillClimbing")
     //         .def(py::init<>())
-    //         .def("estimate")
+    //         .def("estimate", [](const DataFrame& df, OperatorPool& pool, Validation))
 }

@@ -11,23 +11,23 @@ using models::BayesianNetworkType;
 
 namespace learning::operators {
 
-    template<typename Model, typename Score>
-    ArcOperatorSet<Score> ArcOperatorSet_constructor(Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
-                       int max_indegree) {
-        return ArcOperatorSet(model, score, whitelist, blacklist, max_indegree);
-    }
+    // template<typename Model, typename Score>
+    // ArcOperatorSet<Score> ArcOperatorSet_constructor(Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
+    //                    int max_indegree) {
+    //     return ArcOperatorSet(model, score, whitelist, blacklist, max_indegree);
+    // }
     
 
-    template<typename Model, typename Score>
-    ChangeNodeTypeSet<Score> ChangeNodeTypeSet_constructor(Model& model, const Score score, FactorTypeVector& type_whitelist) {
-        return ChangeNodeTypeSet(model, score, type_whitelist);
-    }
+    // template<typename Model, typename Score>
+    // ChangeNodeTypeSet<Score> ChangeNodeTypeSet_constructor(Model& model, const Score score, FactorTypeVector& type_whitelist) {
+    //     return ChangeNodeTypeSet(model, score, type_whitelist);
+    // }
 
-    template<typename Model, typename Score>
-    OperatorPool<Score> OperatorPool_constructor(Model& model, const Score score, 
-                                            std::vector<std::shared_ptr<OperatorSet>>& op_sets) {
-        return OperatorPool(model, score, op_sets);
-    }
+    // template<typename Model, typename Score>
+    // OperatorPool<Score> OperatorPool_constructor(Model& model, const Score score, 
+    //                                         std::vector<std::shared_ptr<OperatorSet>>& op_sets) {
+    //     return OperatorPool(model, score, op_sets);
+    // }
 
 
     // template<typename Model, typename Score>

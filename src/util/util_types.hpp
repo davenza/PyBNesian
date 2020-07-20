@@ -10,4 +10,4 @@ namespace util {
     using FactorTypeVector = std::vector<std::pair<std::string, FactorType>>;
 }
 
-#endif //PGM_DATASET_VALIDATEDTYPE_HPP
+#endif //PGM_DATASET_UTIL_TYPES_HPP

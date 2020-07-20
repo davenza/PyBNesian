@@ -16,9 +16,8 @@ using models::GaussianNetwork, models::BayesianNetworkType;
 using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
 using graph::DagType;
 using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
-      learning::operators::OperatorPool, learning::operators::OperatorSetType,
-      learning::operators::OperatorTabuSet, learning::operators::OperatorSet,
-      learning::operators::OperatorSetImplDetail;
+      learning::operators::OperatorPool, learning::operators::OperatorSetType, 
+      learning::operators::OperatorSet;
 using util::ArcVector;
 
 // #include <util/benchmark_basic.hpp>
@@ -100,7 +99,7 @@ namespace learning::algorithms {
     }
 
     template<typename DagType>
-    void call_hc_validated_spbn(const DataFrame& df, 
+    py::object call_hc_validated_spbn(const DataFrame& df, 
                                ArcVector arc_blacklist, 
                                ArcVector arc_whitelist, 
                                FactorTypeVector type_whitelist, 
@@ -116,42 +115,21 @@ namespace learning::algorithms {
         Model m = Model(nodes, arc_whitelist, type_whitelist);
 
         HoldoutLikelihood validation_score(df, 0.2, 0);
-        CVLikelihood training_score(validation_score.training_data(), 10, 0);
+        static_assert(std::is_base_of_v<Score, CVLikelihood>);
+        std::shared_ptr<Score> training_score = std::make_shared<CVLikelihood>(validation_score.training_data(), 10, 0);
         
-        // static_assert(std::is_base_of_v<OperatorSet, OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>,
-        //                                                                    true,
-        //                                                                    GaussianNetwork<>
-        //                                                                    >
-        //                                 >, 
-        // "OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>, GaussianNetwork<>> is not derived from OperatorSet");
+        auto arc_set = std::make_shared<ArcOperatorSet>(m, training_score, arc_whitelist, arc_blacklist, max_indegree);
+        auto nodetype_set = std::make_shared<ChangeNodeTypeSet>(m, training_score, type_whitelist);
+        std::vector<std::shared_ptr<OperatorSet>> v;
+        v.push_back(std::move(arc_set));
+        v.push_back(std::move(nodetype_set));
 
-        // static_assert(std::is_base_of_v<OperatorSet, OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>,
-        //                                                                    true,
-        //                                                                    GaussianNetwork<>,
-        //                                                                    GaussianNetwork<AdjListDag>
-        //                                                                    >
-        //                                 >, 
-        // "OperatorSetImplDetail<ArcOperatorSet<CVLikelihood>, GaussianNetwork<>> is not derived from OperatorSet");
-
-        static_assert(std::is_base_of_v<OperatorSet, ArcOperatorSet<CVLikelihood>>, "ArcOperatorSet<CVLikelihood> is not derived from OperatorSet");
-        static_assert(std::is_base_of_v<OperatorSet, ChangeNodeTypeSet<CVLikelihood>>, "ChangeNodeTypeSet<CVLikelihood> is not derived from OperatorSet");
-
-        auto arc_set = std::make_shared<ArcOperatorSet<CVLikelihood>>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
-        auto nodetype_set = std::make_shared<ChangeNodeTypeSet<CVLikelihood>>(m, training_score, type_whitelist);
-
-
-        // std::vector<std::shared_ptr<OperatorSet>> v;
-        // v.push_back(std::move(arc_set));
-        // v.push_back(std::move(nodetype_set));
-
-
-        // OperatorPool<CVLikelihood> pool(m, training_score, std::move(v));
-        
-        // GreedyHillClimbing hc;
-        // hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
+        OperatorPool pool(m, training_score, std::move(v));        
+        GreedyHillClimbing hc;
+        return py::cast(hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m));
     }
 
-    void call_hc_validated_spbn(const DataFrame& df, 
+    py::object call_hc_validated_spbn(const DataFrame& df, 
                                 ArcVector arc_blacklist, 
                                 ArcVector arc_whitelist,
                                 FactorTypeVector type_whitelist,
@@ -164,18 +142,18 @@ namespace learning::algorithms {
     {
         switch(dag_type) {
             case DagType::MATRIX:
-                call_hc_validated_spbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, type_whitelist,
+                return call_hc_validated_spbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, type_whitelist,
                                                      max_indegree, max_iters, epsilon, patience, operators);
-                break;
             case DagType::LIST:
-                call_hc_validated_spbn<AdjListDag>(df, arc_blacklist, arc_whitelist, type_whitelist, 
+                return call_hc_validated_spbn<AdjListDag>(df, arc_blacklist, arc_whitelist, type_whitelist, 
                                                    max_indegree, max_iters, epsilon, patience, operators);
-                break;
+            default:
+                throw std::invalid_argument("Wrong DAG type!");
         }
     }
 
     template<typename DagType>
-    void call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
+    py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
                                double epsilon, int patience, OperatorSetTypeS operators) 
     {
         using Model = GaussianNetwork<DagType>;
@@ -184,33 +162,33 @@ namespace learning::algorithms {
         Model m(nodes, arc_whitelist);
 
         HoldoutLikelihood validation_score(df, 0.2);
-        CVLikelihood training_score(validation_score.training_data(), 10);
+        std::shared_ptr<Score> training_score = std::make_shared<CVLikelihood>(validation_score.training_data(), 10);
 
-        auto arc_set = std::make_shared<ArcOperatorSet<CVLikelihood>>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
+        auto arc_set = std::make_shared<ArcOperatorSet>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
 
         std::vector<std::shared_ptr<OperatorSet>> v;
         v.push_back(std::move(arc_set));
         OperatorPool pool(m, training_score, std::move(v));
         
         GreedyHillClimbing hc;
-        hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m);
+        return py::cast(hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m));
     }
 
-    void call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
+    py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
                                double epsilon, int patience, DagType dag_type, OperatorSetTypeS& operators) 
     {
         switch(dag_type) {
             case DagType::MATRIX:
-                call_hc_validated_gbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, patience, operators);
-                break;
+                return call_hc_validated_gbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, patience, operators);
             case DagType::LIST:
-                call_hc_validated_gbn<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, patience, operators);
-                break;
+                return call_hc_validated_gbn<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, patience, operators);
+            default:
+                throw std::invalid_argument("Wrong DAG type!");
         }
     }
 
     template<typename DagType>
-    void call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
+    py::object call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
                  double epsilon, ScoreType score_type, OperatorSetTypeS& operators) 
     {
         using Model = GaussianNetwork<DagType>;
@@ -222,36 +200,37 @@ namespace learning::algorithms {
 
         switch(score_type) {
             case ScoreType::BIC: {
-                BIC score(df);
+                std::shared_ptr<Score> score = std::make_shared<BIC>(df);
                 std::vector<std::shared_ptr<OperatorSet>> v;
-                auto arc_set = std::make_shared<ArcOperatorSet<BIC>>(m, score, arc_blacklist, arc_whitelist, max_indegree);
+                auto arc_set = std::make_shared<ArcOperatorSet>(m, score, arc_blacklist, arc_whitelist, max_indegree);
                 v.push_back(std::move(arc_set));
                 OperatorPool pool(m, score, std::move(v));
-                hc.estimate(df, pool, max_iters, epsilon, m);
+                return py::cast(hc.estimate(df, pool, max_iters, epsilon, m));
             }
                 break;
             case ScoreType::PREDICTIVE_LIKELIHOOD:
-                std::invalid_argument("call_hc() cannot be called with a cross-validated score.");
-
+                throw std::invalid_argument("call_hc() cannot be called with a cross-validated score.");
+            default:
+                throw std::invalid_argument("Wrong Score type!");
         }   
     }
 
-    void call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree,
+    py::object call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree,
                  int max_iters, double epsilon, DagType dag_type, ScoreType score_type, OperatorSetTypeS operators) 
     {
         switch(dag_type) {
             case DagType::MATRIX:
-                call_hc<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, score_type, operators);
-                break;
+                return call_hc<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, score_type, operators);
             case DagType::LIST:
-                call_hc<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, score_type, operators);
-                break;
+                return call_hc<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, score_type, operators);
+            default:
+                throw std::invalid_argument("Wrong DAG type!");
         }
     }
     
     // TODO: Include start model.
     // TODO: Include test ratio of holdout / number k-folds.
-    void hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
+    py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, std::vector<py::tuple> type_whitelist,
                   int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str) {
         
@@ -273,107 +252,20 @@ namespace learning::algorithms {
 
         if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
             switch(bn_type) {
-                case BayesianNetworkType::GBN:
-                    call_hc_validated_gbn(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, max_iters,
+                case BayesianNetworkType::GBN: {
+                    return call_hc_validated_gbn(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, max_iters,
                                             epsilon, patience, dag_type, operators_type);
-                    break;
-                case BayesianNetworkType::SPBN:
-                    call_hc_validated_spbn(df, arc_blacklist_cpp, arc_whitelist_cpp, type_whitelist_cpp, 
+                }
+                case BayesianNetworkType::SPBN: {
+                    return call_hc_validated_spbn(df, arc_blacklist_cpp, arc_whitelist_cpp, type_whitelist_cpp, 
                                             max_indegree, max_iters, epsilon, patience, dag_type, operators_type);
+                }
+                default:
+                    throw std::invalid_argument("Wrong BayesianNetwork type!");
             }
         } else {
-            call_hc(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, max_iters,
+            return call_hc(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, max_iters,
                         epsilon, dag_type, score_type, operators_type);
         }
-    }
-    
-
-    
-    template<typename OpSet, typename Model>
-    void GreedyHillClimbing::estimate(const DataFrame& df,
-                                      OpSet& op,
-                                      int max_iters,
-                                      double epsilon,
-                                      const Model& start) {
-
-
-        Model::requires(df);
-
-        auto current_model = start;
-        op.cache_scores(current_model);
-        
-        auto iter = 0;
-        while(iter < max_iters) {
-
-            auto best_op = op.find_max(current_model);
-            if (!best_op || best_op->delta() <= epsilon) {
-                break;
-            }
-
-            best_op->apply(current_model);
-            op.update_scores(current_model, *best_op);
-        //     // std::cout << "New op" << std::endl;
-            ++iter;
-        }
-
-        std::cout << "Final score: " << op.score() << std::endl;
-        std::cout << "Final model: " << current_model << std::endl;
-    }
-
-    template<typename OpSet, typename ValidationScore, typename Model>
-    void GreedyHillClimbing::estimate_validation(const DataFrame& df,
-                             OpSet& op_pool, 
-                             ValidationScore& validation_score, 
-                             int max_iters,
-                             double epsilon, 
-                             int patience,
-                             const Model& start) {
-        Model::requires(df);
-
-        auto current_model = start;
-        auto best_model = start;
-
-        VectorXd local_validation(current_model.num_nodes());
-        for (auto n = 0; n < current_model.num_nodes(); ++n) {
-            local_validation(n) = validation_score.local_score(current_model, n);
-        }
-
-        op_pool.cache_scores(current_model);
-        int p = 0;
-        double validation_offset = 0;
-
-        OperatorTabuSet tabu_set;
-        
-        auto iter = 0;
-        while(iter < max_iters) {
-            auto best_op = op_pool.find_max(current_model, tabu_set);
-            if (!best_op || best_op->delta() <= epsilon) {
-                break;
-            }
-
-            std::cout << "Best op: " << best_op->ToString() << std::endl;
-
-            double validation_delta = validation_score.delta_score(current_model, best_op.get(), local_validation);
-            
-            best_op->apply(current_model);
-            if ((validation_delta + validation_offset) > 0) {
-                p = 0;
-                validation_offset = 0;
-                best_model = current_model;
-                tabu_set.clear();
-            } else {
-                if (++p >= patience)
-                    break;
-                validation_offset += validation_delta;
-                tabu_set.insert(best_op->opposite());
-            }
-
-            op_pool.update_scores(current_model, *best_op);
-            ++iter;
-        }
-
-        std::cout << "Final score: " << op_pool.score(best_model) << std::endl;
-        std::cout << "Validation score fun: " << validation_score.score(best_model) << std::endl;
-        std::cout << "Final model: " << best_model << std::endl;
     }
 }

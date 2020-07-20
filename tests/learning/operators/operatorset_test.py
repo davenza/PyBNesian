@@ -31,9 +31,9 @@ def test_create():
         node_gbn_cv = ChangeNodeTypeSet(gbn, cv, [])
     "incompatible function arguments" in str(ex.value)
 
-    with pytest.raises(TypeError) as ex:
+    with pytest.raises(ValueError) as ex:
         node_spbn_bic = ChangeNodeTypeSet(spbn, bic, [])
-    "incompatible function arguments" in str(ex.value)
+    "Invalid score" in str(ex.value)
 
     node_spbn_cv = ChangeNodeTypeSet(spbn, cv, [])
     node_spbn_cv = ChangeNodeTypeSet(spbn, cv, [])

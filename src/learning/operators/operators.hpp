@@ -4,8 +4,9 @@
 #include <queue>
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
+#include <learning/scores/scores.hpp>
 #include <util/util_types.hpp>
-#include <util/bn_traits.hpp>
+#include <util/validate_scores.hpp>
 
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
@@ -14,6 +15,7 @@ using VectorXb = Matrix<bool, Dynamic, 1>;
 using graph::AdjListDag;
 using models::BayesianNetwork, models::BayesianNetworkBase;
 using factors::FactorType;
+using learning::scores::Score;
 using util::ArcVector, util::FactorTypeVector;
 
 namespace learning::operators {
@@ -121,18 +123,7 @@ namespace learning::operators {
         }
         std::string ToString() const override {
             return "AddArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
-        }
-
-        // bool operator==(const Operator& a) const {
-        //     return a.type() == OperatorType::ADD_ARC && (*this == dynamic_cast<const AddArc&>(a));
-        // }
-        // bool operator!=(const Operator& a) const {
-        //     return !(*this == a);
-        // }
-        // bool operator==(const AddArc& a) const {
-        //     return this->source() == a.source() && this->target() == a.target();
-        // }
-        // bool operator!=(const AddArc& v) const { return !(*this == v); }        
+        }   
     };
 
     class RemoveArc : public ArcOperator {
@@ -152,12 +143,7 @@ namespace learning::operators {
         }
         std::string ToString() const override {
             return "RemoveArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
-        }
-
-        // bool operator==(const RemoveArc& a) const {
-        //     return this->source() == a.source() && this->target() == a.target();
-        // }
-        // bool operator!=(const RemoveArc& v) const { return !(*this == v); }        
+        }      
     };
 
     class FlipArc : public ArcOperator {
@@ -178,12 +164,7 @@ namespace learning::operators {
         }
         std::string ToString() const override {
             return "FlipArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
-        }
-
-        // bool operator==(const FlipArc& a) const {
-        //     return this->source() == a.source() && this->target() == a.target();
-        // }
-        // bool operator!=(const FlipArc& v) const { return !(*this == v); }     
+        }  
     };
 
     class ChangeNodeType : public Operator {
@@ -214,12 +195,7 @@ namespace learning::operators {
         }
         std::string ToString() const override {
             return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
-        }
-
-        // bool operator==(const ChangeNodeType& a) const {
-        //     return this->node() == a.node() && this->node_type() == a.node_type();
-        // }
-        // bool operator!=(const ChangeNodeType& v) const { return !(*this == v); }     
+        } 
     private:
         std::string m_node;
         FactorType m_new_node_type;
@@ -380,19 +356,19 @@ namespace learning::operators {
         LocalScoreCache(Model& m) : m_local_score(m.num_nodes()) {}
 
 
-        template<typename Model, typename Score>
+        template<typename Model>
         void cache_local_scores(Model& model, Score& score) {
             for (int i = 0; i < model.num_nodes(); ++i) {
                 m_local_score(i) = score.local_score(model, i);
             }
         }
 
-        template<typename Model, typename Score>
+        template<typename Model>
         void update_local_score(Model& model, Score& score, int index) {
             m_local_score(index) = score.local_score(model, index);
         }
 
-        template<typename Model, typename Score>
+        template<typename Model>
         void update_local_score(Model& model, Score& score, Operator& op) {
             switch(op.type()) {
                 case OperatorType::ADD_ARC:
@@ -427,43 +403,43 @@ namespace learning::operators {
         VectorXd m_local_score;
     };
     
-    template<typename... Types>
+    template<typename... Models>
     class OperatorSetInterface {};
 
-    template<typename Type>
-    class OperatorSetInterface<Type> {
+    template<typename Model>
+    class OperatorSetInterface<Model> {
     public:
-        virtual void cache_scores(Type& m) {
+        virtual void cache_scores(Model& m) {
             throw std::invalid_argument("OperatorSet::cache_scores() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual std::shared_ptr<Operator> find_max(Type& m) {
+        virtual std::shared_ptr<Operator> find_max(Model& m) {
             throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual std::shared_ptr<Operator> find_max(Type& m, OperatorTabuSet&) {
+        virtual std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet&) {
             throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual void update_scores(Type& m, Operator&) {
+        virtual void update_scores(Model& m, Operator&) {
             throw std::invalid_argument("OperatorSet::update_scores() not implemented for model " + m.type().ToString() + ".");
         }
     };
 
-    template<typename Type, typename... Types>
-    class OperatorSetInterface<Type, Types...> : public OperatorSetInterface<Types...> {
+    template<typename Model, typename... Models>
+    class OperatorSetInterface<Model, Models...> : public OperatorSetInterface<Models...> {
     public:
-        using Base = OperatorSetInterface<Types...>;
+        using Base = OperatorSetInterface<Models...>;
         using Base::cache_scores;
         using Base::find_max;
         using Base::update_scores;
-        virtual void cache_scores(Type&) {
+        virtual void cache_scores(Model&) {
             throw std::invalid_argument("OperatorSet::cache_scores() not implemented.");
         }
-        virtual std::shared_ptr<Operator> find_max(Type&) {
+        virtual std::shared_ptr<Operator> find_max(Model&) {
             throw std::invalid_argument("OperatorSet::find_max() not implemented.");
         }
-        virtual std::shared_ptr<Operator> find_max(Type&, OperatorTabuSet&) {
+        virtual std::shared_ptr<Operator> find_max(Model&, OperatorTabuSet&) {
             throw std::invalid_argument("OperatorSet::find_max() not implemented.");
         }
-        virtual void update_scores(Type&, Operator&) {
+        virtual void update_scores(Model&, Operator&) {
             throw std::invalid_argument("OperatorSet::update_scores() not implemented.");
         }
     };
@@ -485,70 +461,45 @@ namespace learning::operators {
         std::shared_ptr<LocalScoreCache> m_local_cache;
     };
 
-    template<typename Derived, bool EnableOverride, typename... Types>
-    class OperatorSetImplDetail {};
-
-    template<template<typename> typename Derived, typename Score, typename Type>
-    class OperatorSetImplDetail<Derived<Score>, true, Type>  : public OperatorSet {
-    public:
-        void cache_scores(Type& m) override {
-            static_cast<Derived<Score>*>(this)->cache_scores(m);
-        }
-        std::shared_ptr<Operator> find_max(Type& m) override {
-            return static_cast<Derived<Score>*>(this)->find_max(m);
-        }
-        std::shared_ptr<Operator> find_max(Type& m, OperatorTabuSet& tabu) override {
-            return static_cast<Derived<Score>*>(this)->find_max(m, tabu);
-        }
-        void update_scores(Type& m, Operator& op) override {
-            static_cast<Derived<Score>*>(this)->update_scores(m, op);
-        }
-    };
-
-    template<template<typename> typename Derived, typename Score, typename Type>
-    class OperatorSetImplDetail<Derived<Score>, false, Type>  : public OperatorSet {};
-
-    template<template<typename> typename Derived, typename Score, typename Type, typename... Types>
-    class OperatorSetImplDetail<Derived<Score>, true, Type, Types...> : 
-                public OperatorSetImplDetail<Derived<Score>, 
-                                             util::is_compatible_score_v<typename std::tuple_element<0, std::tuple<Types...>>::type,
-                                                                         Score>,
-                                             Types...> {
-    public:
-        void cache_scores(Type& m) override {
-            static_cast<Derived<Score>*>(this)->cache_scores(m);
-        }
-        std::shared_ptr<Operator> find_max(Type& m) override {
-            return static_cast<Derived<Score>*>(this)->find_max(m);
-        }
-        std::shared_ptr<Operator> find_max(Type& m, OperatorTabuSet& tabu) override {
-            return static_cast<Derived<Score>*>(this)->find_max(m, tabu);
-        }
-        void update_scores(Type& m, Operator& op) override {
-            static_cast<Derived<Score>*>(this)->update_scores(m, op);
-        }
-    };
-
-    template<template<typename> typename Derived, typename Score, typename Type, typename... Types>
-    class OperatorSetImplDetail<Derived<Score>, false, Type, Types...> : 
-                public OperatorSetImplDetail<Derived<Score>, 
-                                             util::is_compatible_score_v<typename std::tuple_element<0, std::tuple<Types...>>::type,
-                                                                         Score>,
-                                             Types...> { };
-
-    template<typename Derived, typename Type, typename... Types>
+    template<typename Derived, typename... Models>
     class OperatorSetImpl {};
 
-    template<template<typename> typename Derived, typename Score, typename Type, typename... Types>
-    class OperatorSetImpl<Derived<Score>, Type, Types...> 
-            : public OperatorSetImplDetail<Derived<Score>, 
-                                           util::is_compatible_score_v<typename std::tuple_element<0, std::tuple<Types...>>::type,
-                                                                        Score>,
-                                           Type,
-                                           Types...> { };
+    template<typename Derived, typename Model>
+    class OperatorSetImpl<Derived, Model>  : public OperatorSet {
+    public:
+        void cache_scores(Model& m) override {
+            static_cast<Derived*>(this)->cache_scores(m);
+        }
+        std::shared_ptr<Operator> find_max(Model& m) override {
+            return static_cast<Derived*>(this)->find_max(m);
+        }
+        std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet& tabu) override {
+            return static_cast<Derived*>(this)->find_max(m, tabu);
+        }
+        void update_scores(Model& m, Operator& op) override {
+            static_cast<Derived*>(this)->update_scores(m, op);
+        }
+    };
 
-    template<typename Score>
-    class ArcOperatorSet : public OperatorSetImpl<ArcOperatorSet<Score>,
+    template<typename Derived, typename Model, typename... Models>
+    class OperatorSetImpl<Derived, Model, Models...> : 
+                public OperatorSetImpl<Derived,Models...> {
+    public:
+        void cache_scores(Model& m) override {
+            static_cast<Derived*>(this)->cache_scores(m);
+        }
+        std::shared_ptr<Operator> find_max(Model& m) override {
+            return static_cast<Derived*>(this)->find_max(m);
+        }
+        std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet& tabu) override {
+            return static_cast<Derived*>(this)->find_max(m, tabu);
+        }
+        void update_scores(Model& m, Operator& op) override {
+            static_cast<Derived*>(this)->update_scores(m, op);
+        }
+    };
+
+    class ArcOperatorSet : public OperatorSetImpl<ArcOperatorSet,
                                                   GaussianNetwork<>,
                                                   GaussianNetwork<AdjListDag>,
                                                   SemiparametricBN<>,
@@ -557,7 +508,7 @@ namespace learning::operators {
     public:
 
         template<typename Model>
-        ArcOperatorSet(Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
+        ArcOperatorSet(Model& model, std::shared_ptr<Score>& score, ArcVector& blacklist, ArcVector& whitelist,
                        int max_indegree);
 
         template<typename Model>
@@ -576,18 +527,16 @@ namespace learning::operators {
         template<typename Model>
         void update_node_arcs_scores(Model& model, const std::string& dest_node);
     private:
-        const Score m_score;
+        std::shared_ptr<Score> m_score;
         MatrixXd delta;
         MatrixXb valid_op;
         std::vector<int> sorted_idx;
         int max_indegree;
     };
 
-
-    template<typename Score>
     template<typename Model>
-    ArcOperatorSet<Score>::ArcOperatorSet(Model& model,
-                                          const Score score,
+    ArcOperatorSet::ArcOperatorSet(Model& model,
+                                          std::shared_ptr<Score>& score,
                                           ArcVector& blacklist,
                                           ArcVector& whitelist,
                                           int max_indegree) : m_score(score),
@@ -596,61 +545,59 @@ namespace learning::operators {
                                                                      sorted_idx(),
                                                                      max_indegree(max_indegree)
     {
-        if constexpr(!util::is_compatible_score_v<Model, Score>) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + model.ToString() + ".");
-        } else {
-            auto num_nodes = model.num_nodes();
-            auto val_ptr = valid_op.data();
+        if (!util::compatible_score<Model>(score->type())) {
+            throw std::invalid_argument("Invalid score " + score->ToString() + " for model type " + model.type().ToString() + ".");
+        }
+        auto num_nodes = model.num_nodes();
+        auto val_ptr = valid_op.data();
 
-            std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
+        std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
 
-            auto indices = model.indices();
-            auto valid_ops = (num_nodes * num_nodes) - 2*whitelist.size() - blacklist.size() - num_nodes;
+        auto indices = model.indices();
+        auto valid_ops = (num_nodes * num_nodes) - 2*whitelist.size() - blacklist.size() - num_nodes;
 
-            for(auto whitelist_edge : whitelist) {
-                auto source_index = indices[whitelist_edge.first];
-                auto dest_index = indices[whitelist_edge.second];
+        for(auto whitelist_edge : whitelist) {
+            auto source_index = indices[whitelist_edge.first];
+            auto dest_index = indices[whitelist_edge.second];
 
-                valid_op(source_index, dest_index) = false;
-                valid_op(dest_index, source_index) = false;
-                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-                delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
-            }
-            
-            for(auto blacklist_edge : blacklist) {
-                auto source_index = indices[blacklist_edge.first];
-                auto dest_index = indices[blacklist_edge.second];
+            valid_op(source_index, dest_index) = false;
+            valid_op(dest_index, source_index) = false;
+            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+            delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
+        }
+        
+        for(auto blacklist_edge : blacklist) {
+            auto source_index = indices[blacklist_edge.first];
+            auto dest_index = indices[blacklist_edge.second];
 
-                valid_op(source_index, dest_index) = false;
-                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-            }
+            valid_op(source_index, dest_index) = false;
+            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+        }
 
-            for (int i = 0; i < num_nodes; ++i) {
-                valid_op(i, i) = false;
-                delta(i, i) = std::numeric_limits<double>::lowest();
-            }
+        for (int i = 0; i < num_nodes; ++i) {
+            valid_op(i, i) = false;
+            delta(i, i) = std::numeric_limits<double>::lowest();
+        }
 
-            sorted_idx.reserve(valid_ops);
+        sorted_idx.reserve(valid_ops);
 
-            for (int i = 0; i < num_nodes; ++i) {
-                for (int j = 0; j < num_nodes; ++j) {
-                    if (valid_op(i, j)) {
-                        sorted_idx.push_back(i + j * num_nodes);
-                    }
+        for (int i = 0; i < num_nodes; ++i) {
+            for (int j = 0; j < num_nodes; ++j) {
+                if (valid_op(i, j)) {
+                    sorted_idx.push_back(i + j * num_nodes);
                 }
             }
         }
     }
 
-    template<typename Score>
     template<typename Model>
-    void ArcOperatorSet<Score>::cache_scores(Model& model) {
+    void ArcOperatorSet::cache_scores(Model& model) {
         if (this->m_local_cache == nullptr) {
             auto lc = std::make_shared<LocalScoreCache>(model);
             this->set_local_score_cache(lc);
-            this->m_local_cache->cache_local_scores(model, m_score);
+            this->m_local_cache->cache_local_scores(model, *m_score);
         } else if (this->owns_local_cache()) {
-            this->m_local_cache->cache_local_scores(model, m_score);
+            this->m_local_cache->cache_local_scores(model, *m_score);
         }
 
         for (auto dest = 0; dest < model.num_nodes(); ++dest) {
@@ -660,7 +607,7 @@ namespace learning::operators {
                 if(valid_op(source, dest)) {
                     if (model.has_edge(source, dest)) {            
                         std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
-                        double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - 
+                        double d = m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - 
                                     this->m_local_cache->local_score(dest);
                         delta(source, dest) = d;
                     } else if (model.has_edge(dest, source)) {
@@ -668,14 +615,14 @@ namespace learning::operators {
                         std::iter_swap(std::find(new_parents_source.begin(), new_parents_source.end(), dest), new_parents_source.end() - 1);
                         
                         new_parents_dest.push_back(source);
-                        double d = m_score.local_score(model, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
-                                   m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
+                        double d = m_score->local_score(model, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
+                                   m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
                                    - this->m_local_cache->local_score(source) - this->m_local_cache->local_score(dest);
                         new_parents_dest.pop_back();
                         delta(dest, source) = d;
                     } else {
                         new_parents_dest.push_back(source);
-                        double d = m_score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
+                        double d = m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
                                     - this->m_local_cache->local_score(dest);
                         new_parents_dest.pop_back();
                         delta(source, dest) = d;
@@ -685,9 +632,8 @@ namespace learning::operators {
         }
     }
 
-    template<typename Score>
     template<typename Model>
-    std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max(Model& model) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max(Model& model) {
         if (this->m_local_cache == nullptr) {
             throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
         }
@@ -698,9 +644,8 @@ namespace learning::operators {
             return find_max_indegree<Model, false>(model);
     }
 
-    template<typename Score>
     template<typename Model>
-    std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max(Model& model, OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max(Model& model, OperatorTabuSet& tabu_set) {
         if (this->m_local_cache == nullptr) {
             throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
         }
@@ -712,9 +657,8 @@ namespace learning::operators {
     }
 
 
-    template<typename Score>
     template<typename Model, bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max_indegree(Model& model) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(Model& model) {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -749,9 +693,8 @@ namespace learning::operators {
         return nullptr;
     }
 
-    template<typename Score>
     template<typename Model, bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet<Score>::find_max_indegree(Model& model,  OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(Model& model,  OperatorTabuSet& tabu_set) {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -792,15 +735,14 @@ namespace learning::operators {
         return nullptr;
     }
 
-    template<typename Score>
     template<typename Model>
-    void ArcOperatorSet<Score>::update_scores(Model& model, Operator& op) {
+    void ArcOperatorSet::update_scores(Model& model, Operator& op) {
         if (this->m_local_cache == nullptr) {
             auto lc = std::make_shared<LocalScoreCache>(model);
             this->set_local_score_cache(lc);
-            this->m_local_cache->update_local_score(model, m_score, op);
+            this->m_local_cache->update_local_score(model, *m_score, op);
         } else if(this->owns_local_cache()) {
-            this->m_local_cache->update_local_score(model, m_score, op);
+            this->m_local_cache->update_local_score(model, *m_score, op);
         }
 
         switch(op.type()) {
@@ -824,9 +766,8 @@ namespace learning::operators {
         }
     }
 
-    template<typename Score>
     template<typename Model>
-    void ArcOperatorSet<Score>::update_node_arcs_scores(Model& model, const std::string& dest_node) {
+    void ArcOperatorSet::update_node_arcs_scores(Model& model, const std::string& dest_node) {
 
         auto dest_idx = model.index(dest_node);
         auto parents = model.parent_indices(dest_idx);
@@ -836,28 +777,28 @@ namespace learning::operators {
 
                 if (model.has_edge(i, dest_idx)) {
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
-                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
+                    double d = m_score->local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
                                this->m_local_cache->local_score(dest_idx);
                     delta(i, dest_idx) = d;
 
                     auto new_parents_i = model.parent_indices(i);
                     new_parents_i.push_back(dest_idx);
 
-                    delta(dest_idx, i) = d + m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end())
+                    delta(dest_idx, i) = d + m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end())
                                             - this->m_local_cache->local_score(i);
                 } else if (model.has_edge(dest_idx, i)) {
                     auto new_parents_i = model.parent_indices(i);
                     std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
                         
                     parents.push_back(i);
-                    double d = m_score.local_score(model, i, new_parents_i.begin(), new_parents_i.end() - 1) + 
-                                m_score.local_score(model, dest_idx, parents.begin(), parents.end()) 
+                    double d = m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end() - 1) + 
+                                m_score->local_score(model, dest_idx, parents.begin(), parents.end()) 
                                 - this->m_local_cache->local_score(i) - this->m_local_cache->local_score(dest_idx);
                     parents.pop_back();
                     delta(dest_idx, i) = d;
                 } else {
                     parents.push_back(i);
-                    double d = m_score.local_score(model, dest_idx, parents.begin(), parents.end()) - this->m_local_cache->local_score(dest_idx);
+                    double d = m_score->local_score(model, dest_idx, parents.begin(), parents.end()) - this->m_local_cache->local_score(dest_idx);
                     parents.pop_back();
                     delta(i, dest_idx) = d;
                 }
@@ -865,19 +806,22 @@ namespace learning::operators {
         }
     }
 
-    template<typename Score>
-    class ChangeNodeTypeSet : public OperatorSetImpl<ChangeNodeTypeSet<Score>,
+    class ChangeNodeTypeSet : public OperatorSetImpl<ChangeNodeTypeSet,
                                                      SemiparametricBN<>,
                                                      SemiparametricBN<AdjListDag>> {
     public:
         template<typename Model>
         ChangeNodeTypeSet(Model& model, 
-                          const Score score, 
+                          std::shared_ptr<Score>& score, 
                           FactorTypeVector& type_whitelist) : m_score(score),
                                                               delta(model.num_nodes()),
                                                               valid_op(model.num_nodes()),
                                                               sorted_idx()
         {
+            if (!util::compatible_score<Model>(score->type())) {
+                throw std::invalid_argument("Invalid score " + score->ToString() + " for model type " + model.type().ToString() + ".");
+            }
+
             auto val_ptr = valid_op.data();
             std::fill(val_ptr, val_ptr + model.num_nodes(), true);
 
@@ -914,26 +858,25 @@ namespace learning::operators {
         void update_local_delta(Model& model, int node_index) {
             FactorType type = model.node_type(node_index);
             auto parents = model.parent_indices(node_index);
-            delta(node_index) = m_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
+            delta(node_index) = m_score->local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
                                 - this->m_local_cache->local_score(node_index);
         }
 
     private:
-        const Score m_score;
+        std::shared_ptr<Score> m_score;
         VectorXd delta;
         VectorXb valid_op;
         std::vector<int> sorted_idx;
     };
 
-    template<typename Score>
     template<typename Model>
-    void ChangeNodeTypeSet<Score>::cache_scores(Model& model) {
+    void ChangeNodeTypeSet::cache_scores(Model& model) {
         if (this->m_local_cache == nullptr) {
             auto lc = std::make_shared<LocalScoreCache>(model);
             this->set_local_score_cache(lc);
-            this->m_local_cache->cache_local_scores(model, m_score);
+            this->m_local_cache->cache_local_scores(model, *m_score);
         } else if (this->owns_local_cache()) {
-            this->m_local_cache->cache_local_scores(model, m_score);
+            this->m_local_cache->cache_local_scores(model, *m_score);
         }
 
         for(auto i = 0; i < model.num_nodes(); ++i) {
@@ -943,9 +886,8 @@ namespace learning::operators {
         }
     }
 
-    template<typename Score>
     template<typename Model>
-    std::shared_ptr<Operator> ChangeNodeTypeSet<Score>::find_max(Model& model) {
+    std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(Model& model) {
         if (this->m_local_cache == nullptr) {
             throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
         }
@@ -960,9 +902,8 @@ namespace learning::operators {
             return nullptr;
     }
 
-    template<typename Score>
     template<typename Model>
-    std::shared_ptr<Operator> ChangeNodeTypeSet<Score>::find_max(Model& model, OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(Model& model, OperatorTabuSet& tabu_set) {
         if (this->m_local_cache == nullptr) {
             throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
         }
@@ -984,15 +925,14 @@ namespace learning::operators {
         return nullptr;
     }
 
-    template<typename Score>
     template<typename Model>
-    void ChangeNodeTypeSet<Score>::update_scores(Model& model, Operator& op) {
+    void ChangeNodeTypeSet::update_scores(Model& model, Operator& op) {
         if (this->m_local_cache == nullptr) {
             auto lc = std::make_shared<LocalScoreCache>(model);
             this->set_local_score_cache(lc);
-            this->m_local_cache->update_local_score(model, m_score, op);
+            this->m_local_cache->update_local_score(model, *m_score, op);
         } else if(this->owns_local_cache()) {
-            this->m_local_cache->update_local_score(model, m_score, op);
+            this->m_local_cache->update_local_score(model, *m_score, op);
         }
         switch(op.type()) {
             case OperatorType::ADD_ARC:
@@ -1016,12 +956,11 @@ namespace learning::operators {
         }
     }
 
-    template<typename Score>
     class OperatorPool {
     public:
         template<typename Model>
         OperatorPool(Model& model, 
-                     const Score score, 
+                     std::shared_ptr<Score>& score, 
                      std::vector<std::shared_ptr<OperatorSet>> op_sets) : m_score(score),
                                                                           local_cache(std::make_shared<LocalScoreCache>(model)),
                                                                           m_op_sets(std::move(op_sets)) {
@@ -1051,29 +990,27 @@ namespace learning::operators {
         double score(Model& model) {
             double s = 0;
             for (int i = 0; i < model.num_nodes(); ++i) {
-                s += m_score.local_score(model, i);
+                s += m_score->local_score(model, i);
             }
             return s;
         }
     private:
-        const Score m_score;
+        std::shared_ptr<Score> m_score;
         std::shared_ptr<LocalScoreCache> local_cache;
         std::vector<std::shared_ptr<OperatorSet>> m_op_sets;
     };
 
-    template<typename Score>
     template<typename Model>
-    void OperatorPool<Score>::cache_scores(Model& model) {
-        local_cache->cache_local_scores(model, m_score);
+    void OperatorPool::cache_scores(Model& model) {
+        local_cache->cache_local_scores(model, *m_score);
 
         for (auto& op_set : m_op_sets) {
             op_set->cache_scores(model);
         }
     }
 
-    template<typename Score>
     template<typename Model>
-    std::shared_ptr<Operator> OperatorPool<Score>::find_max(Model& model) {
+    std::shared_ptr<Operator> OperatorPool::find_max(Model& model) {
 
         double max_delta = std::numeric_limits<double>::lowest();
         std::shared_ptr<Operator> max_op = nullptr;
@@ -1089,9 +1026,8 @@ namespace learning::operators {
         return max_op;
     }
 
-    template<typename Score>
     template<typename Model>
-    std::shared_ptr<Operator> OperatorPool<Score>::find_max(Model& model, OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> OperatorPool::find_max(Model& model, OperatorTabuSet& tabu_set) {
         if (tabu_set.empty())
             return find_max(model);
         
@@ -1109,10 +1045,9 @@ namespace learning::operators {
         return max_op;
     }
 
-    template<typename Score>
     template<typename Model>
-    void OperatorPool<Score>::update_scores(Model& model, Operator& op) {
-        local_cache->update_local_score(model, m_score, op);
+    void OperatorPool::update_scores(Model& model, Operator& op) {
+        local_cache->update_local_score(model, *m_score, op);
         for (auto& op_set : m_op_sets) {
             op_set->update_scores(model, op);
         }

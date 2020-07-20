@@ -39,17 +39,17 @@ using factors::continuous::CKDE;
 using factors::FactorType;
 
 using models::BayesianNetworkBase, models::BayesianNetwork, models::BayesianNetworkType;
-using learning::scores::BIC;
-using learning::scores::CVLikelihood;
-using learning::scores::HoldoutLikelihood;
+using learning::scores::Score, learning::scores::BIC, learning::scores::CVLikelihood, 
+        learning::scores::HoldoutLikelihood;
 using learning::operators::AddArc, learning::operators::RemoveArc, learning::operators::FlipArc,
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, 
       learning::operators::OperatorSetType, learning::operators::OperatorSet, 
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
       learning::operators::OperatorPool;
+using learning::algorithms::GreedyHillClimbing;
 
-using learning::operators::ArcOperatorSet_constructor, learning::operators::ChangeNodeTypeSet_constructor, 
-      learning::operators::OperatorPool_constructor;
+// using learning::operators::ArcOperatorSet_constructor, learning::operators::ChangeNodeTypeSet_constructor, 
+//       learning::operators::OperatorPool_constructor;
 
 using util::ArcVector;
 
@@ -112,8 +112,6 @@ void register_ArcOperators(py::module& m) {
         .def("__ne__", [](const Operator& self, const Operator& other) {
             return self != other;
         }, py::is_operator());
-        // .def(py::self == py::self)
-        // .def(py::self != py::self);
 
     py::class_<ArcOperator, Operator, std::shared_ptr<ArcOperator>>(m, "ArcOperator")
         .def_property_readonly("source", &ArcOperator::source)
@@ -123,28 +121,61 @@ void register_ArcOperators(py::module& m) {
         .def(py::init<std::string, std::string, double>())
         .def("apply", &AddArc::apply)
         .def("opposite", &AddArc::opposite, py::return_value_policy::take_ownership);
-        // .def(py::self == py::self)
-        // .def(py::self != py::self)
-        // .def("__eq__", [](const AddArc& self, const Operator& a) {
-        //     return self == a;
-        // }, py::is_operator)
-        // .def("__ne__", [](const AddArc& self, const Operator& a) {
-        //     return self != a;
-        // }, py::is_operator);
 
     py::class_<RemoveArc, ArcOperator, std::shared_ptr<RemoveArc>>(m, "RemoveArc")
         .def(py::init<std::string, std::string, double>())
         .def("apply", &RemoveArc::apply)
         .def("opposite", &RemoveArc::opposite, py::return_value_policy::take_ownership);
-        // .def(py::self == py::self)
-        // .def(py::self != py::self);
 
     py::class_<FlipArc, ArcOperator, std::shared_ptr<FlipArc>>(m, "FlipArc")
         .def(py::init<std::string, std::string, double>())
         .def("apply", &FlipArc::apply)
         .def("opposite", &FlipArc::opposite, py::return_value_policy::take_ownership);
-        // .def(py::self == py::self)
-        // .def(py::self != py::self);
+}
+
+template<typename Model, typename... Models>
+py::class_<Score, std::shared_ptr<Score>> register_Score(py::module& m) {
+    auto score = [&m](){
+        if constexpr (sizeof...(Models) == 0) {
+            py::class_<Score, std::shared_ptr<Score>> score(m, "Score");
+            score.def("is_decomposable", &Score::is_decomposable)
+            .def("type", &Score::type)
+            .def("local_score", [](Score& self, 
+                                   FactorType variable_type, 
+                                   const std::string& variable, 
+                                   const std::vector<std::string> evidence) {
+                return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
+            })
+            .def("local_score", [](Score& self, 
+                                   FactorType variable_type, 
+                                   int variable, 
+                                   const std::vector<int> evidence) {
+                return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
+            });
+
+            return score;
+        } else {
+            return register_Score<Models...>(m);
+        }
+    }();
+
+    score.def("score", [](Score& self, const Model& m) {
+        return self.score(m);
+    })
+    .def("local_score", [](Score& self, const Model& m, const std::string& variable) {
+        return self.local_score(m, variable);
+    })
+    .def("local_score", [](Score& self, const Model& m, const int variable) {
+        return self.local_score(m, variable);
+    })
+    .def("local_score", [](Score& self, const Model& m, const std::string& variable, const std::vector<std::string> evidence) {
+        return self.local_score(m, variable, evidence.begin(), evidence.end());
+    })
+    .def("local_score", [](Score& self, const Model& m, const int variable, const std::vector<int> evidence) {
+        return self.local_score(m, variable, evidence.begin(), evidence.end());
+    });
+
+    return score;
 }
 
 void register_OperatorTabuSet(py::module& m) {
@@ -152,23 +183,23 @@ void register_OperatorTabuSet(py::module& m) {
     // TODO: Implement copy operation.
     py::class_<OperatorTabuSet>(m, "OperatorTabuSet")
         .def(py::init<>())
+        .def(py::init<const OperatorTabuSet&>())
         .def("insert", py::overload_cast<std::shared_ptr<Operator>>(&OperatorTabuSet::insert))
         .def("contains", py::overload_cast<std::shared_ptr<Operator>&>(&OperatorTabuSet::contains, py::const_))
         .def("clear", &OperatorTabuSet::clear)
         .def("empty", &OperatorTabuSet::empty);
 }
 
-
 template<typename Class, typename Model, typename... Models>
-py::class_<Class, std::shared_ptr<Class>> register_OperatorSet(py::module& m, const char* class_name) {
+py::class_<Class, std::shared_ptr<Class>> register_OperatorSet(py::module& m) {
 
-    auto op_set = [&m, class_name]() {
+    auto op_set = [&m]() {
         if constexpr (sizeof...(Models) == 0) {
-            py::class_<Class, std::shared_ptr<Class>> op_set(m, class_name);
+            py::class_<Class, std::shared_ptr<Class>> op_set(m, "OperatorSet");
             op_set.def(py::init<>());
             return op_set;
         } else {
-            return register_OperatorSet<Class, Models...>(m, class_name);
+            return register_OperatorSet<Class, Models...>(m);
         }
     }();
 
@@ -182,151 +213,97 @@ py::class_<Class, std::shared_ptr<Class>> register_OperatorSet(py::module& m, co
         return self.find_max(model, tabu);
     });
     op_set.def("update_scores", [](Class& self, Model& model, Operator& op) {
-        return self.update_scores(model, op);
+        self.update_scores(model, op);
     });
 
     return op_set;
 }
 
-template<typename Score, typename Model, typename... Models>
-py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Score>>> register_ArcOperatorSet(py::module& m, const char* score_name) {
-    std::string arc_score_name = std::string("ArcOperatorSet<") + score_name + ">";
-    auto op_set = [&m, &arc_score_name, score_name]() {
+template<typename DerivedOpSet, typename Model, typename... Models>
+py::class_<DerivedOpSet, OperatorSet, std::shared_ptr<DerivedOpSet>> register_DerivedOperatorSet(py::module& m, const char* name) {
+    auto op_set = [&m, name]() {
         if constexpr (sizeof...(Models) == 0) {
-            py::class_<ArcOperatorSet<Score>, OperatorSet, std::shared_ptr<ArcOperatorSet<Score>>> op_set(m, arc_score_name.c_str());
-            op_set.def(py::init<Model&, const Score, ArcVector&, ArcVector&, int>());
+            py::class_<DerivedOpSet, OperatorSet, std::shared_ptr<DerivedOpSet>> op_set(m, name);
             return op_set;
         } else {
-            return register_ArcOperatorSet<Score, Models...>(m, score_name);
+            return register_DerivedOperatorSet<DerivedOpSet, Models...>(m, name);
         }
     }();
 
-    m.def("ArcOperatorSet", [](Model& model, const Score score, ArcVector& whitelist, ArcVector& blacklist,
-                    int max_indegree) {
-        return ArcOperatorSet_constructor(model, score, whitelist, blacklist, max_indegree);
-    }, py::arg("model"), py::arg("score"), 
-       py::arg("whitelist") = ArcVector(), py::arg("blacklist") = ArcVector(), py::arg("max_indegree") = 0);
-
-    op_set.def("cache_scores", [](ArcOperatorSet<Score>& self, Model& model) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            self.cache_scores(model);
-        } else {
-            self.OperatorSet::cache_scores(model);
-        }
-    });
-    op_set.def("find_max", [](ArcOperatorSet<Score>& self, Model& model) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            return self.find_max(model);
-        } else {
-            return self.OperatorSet::find_max(model);
-        }
-    });
-    op_set.def("find_max", [](ArcOperatorSet<Score>& self, Model& model, OperatorTabuSet& tabu) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            return self.find_max(model, tabu);
-        } else {
-            return self.OperatorSet::find_max(model, tabu);
-        }
-    });
-    op_set.def("update_scores", [](ArcOperatorSet<Score>& self, Model& model, Operator& op) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            self.update_scores(model, op);
-        } else {
-            self.OperatorSet::update_scores(model, op);
-        }
-    });
-
-    return op_set;
-}
-
-template<typename Score, typename Model, typename... Models>
-py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeTypeSet<Score>>> 
-register_ChangeNodeTypeSet(py::module& m, const char* score_name) {
-    std::string nodetype_score_name = std::string("ChangeNodeTypeSet<") + score_name + ">";
-    auto op_set = [&m, &nodetype_score_name, score_name]() {
-        if constexpr (sizeof...(Models) == 0) {
-            py::class_<ChangeNodeTypeSet<Score>, OperatorSet, std::shared_ptr<ChangeNodeTypeSet<Score>>> op_set(m, nodetype_score_name.c_str());
-            op_set.def(py::init<Model&, const Score, FactorTypeVector&>());
-            return op_set;
-        } else {
-            return register_ChangeNodeTypeSet<Score, Models...>(m, score_name);
-        }
-    }();
-
-
-    m.def("ChangeNodeTypeSet", [](Model& model, const Score score, FactorTypeVector& type_whitelist) {
-        return ChangeNodeTypeSet_constructor(model, score, type_whitelist);
-    }, py::arg("model"), py::arg("score"), py::arg("type_whitelist") = FactorTypeVector());
-
-
-    op_set.def("cache_scores", [](ChangeNodeTypeSet<Score>& self, Model& model) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            self.cache_scores(model);
-        } else {
-            self.OperatorSet::cache_scores(model);
-        }
-    });
-    op_set.def("find_max", [](ChangeNodeTypeSet<Score>& self, Model& model) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            return self.find_max(model);
-        } else {
-            return self.OperatorSet::find_max(model);
-        }
-    });
-    op_set.def("find_max", [](ChangeNodeTypeSet<Score>& self, Model& model, OperatorTabuSet& tabu) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            return self.find_max(model, tabu);
-        } else {
-            return self.OperatorSet::find_max(model, tabu);
-        }
-    });
-    op_set.def("update_scores", [](ChangeNodeTypeSet<Score>& self, Model& model, Operator& op) {
-        if constexpr(util::is_compatible_score_v<Model, Score>) {
-            self.update_scores(model, op);
-        } else {
-            self.OperatorSet::update_scores(model, op);
-        }
+    op_set.def("cache_scores", [](DerivedOpSet& self, Model& model) {
+        self.cache_scores(model);
+    })
+    .def("find_max", [](DerivedOpSet& self, Model& model) {
+        return self.find_max(model);
+    })
+    .def("find_max", [](DerivedOpSet& self, Model& model, OperatorTabuSet& tabu) {
+        return self.find_max(model, tabu);
+    })
+    .def("update_scores", [](DerivedOpSet& self, Model& model, Operator& op) {
+        self.update_scores(model, op);
     });
 
     return op_set;
 }
 
 
-template<typename Score, typename Model, typename... Models>
-py::class_<OperatorPool<Score>> register_OperatorPool(py::module& m, const char* score_name) {
-    std::string pool_score_name = std::string("OperatorPool<") + score_name + ">";
-    
-    auto pool = [&m, &pool_score_name, score_name]() {
+template<typename Model, typename... Models>
+py::class_<OperatorPool> register_OperatorPool(py::module& m) {
+    auto pool = [&m]() {
         if constexpr (sizeof...(Models) == 0) {
-            py::class_<OperatorPool<Score>> pool(m, pool_score_name.c_str());
-            pool.def(py::init<Model&, const Score, std::vector<std::shared_ptr<OperatorSet>>>());
+            py::class_<OperatorPool> pool(m, "OperatorPool");
             return pool;
         } else {
-            return register_OperatorPool<Score, Models...>(m, score_name);
+            return register_OperatorPool<Models...>(m);
         }
     }();
 
-    m.def("OperatorPool", [](Model& model, const Score score, std::vector<std::shared_ptr<OperatorSet>>& op_sets) {
-        return OperatorPool_constructor(model, score, op_sets);
-    }, py::arg("model"), py::arg("score"), py::arg("op_sets"));
-
-
-
-    pool.def("cache_scores", [](OperatorPool<Score>& self, Model& model) {
+    pool.def(py::init<Model&, std::shared_ptr<Score>&, std::vector<std::shared_ptr<OperatorSet>>>());
+    pool.def("cache_scores", [](OperatorPool& self, Model& model) {
         self.cache_scores(model);
     });
-    pool.def("find_max", [](OperatorPool<Score>& self, Model& model) {
+    pool.def("find_max", [](OperatorPool& self, Model& model) {
         return self.find_max(model);
     });
-    pool.def("find_max", [](OperatorPool<Score>& self, Model& model, OperatorTabuSet& tabu) {
+    pool.def("find_max", [](OperatorPool& self, Model& model, OperatorTabuSet& tabu) {
         return self.find_max(model, tabu);
     });
-    pool.def("update_scores", [](OperatorPool<Score>& self, Model& model, Operator& op) {
+    pool.def("update_scores", [](OperatorPool& self, Model& model, Operator& op) {
         self.update_scores(model, op);
     });
 
     return pool;
 }
+
+template<typename Model, typename... Models>
+py::class_<OperatorPool> register_GreedyHillClimbing(py::module& m) {
+    auto hc = [&m]() {
+        if constexpr (sizeof...(Models) == 0) {
+            py::class_<GreedyHillClimbing> hc(m, "GreedyHillClimbing");
+            hc.def(py::init<>());
+            return hc;
+        } else {
+            return register_GreedyHillClimbing<Models...>(m);
+        }
+    }();
+
+    hc.def("estimate", [](GreedyHillClimbing& self, const DataFrame& df, OperatorPool& pool, int max_iter, double epsilon, const Model& start) {
+        return self.estimate(df, pool, max_iter, epsilon, start);
+    });
+    hc.def("estimate_validation", [](GreedyHillClimbing& self, 
+                                     const DataFrame& df, 
+                                     OperatorPool& pool, 
+                                     Score& validation_score,
+                                     int max_iters,
+                                     double epsilon,
+                                     int patience,
+                                     const Model& start) {
+        return self.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, start);
+    });
+
+    return hc;
+}
+
 
 
 PYBIND11_MODULE(pgm_dataset, m) {
@@ -510,23 +487,15 @@ PYBIND11_MODULE(pgm_dataset, m) {
     auto learning = m.def_submodule("learning", "Learning submodule");
     auto scores = learning.def_submodule("scores", "Learning scores submodule.");
 
-    py::class_<BIC>(scores, "BIC")
-        .def(py::init<const DataFrame&>())
-        .def("score", &BIC::score<GaussianNetwork<>>)
-        .def("local_score", [](BIC& self, GaussianNetwork<> g, std::string var) {
-            return self.local_score(g, var);
-        })
-        .def("local_score", [](BIC& self, GaussianNetwork<> g, int idx) {
-            return self.local_score(g, idx);
-        })
-        .def("local_score", [](BIC& self, GaussianNetwork<> g, std::string var, std::vector<std::string> evidence) {
-            return self.local_score(g, var, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](BIC& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
-            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
-        });
+    register_Score<GaussianNetwork<>, 
+                   GaussianNetwork<AdjListDag>, 
+                   SemiparametricBN<>, 
+                   SemiparametricBN<AdjListDag>>(scores);
 
-    py::class_<CVLikelihood>(scores, "CVLikelihood")
+    py::class_<BIC, Score, std::shared_ptr<BIC>>(scores, "BIC")
+        .def(py::init<const DataFrame&>());
+
+    py::class_<CVLikelihood, Score, std::shared_ptr<CVLikelihood>>(scores, "CVLikelihood")
         .def(py::init<const DataFrame&, int>(),
                 py::arg("df"),
                 py::arg("k") = 10)
@@ -534,41 +503,9 @@ PYBIND11_MODULE(pgm_dataset, m) {
                 py::arg("df"),
                 py::arg("k") = 10,
                 py::arg("seed"))
-        .def_property_readonly("cv", &CVLikelihood::cv)
-        .def("score", &CVLikelihood::score<SemiparametricBN<>>)
-        .def("score", &CVLikelihood::score<GaussianNetwork<>>)
-        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, std::string var) {
-            return self.local_score(g, var);
-        })
-        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, std::string var) {
-            return self.local_score(g, var);
-        })
-        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, int idx) {
-            return self.local_score(g, idx);
-        })
-        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, int idx) {
-            return self.local_score(g, idx);
-        })
-        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, std::string var, std::vector<std::string> evidence) {
-            return self.local_score(g, var, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](CVLikelihood& self, SemiparametricBN<> g, int idx, std::vector<int> evidence_idx) {
-            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
-        })
-        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, std::string var, std::vector<std::string> evidence) {
-            return self.local_score(g, var, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](CVLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
-            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
-        })
-        .def("local_score", [](CVLikelihood& self, FactorType node_type, std::string var, std::vector<std::string> evidence) {
-            return self.local_score(node_type, var, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](CVLikelihood& self, FactorType node_type, int idx, std::vector<int> evidence_idx) {
-            return self.local_score(node_type, idx, evidence_idx.begin(), evidence_idx.end());
-        });
+        .def_property_readonly("cv", &CVLikelihood::cv);
 
-    py::class_<HoldoutLikelihood>(scores, "HoldoutLikelihood")
+    py::class_<HoldoutLikelihood, Score, std::shared_ptr<HoldoutLikelihood>>(scores, "HoldoutLikelihood")
         .def(py::init<const DataFrame&, double>(),
                 py::arg("df"),
                 py::arg("test_ratio") = 0.2)
@@ -578,33 +515,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
                 py::arg("seed"))
         .def_property_readonly("holdout", &HoldoutLikelihood::holdout)
         .def("training_data", &HoldoutLikelihood::training_data, py::return_value_policy::reference_internal)
-        .def("test_data", &HoldoutLikelihood::test_data, py::return_value_policy::reference_internal)
-        .def("score", &HoldoutLikelihood::score<SemiparametricBN<>>)
-        .def("score", &HoldoutLikelihood::score<GaussianNetwork<>>)
-        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, std::string var) {
-            return self.local_score(g, var);
-        })
-        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, std::string var) {
-            return self.local_score(g, var);
-        })
-        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, int idx) {
-            return self.local_score(g, idx);
-        })
-        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, int idx) {
-            return self.local_score(g, idx);
-        })
-        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, std::string var, std::vector<std::string> evidence) {
-            return self.local_score(g, var, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](HoldoutLikelihood& self, SemiparametricBN<> g, int idx, std::vector<int> evidence_idx) {
-            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
-        })
-        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, std::string var, std::vector<std::string> evidence) {
-            return self.local_score(g, var, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](HoldoutLikelihood& self, GaussianNetwork<> g, int idx, std::vector<int> evidence_idx) {
-            return self.local_score(g, idx, evidence_idx.begin(), evidence_idx.end());
-        });
+        .def("test_data", &HoldoutLikelihood::test_data, py::return_value_policy::reference_internal);
 
     auto parameters = learning.def_submodule("parameters", "Learning parameters submodule.");
 
@@ -649,8 +560,6 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property_readonly("node_type", &ChangeNodeType::node_type)
         .def("apply", &ChangeNodeType::apply)
         .def("opposite", &ChangeNodeType::opposite);
-        // .def(py::self == py::self)
-        // .def(py::self != py::self);
 
 
     register_OperatorTabuSet(operators);
@@ -659,30 +568,53 @@ PYBIND11_MODULE(pgm_dataset, m) {
                             GaussianNetwork<>, 
                             GaussianNetwork<AdjListDag>, 
                             SemiparametricBN<>,
-                            SemiparametricBN<AdjListDag>>(operators, "OperatorSet");
-    register_ArcOperatorSet<BIC,
-                            GaussianNetwork<>,
-                            GaussianNetwork<AdjListDag>, 
-                            SemiparametricBN<>,
-                            SemiparametricBN<AdjListDag>>(operators, "BIC");
-    register_ArcOperatorSet<CVLikelihood,
-                            GaussianNetwork<>,
-                            GaussianNetwork<AdjListDag>, 
-                            SemiparametricBN<>,
-                            SemiparametricBN<AdjListDag>>(operators, "CVLikelihood");
-    register_ChangeNodeTypeSet<CVLikelihood,
-                            SemiparametricBN<>,
-                            SemiparametricBN<AdjListDag>>(operators, "CVLikelihood");
+                            SemiparametricBN<AdjListDag>>(operators);
+    auto arc_set = register_DerivedOperatorSet<ArcOperatorSet,
+                                    GaussianNetwork<>,
+                                    GaussianNetwork<AdjListDag>, 
+                                    SemiparametricBN<>,
+                                    SemiparametricBN<AdjListDag>>(operators, "ArcOperatorSet");
+    arc_set.def(py::init<GaussianNetwork<>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
+                py::arg("model"), 
+                py::arg("score"), 
+                py::arg("blaclist") = ArcVector(), 
+                py::arg("whitelist") = ArcVector(), 
+                py::arg("max_indegree") = 0);
+    arc_set.def(py::init<GaussianNetwork<AdjListDag>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
+                py::arg("model"), 
+                py::arg("score"), 
+                py::arg("blaclist") = ArcVector(), 
+                py::arg("whitelist") = ArcVector(), 
+                py::arg("max_indegree") = 0);
+    arc_set.def(py::init<SemiparametricBN<>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
+                py::arg("model"), 
+                py::arg("score"), 
+                py::arg("blaclist") = ArcVector(), 
+                py::arg("whitelist") = ArcVector(), 
+                py::arg("max_indegree") = 0);
+    arc_set.def(py::init<SemiparametricBN<AdjListDag>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
+                py::arg("model"), 
+                py::arg("score"), 
+                py::arg("blaclist") = ArcVector(), 
+                py::arg("whitelist") = ArcVector(), 
+                py::arg("max_indegree") = 0);
+
+    auto nodetype = register_DerivedOperatorSet<ChangeNodeTypeSet,
+                                    SemiparametricBN<>,
+                                    SemiparametricBN<AdjListDag>>(operators, "ChangeNodeTypeSet");
+    nodetype.def(py::init<SemiparametricBN<>&, std::shared_ptr<Score>&, FactorTypeVector&>(),
+                py::arg("model"), 
+                py::arg("score"), 
+                py::arg("type_whitelist") = FactorTypeVector());
+    nodetype.def(py::init<SemiparametricBN<AdjListDag>&, std::shared_ptr<Score>&, FactorTypeVector&>(),
+                py::arg("model"), 
+                py::arg("score"), 
+                py::arg("type_whitelist") = FactorTypeVector());
     
-    register_OperatorPool<BIC,
-                            GaussianNetwork<>,
-                            GaussianNetwork<AdjListDag>>(operators, "BIC");
-        
-    register_OperatorPool<CVLikelihood,
-                            GaussianNetwork<>,
-                            GaussianNetwork<AdjListDag>,
-                            SemiparametricBN<>,
-                            SemiparametricBN<AdjListDag>>(operators, "CVLikelihood"); 
+    register_OperatorPool<GaussianNetwork<>,
+                          GaussianNetwork<AdjListDag>,
+                          SemiparametricBN<>,
+                          SemiparametricBN<AdjListDag>>(operators);
 
 
     py::class_<OperatorSetType>(operators, "OperatorSetType")
@@ -698,7 +630,9 @@ PYBIND11_MODULE(pgm_dataset, m) {
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 
     algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate");
-    // py::class_<GreedyHillClimbing>(algorithms, "GreedyHillClimbing")
-    //         .def(py::init<>())
-    //         .def("estimate", [](const DataFrame& df, OperatorPool& pool, Validation))
+
+    register_GreedyHillClimbing<GaussianNetwork<>,
+                                GaussianNetwork<AdjListDag>,
+                                SemiparametricBN<>,
+                                SemiparametricBN<AdjListDag>>(algorithms);
 }

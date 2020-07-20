@@ -51,7 +51,7 @@ namespace learning::scores {
         double local_score(const Model& model, const VarType& variable) const {
             FactorType variable_type = model.node_type(variable);
             auto parents = model.parent_indices(variable);
-            return local_score(variable, variable_type, parents.begin(), parents.end());
+            return local_score<>(variable_type, variable, parents.begin(), parents.end());
         }
 
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
@@ -60,84 +60,33 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
             FactorType variable_type = model.node_type(variable);
-            return local_score(variable, variable_type, evidence_begin, evidence_end);
+            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
         }
 
         template<typename VarType, typename EvidenceIter>
-        double local_score(const VarType& variable, 
-                           FactorType variable_type, 
+        double local_score(FactorType variable_type, 
+                           const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
-        template<typename Model>
-        double delta_score(const Model& model, const Operator* op, VectorXd& current_local_scores) const {
-            switch(op->type()) {
-                case OperatorType::ADD_ARC: {
-                    auto dwn_op = dynamic_cast<const ArcOperator*>(op);
-                    auto target_index = model.index(dwn_op->target());
-                    auto parents = model.parent_indices(target_index);
-                    auto source_index = model.index(dwn_op->source());
-                    parents.push_back(source_index);
-
-                    double prev = current_local_scores(target_index);
-                    current_local_scores(target_index) = local_score(model, target_index, parents.begin(), parents.end());
-
-                    return current_local_scores(target_index) - prev;
-                }
-                case OperatorType::REMOVE_ARC: {
-                    auto dwn_op = dynamic_cast<const ArcOperator*>(op);
-                    auto target_index = model.index(dwn_op->target());
-                    auto parents = model.parent_indices(target_index);
-                    auto source_index = model.index(dwn_op->source());
-
-                    std::iter_swap(std::find(parents.begin(), parents.end(), source_index), parents.end() - 1);
-
-                    double prev = current_local_scores(target_index);
-                    current_local_scores(target_index) = local_score(model, target_index, parents.begin(), parents.end() - 1);
-
-                    return current_local_scores(target_index) - prev;
-                }
-                case OperatorType::FLIP_ARC: {
-                    auto dwn_op = dynamic_cast<const ArcOperator*>(op);
-                    auto target_index = model.index(dwn_op->target());
-                    auto target_parents = model.parent_indices(target_index);
-                    auto source_index = model.index(dwn_op->source());
-                    auto source_parents = model.parent_indices(source_index);
-
-                    std::iter_swap(std::find(target_parents.begin(), target_parents.end(), source_index), target_parents.end() - 1);
-                    source_parents.push_back(target_index);
-
-                    double prev_source = current_local_scores(source_index);
-                    double prev_target = current_local_scores(target_index);
-                    current_local_scores(source_index) = local_score(model, source_index, source_parents.begin(), source_parents.end());
-                    current_local_scores(target_index) = local_score(model, target_index, target_parents.begin(), target_parents.end() - 1);
-
-                    return current_local_scores(source_index) +
-                           current_local_scores(target_index) -
-                           prev_source -
-                           prev_target;
-                }
-                case OperatorType::CHANGE_NODE_TYPE: {
-                    auto dwn_op = dynamic_cast<const ChangeNodeType*>(op);
-                    auto node_index = model.index(dwn_op->node());
-                    auto new_node_type = dwn_op->node_type();
-                    auto parents = model.parent_indices(node_index);
-                    
-                    double prev = current_local_scores(node_index);
-                    current_local_scores(node_index) = local_score(node_index, new_node_type, parents.begin(), parents.end());
-                    return current_local_scores(node_index) - prev;
-                }
-                default:
-                    throw std::invalid_argument("Unreachable code. Wrong operator in HoldoutLikelihood::delta_score().");
-            }
+        double local_score(FactorType variable_type, const int variable, 
+                                   const typename std::vector<int>::const_iterator evidence_begin, 
+                                   const typename std::vector<int>::const_iterator evidence_end) const override {
+            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
         }
-    
+
+        double local_score(FactorType variable_type, const std::string& variable, 
+                                   const typename std::vector<std::string>::const_iterator evidence_begin, 
+                                   const typename std::vector<std::string>::const_iterator evidence_end) const override {
+            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
+        }
+
         const DataFrame& training_data() const { return m_holdout.training_data(); }
         const DataFrame& test_data() const { return m_holdout.test_data(); }
 
         const HoldOut& holdout() { return m_holdout; }
 
-        std::string ToString() const {
+        std::string ToString() const override {
             return "HoldoutLikelihood";
         }
 
@@ -163,8 +112,8 @@ namespace learning::scores {
     }
 
     template<typename VarType, typename EvidenceIter>
-    double HoldoutLikelihood::local_score(const VarType& variable, 
-                                          FactorType variable_type, 
+    double HoldoutLikelihood::local_score(FactorType variable_type,
+                                          const VarType& variable,
                                           const EvidenceIter evidence_begin, 
                                           const EvidenceIter evidence_end) const {
         if (variable_type == FactorType::LinearGaussianCPD) {

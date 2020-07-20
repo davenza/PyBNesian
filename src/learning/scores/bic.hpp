@@ -44,7 +44,7 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
-        std::string ToString() const {
+        std::string ToString() const override {
             return "BIC";
         }
 

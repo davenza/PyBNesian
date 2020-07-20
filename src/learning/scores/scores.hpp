@@ -55,40 +55,62 @@ namespace learning::scores {
         Value value;
     };
 
-    template<typename... Types>
+    template<typename... Models>
     class ScoreInterface {};
 
-
-    template<typename Type>
-    class ScoreInterface<Type> {
+    template<typename Model>
+    class ScoreInterface<Model> {
     public:
-        inline virtual double score(const Type& m) const;
-        inline virtual double local_score(const Type& m, const int) const;
-        inline virtual double local_score(const Type& m, const std::string&) const;
-        inline virtual double local_score(const Type& m, 
-                                            const int, 
-                                            const typename std::vector<int>::iterator, 
-                                            const typename std::vector<int>::iterator) const;
-        inline virtual double local_score(const Type& m, 
-                                            const std::string&, 
-                                            const typename std::vector<std::string>::iterator, 
-                                            const typename std::vector<std::string>::iterator) const;
+        virtual double score(const Model& m) const {
+            throw std::invalid_argument("Score::score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, const int) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, const std::string&) const {
+            throw std::invalid_argument("Score::local_score() not implemented for  model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, 
+                                                    const int, 
+                                                    const typename std::vector<int>::const_iterator, 
+                                                    const typename std::vector<int>::const_iterator) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, 
+                                                    const std::string&, 
+                                                    const typename std::vector<std::string>::const_iterator, 
+                                                    const typename std::vector<std::string>::const_iterator) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
     };
 
-    template<typename Type, typename... Types>
-    class ScoreInterface<Type, Types...> : public ScoreInterface<Types...> {
+    template<typename Model, typename... Models>
+    class ScoreInterface<Model, Models...> : public ScoreInterface<Models...> {
     public:
-        inline virtual double score(const Type& m) const;
-        inline virtual double local_score(const Type& m, const int) const;
-        inline virtual double local_score(const Type& m, const std::string&) const;
-        inline virtual double local_score(const Type& m, 
-                                            const int, 
-                                            const typename std::vector<int>::iterator, 
-                                            const typename std::vector<int>::iterator) const;
-        inline virtual double local_score(const Type& m, 
-                                            const std::string&, 
-                                            const typename std::vector<std::string>::iterator, 
-                                            const typename std::vector<std::string>::iterator) const;
+        using Base = ScoreInterface<Models...>;
+        using Base::score;
+        using Base::local_score;
+        virtual double score(const Model& m) const {
+            throw std::invalid_argument("Score::score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, const int) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, const std::string&) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, 
+                            const int, 
+                            const typename std::vector<int>::const_iterator, 
+                            const typename std::vector<int>::const_iterator) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
+        virtual double local_score(const Model& m, 
+                            const std::string&, 
+                            const typename std::vector<std::string>::const_iterator, 
+                            const typename std::vector<std::string>::const_iterator) const {
+            throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
+        }
     };
 
     class Score : public ScoreInterface<GaussianNetwork<>, 
@@ -96,138 +118,84 @@ namespace learning::scores {
                                         SemiparametricBN<>, 
                                         SemiparametricBN<AdjListDag>> {
     public:
+        using Base = ScoreInterface<GaussianNetwork<>, 
+                                        GaussianNetwork<AdjListDag>, 
+                                        SemiparametricBN<>, 
+                                        SemiparametricBN<AdjListDag>>;
+        using Base::score;
+        using Base::local_score;
+        virtual std::string ToString() const = 0;
         virtual bool is_decomposable() const = 0;
         virtual ScoreType type() const = 0;
+
+        virtual double local_score(FactorType, int, 
+                                   const typename std::vector<int>::const_iterator, 
+                                   const typename std::vector<int>::const_iterator) const {
+            throw std::invalid_argument("Score::local_score() not implemented for score " + this->type().ToString());
+        }
+
+        virtual double local_score(FactorType, const std::string&, 
+                                   const typename std::vector<std::string>::const_iterator, 
+                                   const typename std::vector<std::string>::const_iterator) const {
+            throw std::invalid_argument("Score::local_score() not implemented for score " + this->type().ToString());
+        }
     };
 
 
-    template<typename Type>
-    double ScoreInterface<Type>::score(const Type& m) const {
-        throw std::invalid_argument("Score::score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type>
-    double ScoreInterface<Type>::local_score(const Type& m, const int) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type>
-    double ScoreInterface<Type>::local_score(const Type& m, const std::string&) const {
-        throw std::invalid_argument("Score::local_score() not implemented for  model " + m.type().ToString());
-    }
-
-    template<typename Type>
-    double ScoreInterface<Type>::local_score(const Type& m, 
-                                                const int, 
-                                                const typename std::vector<int>::iterator, 
-                                                const typename std::vector<int>::iterator) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type>
-    double ScoreInterface<Type>::local_score(const Type& m, 
-                                                const std::string&, 
-                                                const typename std::vector<std::string>::iterator, 
-                                                const typename std::vector<std::string>::iterator) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type, typename... Types>
-    double ScoreInterface<Type, Types...>::score(const Type& m) const {
-        throw std::invalid_argument("Score::score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type, typename... Types>
-    double ScoreInterface<Type, Types...>::local_score(const Type& m, const int) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type, typename... Types>
-    double ScoreInterface<Type, Types...>::local_score(const Type& m, const std::string&) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type, typename... Types>
-    double ScoreInterface<Type, Types...>::local_score(const Type& m, 
-                                                        const int, 
-                                                        const typename std::vector<int>::iterator, 
-                                                        const typename std::vector<int>::iterator) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Type, typename... Types>
-    double ScoreInterface<Type, Types...>::local_score(const Type& m, 
-                                                        const std::string&, 
-                                                        const typename std::vector<std::string>::iterator, 
-                                                        const typename std::vector<std::string>::iterator) const {
-        throw std::invalid_argument("Score::local_score() not implemented for model " + m.type().ToString());
-    }
-
-    template<typename Derived, typename... Types>
+    template<typename Derived, typename... Models>
     class ScoreImpl {};
 
-    template<typename Derived, typename Type>
-    class ScoreImpl<Derived, Type> : public Score {
+    template<typename Derived, typename Model>
+    class ScoreImpl<Derived, Model> : public Score {
     public:
-        inline double score(const Type& m) const override {
+        double score(const Model& m) const override {
             return static_cast<const Derived*>(this)->score(m);
         }
-
-        inline double local_score(const Type& m, const int variable) const override {
+        double local_score(const Model& m, const int variable) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable);
         }
-
-        inline double local_score(const Type& m, const std::string& variable) const override {
+        double local_score(const Model& m, const std::string& variable) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable);
         }
-
-        inline double local_score(const Type& m, 
+        double local_score(const Model& m, 
                                    const int variable, 
-                                   const typename std::vector<int>::iterator evidence_begin, 
-                                   const typename std::vector<int>::iterator evidence_end) const override {
+                                   const typename std::vector<int>::const_iterator evidence_begin, 
+                                   const typename std::vector<int>::const_iterator evidence_end) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable, evidence_begin, evidence_end);
         }
-
-        inline double local_score(const Type& m, 
+        double local_score(const Model& m, 
                                    const std::string& variable, 
-                                   const typename std::vector<std::string>::iterator evidence_begin, 
-                                   const typename std::vector<std::string>::iterator evidence_end) const override {
+                                   const typename std::vector<std::string>::const_iterator evidence_begin, 
+                                   const typename std::vector<std::string>::const_iterator evidence_end) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable, evidence_begin, evidence_end);
         }
     };
 
-    template<typename Derived, typename Type, typename... Types>
-    class ScoreImpl<Derived, Type, Types...> : public ScoreImpl<Derived, Type>, public ScoreImpl<Derived, Types...> {
+    template<typename Derived, typename Model, typename... Models>
+    class ScoreImpl<Derived, Model, Models...> : public ScoreImpl<Derived, Models...> {
     public:
-        inline double score(const Type& m) const override {
+        double score(const Model& m) const override {
             return static_cast<const Derived*>(this)->score(m);
         }
-
-        inline double local_score(const Type& m, const int variable) const override {
+        double local_score(const Model& m, const int variable) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable);
         }
-
-        inline double local_score(const Type& m, const std::string& variable) const override {
+        double local_score(const Model& m, const std::string& variable) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable);
         }
-
-        inline double local_score(const Type& m, 
-                                   const int variable, 
-                                   const typename std::vector<int>::iterator evidence_begin, 
-                                   const typename std::vector<int>::iterator evidence_end) const override {
+        double local_score(const Model& m, 
+                            const int variable, 
+                            const typename std::vector<int>::const_iterator evidence_begin, 
+                            const typename std::vector<int>::const_iterator evidence_end) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable, evidence_begin, evidence_end);
         }
-
-        inline double local_score(const Type& m, 
-                                   const std::string& variable, 
-                                   const typename std::vector<std::string>::iterator evidence_begin, 
-                                   const typename std::vector<std::string>::iterator evidence_end) const override {
+        double local_score(const Model& m, 
+                            const std::string& variable, 
+                            const typename std::vector<std::string>::const_iterator evidence_begin, 
+                            const typename std::vector<std::string>::const_iterator evidence_end) const override {
             return static_cast<const Derived*>(this)->local_score(m, variable, evidence_begin, evidence_end);
         }
     };
-
-
-
 }
 
 

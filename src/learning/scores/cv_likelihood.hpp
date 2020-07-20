@@ -16,9 +16,9 @@ namespace learning::scores {
                                    GaussianNetwork<>, 
                                    GaussianNetwork<AdjListDag>, 
                                    SemiparametricBN<>,
-                                   SemiparametricBN<AdjListDag>> {
+                                   SemiparametricBN<AdjListDag>>
+    {
     public:
-
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
         CVLikelihood(const DataFrame& df, int k, int seed) : m_cv(df, k, seed) {}
 
@@ -49,7 +49,7 @@ namespace learning::scores {
             auto parents = model.parent_indices(variable);
             FactorType variable_type = model.node_type(variable);
             
-            return local_score(variable_type, variable, parents.begin(), parents.end());
+            return local_score<>(variable_type, variable, parents.begin(), parents.end());
         }
 
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
@@ -58,7 +58,19 @@ namespace learning::scores {
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
             FactorType variable_type = model.node_type(variable);
-            return local_score(variable_type, variable, evidence_begin, evidence_end);
+            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
+        }
+
+        double local_score(FactorType variable_type, const int variable, 
+                                   const typename std::vector<int>::const_iterator evidence_begin, 
+                                   const typename std::vector<int>::const_iterator evidence_end) const override {
+            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
+        }
+
+        double local_score(FactorType variable_type, const std::string& variable, 
+                                   const typename std::vector<std::string>::const_iterator evidence_begin, 
+                                   const typename std::vector<std::string>::const_iterator evidence_end) const override {
+            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
         }
 
         template<typename VarType, typename EvidenceIter>
@@ -69,7 +81,7 @@ namespace learning::scores {
 
         const CrossValidation& cv() { return m_cv; }
 
-        std::string ToString() const {
+        std::string ToString() const override {
             return "CVLikelihood";
         }
 
@@ -106,7 +118,6 @@ namespace learning::scores {
                                      const VarType& variable, 
                                      const EvidenceIter evidence_begin, 
                                      const EvidenceIter evidence_end) const {
-
         if (variable_type == FactorType::LinearGaussianCPD) {
             LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
 

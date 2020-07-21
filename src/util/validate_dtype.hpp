@@ -14,12 +14,9 @@ using factors::FactorType;
 using util::ArcVector, util::FactorTypeVector;
 
 namespace util {
-
-
-    void check_df(const DataFrame& df);
-
-    ArcVector check_edge_list(const DataFrame& df, const std::vector<py::tuple>& list);
-    FactorTypeVector check_node_type_list(const DataFrame& df, const std::vector<py::tuple>& list);
+    
+    void check_edge_list(const DataFrame& df, const ArcVector& list);
+    void check_node_type_list(const DataFrame& df, const FactorTypeVector& list);
 
 }
 

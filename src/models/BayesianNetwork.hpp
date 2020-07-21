@@ -15,7 +15,7 @@ using boost::source;
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::SemiparametricCPD;
 
-using util::ArcVector;
+using util::ArcVector, util::FactorTypeVector;
 
 namespace models {
 
@@ -72,6 +72,7 @@ namespace models {
         virtual int num_nodes() const = 0;
         virtual int num_edges() const = 0;
         virtual const std::vector<std::string>& nodes() const = 0;
+        virtual ArcVector edges() const = 0;
         virtual const std::unordered_map<std::string, int>& indices() const = 0;
         virtual bool contains_node(const std::string& name) const = 0;
         virtual const std::string& name(int node_index) const = 0;
@@ -138,6 +139,17 @@ namespace models {
 
         const std::vector<std::string>& nodes() const override {
             return m_nodes;
+        }
+
+        ArcVector edges() const override {
+            ArcVector res;
+            res.reserve(num_edges());
+
+            for (auto [eit, eend] = g.edges(); eit != eend; ++eit) {
+                res.push_back(std::make_pair(name(g.source(*eit)), name(g.target(*eit))));
+            }
+
+            return res;
         }
 
         const std::unordered_map<std::string, int>& indices() const override {
@@ -299,6 +311,31 @@ namespace models {
         void remove_edge(const std::string& source, const std::string& dest) override {
             remove_edge(m_indices.at(source), m_indices.at(dest));
         }
+
+        void check_blacklist(const ArcVector& arc_blacklist) const {
+            for(auto& arc : arc_blacklist) {
+                if (has_edge(arc.first, arc.second)) {
+                    throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in blacklist,"
+                                                " but it is present in the Bayesian Network.");
+                }
+            }
+        }
+
+        void force_whitelist(const ArcVector& arc_whitelist) {
+            for(auto& arc : arc_whitelist) {
+                if (!has_edge(arc.first, arc.second)) {
+                    if (has_edge(arc.second, arc.first)) {
+                        throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in whitelist,"
+                                                    " but edge " + arc.second + " -> " + arc.first + " is present"
+                                                    " in the Bayesian Network.");
+                    } else {
+                        add_edge(arc.first, arc.second);
+                    }
+                }
+            }
+        }
+
+        void force_type_whitelist(const FactorTypeVector&) {}
 
         void add_cpds(const std::vector<CPD>& cpds);
 

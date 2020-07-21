@@ -15,7 +15,8 @@ namespace py = pybind11;
 using dataset::DataFrame;
 using graph::DagType;
 using learning::scores::Score;
-using learning::operators::OperatorTabuSet, learning::operators::OperatorPool;
+using learning::operators::Operator, learning::operators::OperatorType, learning::operators::ArcOperator, 
+      learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorPool;
 
 using util::ArcVector;
 
@@ -31,36 +32,49 @@ namespace learning::algorithms {
 
     // TODO: Include start graph.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
-            std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, std::vector<py::tuple> type_whitelist,
+            ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
                   int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str);
 
     class GreedyHillClimbing {
 
     public:
         template<typename Model>
-        Model estimate(const DataFrame& df, OperatorPool& op_pool, int max_iters, double epsilon, const Model& start);
+        Model estimate(const DataFrame& df, 
+                       OperatorPool& op_pool,
+                       const Model& start,
+                       ArcVector& arc_blacklist,
+                       ArcVector& arc_whitelist,
+                       int max_iters, 
+                       double epsilon);
 
         template<typename Model>
         Model estimate_validation(const DataFrame& df, 
                                  OperatorPool& op_pool, 
-                                 Score& validation_score, 
+                                 Score& validation_score,
+                                 const Model& start,
+                                 ArcVector& arc_blacklist,
+                                 ArcVector& arc_whitelist,
+                                 FactorTypeVector& type_whitelist,
                                  int max_iters,
                                  double epsilon, 
-                                 int patience,
-                                 const Model& start);
+                                 int patience);
     };
 
     template<typename Model>
     Model GreedyHillClimbing::estimate(const DataFrame& df,
-                                      OperatorPool& op,
-                                      int max_iters,
-                                      double epsilon,
-                                      const Model& start) {
-
-
+                                       OperatorPool& op,
+                                       const Model& start,
+                                       ArcVector& arc_blacklist,
+                                       ArcVector& arc_whitelist,
+                                       int max_iters,
+                                       double epsilon) {
         Model::requires(df);
 
+
         auto current_model = start;
+        current_model.check_blacklist(arc_blacklist);
+        current_model.force_whitelist(arc_whitelist);
+
         op.cache_scores(current_model);
         
         auto iter = 0;
@@ -77,8 +91,6 @@ namespace learning::algorithms {
             ++iter;
         }
 
-        std::cout << "Final score: " << op.score() << std::endl;
-        std::cout << "Final model: " << current_model << std::endl;
         return current_model;
     }
 
@@ -146,18 +158,24 @@ namespace learning::algorithms {
         }
     }
     
-
     template<typename Model>
     Model GreedyHillClimbing::estimate_validation(const DataFrame& df,
                              OperatorPool& op_pool, 
-                             Score& validation_score, 
+                             Score& validation_score,
+                             const Model& start,
+                             ArcVector& arc_blacklist,
+                             ArcVector& arc_whitelist,
+                             FactorTypeVector& type_whitelist,
                              int max_iters,
                              double epsilon, 
-                             int patience,
-                             const Model& start) {
+                             int patience) {
         Model::requires(df);
 
         auto current_model = start;
+        current_model.check_blacklist(arc_blacklist);
+        current_model.force_whitelist(arc_whitelist);
+        current_model.force_type_whitelist(type_whitelist);
+
         auto best_model = start;
 
         VectorXd local_validation(current_model.num_nodes());
@@ -178,8 +196,6 @@ namespace learning::algorithms {
                 break;
             }
 
-            std::cout << "Best op: " << best_op->ToString() << std::endl;
-
             double validation_delta = validation_delta_score<Model>(current_model, validation_score, best_op.get(), local_validation);
             
             best_op->apply(current_model);
@@ -199,9 +215,6 @@ namespace learning::algorithms {
             ++iter;
         }
 
-        std::cout << "Final score: " << op_pool.score(best_model) << std::endl;
-        std::cout << "Validation score fun: " << validation_score.score(best_model) << std::endl;
-        std::cout << "Final model: " << best_model << std::endl;
         return best_model;
     }
 }

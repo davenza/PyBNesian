@@ -15,9 +15,11 @@ using Eigen::VectorXd, Eigen::MatrixXd;;
 using models::GaussianNetwork, models::BayesianNetworkType;
 using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
 using graph::DagType;
-using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
-      learning::operators::OperatorPool, learning::operators::OperatorSetType, 
-      learning::operators::OperatorSet;
+using learning::operators::OperatorSet, learning::operators::OperatorSetType, 
+      learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
+//using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
+    //   learning::operators::OperatorPool, learning::operators::OperatorSetType, 
+    //   learning::operators::OperatorSet;
 using util::ArcVector;
 
 // #include <util/benchmark_basic.hpp>
@@ -120,13 +122,12 @@ namespace learning::algorithms {
         
         auto arc_set = std::make_shared<ArcOperatorSet>(m, training_score, arc_whitelist, arc_blacklist, max_indegree);
         auto nodetype_set = std::make_shared<ChangeNodeTypeSet>(m, training_score, type_whitelist);
-        std::vector<std::shared_ptr<OperatorSet>> v;
-        v.push_back(std::move(arc_set));
-        v.push_back(std::move(nodetype_set));
+        std::vector<std::shared_ptr<OperatorSet>> v{std::move(arc_set), std::move(nodetype_set)};
 
         OperatorPool pool(m, training_score, std::move(v));        
         GreedyHillClimbing hc;
-        return py::cast(hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m));
+        return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist,
+                                                type_whitelist, max_iters, epsilon, patience));
     }
 
     py::object call_hc_validated_spbn(const DataFrame& df, 
@@ -166,12 +167,13 @@ namespace learning::algorithms {
 
         auto arc_set = std::make_shared<ArcOperatorSet>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
 
-        std::vector<std::shared_ptr<OperatorSet>> v;
-        v.push_back(std::move(arc_set));
+        std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
         OperatorPool pool(m, training_score, std::move(v));
         
         GreedyHillClimbing hc;
-        return py::cast(hc.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, m));
+        FactorTypeVector type_whitelist;
+        return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist, 
+                                                type_whitelist, max_iters, epsilon, patience));
     }
 
     py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
@@ -201,11 +203,10 @@ namespace learning::algorithms {
         switch(score_type) {
             case ScoreType::BIC: {
                 std::shared_ptr<Score> score = std::make_shared<BIC>(df);
-                std::vector<std::shared_ptr<OperatorSet>> v;
                 auto arc_set = std::make_shared<ArcOperatorSet>(m, score, arc_blacklist, arc_whitelist, max_indegree);
-                v.push_back(std::move(arc_set));
+                std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
                 OperatorPool pool(m, score, std::move(v));
-                return py::cast(hc.estimate(df, pool, max_iters, epsilon, m));
+                return py::cast(hc.estimate(df, pool, m, arc_blacklist, arc_whitelist, max_iters, epsilon));
             }
                 break;
             case ScoreType::PREDICTIVE_LIKELIHOOD:
@@ -231,7 +232,7 @@ namespace learning::algorithms {
     // TODO: Include start model.
     // TODO: Include test ratio of holdout / number k-folds.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
-            std::vector<py::tuple> arc_blacklist, std::vector<py::tuple> arc_whitelist, std::vector<py::tuple> type_whitelist,
+            ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
                   int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str) {
         
         auto dag_type = learning::algorithms::check_valid_dag_string(dag_type_str);
@@ -242,29 +243,28 @@ namespace learning::algorithms {
         learning::algorithms::check_valid_score(bn_type, score_type);
         learning::algorithms::check_valid_operators(bn_type, operators_type);
         
+        util::check_edge_list(df, arc_blacklist);
+        util::check_edge_list(df, arc_whitelist);
 
-        auto arc_blacklist_cpp = util::check_edge_list(df, arc_blacklist);
-        auto arc_whitelist_cpp = util::check_edge_list(df, arc_whitelist);
-
-        auto type_whitelist_cpp = util::check_node_type_list(df, type_whitelist);
+        util::check_node_type_list(df, type_whitelist);
 
         if (max_iters == 0) max_iters = std::numeric_limits<int>::max();
 
         if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
             switch(bn_type) {
                 case BayesianNetworkType::GBN: {
-                    return call_hc_validated_gbn(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, max_iters,
+                    return call_hc_validated_gbn(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
                                             epsilon, patience, dag_type, operators_type);
                 }
                 case BayesianNetworkType::SPBN: {
-                    return call_hc_validated_spbn(df, arc_blacklist_cpp, arc_whitelist_cpp, type_whitelist_cpp, 
+                    return call_hc_validated_spbn(df, arc_blacklist, arc_whitelist, type_whitelist, 
                                             max_indegree, max_iters, epsilon, patience, dag_type, operators_type);
                 }
                 default:
                     throw std::invalid_argument("Wrong BayesianNetwork type!");
             }
         } else {
-            return call_hc(df, arc_blacklist_cpp, arc_whitelist_cpp, max_indegree, max_iters,
+            return call_hc(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
                         epsilon, dag_type, score_type, operators_type);
         }
     }

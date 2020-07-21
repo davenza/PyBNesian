@@ -506,7 +506,6 @@ namespace learning::operators {
                                                   SemiparametricBN<AdjListDag>>
     {
     public:
-
         template<typename Model>
         ArcOperatorSet(Model& model, std::shared_ptr<Score>& score, ArcVector& blacklist, ArcVector& whitelist,
                        int max_indegree);

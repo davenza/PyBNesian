@@ -7,6 +7,7 @@
 using graph::AdjMatrixDag;
 
 namespace models {
+    
     template<typename D = AdjMatrixDag>
     class GaussianNetwork : public BayesianNetwork<GaussianNetwork<D>> {
     public:

@@ -63,6 +63,7 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("num_nodes", &BaseClass::num_nodes)
         .def("num_edges", &BaseClass::num_edges)
         .def("nodes", &BaseClass::nodes, py::return_value_policy::reference_internal)
+        .def("edges", &BaseClass::edges, py::return_value_policy::take_ownership)
         .def("indices", &BaseClass::indices, py::return_value_policy::reference_internal)
         .def("index", py::overload_cast<const std::string&>(&BaseClass::index, py::const_))
         .def("contains_node", &BaseClass::contains_node)
@@ -287,19 +288,47 @@ py::class_<OperatorPool> register_GreedyHillClimbing(py::module& m) {
         }
     }();
 
-    hc.def("estimate", [](GreedyHillClimbing& self, const DataFrame& df, OperatorPool& pool, int max_iter, double epsilon, const Model& start) {
-        return self.estimate(df, pool, max_iter, epsilon, start);
-    });
+    hc.def("estimate", [](GreedyHillClimbing& self, 
+                            const DataFrame& df, 
+                            OperatorPool& pool,
+                            const Model& start,
+                            ArcVector& arc_blacklist,
+                            ArcVector& arc_whitelist,
+                            int max_iter, 
+                            double epsilon) {
+            return self.estimate(df, pool, start, arc_blacklist, arc_whitelist, max_iter, epsilon);
+        },  py::arg("df"),
+            py::arg("pool"),
+            py::arg("start"),
+            py::arg("arc_blacklist") = ArcVector(),
+            py::arg("arc_whitelist") = ArcVector(),
+            py::arg("max_iters") = std::numeric_limits<int>::max(),
+            py::arg("epsilon") = 0
+    );
     hc.def("estimate_validation", [](GreedyHillClimbing& self, 
                                      const DataFrame& df, 
                                      OperatorPool& pool, 
                                      Score& validation_score,
+                                     const Model& start,
+                                     ArcVector& arc_blacklist,
+                                     ArcVector& arc_whitelist,
+                                     FactorTypeVector& type_whitelist,
                                      int max_iters,
                                      double epsilon,
-                                     int patience,
-                                     const Model& start) {
-        return self.estimate_validation(df, pool, validation_score, max_iters, epsilon, patience, start);
-    });
+                                     int patience) {
+            return self.estimate_validation(df, pool, validation_score, start, arc_blacklist, arc_whitelist, 
+                                            type_whitelist, max_iters, epsilon, patience);
+        },  py::arg("df"),
+            py::arg("pool"),
+            py::arg("validation_score"),
+            py::arg("start"),
+            py::arg("arc_blacklist") = ArcVector(),
+            py::arg("arc_whitelist") = ArcVector(),
+            py::arg("type_whitelist") = FactorTypeVector(),
+            py::arg("max_iters") = std::numeric_limits<int>::max(),
+            py::arg("epsilon") = 0,
+            py::arg("patience") = 0
+    );
 
     return hc;
 }
@@ -433,6 +462,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("num_nodes", &BayesianNetworkBase::num_nodes)
         .def("num_edges", &BayesianNetworkBase::num_edges)
         .def("nodes", &BayesianNetworkBase::nodes, py::return_value_policy::reference_internal)
+        .def("edges", &BayesianNetworkBase::edges, py::return_value_policy::take_ownership)
         .def("indices", &BayesianNetworkBase::indices, py::return_value_policy::reference_internal)
         .def("index", py::overload_cast<const std::string&>(&BayesianNetworkBase::index, py::const_))
         .def("contains_node", &BayesianNetworkBase::contains_node)
@@ -577,25 +607,25 @@ PYBIND11_MODULE(pgm_dataset, m) {
     arc_set.def(py::init<GaussianNetwork<>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
                 py::arg("model"), 
                 py::arg("score"), 
-                py::arg("blaclist") = ArcVector(), 
+                py::arg("blacklist") = ArcVector(), 
                 py::arg("whitelist") = ArcVector(), 
                 py::arg("max_indegree") = 0);
     arc_set.def(py::init<GaussianNetwork<AdjListDag>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
                 py::arg("model"), 
                 py::arg("score"), 
-                py::arg("blaclist") = ArcVector(), 
+                py::arg("blacklist") = ArcVector(), 
                 py::arg("whitelist") = ArcVector(), 
                 py::arg("max_indegree") = 0);
     arc_set.def(py::init<SemiparametricBN<>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
                 py::arg("model"), 
                 py::arg("score"), 
-                py::arg("blaclist") = ArcVector(), 
+                py::arg("blacklist") = ArcVector(), 
                 py::arg("whitelist") = ArcVector(), 
                 py::arg("max_indegree") = 0);
     arc_set.def(py::init<SemiparametricBN<AdjListDag>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
                 py::arg("model"), 
                 py::arg("score"), 
-                py::arg("blaclist") = ArcVector(), 
+                py::arg("blacklist") = ArcVector(), 
                 py::arg("whitelist") = ArcVector(), 
                 py::arg("max_indegree") = 0);
 
@@ -629,7 +659,19 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     auto algorithms = learning.def_submodule("algorithms", "Learning algorithms");
 
-    algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate");
+    algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate",
+                py::arg("df"),
+                py::arg("bn_type") = "gbn",
+                py::arg("score_type") = "bic",
+                py::arg("operators_type") = std::vector<std::string>{"arcs"},
+                py::arg("arc_blacklist") = ArcVector(),
+                py::arg("arc_whitelist") = ArcVector(),
+                py::arg("type_whitelist") = FactorTypeVector(),
+                py::arg("max_indegree") = 0,
+                py::arg("max_iters") = std::numeric_limits<int>::max(),
+                py::arg("epsilon") = 0,
+                py::arg("patience") = 0,
+                py::arg("dag_type") = "matrix");
 
     register_GreedyHillClimbing<GaussianNetwork<>,
                                 GaussianNetwork<AdjListDag>,

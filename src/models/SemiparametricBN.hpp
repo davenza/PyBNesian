@@ -80,6 +80,12 @@ namespace models {
             set_node_type(this->index(node), new_type);
         }
 
+        void force_type_whitelist(const FactorTypeVector& type_whitelist) {
+            for (auto& nt : type_whitelist) {
+                set_node_type(nt.first, nt.second);
+            }
+        }
+
         CPD create_cpd(const std::string& node) {
             auto pa = this->parents(node);
             switch(node_type(node)) {

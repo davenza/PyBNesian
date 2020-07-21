@@ -120,14 +120,14 @@ namespace learning::algorithms {
         static_assert(std::is_base_of_v<Score, CVLikelihood>);
         std::shared_ptr<Score> training_score = std::make_shared<CVLikelihood>(validation_score.training_data(), 10, 0);
         
-        auto arc_set = std::make_shared<ArcOperatorSet>(m, training_score, arc_whitelist, arc_blacklist, max_indegree);
-        auto nodetype_set = std::make_shared<ChangeNodeTypeSet>(m, training_score, type_whitelist);
+        auto arc_set = std::make_shared<ArcOperatorSet>(training_score);
+        auto nodetype_set = std::make_shared<ChangeNodeTypeSet>(training_score);
         std::vector<std::shared_ptr<OperatorSet>> v{std::move(arc_set), std::move(nodetype_set)};
 
         OperatorPool pool(m, training_score, std::move(v));        
         GreedyHillClimbing hc;
         return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist,
-                                                type_whitelist, max_iters, epsilon, patience));
+                                                type_whitelist, max_indegree, max_iters, epsilon, patience));
     }
 
     py::object call_hc_validated_spbn(const DataFrame& df, 
@@ -165,7 +165,7 @@ namespace learning::algorithms {
         HoldoutLikelihood validation_score(df, 0.2);
         std::shared_ptr<Score> training_score = std::make_shared<CVLikelihood>(validation_score.training_data(), 10);
 
-        auto arc_set = std::make_shared<ArcOperatorSet>(m, training_score, arc_blacklist, arc_whitelist, max_indegree);
+        auto arc_set = std::make_shared<ArcOperatorSet>(training_score);
 
         std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
         OperatorPool pool(m, training_score, std::move(v));
@@ -173,7 +173,7 @@ namespace learning::algorithms {
         GreedyHillClimbing hc;
         FactorTypeVector type_whitelist;
         return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist, 
-                                                type_whitelist, max_iters, epsilon, patience));
+                                                type_whitelist, max_indegree, max_iters, epsilon, patience));
     }
 
     py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
@@ -203,10 +203,10 @@ namespace learning::algorithms {
         switch(score_type) {
             case ScoreType::BIC: {
                 std::shared_ptr<Score> score = std::make_shared<BIC>(df);
-                auto arc_set = std::make_shared<ArcOperatorSet>(m, score, arc_blacklist, arc_whitelist, max_indegree);
+                auto arc_set = std::make_shared<ArcOperatorSet>(score);
                 std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
                 OperatorPool pool(m, score, std::move(v));
-                return py::cast(hc.estimate(df, pool, m, arc_blacklist, arc_whitelist, max_iters, epsilon));
+                return py::cast(hc.estimate(df, pool, m, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon));
             }
                 break;
             case ScoreType::PREDICTIVE_LIKELIHOOD:

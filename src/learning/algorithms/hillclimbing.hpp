@@ -44,6 +44,7 @@ namespace learning::algorithms {
                        const Model& start,
                        ArcVector& arc_blacklist,
                        ArcVector& arc_whitelist,
+                       int max_indegree,
                        int max_iters, 
                        double epsilon);
 
@@ -55,6 +56,7 @@ namespace learning::algorithms {
                                  ArcVector& arc_blacklist,
                                  ArcVector& arc_whitelist,
                                  FactorTypeVector& type_whitelist,
+                                 int max_indegree,
                                  int max_iters,
                                  double epsilon, 
                                  int patience);
@@ -66,6 +68,7 @@ namespace learning::algorithms {
                                        const Model& start,
                                        ArcVector& arc_blacklist,
                                        ArcVector& arc_whitelist,
+                                       int max_indegree,
                                        int max_iters,
                                        double epsilon) {
         Model::requires(df);
@@ -74,6 +77,10 @@ namespace learning::algorithms {
         auto current_model = start;
         current_model.check_blacklist(arc_blacklist);
         current_model.force_whitelist(arc_whitelist);
+
+        op.set_arc_blacklist(arc_blacklist);
+        op.set_arc_whitelist(arc_whitelist);
+        op.set_max_indegree(max_indegree);
 
         op.cache_scores(current_model);
         
@@ -166,6 +173,7 @@ namespace learning::algorithms {
                              ArcVector& arc_blacklist,
                              ArcVector& arc_whitelist,
                              FactorTypeVector& type_whitelist,
+                             int max_indegree,
                              int max_iters,
                              double epsilon, 
                              int patience) {
@@ -175,6 +183,11 @@ namespace learning::algorithms {
         current_model.check_blacklist(arc_blacklist);
         current_model.force_whitelist(arc_whitelist);
         current_model.force_type_whitelist(type_whitelist);
+
+        op_pool.set_arc_blacklist(arc_blacklist);
+        op_pool.set_arc_whitelist(arc_whitelist);
+        op_pool.set_type_whitelist(type_whitelist);
+        op_pool.set_max_indegree(max_indegree);
 
         auto best_model = start;
 

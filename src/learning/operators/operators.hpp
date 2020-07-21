@@ -453,7 +453,11 @@ namespace learning::operators {
         void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
             m_local_cache = score_cache;
         }
-        
+
+        virtual void set_arc_blacklist(const ArcVector&) = 0;
+        virtual void set_arc_whitelist(const ArcVector&) = 0;
+        virtual void set_max_indegree(int) = 0;
+        virtual void set_type_whitelist(const FactorTypeVector&) = 0;
     protected:
         bool owns_local_cache() {
             return m_local_cache.use_count() == 1;
@@ -506,9 +510,14 @@ namespace learning::operators {
                                                   SemiparametricBN<AdjListDag>>
     {
     public:
-        template<typename Model>
-        ArcOperatorSet(Model& model, std::shared_ptr<Score>& score, ArcVector& blacklist, ArcVector& whitelist,
-                       int max_indegree);
+        ArcOperatorSet(std::shared_ptr<Score>& score) : m_score(score),
+                                                                        delta(),
+                                                                        valid_op(), 
+                                                                        sorted_idx(),
+                                                                        m_blacklist(),
+                                                                        m_whitelist(),
+                                                                        required_arclist_update(true),
+                                                                        max_indegree(0) {}
 
         template<typename Model>
         void cache_scores(Model& model);
@@ -525,72 +534,93 @@ namespace learning::operators {
         void update_scores(Model& model, Operator& op);
         template<typename Model>
         void update_node_arcs_scores(Model& model, const std::string& dest_node);
+
+        void update_listed_arcs(BayesianNetworkBase& bn);
+
+        void set_arc_blacklist(const ArcVector& blacklist) override {
+            m_blacklist = blacklist;
+            required_arclist_update = true;
+        }
+        void set_arc_whitelist(const ArcVector& whitelist) override {
+            m_whitelist = whitelist;
+            required_arclist_update = true;
+        }
+        void set_max_indegree(int indegree) override {
+            max_indegree = indegree;
+        }
+        void set_type_whitelist(const FactorTypeVector&) override {}
     private:
         std::shared_ptr<Score> m_score;
         MatrixXd delta;
         MatrixXb valid_op;
         std::vector<int> sorted_idx;
+        ArcVector m_blacklist;
+        ArcVector m_whitelist;
+        bool required_arclist_update;
         int max_indegree;
     };
 
-    template<typename Model>
-    ArcOperatorSet::ArcOperatorSet(Model& model,
-                                          std::shared_ptr<Score>& score,
-                                          ArcVector& blacklist,
-                                          ArcVector& whitelist,
-                                          int max_indegree) : m_score(score),
-                                                                     delta(model.num_nodes(), model.num_nodes()),
-                                                                     valid_op(model.num_nodes(), model.num_nodes()), 
-                                                                     sorted_idx(),
-                                                                     max_indegree(max_indegree)
-    {
-        if (!util::compatible_score<Model>(score->type())) {
-            throw std::invalid_argument("Invalid score " + score->ToString() + " for model type " + model.type().ToString() + ".");
-        }
-        auto num_nodes = model.num_nodes();
-        auto val_ptr = valid_op.data();
+    void ArcOperatorSet::update_listed_arcs(BayesianNetworkBase& model) {
+        if (required_arclist_update) {
+            int num_nodes = model.num_nodes();
+            if (delta.rows() != num_nodes) {
+                delta = MatrixXd(num_nodes, num_nodes);
+                valid_op = MatrixXb(num_nodes, num_nodes);
+            }
 
-        std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
+            auto val_ptr = valid_op.data();
 
-        auto indices = model.indices();
-        auto valid_ops = (num_nodes * num_nodes) - 2*whitelist.size() - blacklist.size() - num_nodes;
+            std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
 
-        for(auto whitelist_edge : whitelist) {
-            auto source_index = indices[whitelist_edge.first];
-            auto dest_index = indices[whitelist_edge.second];
+            auto indices = model.indices();
+            auto valid_ops = (num_nodes * num_nodes) - 2*m_whitelist.size() - m_blacklist.size() - num_nodes;
 
-            valid_op(source_index, dest_index) = false;
-            valid_op(dest_index, source_index) = false;
-            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-            delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
-        }
-        
-        for(auto blacklist_edge : blacklist) {
-            auto source_index = indices[blacklist_edge.first];
-            auto dest_index = indices[blacklist_edge.second];
+            for(auto whitelist_edge : m_whitelist) {
+                auto source_index = indices[whitelist_edge.first];
+                auto dest_index = indices[whitelist_edge.second];
 
-            valid_op(source_index, dest_index) = false;
-            delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-        }
+                valid_op(source_index, dest_index) = false;
+                valid_op(dest_index, source_index) = false;
+                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+                delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
+            }
+            
+            for(auto blacklist_edge : m_blacklist) {
+                auto source_index = indices[blacklist_edge.first];
+                auto dest_index = indices[blacklist_edge.second];
 
-        for (int i = 0; i < num_nodes; ++i) {
-            valid_op(i, i) = false;
-            delta(i, i) = std::numeric_limits<double>::lowest();
-        }
+                valid_op(source_index, dest_index) = false;
+                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
+            }
 
-        sorted_idx.reserve(valid_ops);
+            for (int i = 0; i < num_nodes; ++i) {
+                valid_op(i, i) = false;
+                delta(i, i) = std::numeric_limits<double>::lowest();
+            }
 
-        for (int i = 0; i < num_nodes; ++i) {
-            for (int j = 0; j < num_nodes; ++j) {
-                if (valid_op(i, j)) {
-                    sorted_idx.push_back(i + j * num_nodes);
+            sorted_idx.clear();
+            sorted_idx.reserve(valid_ops);
+
+            for (int i = 0; i < num_nodes; ++i) {
+                for (int j = 0; j < num_nodes; ++j) {
+                    if (valid_op(i, j)) {
+                        sorted_idx.push_back(i + j * num_nodes);
+                    }
                 }
             }
+
+            required_arclist_update = false;
         }
     }
 
     template<typename Model>
     void ArcOperatorSet::cache_scores(Model& model) {
+        if (!util::compatible_score<Model>(m_score->type())) {
+            throw std::invalid_argument("Invalid score " + m_score->ToString() + " for model type " + model.type().ToString() + ".");
+        }
+
+        update_listed_arcs(model);
+
         if (this->m_local_cache == nullptr) {
             auto lc = std::make_shared<LocalScoreCache>(model);
             this->set_local_score_cache(lc);
@@ -809,35 +839,12 @@ namespace learning::operators {
                                                      SemiparametricBN<>,
                                                      SemiparametricBN<AdjListDag>> {
     public:
-        template<typename Model>
-        ChangeNodeTypeSet(Model& model, 
-                          std::shared_ptr<Score>& score, 
-                          FactorTypeVector& type_whitelist) : m_score(score),
-                                                              delta(model.num_nodes()),
-                                                              valid_op(model.num_nodes()),
-                                                              sorted_idx()
-        {
-            if (!util::compatible_score<Model>(score->type())) {
-                throw std::invalid_argument("Invalid score " + score->ToString() + " for model type " + model.type().ToString() + ".");
-            }
-
-            auto val_ptr = valid_op.data();
-            std::fill(val_ptr, val_ptr + model.num_nodes(), true);
-
-            auto indices = model.indices();
-
-            for (auto &node : type_whitelist) {
-                delta(indices[node.first]) = std::numeric_limits<double>::lowest();;
-                valid_op(indices[node.first]) = false;
-            }
-
-            auto valid_ops = model.num_nodes() - type_whitelist.size();
-            sorted_idx.reserve(valid_ops);
-            for (auto i = 0; i < model.num_nodes(); ++i) {
-                if(valid_op(i))
-                    sorted_idx.push_back(i);
-            }
-        }
+        ChangeNodeTypeSet(std::shared_ptr<Score>& score) : m_score(score),
+                                                           delta(),
+                                                           valid_op(),
+                                                           sorted_idx(),
+                                                           m_type_whitelist(),
+                                                           required_whitelist_update(true) {}
 
         template<typename Model>
         void cache_scores(Model& model);
@@ -861,15 +868,60 @@ namespace learning::operators {
                                 - this->m_local_cache->local_score(node_index);
         }
 
+        void update_whitelisted(BayesianNetworkBase& model) {
+            if (required_whitelist_update) {
+                auto num_nodes = model.num_nodes();
+                if (delta.rows() != num_nodes) {
+                    delta = VectorXd(num_nodes);
+                    valid_op = VectorXb(num_nodes);
+                }
+
+                auto val_ptr = valid_op.data();
+                std::fill(val_ptr, val_ptr + model.num_nodes(), true);
+
+                auto indices = model.indices();
+
+                for (auto &node : m_type_whitelist) {
+                    delta(indices[node.first]) = std::numeric_limits<double>::lowest();;
+                    valid_op(indices[node.first]) = false;
+                }
+
+                auto valid_ops = model.num_nodes() - m_type_whitelist.size();
+                sorted_idx.clear();
+                sorted_idx.reserve(valid_ops);
+                for (auto i = 0; i < model.num_nodes(); ++i) {
+                    if(valid_op(i))
+                        sorted_idx.push_back(i);
+                }
+                required_whitelist_update = false;
+            }
+        }
+
+        void set_arc_blacklist(const ArcVector&) override {}
+        void set_arc_whitelist(const ArcVector&) override {}
+        void set_max_indegree(int) override {}
+        void set_type_whitelist(const FactorTypeVector& type_whitelist) override {
+            m_type_whitelist = type_whitelist;
+            required_whitelist_update = true;
+        }
+
     private:
         std::shared_ptr<Score> m_score;
         VectorXd delta;
         VectorXb valid_op;
         std::vector<int> sorted_idx;
+        FactorTypeVector m_type_whitelist;
+        bool required_whitelist_update;
     };
 
     template<typename Model>
     void ChangeNodeTypeSet::cache_scores(Model& model) {
+        if (!util::compatible_score<Model>(m_score->type())) {
+            throw std::invalid_argument("Invalid score " + m_score->ToString() + " for model type " + model.type().ToString() + ".");
+        }
+        
+        update_whitelisted(model);
+
         if (this->m_local_cache == nullptr) {
             auto lc = std::make_shared<LocalScoreCache>(model);
             this->set_local_score_cache(lc);
@@ -992,6 +1044,27 @@ namespace learning::operators {
                 s += m_score->local_score(model, i);
             }
             return s;
+        }
+
+        void set_arc_blacklist(const ArcVector& blacklist) {
+            for(auto& opset : m_op_sets) {
+                opset->set_arc_blacklist(blacklist);
+            }
+        }
+        void set_arc_whitelist(const ArcVector& whitelist) {
+            for(auto& opset : m_op_sets) {
+                opset->set_arc_whitelist(whitelist);
+            }
+        }
+        void set_max_indegree(int indegree) {
+            for(auto& opset : m_op_sets) {
+                opset->set_max_indegree(indegree);
+            }
+        }
+        void set_type_whitelist(const FactorTypeVector& type_whitelist) {
+            for(auto& opset : m_op_sets) {
+                opset->set_type_whitelist(type_whitelist);
+            }
         }
     private:
         std::shared_ptr<Score> m_score;

@@ -191,31 +191,36 @@ void register_OperatorTabuSet(py::module& m) {
         .def("empty", &OperatorTabuSet::empty);
 }
 
-template<typename Class, typename Model, typename... Models>
-py::class_<Class, std::shared_ptr<Class>> register_OperatorSet(py::module& m) {
+template<typename Model, typename... Models>
+py::class_<OperatorSet, std::shared_ptr<OperatorSet>> register_OperatorSet(py::module& m) {
 
     auto op_set = [&m]() {
         if constexpr (sizeof...(Models) == 0) {
-            py::class_<Class, std::shared_ptr<Class>> op_set(m, "OperatorSet");
-            op_set.def(py::init<>());
+            py::class_<OperatorSet, std::shared_ptr<OperatorSet>> op_set(m, "OperatorSet");
+            // op_set.def(py::init<>());
             return op_set;
         } else {
-            return register_OperatorSet<Class, Models...>(m);
+            return register_OperatorSet<Models...>(m);
         }
     }();
 
-    op_set.def("cache_scores", [](Class& self, Model& model) {
+    op_set.def("cache_scores", [](OperatorSet& self, Model& model) {
         self.cache_scores(model);
     });
-    op_set.def("find_max", [](Class& self, Model& model) {
+    op_set.def("find_max", [](OperatorSet& self, Model& model) {
         return self.find_max(model);
     });
-    op_set.def("find_max", [](Class& self, Model& model, OperatorTabuSet& tabu) {
+    op_set.def("find_max", [](OperatorSet& self, Model& model, OperatorTabuSet& tabu) {
         return self.find_max(model, tabu);
     });
-    op_set.def("update_scores", [](Class& self, Model& model, Operator& op) {
+    op_set.def("update_scores", [](OperatorSet& self, Model& model, Operator& op) {
         self.update_scores(model, op);
     });
+
+    op_set.def("set_arc_blacklist", &OperatorSet::set_arc_blacklist);
+    op_set.def("set_arc_whitelist", &OperatorSet::set_arc_whitelist);
+    op_set.def("set_max_indegree", &OperatorSet::set_arc_blacklist);
+    op_set.def("set_type_whitelist", &OperatorSet::set_type_whitelist);
 
     return op_set;
 }
@@ -294,14 +299,16 @@ py::class_<OperatorPool> register_GreedyHillClimbing(py::module& m) {
                             const Model& start,
                             ArcVector& arc_blacklist,
                             ArcVector& arc_whitelist,
-                            int max_iter, 
+                            int max_indegree,
+                            int max_iters, 
                             double epsilon) {
-            return self.estimate(df, pool, start, arc_blacklist, arc_whitelist, max_iter, epsilon);
+            return self.estimate(df, pool, start, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon);
         },  py::arg("df"),
             py::arg("pool"),
             py::arg("start"),
             py::arg("arc_blacklist") = ArcVector(),
             py::arg("arc_whitelist") = ArcVector(),
+            py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
             py::arg("epsilon") = 0
     );
@@ -313,11 +320,12 @@ py::class_<OperatorPool> register_GreedyHillClimbing(py::module& m) {
                                      ArcVector& arc_blacklist,
                                      ArcVector& arc_whitelist,
                                      FactorTypeVector& type_whitelist,
+                                     int max_indegree,
                                      int max_iters,
                                      double epsilon,
                                      int patience) {
             return self.estimate_validation(df, pool, validation_score, start, arc_blacklist, arc_whitelist, 
-                                            type_whitelist, max_iters, epsilon, patience);
+                                            type_whitelist, max_indegree, max_iters, epsilon, patience);
         },  py::arg("df"),
             py::arg("pool"),
             py::arg("validation_score"),
@@ -325,6 +333,7 @@ py::class_<OperatorPool> register_GreedyHillClimbing(py::module& m) {
             py::arg("arc_blacklist") = ArcVector(),
             py::arg("arc_whitelist") = ArcVector(),
             py::arg("type_whitelist") = FactorTypeVector(),
+            py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
             py::arg("epsilon") = 0,
             py::arg("patience") = 0
@@ -594,52 +603,23 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     register_OperatorTabuSet(operators);
 
-    register_OperatorSet<OperatorSet,
-                            GaussianNetwork<>, 
-                            GaussianNetwork<AdjListDag>, 
-                            SemiparametricBN<>,
-                            SemiparametricBN<AdjListDag>>(operators);
+    register_OperatorSet<GaussianNetwork<>, 
+                         GaussianNetwork<AdjListDag>, 
+                         SemiparametricBN<>,
+                         SemiparametricBN<AdjListDag>>(operators);
     auto arc_set = register_DerivedOperatorSet<ArcOperatorSet,
                                     GaussianNetwork<>,
                                     GaussianNetwork<AdjListDag>, 
                                     SemiparametricBN<>,
                                     SemiparametricBN<AdjListDag>>(operators, "ArcOperatorSet");
-    arc_set.def(py::init<GaussianNetwork<>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
-                py::arg("model"), 
-                py::arg("score"), 
-                py::arg("blacklist") = ArcVector(), 
-                py::arg("whitelist") = ArcVector(), 
-                py::arg("max_indegree") = 0);
-    arc_set.def(py::init<GaussianNetwork<AdjListDag>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
-                py::arg("model"), 
-                py::arg("score"), 
-                py::arg("blacklist") = ArcVector(), 
-                py::arg("whitelist") = ArcVector(), 
-                py::arg("max_indegree") = 0);
-    arc_set.def(py::init<SemiparametricBN<>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
-                py::arg("model"), 
-                py::arg("score"), 
-                py::arg("blacklist") = ArcVector(), 
-                py::arg("whitelist") = ArcVector(), 
-                py::arg("max_indegree") = 0);
-    arc_set.def(py::init<SemiparametricBN<AdjListDag>&, std::shared_ptr<Score>&, ArcVector&, ArcVector&, int>(),
-                py::arg("model"), 
-                py::arg("score"), 
-                py::arg("blacklist") = ArcVector(), 
-                py::arg("whitelist") = ArcVector(), 
-                py::arg("max_indegree") = 0);
+    arc_set.def(py::init<std::shared_ptr<Score>&>());
+
 
     auto nodetype = register_DerivedOperatorSet<ChangeNodeTypeSet,
                                     SemiparametricBN<>,
                                     SemiparametricBN<AdjListDag>>(operators, "ChangeNodeTypeSet");
-    nodetype.def(py::init<SemiparametricBN<>&, std::shared_ptr<Score>&, FactorTypeVector&>(),
-                py::arg("model"), 
-                py::arg("score"), 
-                py::arg("type_whitelist") = FactorTypeVector());
-    nodetype.def(py::init<SemiparametricBN<AdjListDag>&, std::shared_ptr<Score>&, FactorTypeVector&>(),
-                py::arg("model"), 
-                py::arg("score"), 
-                py::arg("type_whitelist") = FactorTypeVector());
+    nodetype.def(py::init<std::shared_ptr<Score>&>());
+
     
     register_OperatorPool<GaussianNetwork<>,
                           GaussianNetwork<AdjListDag>,

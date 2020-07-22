@@ -8,6 +8,7 @@
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <factors/discrete/DiscreteFactor.hpp>
 #include <factors/factors.hpp>
 #include <graph/dag.hpp>
 #include <models/BayesianNetwork.hpp>
@@ -36,6 +37,7 @@ using namespace ::graph;
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::KDE;
 using factors::continuous::CKDE;
+using factors::discrete::DiscreteFactor;
 using factors::FactorType;
 
 using models::BayesianNetworkBase, models::BayesianNetwork, models::BayesianNetworkType;
@@ -47,9 +49,6 @@ using learning::operators::AddArc, learning::operators::RemoveArc, learning::ope
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
       learning::operators::OperatorPool;
 using learning::algorithms::GreedyHillClimbing;
-
-// using learning::operators::ArcOperatorSet_constructor, learning::operators::ChangeNodeTypeSet_constructor, 
-//       learning::operators::OperatorPool_constructor;
 
 using util::ArcVector;
 
@@ -451,6 +450,14 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
     py::implicitly_convertible<CKDE, SemiparametricCPD>();
 
+    auto discrete = factors.def_submodule("discrete", "Discrete factors submodule.");
+
+    py::class_<DiscreteFactor>(discrete, "DiscreteFactor")
+        .def(py::init<std::string, std::vector<std::string>>())
+        .def_property_readonly("variable", &DiscreteFactor::variable)
+        .def_property_readonly("evidence", &DiscreteFactor::evidence)
+        .def("fit", &DiscreteFactor::fit);
+
     // //////////////////////////////
     // Include Different types of Graphs
     // /////////////////////////////
@@ -625,13 +632,11 @@ PYBIND11_MODULE(pgm_dataset, m) {
     nodetype.def(py::init<std::shared_ptr<Score>&, FactorTypeVector>(), 
                  py::arg("score"),
                  py::arg("type_whitelist") = FactorTypeVector());
-
     
     register_OperatorPool<GaussianNetwork<>,
                           GaussianNetwork<AdjListDag>,
                           SemiparametricBN<>,
                           SemiparametricBN<AdjListDag>>(operators);
-
 
     py::class_<OperatorSetType>(operators, "OperatorSetType")
         .def_property_readonly_static("ARCS", [](const py::object&) { 

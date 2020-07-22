@@ -188,7 +188,7 @@ namespace learning::parameters {
         bool contains_null = df.null_count(variable, evidence_pair) > 0;
 
         if (type_id != Type::DOUBLE && type_id != Type::FLOAT) {
-            throw py::value_error("Wrong data type to fit the linear regression. (double) or (float) data is expected");
+            throw py::value_error("Wrong data type to fit the linear regression. (double) or (float) data is expected.");
         }
 
         switch(type_id) {

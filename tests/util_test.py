@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from pgm_dataset.dataset import CrossValidation
 
 
 def generate_normal_data(size):
@@ -20,3 +19,17 @@ def generate_normal_data(size):
                     'd': d_array
                     })
 
+
+def generate_discrete_data(size):
+    np.random.seed(0)
+
+    a_dict = np.asarray(['a1', 'a2'])
+    b_dict = np.asarray(['b1', 'b2', 'b3'])
+    c_dict = np.asarray(['c1', 'c2'])
+    d_dict = np.asarray(['d1', 'd2', 'd3', 'd4'])
+
+    return pd.DataFrame({'A': a_dict[np.random.randint(0, a_dict.size, size=size)],
+                         'B': b_dict[np.random.randint(0, b_dict.size, size=size)],
+                         'C': c_dict[np.random.randint(0, c_dict.size, size=size)],
+                         'D': d_dict[np.random.randint(0, d_dict.size, size=size)]
+                        }, dtype='category')

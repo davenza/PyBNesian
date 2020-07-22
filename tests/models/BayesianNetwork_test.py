@@ -144,10 +144,12 @@ def test_edges():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
 
     assert gbn.num_edges() == 0
+    assert gbn.edges() == []
     assert not gbn.has_edge('a', 'b')
 
     gbn.add_edge('a', 'b')
     assert gbn.num_edges() == 1
+    assert gbn.edges() == [('a', 'b')]
     assert gbn.parents('b') == ['a']
     assert gbn.num_parents('b') == 1
     assert gbn.num_children('a') == 1
@@ -155,6 +157,7 @@ def test_edges():
 
     gbn.add_edge('b', 'c')
     assert gbn.num_edges() == 2
+    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c')])
     assert gbn.parents('c') == ['b']
     assert gbn.num_parents('c') == 1
     assert gbn.num_children('b') == 1
@@ -162,6 +165,7 @@ def test_edges():
     
     gbn.add_edge('d', 'c')
     assert gbn.num_edges() == 3
+    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c'), ('d', 'c')])
     assert set(gbn.parents('c')) == set(['b', 'd'])
     assert gbn.num_parents('c') == 2
     assert gbn.num_children('d') == 1
@@ -179,6 +183,7 @@ def test_edges():
 
     gbn.add_edge('b', 'd')
     assert gbn.num_edges() == 4
+    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c'), ('d', 'c'), ('b', 'd')])
     assert gbn.parents('d') == ['b']
     assert gbn.num_parents('d') == 1
     assert gbn.num_children('b') == 2
@@ -191,9 +196,10 @@ def test_edges():
     # This edge does not exist, but it could be flipped if it did.
     assert gbn.can_flip_edge('d', 'a')
 
-    # We can add an edge twice without chages.
+    # We can add an edge twice without changes.
     gbn.add_edge('b', 'd')
     assert gbn.num_edges() == 4
+    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c'), ('d', 'c'), ('b', 'd')])
     assert gbn.parents('d') == ['b']
     assert gbn.num_parents('d') == 1
     assert gbn.num_children('b') == 2
@@ -201,6 +207,7 @@ def test_edges():
 
     gbn.remove_edge('b', 'c')
     assert gbn.num_edges() == 3
+    assert set(gbn.edges()) == set([('a', 'b'), ('d', 'c'), ('b', 'd')])
     assert gbn.parents('c') == ['d']
     assert gbn.num_parents('c') == 1
     assert gbn.num_children('b') == 1
@@ -213,6 +220,7 @@ def test_edges():
 
     gbn.remove_edge('d', 'c')    
     assert gbn.num_edges() == 2
+    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'd')])
     assert gbn.parents('c') == []
     assert gbn.num_parents('c') == 0
     assert gbn.num_children('d') == 0

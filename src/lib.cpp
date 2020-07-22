@@ -219,7 +219,7 @@ py::class_<OperatorSet, std::shared_ptr<OperatorSet>> register_OperatorSet(py::m
 
     op_set.def("set_arc_blacklist", &OperatorSet::set_arc_blacklist);
     op_set.def("set_arc_whitelist", &OperatorSet::set_arc_whitelist);
-    op_set.def("set_max_indegree", &OperatorSet::set_arc_blacklist);
+    op_set.def("set_max_indegree", &OperatorSet::set_max_indegree);
     op_set.def("set_type_whitelist", &OperatorSet::set_type_whitelist);
 
     return op_set;
@@ -612,13 +612,19 @@ PYBIND11_MODULE(pgm_dataset, m) {
                                     GaussianNetwork<AdjListDag>, 
                                     SemiparametricBN<>,
                                     SemiparametricBN<AdjListDag>>(operators, "ArcOperatorSet");
-    arc_set.def(py::init<std::shared_ptr<Score>&>());
+    arc_set.def(py::init<std::shared_ptr<Score>&, const ArcVector&, const ArcVector&, int>(),
+                py::arg("score"),
+                py::arg("blacklist") = ArcVector(),
+                py::arg("whitelist") = ArcVector(),
+                py::arg("max_indegree") = 0);
 
 
     auto nodetype = register_DerivedOperatorSet<ChangeNodeTypeSet,
                                     SemiparametricBN<>,
                                     SemiparametricBN<AdjListDag>>(operators, "ChangeNodeTypeSet");
-    nodetype.def(py::init<std::shared_ptr<Score>&>());
+    nodetype.def(py::init<std::shared_ptr<Score>&, FactorTypeVector>(), 
+                 py::arg("score"),
+                 py::arg("type_whitelist") = FactorTypeVector());
 
     
     register_OperatorPool<GaussianNetwork<>,

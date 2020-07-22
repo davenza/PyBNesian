@@ -11,8 +11,8 @@ df = util_test.generate_normal_data(SIZE)
 def test_create():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
     cv = CVLikelihood(df)
-    arcs = ArcOperatorSet(spbn, cv)
-    node_type = ChangeNodeTypeSet(spbn, cv)
+    arcs = ArcOperatorSet(cv)
+    node_type = ChangeNodeTypeSet(cv)
     pool = OperatorPool(spbn, cv, [arcs, node_type])
 
     with pytest.raises(ValueError) as ex:
@@ -22,8 +22,8 @@ def test_create():
 def test_find_max():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
     cv = CVLikelihood(df)
-    arcs = ArcOperatorSet(spbn, cv)
-    node_type = ChangeNodeTypeSet(spbn, cv)
+    arcs = ArcOperatorSet(cv)
+    node_type = ChangeNodeTypeSet(cv)
     
     arcs.cache_scores(spbn)
     node_type.cache_scores(spbn)

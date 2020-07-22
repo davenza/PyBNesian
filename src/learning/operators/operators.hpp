@@ -20,7 +20,6 @@ using util::ArcVector, util::FactorTypeVector;
 
 namespace learning::operators {
 
-
     class OperatorType {
     public:
         enum Value : uint8_t
@@ -510,14 +509,17 @@ namespace learning::operators {
                                                   SemiparametricBN<AdjListDag>>
     {
     public:
-        ArcOperatorSet(std::shared_ptr<Score>& score) : m_score(score),
-                                                                        delta(),
-                                                                        valid_op(), 
-                                                                        sorted_idx(),
-                                                                        m_blacklist(),
-                                                                        m_whitelist(),
-                                                                        required_arclist_update(true),
-                                                                        max_indegree(0) {}
+        ArcOperatorSet(std::shared_ptr<Score>& score, 
+                       ArcVector blacklist = ArcVector(), 
+                       ArcVector whitelist = ArcVector(),
+                       int indegree = 0) : m_score(score),
+                                           delta(),
+                                           valid_op(), 
+                                           sorted_idx(),
+                                           m_blacklist(blacklist),
+                                           m_whitelist(whitelist),
+                                           required_arclist_update(true),
+                                           max_indegree(indegree) {}
 
         template<typename Model>
         void cache_scores(Model& model);
@@ -559,59 +561,6 @@ namespace learning::operators {
         bool required_arclist_update;
         int max_indegree;
     };
-
-    void ArcOperatorSet::update_listed_arcs(BayesianNetworkBase& model) {
-        if (required_arclist_update) {
-            int num_nodes = model.num_nodes();
-            if (delta.rows() != num_nodes) {
-                delta = MatrixXd(num_nodes, num_nodes);
-                valid_op = MatrixXb(num_nodes, num_nodes);
-            }
-
-            auto val_ptr = valid_op.data();
-
-            std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
-
-            auto indices = model.indices();
-            auto valid_ops = (num_nodes * num_nodes) - 2*m_whitelist.size() - m_blacklist.size() - num_nodes;
-
-            for(auto whitelist_edge : m_whitelist) {
-                auto source_index = indices[whitelist_edge.first];
-                auto dest_index = indices[whitelist_edge.second];
-
-                valid_op(source_index, dest_index) = false;
-                valid_op(dest_index, source_index) = false;
-                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-                delta(dest_index, source_index) = std::numeric_limits<double>::lowest();
-            }
-            
-            for(auto blacklist_edge : m_blacklist) {
-                auto source_index = indices[blacklist_edge.first];
-                auto dest_index = indices[blacklist_edge.second];
-
-                valid_op(source_index, dest_index) = false;
-                delta(source_index, dest_index) = std::numeric_limits<double>::lowest();
-            }
-
-            for (int i = 0; i < num_nodes; ++i) {
-                valid_op(i, i) = false;
-                delta(i, i) = std::numeric_limits<double>::lowest();
-            }
-
-            sorted_idx.clear();
-            sorted_idx.reserve(valid_ops);
-
-            for (int i = 0; i < num_nodes; ++i) {
-                for (int j = 0; j < num_nodes; ++j) {
-                    if (valid_op(i, j)) {
-                        sorted_idx.push_back(i + j * num_nodes);
-                    }
-                }
-            }
-
-            required_arclist_update = false;
-        }
-    }
 
     template<typename Model>
     void ArcOperatorSet::cache_scores(Model& model) {
@@ -793,7 +742,7 @@ namespace learning::operators {
             }
                 break;
         }
-    }
+    }   
 
     template<typename Model>
     void ArcOperatorSet::update_node_arcs_scores(Model& model, const std::string& dest_node) {
@@ -839,12 +788,13 @@ namespace learning::operators {
                                                      SemiparametricBN<>,
                                                      SemiparametricBN<AdjListDag>> {
     public:
-        ChangeNodeTypeSet(std::shared_ptr<Score>& score) : m_score(score),
-                                                           delta(),
-                                                           valid_op(),
-                                                           sorted_idx(),
-                                                           m_type_whitelist(),
-                                                           required_whitelist_update(true) {}
+        ChangeNodeTypeSet(std::shared_ptr<Score>& score, 
+                          FactorTypeVector fv = FactorTypeVector()) : m_score(score),
+                                                                        delta(),
+                                                                        valid_op(),
+                                                                        sorted_idx(),
+                                                                        m_type_whitelist(fv),
+                                                                        required_whitelist_update(true) {}
 
         template<typename Model>
         void cache_scores(Model& model);

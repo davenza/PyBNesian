@@ -3,6 +3,7 @@ import pyarrow as pa
 from pgm_dataset.learning.operators import ArcOperatorSet, ChangeNodeTypeSet, OperatorTabuSet, AddArc, OperatorType
 from pgm_dataset.learning.scores import BIC, CVLikelihood
 from pgm_dataset.models import GaussianNetwork, SemiparametricBN
+from pgm_dataset.factors import FactorType
 import util_test
 
 SIZE = 10000
@@ -14,46 +15,68 @@ def test_create():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
 
     bic = BIC(df)
-    arc_gbn_bic = ArcOperatorSet(gbn, bic, [], [], 0)
-    arc_gbn_bic = ArcOperatorSet(gbn, bic)
+    arc_bic = ArcOperatorSet(bic)
+    
+    cv = CVLikelihood(df)
+    arc_cv = ArcOperatorSet(cv)
 
     with pytest.raises(ValueError) as ex:
-        arc_spbn_bic = ArcOperatorSet(spbn, bic, [], [], 0)
+        arc_bic.cache_scores(spbn)
     "Invalid score" in str(ex.value)
 
-    cv = CVLikelihood(df)
-    arc_gbn_cv = ArcOperatorSet(gbn, cv, [], [], 0)
-    arc_gbn_cv = ArcOperatorSet(gbn, cv)
-    arc_spbn_cv = ArcOperatorSet(spbn, cv, [], [], 0)
-    arc_spbn_cv = ArcOperatorSet(spbn, cv)
+    node_cv = ChangeNodeTypeSet(cv)
 
     with pytest.raises(TypeError) as ex:
-        node_gbn_cv = ChangeNodeTypeSet(gbn, cv, [])
+        node_cv.cache_scores(gbn)
     "incompatible function arguments" in str(ex.value)
 
+    node_bic = ChangeNodeTypeSet(bic)
+
     with pytest.raises(ValueError) as ex:
-        node_spbn_bic = ChangeNodeTypeSet(spbn, bic, [])
+        node_bic.cache_scores(spbn)
     "Invalid score" in str(ex.value)
 
-    node_spbn_cv = ChangeNodeTypeSet(spbn, cv, [])
-    node_spbn_cv = ChangeNodeTypeSet(spbn, cv, [])
+def test_lists():
+    gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
+    bic = BIC(df)
+    arc_bic = ArcOperatorSet(bic)
+
+    arc_bic.set_arc_blacklist([("b", "a")])
+    arc_bic.set_arc_whitelist([("b", "c")])
+    arc_bic.set_max_indegree(3)
+    arc_bic.set_type_whitelist([("a", FactorType.LinearGaussianCPD)])
+
+    arc_bic.cache_scores(gbn)
+
+    arc_bic.set_arc_blacklist([("e", "a")])
+
+    with pytest.raises(ValueError) as ex:
+        arc_bic.cache_scores(gbn)
+    "present in the blacklist, but not" in str(ex.value)
+
+    arc_bic.set_arc_whitelist([("e", "a")])
+
+    with pytest.raises(ValueError) as ex:
+        arc_bic.cache_scores(gbn)
+    "present in the whitelist, but not" in str(ex.value)
 
 
 def test_check_max_score():
     gbn = GaussianNetwork(['a', 'b'])
 
     bic = BIC(df)
-    arc_gbn_bic = ArcOperatorSet(gbn, bic, [], [], 0)
+    arc_bic = ArcOperatorSet(bic)
 
-    arc_gbn_bic.cache_scores(gbn)
-    op = arc_gbn_bic.find_max(gbn)
+    arc_bic.cache_scores(gbn)
+    op = arc_bic.find_max(gbn)
 
     assert op.delta == (bic.local_score(gbn, 'b', ['a']) - bic.local_score(gbn, 'b'))
 
-    arc_gbn_bic = ArcOperatorSet(gbn, bic, [(op.source, op.target)], [], 0)
-    arc_gbn_bic.cache_scores(gbn)
+    # arc_gbn_bic = ArcOperatorSet( bic, [(op.source, op.target)], [], 0)
+    arc_bic.set_arc_blacklist([(op.source, op.target)])
+    arc_bic.cache_scores(gbn)
     
-    op2 = arc_gbn_bic.find_max(gbn)
+    op2 = arc_bic.find_max(gbn)
 
     assert op.source == op2.target
     assert op.target == op2.source
@@ -63,10 +86,10 @@ def test_nomax():
     gbn = GaussianNetwork(['a', 'b'])
 
     bic = BIC(df)
-    arc_gbn_bic = ArcOperatorSet(gbn, bic, [], [('a', 'b')], 0)
-    arc_gbn_bic.cache_scores(gbn)
+    arc_bic = ArcOperatorSet(bic, whitelist=[("a", "b")])
+    arc_bic.cache_scores(gbn)
 
-    op = arc_gbn_bic.find_max(gbn)
+    op = arc_bic.find_max(gbn)
 
     assert op is None
 

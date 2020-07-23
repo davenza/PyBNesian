@@ -49,15 +49,16 @@ ext_modules = [
          'src/factors/continuous/LinearGaussianCPD.cpp',
          'src/factors/continuous/CKDE.cpp',
          'src/factors/continuous/SemiparametricCPD.cpp',
+         'src/factors/discrete/DiscreteFactor.cpp',
          'src/dataset/dataset.cpp',
          'src/dataset/crossvalidation_adaptator.cpp',
          'src/dataset/holdout_adaptator.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
+         'src/learning/parameters/mle_DiscreteFactor.cpp',
          'src/learning/parameters/pybindings_mle.cpp',
          'src/learning/operators/operators.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
-        #  'src/learning/operators/pybindings_operators.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          ],
@@ -154,7 +155,7 @@ class BuildExt(build_ext):
         opts.append("-Wno-error=unused-variable")
         opts.append("-march=native")
         opts.append("-fdiagnostics-color=always")
-        # opts.append("-S")
+        # opts.append("-O0")
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
             opts.append(cpp_flag(self.compiler))

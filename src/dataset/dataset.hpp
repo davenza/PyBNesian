@@ -610,8 +610,6 @@ namespace dataset {
         friend std::pair<DataFrame, DataFrame> generate_cv_pair(const DataFrame& df, int fold, const std::vector<int>& indices, 
                                                                 const std::vector<std::vector<int>::iterator>& test_limits);
     private:
-        std::shared_ptr <arrow::Buffer> combined_bitmap_with_null() const;
-
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         Array_vector indices_to_columns(const T cols) const;
 

@@ -44,9 +44,39 @@ namespace factors::discrete {
 
         auto params = mle.estimate(df, m_variable, m_evidence.begin(), m_evidence.end());
 
-        m_values = params.values;
+        m_prob = params.prob;
         m_cardinality = params.cardinality;
         m_strides = params.strides;
+
+        auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(m_variable));
+        auto dict_variable_values = std::static_pointer_cast<arrow::StringArray>(dict_variable->dictionary());
+
+        std::vector<std::string> variable_values;
+        variable_values.reserve(dict_variable_values->length());
+
+        for (auto i = 0; i < dict_variable_values->length(); ++i) {
+            variable_values.push_back(dict_variable_values->GetString(i));
+        }
+
+        m_variable_values = variable_values;
+
+        std::vector<std::vector<std::string>> evidence_values;
+        evidence_values.reserve(m_evidence.size());
+
+        for (auto it = m_evidence.begin(); it != m_evidence.end(); ++it) {
+            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
+            auto dict_evidence_values = std::static_pointer_cast<arrow::StringArray>(dict_evidence->dictionary());
+
+            std::vector<std::string> ev;
+            ev.reserve(dict_evidence->length());
+            for (auto j = 0; j < dict_evidence_values->length(); ++j) {
+                ev.push_back(dict_evidence_values->GetString(j));
+            }
+
+            evidence_values.push_back(ev);
+        }
+
+        m_evidence_values = evidence_values;
     }
 
 }

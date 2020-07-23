@@ -456,7 +456,12 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def(py::init<std::string, std::vector<std::string>>())
         .def_property_readonly("variable", &DiscreteFactor::variable)
         .def_property_readonly("evidence", &DiscreteFactor::evidence)
-        .def("fit", &DiscreteFactor::fit);
+        .def("fit", &DiscreteFactor::fit)
+        .def("print_variable_values", &DiscreteFactor::print_variable_values)
+        .def("print_evidence_values", &DiscreteFactor::print_evidence_values)
+        .def("print_prob", &DiscreteFactor::print_prob)
+        .def("print_cardinality", &DiscreteFactor::print_cardinality)
+        .def("print_strides", &DiscreteFactor::print_strides);
 
     // //////////////////////////////
     // Include Different types of Graphs

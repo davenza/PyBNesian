@@ -24,4 +24,20 @@ namespace models {
                                             "Column \"" + schema->field(i)->name() + "\" (DataType: " + schema->field(i)->type()->ToString() + ").");
         }
     }
+
+
+    void requires_discrete_data(const DataFrame& df) {
+        auto schema = df->schema();
+
+        if (schema->num_fields() == 0) {
+            throw std::invalid_argument("Provided dataset does not contain columns.");
+        }
+
+        for (auto i = 0; i < schema->num_fields(); ++i) {
+            auto dtid = schema->field(i)->type()->id();
+            if (dtid != Type::DICTIONARY)
+                throw std::invalid_argument("Categorical data is needed to learn discrete Bayesian networks. "
+                                        "Column \"" + schema->field(i)->name() + "\" (DataType: " + schema->field(i)->type()->ToString() + ").");
+        }
+    }
 }

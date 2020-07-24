@@ -51,7 +51,7 @@ def generate_discrete_data_dependent(size):
     a1_indices = a_values == 'a1'
 
     b_values[a1_indices] = b_dict[np.random.choice(b_dict.size, np.sum(a1_indices), p=[0.33, 0.33, 0.34])]
-    b_values[~a1_indices] = b_dict[np.random.choice(b_dict.size, np.sum(~a1_indices), p=[0.1, 0.8, 0.1])]
+    b_values[~a1_indices] = b_dict[np.random.choice(b_dict.size, np.sum(~a1_indices), p=[0, 0.8, 0.2])]
 
     a1b1_indices = np.logical_and(a_values == 'a1', b_values == 'b1')
     a1b2_indices = np.logical_and(a_values == 'a1', b_values == 'b2')

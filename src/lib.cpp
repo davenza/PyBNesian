@@ -13,6 +13,7 @@
 #include <graph/dag.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
+#include <models/DiscreteBN.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>
 #include <learning/scores/holdout_likelihood.hpp>
@@ -40,7 +41,8 @@ using factors::continuous::CKDE;
 using factors::discrete::DiscreteFactor;
 using factors::FactorType;
 
-using models::BayesianNetworkBase, models::BayesianNetwork, models::BayesianNetworkType;
+using models::BayesianNetworkBase, models::BayesianNetwork, models::BayesianNetworkType, 
+      models::DiscreteBN;
 using learning::scores::Score, learning::scores::BIC, learning::scores::CVLikelihood, 
         learning::scores::HoldoutLikelihood;
 using learning::operators::AddArc, learning::operators::RemoveArc, learning::operators::FlipArc,
@@ -91,8 +93,8 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("add_cpds", &BaseClass::add_cpds)
         .def("cpd", py::overload_cast<const std::string&>(&BaseClass::cpd), py::return_value_policy::reference_internal)
         .def("cpd", py::overload_cast<int>(&BaseClass::cpd), py::return_value_policy::reference_internal)
-        .def("logpdf", &BaseClass::logpdf, py::return_value_policy::take_ownership)
-        .def("slogpdf", &BaseClass::slogpdf);
+        .def("logl", &BaseClass::logl, py::return_value_policy::take_ownership)
+        .def("slogl", &BaseClass::slogl);
 
     return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
             .def(py::init<const std::vector<std::string>&>())
@@ -408,8 +410,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property("variance", &LinearGaussianCPD::variance, &LinearGaussianCPD::setVariance)
         .def_property_readonly("fitted", &LinearGaussianCPD::fitted)
         .def("fit", &LinearGaussianCPD::fit)
-        .def("logpdf", &LinearGaussianCPD::logpdf, py::return_value_policy::take_ownership)
-        .def("slogpdf", &LinearGaussianCPD::slogpdf);
+        .def("logl", &LinearGaussianCPD::logl, py::return_value_policy::take_ownership)
+        .def("slogl", &LinearGaussianCPD::slogl);
 
     py::class_<KDE>(continuous, "KDE")
         .def(py::init<std::vector<std::string>>())
@@ -419,8 +421,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth)
         .def_property_readonly("fitted", &KDE::fitted)
         .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
-        .def("logpdf", &KDE::logpdf, py::return_value_policy::take_ownership)
-        .def("slogpdf", &KDE::slogpdf);
+        .def("logl", &KDE::logl, py::return_value_policy::take_ownership)
+        .def("slogl", &KDE::slogl);
 
     py::class_<CKDE>(continuous, "CKDE")
         .def(py::init<const std::string, const std::vector<std::string>>())
@@ -431,8 +433,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def_property_readonly("kde_marg", &CKDE::kde_marg)
         .def_property_readonly("fitted", &CKDE::fitted)
         .def("fit", &CKDE::fit)
-        .def("logpdf", &CKDE::logpdf, py::return_value_policy::take_ownership)
-        .def("slogpdf", &CKDE::slogpdf);
+        .def("logl", &CKDE::logl, py::return_value_policy::take_ownership)
+        .def("slogl", &CKDE::slogl);
 
     py::class_<SemiparametricCPD>(continuous, "SemiparametricCPD")
         .def(py::init<LinearGaussianCPD>())
@@ -444,8 +446,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("as_lg", &SemiparametricCPD::as_lg, py::return_value_policy::reference_internal)
         .def("as_ckde", &SemiparametricCPD::as_ckde, py::return_value_policy::reference_internal)
         .def("fit", &SemiparametricCPD::fit)
-        .def("logpdf", &SemiparametricCPD::logpdf, py::return_value_policy::take_ownership)
-        .def("slogpdf", &SemiparametricCPD::slogpdf);
+        .def("logl", &SemiparametricCPD::logl, py::return_value_policy::take_ownership)
+        .def("slogl", &SemiparametricCPD::slogl);
     
     py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
     py::implicitly_convertible<CKDE, SemiparametricCPD>();
@@ -456,12 +458,11 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def(py::init<std::string, std::vector<std::string>>())
         .def_property_readonly("variable", &DiscreteFactor::variable)
         .def_property_readonly("evidence", &DiscreteFactor::evidence)
+        .def_property_readonly("fitted", &DiscreteFactor::fitted)
         .def("fit", &DiscreteFactor::fit)
-        .def("print_variable_values", &DiscreteFactor::print_variable_values)
-        .def("print_evidence_values", &DiscreteFactor::print_evidence_values)
-        .def("print_prob", &DiscreteFactor::print_prob)
-        .def("print_cardinality", &DiscreteFactor::print_cardinality)
-        .def("print_strides", &DiscreteFactor::print_strides);
+        .def("logl", &DiscreteFactor::logl, py::arg("df"), py::arg("check_domain") = true)
+        .def("slogl", &DiscreteFactor::slogl, py::arg("df"), py::arg("check_domain") = true)
+        .def("ToString", &DiscreteFactor::ToString);
 
     // //////////////////////////////
     // Include Different types of Graphs
@@ -472,6 +473,9 @@ PYBIND11_MODULE(pgm_dataset, m) {
     py::class_<BayesianNetworkType>(models, "BayesianNetworkType")
         .def_property_readonly_static("GBN", [](const py::object&) { 
             return BayesianNetworkType(BayesianNetworkType::GBN);
+        })
+        .def_property_readonly_static("DISCRETEBN", [](const py::object&) { 
+            return BayesianNetworkType(BayesianNetworkType::DISCRETEBN);
         })
         .def_property_readonly_static("SPBN", [](const py::object&) { 
             return BayesianNetworkType(BayesianNetworkType::SPBN);
@@ -509,8 +513,8 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&BayesianNetworkBase::remove_edge))
         .def("remove_edge", py::overload_cast<int, int>(&BayesianNetworkBase::remove_edge))
         .def("fit", &BayesianNetworkBase::fit)
-        .def("logpdf", &BayesianNetworkBase::logpdf, py::return_value_policy::take_ownership)
-        .def("slogpdf", &BayesianNetworkBase::slogpdf);
+        .def("logl", &BayesianNetworkBase::logl, py::return_value_policy::take_ownership)
+        .def("slogl", &BayesianNetworkBase::slogl);
 
     register_BayesianNetwork<GaussianNetwork<>>(models, "GaussianNetwork");
     register_BayesianNetwork<GaussianNetwork<AdjListDag>>(models, "GaussianNetwork_L");
@@ -535,6 +539,9 @@ PYBIND11_MODULE(pgm_dataset, m) {
         .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN<AdjListDag>::set_node_type))
         .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN<AdjListDag>::set_node_type));
       
+    register_BayesianNetwork<DiscreteBN<>>(models, "DiscreteBN");
+    register_BayesianNetwork<DiscreteBN<AdjListDag>>(models, "DiscreteBN_L");
+
     auto learning = m.def_submodule("learning", "Learning submodule");
     auto scores = learning.def_submodule("scores", "Learning scores submodule.");
 

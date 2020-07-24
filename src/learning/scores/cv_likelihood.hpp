@@ -107,7 +107,7 @@ namespace learning::scores {
         double loglik = 0;
         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
             cpd.fit(train_df);
-            loglik += cpd.slogpdf(test_df);
+            loglik += cpd.slogl(test_df);
         }
 
         return loglik;
@@ -124,7 +124,7 @@ namespace learning::scores {
             double loglik = 0;
             for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
                 cpd.fit(train_df);
-                loglik += cpd.slogpdf(test_df);
+                loglik += cpd.slogl(test_df);
             }
 
             return loglik;
@@ -134,7 +134,7 @@ namespace learning::scores {
             double loglik = 0;
             for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
                 cpd.fit(train_df);
-                loglik += cpd.slogpdf(test_df);
+                loglik += cpd.slogl(test_df);
             }
 
             return loglik;

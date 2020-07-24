@@ -28,9 +28,9 @@ test_df = df.iloc[7200:8000, :]
 
 a_cpd = LinearGaussianCPD("a", [])
 a_cpd.fit(df)
-print(a_cpd.slogpdf(test_df))
+print(a_cpd.slogl(test_df))
 
 
 a_pgmpy = MaximumLikelihoodEstimator.gaussian_estimate_with_parents("a", [], train_df)
 print("pgmpy: beta: " + str(a_pgmpy.beta) + ", variance: " + str(a_pgmpy.variance))
-print(a_pgmpy.logpdf_dataset(test_df).sum())
+print(a_pgmpy.logl_dataset(test_df).sum())

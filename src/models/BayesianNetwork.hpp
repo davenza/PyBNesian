@@ -28,6 +28,7 @@ namespace models {
         enum Value : uint8_t
         {
             GBN,
+            DISCRETEBN,
             SPBN
         };
 
@@ -100,8 +101,8 @@ namespace models {
         virtual void remove_edge(int source, int dest) = 0;
         virtual void remove_edge(const std::string& source, const std::string& dest) = 0;
         virtual void fit(const DataFrame& df) = 0;
-        virtual VectorXd logpdf(const DataFrame& df) const = 0;
-        virtual double slogpdf(const DataFrame& df) const = 0;
+        virtual VectorXd logl(const DataFrame& df) const = 0;
+        virtual double slogl(const DataFrame& df) const = 0;
         virtual std::string ToString() const = 0;
         virtual BayesianNetworkType type() const = 0;
     };
@@ -360,8 +361,8 @@ namespace models {
             return cpd(m_indices.at(node));
         }
 
-        VectorXd logpdf(const DataFrame& df) const override;
-        double slogpdf(const DataFrame& df) const override;
+        VectorXd logl(const DataFrame& df) const override;
+        double slogl(const DataFrame& df) const override;
 
         template<typename Derived_>
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
@@ -632,28 +633,29 @@ namespace models {
     }
 
     template<typename Derived>
-    VectorXd BayesianNetwork<Derived>::logpdf(const DataFrame& df) const {
+    VectorXd BayesianNetwork<Derived>::logl(const DataFrame& df) const {
         check_fitted();
 
-        VectorXd accum = m_cpds[0].logpdf(df);
+        VectorXd accum = m_cpds[0].logl(df);
         for (auto it = ++m_cpds.begin(); it != m_cpds.end(); ++it) {
-            accum += it->logpdf(df);
+            accum += it->logl(df);
         }
         return accum;
     }
 
     template<typename Derived>
-    double BayesianNetwork<Derived>::slogpdf(const DataFrame& df) const {
+    double BayesianNetwork<Derived>::slogl(const DataFrame& df) const {
         check_fitted();
         
-        double accum = m_cpds[0].slogpdf(df);
+        double accum = m_cpds[0].slogl(df);
         for (auto it = ++m_cpds.begin(); it != m_cpds.end(); ++it) {
-            accum += it->slogpdf(df);
+            accum += it->slogl(df);
         }
         return accum;
     }
 
     void requires_continuous_data(const DataFrame& df);
+    void requires_discrete_data(const DataFrame& df);
 }
 
 #endif //PGM_DATASET_BAYESIANNETWORK_HPP

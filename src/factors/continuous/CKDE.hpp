@@ -24,7 +24,7 @@ namespace factors::continuous {
     struct UnivariateKDE {
 
         template<typename ArrowType>
-        void static execute_logpdf_mat(const cl::Buffer& training_vec, 
+        void static execute_logl_mat(const cl::Buffer& training_vec, 
                                                     const unsigned int training_length,
                                                     const cl::Buffer& test_vec,
                                                     const unsigned int,
@@ -38,7 +38,7 @@ namespace factors::continuous {
     };
 
     template<typename ArrowType>
-    void UnivariateKDE::execute_logpdf_mat(const cl::Buffer& training_vec, 
+    void UnivariateKDE::execute_logl_mat(const cl::Buffer& training_vec, 
                                                    const unsigned int training_length,
                                                    const cl::Buffer& test_vec,
                                                    const unsigned int,
@@ -51,21 +51,21 @@ namespace factors::continuous {
                                                    cl::Buffer& output_mat) 
     {
         auto& opencl = OpenCLConfig::get();
-        auto k_logpdf_values_1d_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_1d_mat);
-        k_logpdf_values_1d_mat.setArg(0, training_vec);
-        k_logpdf_values_1d_mat.setArg(1, training_length);
-        k_logpdf_values_1d_mat.setArg(2, test_vec);
-        k_logpdf_values_1d_mat.setArg(3, test_offset);
-        k_logpdf_values_1d_mat.setArg(4, cholesky);
-        k_logpdf_values_1d_mat.setArg(5, lognorm_const);
-        k_logpdf_values_1d_mat.setArg(6, output_mat);
+        auto k_logl_values_1d_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_1d_mat);
+        k_logl_values_1d_mat.setArg(0, training_vec);
+        k_logl_values_1d_mat.setArg(1, training_length);
+        k_logl_values_1d_mat.setArg(2, test_vec);
+        k_logl_values_1d_mat.setArg(3, test_offset);
+        k_logl_values_1d_mat.setArg(4, cholesky);
+        k_logl_values_1d_mat.setArg(5, lognorm_const);
+        k_logl_values_1d_mat.setArg(6, output_mat);
         auto queue = opencl.queue();        
-        queue.enqueueNDRangeKernel(k_logpdf_values_1d_mat, cl::NullRange,  cl::NDRange(training_length*test_length), cl::NullRange);
+        queue.enqueueNDRangeKernel(k_logl_values_1d_mat, cl::NullRange,  cl::NDRange(training_length*test_length), cl::NullRange);
     }
 
     struct MultivariateKDE {
         template<typename ArrowType>
-        static void execute_logpdf_mat(const cl::Buffer& training_mat, 
+        static void execute_logl_mat(const cl::Buffer& training_mat, 
                                         const unsigned int training_rows, 
                                         const cl::Buffer& test_mat,
                                         const unsigned int test_physical_rows,
@@ -79,7 +79,7 @@ namespace factors::continuous {
     };
 
     template<typename ArrowType>
-    void MultivariateKDE::execute_logpdf_mat(const cl::Buffer& training_mat, 
+    void MultivariateKDE::execute_logl_mat(const cl::Buffer& training_mat, 
                                                      const unsigned int training_rows, 
                                                      const cl::Buffer& test_mat,
                                                      const unsigned int test_physical_rows,
@@ -117,20 +117,20 @@ namespace factors::continuous {
 
             k_solve.setArg(1, training_rows);
             
-            auto k_logpdf_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_mat_column);
-            k_logpdf_values_mat.setArg(0, tmp_mat);
-            k_logpdf_values_mat.setArg(1, matrices_cols);
-            k_logpdf_values_mat.setArg(2, output_mat);
-            k_logpdf_values_mat.setArg(3, training_rows);
-            k_logpdf_values_mat.setArg(5, lognorm_const);
+            auto k_logl_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_mat_column);
+            k_logl_values_mat.setArg(0, tmp_mat);
+            k_logl_values_mat.setArg(1, matrices_cols);
+            k_logl_values_mat.setArg(2, output_mat);
+            k_logl_values_mat.setArg(3, training_rows);
+            k_logl_values_mat.setArg(5, lognorm_const);
 
             for (unsigned int i = 0; i < test_length; ++i) {
                 k_substract.setArg(7, i);
                 queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(training_rows*matrices_cols), cl::NullRange);
                 queue.enqueueNDRangeKernel(k_solve, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
                 queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(training_rows*matrices_cols), cl::NullRange);
-                k_logpdf_values_mat.setArg(4, i);
-                queue.enqueueNDRangeKernel(k_logpdf_values_mat, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
+                k_logl_values_mat.setArg(4, i);
+                queue.enqueueNDRangeKernel(k_logl_values_mat, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
             }
         } else {
             k_substract.setArg(0, test_mat);
@@ -144,20 +144,20 @@ namespace factors::continuous {
 
             k_solve.setArg(1, test_length);
 
-            auto k_logpdf_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logpdf_values_mat_row);
-            k_logpdf_values_mat.setArg(0, tmp_mat);
-            k_logpdf_values_mat.setArg(1, matrices_cols);
-            k_logpdf_values_mat.setArg(2, output_mat);
-            k_logpdf_values_mat.setArg(3, training_rows);
-            k_logpdf_values_mat.setArg(5, lognorm_const);
+            auto k_logl_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_mat_row);
+            k_logl_values_mat.setArg(0, tmp_mat);
+            k_logl_values_mat.setArg(1, matrices_cols);
+            k_logl_values_mat.setArg(2, output_mat);
+            k_logl_values_mat.setArg(3, training_rows);
+            k_logl_values_mat.setArg(5, lognorm_const);
 
             for(unsigned int i = 0; i < training_rows; ++i) {
                 k_substract.setArg(7, i);
                 queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(test_length*matrices_cols), cl::NullRange);
                 queue.enqueueNDRangeKernel(k_solve, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
                 queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(test_length*matrices_cols), cl::NullRange);
-                k_logpdf_values_mat.setArg(4, i);
-                queue.enqueueNDRangeKernel(k_logpdf_values_mat, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
+                k_logl_values_mat.setArg(4, i);
+                queue.enqueueNDRangeKernel(k_logl_values_mat, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
 
             }
         }
@@ -219,25 +219,25 @@ namespace factors::continuous {
         arrow::Type::type data_type() const { return m_training_type; }
         KDEBandwidth bandwidth_type() const { return m_bselector; }
 
-        VectorXd logpdf(const DataFrame& df) const;
+        VectorXd logl(const DataFrame& df) const;
 
         template<typename ArrowType>
-        cl::Buffer logpdf_buffer(const DataFrame& df) const;
+        cl::Buffer logl_buffer(const DataFrame& df) const;
 
-        double slogpdf(const DataFrame& df) const;
+        double slogl(const DataFrame& df) const;
 
     private:
         template<typename ArrowType, bool contains_null>
         void _fit(const DataFrame& df);
 
         template<typename ArrowType>
-        VectorXd _logpdf(const DataFrame& df) const;
+        VectorXd _logl(const DataFrame& df) const;
         template<typename ArrowType>
-        double _slogpdf(const DataFrame& df) const;
+        double _slogl(const DataFrame& df) const;
 
 
         template<typename ArrowType, typename KDEType>
-        cl::Buffer _logpdf_impl(const DataFrame& df) const;
+        cl::Buffer _logl_impl(const DataFrame& df) const;
 
         template<typename ArrowType>
         std::pair<cl::Buffer, uint64_t> allocate_mat(uint64_t m) const;
@@ -317,16 +317,16 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    VectorXd KDE::_logpdf(const DataFrame& df) const {
+    VectorXd KDE::_logl(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<CType, Dynamic, 1>;
 
-        auto logpdf_buff = logpdf_buffer<ArrowType>(df);
+        auto logl_buff = logl_buffer<ArrowType>(df);
         auto& opencl = OpenCLConfig::get();
         
         if (df.null_count(m_variables) == 0) {
             VectorType read_data(df->num_rows());
-            opencl.read_from_buffer(read_data.data(), logpdf_buff, df->num_rows());
+            opencl.read_from_buffer(read_data.data(), logl_buff, df->num_rows());
             if constexpr (!std::is_same_v<CType, double>)
                 return read_data.template cast<double>();
             else
@@ -337,7 +337,7 @@ namespace factors::continuous {
             auto bitmap = df.combined_bitmap(m_variables);
             auto bitmap_data = bitmap->data();
 
-            opencl.read_from_buffer(read_data.data(), logpdf_buff, m);
+            opencl.read_from_buffer(read_data.data(), logl_buff, m);
 
             VectorXd res(df->num_rows());
 
@@ -354,14 +354,14 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    double KDE::_slogpdf(const DataFrame& df) const {
+    double KDE::_slogl(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
 
-        auto logpdf_buff = logpdf_buffer<ArrowType>(df);
+        auto logl_buff = logl_buffer<ArrowType>(df);
         auto m = df.valid_count(m_variables);
 
         auto& opencl = OpenCLConfig::get();
-        auto buffer_sum = opencl.sum1d<ArrowType>(logpdf_buff, m);
+        auto buffer_sum = opencl.sum1d<ArrowType>(logl_buff, m);
 
         CType result = 0;
         opencl.read_from_buffer(&result, buffer_sum, 1);
@@ -369,11 +369,11 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    cl::Buffer KDE::logpdf_buffer(const DataFrame& df) const {
+    cl::Buffer KDE::logl_buffer(const DataFrame& df) const {
         if (m_variables.size() == 1)
-            return _logpdf_impl<ArrowType, UnivariateKDE>(df);
+            return _logl_impl<ArrowType, UnivariateKDE>(df);
         else
-            return _logpdf_impl<ArrowType, MultivariateKDE>(df);
+            return _logl_impl<ArrowType, MultivariateKDE>(df);
     }
 
     template<typename ArrowType>
@@ -401,7 +401,7 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType, typename KDEType>
-    cl::Buffer KDE::_logpdf_impl(const DataFrame& df) const {
+    cl::Buffer KDE::_logl_impl(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
         auto d = m_variables.size();
         auto& opencl = OpenCLConfig::get();
@@ -412,7 +412,7 @@ namespace factors::continuous {
 
         auto res = opencl.new_buffer<CType>(m);
 
-        auto [mat_logpdfs, allocated_m] = allocate_mat<ArrowType>(m);
+        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(m);
         auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
 
         cl::Buffer tmp_mat_buffer;
@@ -426,16 +426,16 @@ namespace factors::continuous {
         auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
 
         for (auto i = 0; i < (iterations-1); ++i) {
-            KDEType::template execute_logpdf_mat<ArrowType>(m_training, N, test_buffer, m, 
+            KDEType::template execute_logl_mat<ArrowType>(m_training, N, test_buffer, m, 
                                                         i*allocated_m, allocated_m, d, m_H_cholesky, m_lognorm_const, 
-                                                        tmp_mat_buffer, mat_logpdfs);
-            opencl.logsumexp_cols_offset<ArrowType>(mat_logpdfs, N, allocated_m, res, i*allocated_m, reduc_buffers);
+                                                        tmp_mat_buffer, mat_logls);
+            opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, allocated_m, res, i*allocated_m, reduc_buffers);
         }
         auto remaining_m = m - (iterations - 1)*allocated_m;
-        KDEType::template execute_logpdf_mat<ArrowType>(m_training, N, test_buffer, m, 
+        KDEType::template execute_logl_mat<ArrowType>(m_training, N, test_buffer, m, 
                                                         m - remaining_m, remaining_m, d, m_H_cholesky, m_lognorm_const, 
-                                                        tmp_mat_buffer, mat_logpdfs);
-        opencl.logsumexp_cols_offset<ArrowType>(mat_logpdfs, N, remaining_m, res, (iterations - 1)*allocated_m, reduc_buffers);
+                                                        tmp_mat_buffer, mat_logls);
+        opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, res, (iterations - 1)*allocated_m, reduc_buffers);
 
 
         return res;
@@ -477,16 +477,16 @@ namespace factors::continuous {
         bool fitted() const { return m_fitted; }
 
         void fit(const DataFrame& df);
-        VectorXd logpdf(const DataFrame& df) const;
-        double slogpdf(const DataFrame& df) const;
+        VectorXd logl(const DataFrame& df) const;
+        double slogl(const DataFrame& df) const;
 
         std::string ToString() const;
     private:
         template<typename ArrowType>
-        VectorXd _logpdf(const DataFrame& df) const;
+        VectorXd _logl(const DataFrame& df) const;
 
         template<typename ArrowType>
-        double _slogpdf(const DataFrame& df) const;
+        double _slogl(const DataFrame& df) const;
 
         template<typename ArrowType>
         void _fit(const DataFrame& df);
@@ -523,28 +523,28 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    VectorXd CKDE::_logpdf(const DataFrame& df) const {
+    VectorXd CKDE::_logl(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<CType, Dynamic, 1>;
 
-        auto logpdf_joint = m_joint.logpdf_buffer<ArrowType>(df);
+        auto logl_joint = m_joint.logl_buffer<ArrowType>(df);
 
         auto& opencl = OpenCLConfig::get();
         if (!m_evidence.empty()) {
-            auto logpdf_marg = m_marg.logpdf_buffer<ArrowType>(df);
+            auto logl_marg = m_marg.logl_buffer<ArrowType>(df);
             auto m = df.valid_count(m_variables);
 
             
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
-            k_substract.setArg(0, logpdf_joint);
-            k_substract.setArg(1, logpdf_marg);
+            k_substract.setArg(0, logl_joint);
+            k_substract.setArg(1, logl_marg);
             auto& queue = opencl.queue();
             queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(m), cl::NullRange);
         }
 
         if (df.null_count(m_variables) == 0) {
             VectorType read_data(df->num_rows());
-            opencl.read_from_buffer(read_data.data(), logpdf_joint, df->num_rows());
+            opencl.read_from_buffer(read_data.data(), logl_joint, df->num_rows());
             if constexpr (!std::is_same_v<CType, double>)
                 return read_data.template cast<double>();
             else
@@ -555,7 +555,7 @@ namespace factors::continuous {
             auto bitmap = df.combined_bitmap(m_variables);
             auto bitmap_data = bitmap->data();
 
-            opencl.read_from_buffer(read_data.data(), logpdf_joint, m);
+            opencl.read_from_buffer(read_data.data(), logl_joint, m);
 
             VectorXd res(df->num_rows());
 
@@ -572,24 +572,24 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    double CKDE::_slogpdf(const DataFrame& df) const {
+    double CKDE::_slogl(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
 
-        auto logpdf_joint = m_joint.logpdf_buffer<ArrowType>(df);
+        auto logl_joint = m_joint.logl_buffer<ArrowType>(df);
         auto m = df.valid_count(m_variables);
 
         auto& opencl = OpenCLConfig::get();
         if(!m_evidence.empty()) {
-            auto logpdf_marg = m_marg.logpdf_buffer<ArrowType>(df);
+            auto logl_marg = m_marg.logl_buffer<ArrowType>(df);
             
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
-            k_substract.setArg(0, logpdf_joint);
-            k_substract.setArg(1, logpdf_marg);
+            k_substract.setArg(0, logl_joint);
+            k_substract.setArg(1, logl_marg);
             auto& queue = opencl.queue();
             queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(m), cl::NullRange);
         }
 
-        auto buffer_sum = opencl.sum1d<ArrowType>(logpdf_joint, m);
+        auto buffer_sum = opencl.sum1d<ArrowType>(logl_joint, m);
 
         CType result = 0;
         opencl.read_from_buffer(&result, buffer_sum, 1);

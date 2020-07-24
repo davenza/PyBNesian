@@ -144,7 +144,7 @@ __kernel void square_@dt@(__global @dt@ *m) {
 }
 
 
-__kernel void logpdf_values_1d_mat_@dt@(__constant @dt@ *train_vector,
+__kernel void logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
                                            __private uint train_rows,
                                            __constant @dt@ *test_vector,
                                            __private uint test_offset,
@@ -179,7 +179,7 @@ __kernel void substract_@dt@(__constant @dt@ *training_matrix,
 }
 
 
-__kernel void logpdf_values_mat_column_@dt@(__constant @dt@ *square_data,
+__kernel void logl_values_mat_column_@dt@(__constant @dt@ *square_data,
                                                     __private uint square_cols,
                                                     __global @dt@ *sol_mat,
                                                     __private uint sol_rows,
@@ -198,7 +198,7 @@ __kernel void logpdf_values_mat_column_@dt@(__constant @dt@ *square_data,
     sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
 }
 
-__kernel void logpdf_values_mat_row_@dt@(__constant @dt@ *square_data,
+__kernel void logl_values_mat_row_@dt@(__constant @dt@ *square_data,
                                                     __private uint square_cols,
                                                     __global @dt@ *sol_mat,
                                                     __private uint sol_rows,

@@ -42,7 +42,7 @@ namespace factors::continuous {
         m_fitted = true;
     }
 
-    VectorXd KDE::logpdf(const DataFrame& df) const {
+    VectorXd KDE::logl(const DataFrame& df) const {
         // FIXME: Check the model is fitted.
         auto type_id = df.same_type(m_variables);
 
@@ -52,15 +52,15 @@ namespace factors::continuous {
 
         switch(type_id) {
             case Type::DOUBLE:
-                return _logpdf<arrow::DoubleType>(df);
+                return _logl<arrow::DoubleType>(df);
             case Type::FLOAT:
-                return _logpdf<arrow::FloatType>(df);
+                return _logl<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
         }
     }
 
-    double KDE::slogpdf(const DataFrame& df) const {
+    double KDE::slogl(const DataFrame& df) const {
         auto type_id = df.same_type(m_variables);
 
         if (type_id != m_training_type) {
@@ -69,9 +69,9 @@ namespace factors::continuous {
 
         switch(type_id) {
             case Type::DOUBLE:
-                return _slogpdf<arrow::DoubleType>(df);
+                return _slogl<arrow::DoubleType>(df);
             case Type::FLOAT:
-                return _slogpdf<arrow::FloatType>(df);
+                return _slogl<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
         }
@@ -96,7 +96,7 @@ namespace factors::continuous {
         m_fitted = true;
     }
 
-    VectorXd CKDE::logpdf(const DataFrame& df) const {
+    VectorXd CKDE::logl(const DataFrame& df) const {
         // FIXME: Check the model is fitted.
         auto type_id = df.same_type(m_variables);
 
@@ -106,15 +106,15 @@ namespace factors::continuous {
 
         switch(type_id) {
             case Type::DOUBLE:
-                return _logpdf<arrow::DoubleType>(df);
+                return _logl<arrow::DoubleType>(df);
             case Type::FLOAT:
-                return _logpdf<arrow::FloatType>(df);
+                return _logl<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
         }
     }
 
-    double CKDE::slogpdf(const DataFrame& df) const {
+    double CKDE::slogl(const DataFrame& df) const {
         auto type_id = df.same_type(m_variables);
 
         if (type_id != m_training_type) {
@@ -123,9 +123,9 @@ namespace factors::continuous {
 
         switch(type_id) {
             case Type::DOUBLE:
-                return _slogpdf<arrow::DoubleType>(df);
+                return _slogl<arrow::DoubleType>(df);
             case Type::FLOAT:
-                return _slogpdf<arrow::FloatType>(df);
+                return _slogl<arrow::FloatType>(df);
             default:
                 throw std::runtime_error("Unreachable code.");
         }

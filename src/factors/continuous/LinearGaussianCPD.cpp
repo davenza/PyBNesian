@@ -65,7 +65,7 @@ namespace factors::continuous {
 
     template<typename ArrowType>
     Matrix<typename ArrowType::c_type, Dynamic, 1> 
-    logpdf_impl(const DataFrame& df, const VectorXd& beta, double variance, 
+    logl_impl(const DataFrame& df, const VectorXd& beta, double variance, 
                             const std::string& var, const std::vector<std::string>& evidence) {
         using CType = typename ArrowType::c_type;
         using ArrayVecType = Array<CType, Dynamic, 1>;
@@ -90,11 +90,11 @@ namespace factors::continuous {
 
     template<typename ArrowType>
     Matrix<typename ArrowType::c_type, Dynamic, 1> 
-    logpdf_impl_null(const DataFrame& df, const VectorXd& beta, double variance, 
+    logl_impl_null(const DataFrame& df, const VectorXd& beta, double variance, 
                             const std::string& var, const std::vector<std::string>& evidence) {
         using CType = typename ArrowType::c_type;
 
-        auto logl = logpdf_impl<ArrowType>(df, beta, variance, var, evidence);
+        auto logl = logl_impl<ArrowType>(df, beta, variance, var, evidence);
         auto combined_bitmap = df.combined_bitmap(var, evidence);
         auto bitmap_data = combined_bitmap->data();
         auto logl_ptr = logl.data();
@@ -108,15 +108,15 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    double slogpdf_impl(const DataFrame& df, const VectorXd& beta, double variance, 
+    double slogl_impl(const DataFrame& df, const VectorXd& beta, double variance, 
                             const std::string& var, const std::vector<std::string>& evidence) {
-        return logpdf_impl<ArrowType>(df, beta, variance, var, evidence).sum();
+        return logl_impl<ArrowType>(df, beta, variance, var, evidence).sum();
     }
 
     template<typename ArrowType>
-    double slogpdf_impl_null(const DataFrame& df, const VectorXd& beta, double variance, 
+    double slogl_impl_null(const DataFrame& df, const VectorXd& beta, double variance, 
                             const std::string& var, const std::vector<std::string>& evidence) {
-        auto logl = logpdf_impl<ArrowType>(df, beta, variance, var, evidence);
+        auto logl = logl_impl<ArrowType>(df, beta, variance, var, evidence);
 
         auto combined_bitmap = df.combined_bitmap(var, evidence);
         auto bitmap_data = combined_bitmap->data();
@@ -131,45 +131,45 @@ namespace factors::continuous {
         return accum;
     }
 
-    VectorXd LinearGaussianCPD::logpdf(const DataFrame& df) const {
+    VectorXd LinearGaussianCPD::logl(const DataFrame& df) const {
         switch(df.col(m_variable)->type_id()) {
             case Type::DOUBLE: {
                 if(df.null_count(m_variable, m_evidence) == 0)
-                    return logpdf_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return logl_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
                 else
-                    return logpdf_impl_null<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return logl_impl_null<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
             }
             case Type::FLOAT: {
                 if(df.null_count(m_variable, m_evidence) == 0) {
-                    auto t = logpdf_impl<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    auto t = logl_impl<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
                     return t.template cast<double>();
                 }
                 else {
-                    auto t = logpdf_impl_null<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    auto t = logl_impl_null<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
                     return t.template cast<double>();
                 }
             }
             default:
-                throw py::value_error("Wrong data type to compute logpdf. (double) or (float) data is expected.");
+                throw py::value_error("Wrong data type to compute logl. (double) or (float) data is expected.");
         }
     }
 
-    double LinearGaussianCPD::slogpdf(const DataFrame& df) const {
+    double LinearGaussianCPD::slogl(const DataFrame& df) const {
         switch(df.col(m_variable)->type_id()) {
             case Type::DOUBLE: {
                 if(df.null_count(m_variable, m_evidence) == 0)
-                    return slogpdf_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return slogl_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
                 else
-                    return slogpdf_impl_null<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return slogl_impl_null<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
             }
             case Type::FLOAT: {
                 if(df.null_count(m_variable, m_evidence) == 0)
-                    return slogpdf_impl<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return slogl_impl<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
                 else
-                    return slogpdf_impl_null<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return slogl_impl_null<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
             }
             default:
-                throw py::value_error("Wrong data type to compute logpdf. (double) or (float) data is expected.");
+                throw py::value_error("Wrong data type to compute logl. (double) or (float) data is expected.");
         }
     }
 
@@ -178,9 +178,10 @@ namespace factors::continuous {
         stream << std::setprecision(3);
         if (!m_evidence.empty()) {
             stream << "[LinearGaussianCPD] P(" << m_variable << " | " << m_evidence[0];
-            for (auto& ev : m_evidence) {
-                stream << ", " << ev;
+            for (size_t i = 1; i < m_evidence.size(); ++i) {
+                stream << ", " << m_evidence[i];
             }
+
             if (m_fitted) {
                 stream << ") = N(" << m_beta(0);
                 for (size_t i = 1; i < m_evidence.size(); ++i) {

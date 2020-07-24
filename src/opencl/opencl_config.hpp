@@ -26,10 +26,10 @@ namespace opencl {
         inline constexpr static const char* logsumexp_coeffs = "logsumexp_coeffs_double";
         inline constexpr static const char* solve = "solve_double";
         inline constexpr static const char* square = "square_double";
-        inline constexpr static const char* logpdf_values_1d_mat = "logpdf_values_1d_mat_double";
+        inline constexpr static const char* logl_values_1d_mat = "logl_values_1d_mat_double";
         inline constexpr static const char* substract = "substract_double";
-        inline constexpr static const char* logpdf_values_mat_column = "logpdf_values_mat_column_double";
-        inline constexpr static const char* logpdf_values_mat_row = "logpdf_values_mat_row_double";
+        inline constexpr static const char* logl_values_mat_column = "logl_values_mat_column_double";
+        inline constexpr static const char* logl_values_mat_row = "logl_values_mat_row_double";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_double";
         inline constexpr static const char* substract_vectors = "substract_vectors_double";
     };
@@ -43,10 +43,10 @@ namespace opencl {
         inline constexpr static const char* logsumexp_coeffs = "logsumexp_coeffs_float";
         inline constexpr static const char* solve = "solve_float";
         inline constexpr static const char* square = "square_float";
-        inline constexpr static const char* logpdf_values_1d_mat = "logpdf_values_1d_mat_float";
+        inline constexpr static const char* logl_values_1d_mat = "logl_values_1d_mat_float";
         inline constexpr static const char* substract = "substract_float";
-        inline constexpr static const char* logpdf_values_mat_column = "logpdf_values_mat_column_float";
-        inline constexpr static const char* logpdf_values_mat_row = "logpdf_values_mat_row_float";
+        inline constexpr static const char* logl_values_mat_column = "logl_values_mat_column_float";
+        inline constexpr static const char* logl_values_mat_row = "logl_values_mat_row_float";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_float";
         inline constexpr static const char* substract_vectors = "substract_vectors_float";
     };

@@ -24,8 +24,8 @@ namespace factors::continuous {
         bool fitted() const;
 
         void fit(const DataFrame& df);
-        VectorXd logpdf(const DataFrame& df) const;
-        double slogpdf(const DataFrame& df) const;
+        VectorXd logl(const DataFrame& df) const;
+        double slogl(const DataFrame& df) const;
 
         FactorType node_type() const {
             if (std::holds_alternative<LinearGaussianCPD>(m_cpd))

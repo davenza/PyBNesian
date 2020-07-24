@@ -120,7 +120,7 @@ def scipy_ckde_logpdf(test_data, joint_kde, marg_kde, variable, evidence):
     else:
         return joint_kde.logpdf(test_data_joint[~nan_rows,:].T)
 
-def test_logpdf():
+def test_logl():
     test_df = util_test.generate_normal_data(50)
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
@@ -130,7 +130,7 @@ def test_logpdf():
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(df, variable, evidence)
 
         assert np.all(np.isclose(
-                            cpd.logpdf(test_df), 
+                            cpd.logl(test_df), 
                             scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)))
 
     cpd = CKDE('d', ['a', 'b', 'c'])
@@ -138,9 +138,9 @@ def test_logpdf():
     cpd2 = CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
 
-    assert np.all(np.isclose(cpd.logpdf(test_df), cpd2.logpdf(test_df))), "Order of evidence changes logpdf() result."
+    assert np.all(np.isclose(cpd.logl(test_df), cpd2.logl(test_df))), "Order of evidence changes logl() result."
 
-def test_logpdf_null():
+def test_logl_null():
     test_df = util_test.generate_normal_data(50)
 
     np.random.seed(0)
@@ -161,26 +161,26 @@ def test_logpdf_null():
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(df, variable, evidence)
 
-        ll = cpd.logpdf(test_df)
-        scipy_logpdf = scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)
+        ll = cpd.logl(test_df)
+        scipy_logl = scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)
 
-        assert np.all(np.isnan(ll) == np.isnan(scipy_logpdf))
+        assert np.all(np.isnan(ll) == np.isnan(scipy_logl))
         nan_indices = np.isnan(ll)
-        assert np.all(np.isclose(ll[~nan_indices], scipy_logpdf[~nan_indices]))
+        assert np.all(np.isclose(ll[~nan_indices], scipy_logl[~nan_indices]))
 
     cpd = CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
     cpd2 = CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
 
-    ll = cpd.logpdf(test_df)
-    ll2 = cpd2.logpdf(test_df)
+    ll = cpd.logl(test_df)
+    ll2 = cpd2.logl(test_df)
     assert np.all(np.isnan(ll) == np.isnan(ll2)), "Order of evidence changes the position of nan values."
     nan_indices = np.isnan(ll)
     assert np.all(np.isclose(ll[~nan_indices], ll2[~nan_indices])), "Order of evidence changes the position of nan values."
 
 
-def test_slogpdf():
+def test_slogl():
     test_df = util_test.generate_normal_data(50)
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
@@ -188,18 +188,18 @@ def test_slogpdf():
         cpd.fit(df)
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(df, variable, evidence)
-        scipy_logpdf = scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)
+        scipy_logl = scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)
 
-        assert np.all(np.isclose(cpd.slogpdf(test_df), scipy_logpdf.sum()))
+        assert np.all(np.isclose(cpd.slogl(test_df), scipy_logl.sum()))
 
     cpd = CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
     cpd2 = CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
 
-    assert np.all(np.isclose(cpd.slogpdf(test_df), cpd2.slogpdf(test_df))), "Order of evidence changes slogpdf() result."
+    assert np.all(np.isclose(cpd.slogl(test_df), cpd2.slogl(test_df))), "Order of evidence changes slogl() result."
 
-def test_slogpdf_null():
+def test_slogl_null():
     test_df = util_test.generate_normal_data(50)
 
     np.random.seed(0)
@@ -219,9 +219,9 @@ def test_slogpdf_null():
         cpd.fit(df)
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(df, variable, evidence)
-        scipy_logpdf = scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)
+        scipy_logl = scipy_ckde_logpdf(test_df, scipy_kde_joint, scipy_kde_marg, variable, evidence)
 
-        assert np.all(np.isclose(cpd.slogpdf(test_df), np.nansum(scipy_logpdf)))
+        assert np.all(np.isclose(cpd.slogl(test_df), np.nansum(scipy_logl)))
 
 
     cpd = CKDE('d', ['a', 'b', 'c'])
@@ -230,4 +230,4 @@ def test_slogpdf_null():
     cpd2.fit(df)
 
 
-    assert np.all(np.isclose(cpd.slogpdf(test_df), cpd2.slogpdf(test_df))), "Order of evidence changes slogpdf() result."
+    assert np.all(np.isclose(cpd.slogl(test_df), cpd2.slogl(test_df))), "Order of evidence changes slogl() result."

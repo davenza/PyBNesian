@@ -38,6 +38,6 @@ namespace models {
         using DagType = D;
         using CPD = LinearGaussianCPD;
     };
-
 }
+
 #endif //PGM_DATASET_GAUSSIANNETWORK_HPP

@@ -344,22 +344,22 @@ def test_add_cpds():
     assert "variable which is not present" in str(ex.value)
 
 
-def test_logpdf():
+def test_logl():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     gbn.fit(df)
 
     test_df = util_test.generate_normal_data(5000)
-    ll = gbn.logpdf(test_df)
-    sll = gbn.slogpdf(test_df)
+    ll = gbn.logl(test_df)
+    sll = gbn.slogl(test_df)
 
     sum_ll = np.zeros((5000,))
     sum_sll = 0
     
     for n in gbn.nodes():
         cpd = gbn.cpd(n)
-        l = cpd.logpdf(test_df)
-        s = cpd.slogpdf(test_df)
+        l = cpd.logl(test_df)
+        s = cpd.slogl(test_df)
         assert np.all(np.isclose(s, l.sum()))
         sum_ll += l
         sum_sll += s

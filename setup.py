@@ -22,7 +22,7 @@ from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.0.1'
 
-os.environ['CC'] = "ccache gcc"
+# os.environ['CC'] = "ccache gcc"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -55,12 +55,13 @@ ext_modules = [
          'src/dataset/holdout_adaptator.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
-         'src/learning/parameters/mle_DiscreteFactor.cpp',
+        #  'src/learning/parameters/mle_DiscreteFactor.cpp',
          'src/learning/parameters/pybindings_mle.cpp',
          'src/learning/operators/operators.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
+         'lib/libfort/fort.c'
          ],
         include_dirs=[
         #     # Path to pybind11 headers
@@ -70,6 +71,7 @@ ext_modules = [
             "src",
             "lib/eigen-3.3.7",
             "lib/graph",
+            "lib/libfort",
             # "lib/OpenCL"
         ],
         libraries=pa.get_libraries() + ["OpenCL"],

@@ -76,7 +76,7 @@ def test_fit_null():
             assert scipy_kde.d == cpd.d, "Wrong number of training variables with null values."
             assert np.all(np.isclose(scipy_kde.covariance, cpd.bandwidth)), "Wrong bandwidth with null values."
 
-def test_logpdf():
+def test_logl():
     test_df = util_test.generate_normal_data(50)
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
@@ -87,16 +87,16 @@ def test_logpdf():
         scipy_kde = gaussian_kde(npdata.T)
 
         test_npdata = test_df.loc[:, variables].to_numpy()
-        assert np.all(np.isclose(cpd.logpdf(test_df), scipy_kde.logpdf(test_npdata.T)))
+        assert np.all(np.isclose(cpd.logl(test_df), scipy_kde.logpdf(test_npdata.T)))
 
     cpd = KDE(['d', 'a', 'b', 'c'])
     cpd.fit(df)
     cpd2 = KDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df)
 
-    assert np.all(np.isclose(cpd.logpdf(test_df), cpd2.logpdf(test_df))), "Order of evidence changes logpdf() result."
+    assert np.all(np.isclose(cpd.logl(test_df), cpd2.logl(test_df))), "Order of evidence changes logl() result."
 
-def test_logpdf_null():
+def test_logl_null():
     test_df = util_test.generate_normal_data(50)
 
     np.random.seed(0)
@@ -120,9 +120,9 @@ def test_logpdf_null():
 
         test_npdata = test_df.loc[:, variables].to_numpy()
 
-        assert np.all(np.isnan(cpd.logpdf(test_df)) == np.isnan(scipy_kde.logpdf(test_npdata.T)))
+        assert np.all(np.isnan(cpd.logl(test_df)) == np.isnan(scipy_kde.logpdf(test_npdata.T)))
         nan_indices = np.any(np.isnan(test_npdata), axis=1)
-        assert np.all(np.isclose(cpd.logpdf(test_df)[~nan_indices], scipy_kde.logpdf(test_npdata.T)[~nan_indices]))
+        assert np.all(np.isclose(cpd.logl(test_df)[~nan_indices], scipy_kde.logpdf(test_npdata.T)[~nan_indices]))
 
 
     cpd = KDE(['d', 'a', 'b', 'c'])
@@ -130,13 +130,13 @@ def test_logpdf_null():
     cpd2 = KDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df)
 
-    assert np.all(np.isnan(cpd.logpdf(test_df)) == np.isnan(cpd2.logpdf(test_df))), "Order of evidence changes the position of nan values."
+    assert np.all(np.isnan(cpd.logl(test_df)) == np.isnan(cpd2.logl(test_df))), "Order of evidence changes the position of nan values."
 
     test_npdata = test_df.loc[:, variables].to_numpy()
     nan_indices = np.any(np.isnan(test_npdata), axis=1)
-    assert np.all(np.isclose(cpd.logpdf(test_df)[~nan_indices], cpd2.logpdf(test_df)[~nan_indices])), "Order of evidence changes logpdf() result."
+    assert np.all(np.isclose(cpd.logl(test_df)[~nan_indices], cpd2.logl(test_df)[~nan_indices])), "Order of evidence changes logl() result."
 
-def test_slogpdf():
+def test_slogl():
     test_df = util_test.generate_normal_data(50)
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
@@ -147,16 +147,16 @@ def test_slogpdf():
         scipy_kde = gaussian_kde(npdata.T)
 
         test_npdata = test_df.loc[:, variables].to_numpy()
-        assert np.all(np.isclose(cpd.slogpdf(test_df), scipy_kde.logpdf(test_npdata.T).sum()))
+        assert np.all(np.isclose(cpd.slogl(test_df), scipy_kde.logpdf(test_npdata.T).sum()))
 
     cpd = KDE(['d', 'a', 'b', 'c'])
     cpd.fit(df)
     cpd2 = KDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df)
 
-    assert np.all(np.isclose(cpd.slogpdf(test_df), cpd2.slogpdf(test_df))), "Order of evidence changes slogpdf() result."
+    assert np.all(np.isclose(cpd.slogl(test_df), cpd2.slogl(test_df))), "Order of evidence changes slogl() result."
 
-def test_slogpdf_null():
+def test_slogl_null():
     test_df = util_test.generate_normal_data(50)
 
     np.random.seed(0)
@@ -180,7 +180,7 @@ def test_slogpdf_null():
 
         test_npdata = test_df.loc[:, variables].to_numpy()
 
-        assert np.all(np.isclose(cpd.slogpdf(test_df), np.nansum(scipy_kde.logpdf(test_npdata.T))))
+        assert np.all(np.isclose(cpd.slogl(test_df), np.nansum(scipy_kde.logpdf(test_npdata.T))))
 
 
     cpd = KDE(['d', 'a', 'b', 'c'])
@@ -188,4 +188,4 @@ def test_slogpdf_null():
     cpd2 = KDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df)
 
-    assert np.all(np.isclose(cpd.slogpdf(test_df), cpd2.slogpdf(test_df))), "Order of evidence changes slogpdf() result."
+    assert np.all(np.isclose(cpd.slogl(test_df), cpd2.slogl(test_df))), "Order of evidence changes slogl() result."

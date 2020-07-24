@@ -11,73 +11,11 @@ using factors::discrete::DiscreteFactor;
 using Array_ptr = std::shared_ptr<arrow::Array>;
 using Buffer_ptr = std::shared_ptr<arrow::Buffer>;
 
-// using learning::parameters::MLE;
+using factors::discrete::discrete_indices;
 
 
 namespace learning::parameters {
 
-    template<typename ArrowType>
-    void sum_indices_null(VectorXi& accum_indices, Array_ptr& indices, int stride, Buffer_ptr& combined_bitmap) {
-        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-        auto dwn_indices = std::static_pointer_cast<ArrayType>(indices);
-
-        auto raw_combined_bitmap = combined_bitmap->data();
-        for (auto i = 0, j = 0; i < indices->length(); ++i) {
-            if (arrow::BitUtil::GetBit(raw_combined_bitmap, i)) {
-                accum_indices(j++) += dwn_indices->Value(i) * stride;
-            }
-        }
-    }
-
-    void sum_indices_null(VectorXi& accum_indices, Array_ptr& indices, int stride, Buffer_ptr& combined_bitmap);
-
-    template<typename VarType, typename EvidenceIter>
-    VectorXd _joint_counts_null(const DataFrame& df, 
-                                const VarType& variable, 
-                                EvidenceIter evidence_begin, 
-                                EvidenceIter evidence_end,
-                                VectorXi& cardinality,
-                                VectorXi& strides) {
-        auto joint_values = cardinality.prod();
-        VectorXd counts = VectorXd::Zero(joint_values);
-
-        auto combined_bitmap = df.combined_bitmap(variable, std::make_pair(evidence_begin, evidence_end));
-
-        auto valid_rows = util::bit_util::non_null_count(combined_bitmap, df->num_rows());
-
-        VectorXi indices = VectorXi::Zero(valid_rows);
-
-        auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(variable));
-        auto variable_indices = dict_variable->indices();
-
-        sum_indices_null(indices, variable_indices, strides(0), combined_bitmap);
-
-        int i = 1;
-        for (auto it = evidence_begin; it != evidence_end; ++it, ++i) {
-            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
-            auto evidence_indices = dict_evidence->indices();
-            sum_indices_null(indices, evidence_indices, strides(i), combined_bitmap);
-        }
-
-        // Compute counts
-        for (auto i = 0; i < indices.rows(); ++i) {
-            ++counts(indices(i));
-        }
-
-        return counts;
-    }
-
-    template<typename ArrowType>
-    void sum_indices(VectorXi& accum_indices, Array_ptr& indices, int stride) {
-        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-        using EigenMap = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
-        auto dwn_indices = std::static_pointer_cast<ArrayType>(indices);
-        auto* raw_values = dwn_indices->raw_values();
-        const EigenMap map_eigen(raw_values, indices->length());
-        accum_indices += (map_eigen * stride).template cast<int>();
-    }
-
-    void sum_indices(VectorXi& accum_indices, Array_ptr& indices, int stride);
 
     template<typename VarType, typename EvidenceIter>
     VectorXd _joint_counts(const DataFrame& df, 
@@ -89,20 +27,7 @@ namespace learning::parameters {
         auto joint_values = cardinality.prod();
 
         VectorXd counts = VectorXd::Zero(joint_values);
-
-        VectorXi indices = VectorXi::Zero(df->num_rows());
-
-        auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(variable));
-        auto variable_indices = dict_variable->indices();
-
-        sum_indices(indices, variable_indices, strides(0));
-
-        int i = 1;
-        for (auto it = evidence_begin; it != evidence_end; ++it, ++i) {
-            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
-            auto evidence_indices = dict_evidence->indices();
-            sum_indices(indices, evidence_indices, strides(i));
-        }
+        VectorXi indices = discrete_indices(df, variable, evidence_begin, evidence_end, strides);
 
         // Compute counts
         for (auto i = 0; i < indices.rows(); ++i) {
@@ -113,7 +38,7 @@ namespace learning::parameters {
     }
     
 
-    template<bool contains_null, typename VarType, typename EvidenceIter>
+    template<typename VarType, typename EvidenceIter>
     typename DiscreteFactor::ParamsClass _fit(const DataFrame& df, 
                                                 const VarType& variable, 
                                                 EvidenceIter evidence_begin, 
@@ -136,13 +61,7 @@ namespace learning::parameters {
             strides(i) = strides(i-1)*cardinality(i-1);            
         }
 
-        auto prob = [&df, &variable, evidence_begin, evidence_end, &cardinality, &strides]() {
-            if constexpr (contains_null) {
-                return _joint_counts_null(df, variable, evidence_begin, evidence_end, cardinality, strides);
-            } else {
-                return _joint_counts(df, variable, evidence_begin, evidence_end, cardinality, strides);
-            }
-        }();
+        auto logprob = _joint_counts(df, variable, evidence_begin, evidence_end, cardinality, strides);
 
         // Normalize the CPD.
         auto parent_configurations = cardinality.bottomRows(num_variables-1).prod();
@@ -150,25 +69,26 @@ namespace learning::parameters {
         for (auto k = 0; k < parent_configurations; ++k) {
             auto offset = k*cardinality(0);
 
-            double sum_configuration = 0;
+            int sum_configuration = 0;
             for(auto i = 0; i < cardinality(0); ++i) {
-                sum_configuration += prob(offset + i);
+                sum_configuration += logprob(offset + i);
             }
 
             if (sum_configuration == 0) {
-                auto uniform = 1. / cardinality(0);
+                auto loguniform = std::log(1. / cardinality(0));
                 for(auto i = 0; i < cardinality(0); ++i) {
-                    prob(offset + i) = uniform;
+                    logprob(offset + i) = loguniform;
                 }       
             } else {
+                double logsum_configuration = std::log(sum_configuration);
                 for(auto i = 0; i < cardinality(0); ++i) {
-                    prob(offset + i) /= sum_configuration;
-                }       
+                    logprob(offset + i) = std::log(logprob(offset + i)) - logsum_configuration;
+                }
             }
         }
 
         return typename DiscreteFactor::ParamsClass {
-            .prob = prob,
+            .logprob = logprob,
             .cardinality = cardinality,
             .strides = strides
         };
@@ -185,16 +105,11 @@ namespace learning::parameters {
         auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
         auto type_id = df.same_type(variable, evidence_pair);
 
-        bool contains_null = df.null_count(variable, evidence_pair) > 0;
-
         if (type_id != Type::DICTIONARY) {
             throw py::value_error("Wrong data type to fit DiscreteFactor. Ccategorical data is expected.");
         }
 
-        if (contains_null)
-            return _fit<true>(df, variable, evidence_begin, evidence_end);
-        else
-            return _fit<false>(df, variable, evidence_begin, evidence_end);
+        return _fit(df, variable, evidence_begin, evidence_end);
 
     }
 }

@@ -33,11 +33,9 @@ namespace factors::continuous {
   
         void fit(const DataFrame& df);
 
-        //FIXME: Check model is fitted before computing
-        VectorXd logpdf(const DataFrame& df) const;
+        VectorXd logl(const DataFrame& df) const;
 
-        //FIXME: Check model is fitted before computing
-        double slogpdf(const DataFrame& df) const;
+        double slogl(const DataFrame& df) const;
 
         std::string ToString() const;
 

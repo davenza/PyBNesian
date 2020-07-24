@@ -28,15 +28,15 @@ namespace factors::continuous {
         }, m_cpd);
     }
 
-    VectorXd SemiparametricCPD::logpdf(const DataFrame& df) const {
+    VectorXd SemiparametricCPD::logl(const DataFrame& df) const {
         return std::visit([&df](auto& cpd) -> VectorXd {
-                            return cpd.logpdf(df);
+                            return cpd.logl(df);
                         }, m_cpd);
     }
 
-    double SemiparametricCPD::slogpdf(const DataFrame& df) const {
+    double SemiparametricCPD::slogl(const DataFrame& df) const {
         return std::visit([&df](auto& cpd) {
-                    return cpd.slogpdf(df);
+                    return cpd.slogl(df);
                 }, m_cpd);
     }
 

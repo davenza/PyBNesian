@@ -108,7 +108,7 @@ namespace learning::scores {
                                           const EvidenceIter evidence_end) const {
         LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
         cpd.fit(training_data());
-        return cpd.slogpdf(test_data());
+        return cpd.slogl(test_data());
     }
 
     template<typename VarType, typename EvidenceIter>
@@ -119,11 +119,11 @@ namespace learning::scores {
         if (variable_type == FactorType::LinearGaussianCPD) {
             LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
             cpd.fit(training_data());
-            return cpd.slogpdf(test_data());
+            return cpd.slogl(test_data());
         } else {
             CKDE cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
             cpd.fit(training_data());
-            return cpd.slogpdf(test_data());
+            return cpd.slogl(test_data());
         }
     }
 

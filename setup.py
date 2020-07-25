@@ -22,7 +22,7 @@ from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.0.1'
 
-# os.environ['CC'] = "ccache gcc"
+os.environ['CC'] = "ccache gcc"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -46,6 +46,15 @@ ext_modules = [
         'pgm_dataset',
         [
          'src/lib.cpp',
+         'src/pybindings/pybindings_dataset.cpp',
+         'src/pybindings/pybindings_factors.cpp',
+         'src/pybindings/pybindings_models.cpp',
+         'src/pybindings/pybindings_learning/pybindings_learning.cpp',
+         'src/pybindings/pybindings_learning/pybindings_scores.cpp',
+         'src/pybindings/pybindings_learning/pybindings_parameters.cpp',
+         'src/pybindings/pybindings_learning/pybindings_mle.cpp',
+         'src/pybindings/pybindings_learning/pybindings_operators.cpp',
+         'src/pybindings/pybindings_learning/pybindings_algorithms.cpp',
          'src/factors/continuous/LinearGaussianCPD.cpp',
          'src/factors/continuous/CKDE.cpp',
          'src/factors/continuous/SemiparametricCPD.cpp',
@@ -55,8 +64,6 @@ ext_modules = [
          'src/dataset/holdout_adaptator.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
-        #  'src/learning/parameters/mle_DiscreteFactor.cpp',
-         'src/learning/parameters/pybindings_mle.cpp',
          'src/learning/operators/operators.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
          'src/models/BayesianNetwork.cpp',

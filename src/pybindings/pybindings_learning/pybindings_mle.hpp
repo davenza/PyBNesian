@@ -8,7 +8,7 @@ namespace py = pybind11;
 
 using factors::FactorType;
 
-namespace learning::parameters {
+namespace pybindings::learning::parameters {
 
     py::object mle_python_wrapper(FactorType n);
 }

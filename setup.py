@@ -66,7 +66,9 @@ ext_modules = [
          'src/util/validate_dtype.cpp',
          'src/learning/operators/operators.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
+         'src/graph/new_dag.cpp',
          'src/models/BayesianNetwork.cpp',
+         'src/models/NewBayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          'lib/libfort/fort.c'
          ],

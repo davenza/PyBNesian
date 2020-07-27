@@ -3,14 +3,13 @@
 
 #include <iterator>
 #include <dataset/dataset.hpp>
-#include <graph/dag.hpp>
+#include <graph/new_dag.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/SemiparametricCPD.hpp>
 #include <util/util_types.hpp>
 
 using dataset::DataFrame;
-using graph::AdjMatrixDag, graph::AdjListDag;
-using boost::source;
+using graph::DirectedGraph;
 
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::SemiparametricCPD;
@@ -119,12 +118,12 @@ namespace models {
     template<typename Derived>
     class BayesianNetwork : public BayesianNetworkBase {
     public:
-        using DagType = typename BN_traits<Derived>::DagType;
+        // using DagType = typename BN_traits<Derived>::DagType;
         using CPD = typename BN_traits<Derived>::CPD;
-        using node_descriptor = typename DagType::node_descriptor;
-        using edge_descriptor = typename DagType::edge_descriptor;
+        // using node_descriptor = typename DagType::node_descriptor;
+        // using edge_descriptor = typename DagType::edge_descriptor;
 
-        using node_iterator_t = typename DagType::node_iterator_t;
+        // using node_iterator_t = typename DagType::node_iterator_t;
 
         BayesianNetwork(const std::vector<std::string>& nodes);
         BayesianNetwork(const ArcVector& arcs);
@@ -134,8 +133,8 @@ namespace models {
             return g.num_nodes();
         }
 
-        int num_edges() const override {
-            return g.num_edges();
+        int num_arcs() const override {
+            return g.num_arcs();
         }
 
         const std::vector<std::string>& nodes() const override {
@@ -157,28 +156,12 @@ namespace models {
             return m_indices;
         }
 
-        node_descriptor node(const std::string& node) const {
-            return g.node(m_indices.at(node));
-        }
-
-        node_descriptor node(int node_index) const {
-            return g.node(node_index);
-        }
-
         bool contains_node(const std::string& name) const override {
             return m_indices.count(name) > 0;
         }
 
         const std::string& name(int node_index) const override {
             return m_nodes[node_index];
-        }
-
-        const std::string& name(node_descriptor node) const {
-            return name(g.index(node));
-        }
-
-        int num_parents(node_descriptor node) const {
-            return g.num_parents(node);
         }
 
         int num_parents(int node_index) const override {
@@ -189,10 +172,6 @@ namespace models {
             return num_parents(m_indices.at(node));
         }
 
-        int num_children(node_descriptor node) const {
-            return g.num_children(node);
-        }
-
         int num_children(int node_index) const override {
             return num_children(g.node(node_index));
         }
@@ -201,15 +180,9 @@ namespace models {
             return num_children(m_indices.at(node));
         }
 
-        int index(node_descriptor n) const {
-            return g.index(n);
-        }
-
         int index(const std::string& node) const override {
             return m_indices.at(node);
         }
-
-        std::vector<std::string> parents(node_descriptor node) const;
 
         std::vector<std::string> parents(int node_index) const override {
             return parents(g.node(node_index));
@@ -219,8 +192,6 @@ namespace models {
             return parents(m_indices.at(node));
         }
 
-        std::vector<int> parent_indices(node_descriptor node) const;
-
         std::vector<int> parent_indices(int node_index) const override {
             return parent_indices(g.node(node_index));
         }
@@ -229,18 +200,12 @@ namespace models {
             return parent_indices(m_indices.at(node));
         }
 
-        std::string parents_tostring(node_descriptor node) const;
-
         std::string parents_tostring(int node_index) const override {
             return parents_tostring(g.node(node_index));
         }
 
         std::string parents_tostring(const std::string& node) const override {
             return parents_tostring(m_indices.at(node));
-        }
-
-        bool has_edge(node_descriptor source, node_descriptor dest) const {
-            return g.has_edge(source, dest);
         }
 
         bool has_edge(int source, int dest) const override {
@@ -251,20 +216,12 @@ namespace models {
             return has_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        bool has_path(node_descriptor source, node_descriptor dest) const {
-            return g.has_path(source, dest);
-        }
-        
         bool has_path(int source_index, int dest_index) const override {
             return has_path(g.node(source_index), g.node(dest_index));
         }
         
         bool has_path(const std::string& source, const std::string& dest) const override {
             return has_path(m_indices.at(source), m_indices.at(dest));
-        }
-
-        void add_edge(node_descriptor source, node_descriptor dest) {
-            g.add_edge(source, dest);
         }
 
         void add_edge(int source, int dest) override {
@@ -275,14 +232,6 @@ namespace models {
             add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        bool can_add_edge(node_descriptor source, node_descriptor dest) const {
-            if (num_parents(source) == 0 || num_children(dest) == 0 || !has_path(dest, source)) {
-                return true;
-            }
-
-            return false;
-        }
-
         bool can_add_edge(int source_index, int dest_index) const override {
             return can_add_edge(node(source_index), node(dest_index));
         }
@@ -291,18 +240,12 @@ namespace models {
             return can_add_edge(m_indices.at(source), m_indices.at(dest));
         }
 
-        bool can_flip_edge(node_descriptor source, node_descriptor dest);
-
         bool can_flip_edge(int source_index, int dest_index) override {
             return can_flip_edge(node(source_index), node(dest_index));
         }
 
         bool can_flip_edge(const std::string& source, const std::string& dest) override {
             return can_flip_edge(m_indices.at(source), m_indices.at(dest));
-        }
-
-        void remove_edge(node_descriptor source, node_descriptor dest) {
-            g.remove_edge(source, dest);
         }
 
         void remove_edge(int source, int dest) override {
@@ -370,7 +313,7 @@ namespace models {
     protected:
         void check_fitted() const;
     private:
-        DagType g;
+        DirectedGraph g;
         std::vector<std::string> m_nodes;
         // Change to FNV hash function?
         std::unordered_map<std::string, int> m_indices;
@@ -450,63 +393,6 @@ namespace models {
 
         g.check_acyclic();
     };
-
-    template<typename Derived>
-    std::vector<std::string> BayesianNetwork<Derived>::parents(node_descriptor node) const {
-        std::vector<std::string> parents;
-        auto it_parents = g.get_parent_edges(node);
-
-        for (auto it = it_parents.first; it != it_parents.second; ++it) {
-            auto parent = g.source(*it);
-            auto parent_index = g.index(parent);
-            parents.push_back(m_nodes[parent_index]);
-        }
-
-        return parents;
-    }
-
-    template<typename Derived>
-    std::vector<int> BayesianNetwork<Derived>::parent_indices(node_descriptor node) const {
-        std::vector<int> parent_indices;
-        auto it_parents = g.get_parent_edges(node);
-
-        for (auto it = it_parents.first; it != it_parents.second; ++it) {
-            parent_indices.push_back(g.index(g.source(*it)));
-        }
-
-        return parent_indices;
-    }
-
-    template<typename Derived>
-    std::string BayesianNetwork<Derived>::parents_tostring(node_descriptor node) const {
-        auto pa = parents(node);
-        if (!pa.empty()) {
-            std::string str = "[" + pa[0];
-            for (auto it = pa.begin() + 1; it != pa.end(); ++it) {
-                str += ", " + *it;
-            }
-            str += "]";
-            return str;
-        } else {
-            return "[]";
-        } 
-    }
-
-    template<typename Derived>
-    bool BayesianNetwork<Derived>::can_flip_edge(node_descriptor source, node_descriptor dest) {
-        if (num_parents(dest) == 0 || num_children(source) == 0) {
-            return true;
-        } else {
-            remove_edge(source, dest);
-            bool thereis_path = has_path(source, dest);
-            add_edge(source, dest);
-            if (thereis_path) {
-                return false;
-            } else {
-                return true;
-            }
-        }
-    }
 
     template<typename Derived>
     void BayesianNetwork<Derived>::compatible_cpd(const CPD& cpd) const {

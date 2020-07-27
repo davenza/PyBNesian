@@ -1,6 +1,6 @@
 #include <arrow/api.h>
 #include <arrow/util/align_util.h>
-#include <arrow/util/bit_util.h>
+#include <arrow/util/bitmap_ops.h>
 #include <arrow/python/pyarrow.h>
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>

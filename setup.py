@@ -131,6 +131,8 @@ def expand_sources():
         with open(base, 'w') as fid:
             fid.write(outstr)
 
+def create_symlinks():
+    pa.create_library_symlinks()
 
 
 class BuildExt(build_ext):
@@ -151,6 +153,7 @@ class BuildExt(build_ext):
 
     def build_extensions(self):
         expand_sources()
+        create_symlinks()
 
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])

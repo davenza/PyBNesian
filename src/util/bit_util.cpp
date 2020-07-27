@@ -1,5 +1,4 @@
-
-#include <util/bit_util.hpp>
+#include <arrow/util/bitmap_ops.h>
 #include <arrow/api.h>
 
 namespace util::bit_util {

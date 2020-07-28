@@ -179,15 +179,10 @@ void pybindings_operators(py::module& root) {
 
     register_OperatorTabuSet(operators);
 
-    register_OperatorSet<GaussianNetwork<>, 
-                         GaussianNetwork<AdjListDag>, 
-                         SemiparametricBN<>,
-                         SemiparametricBN<AdjListDag>>(operators);
+    register_OperatorSet<GaussianNetwork, SemiparametricBN>(operators);
     auto arc_set = register_DerivedOperatorSet<ArcOperatorSet,
-                                    GaussianNetwork<>,
-                                    GaussianNetwork<AdjListDag>, 
-                                    SemiparametricBN<>,
-                                    SemiparametricBN<AdjListDag>>(operators, "ArcOperatorSet");
+                                                GaussianNetwork,
+                                                SemiparametricBN>(operators, "ArcOperatorSet");
     arc_set.def(py::init<std::shared_ptr<Score>&, const ArcVector&, const ArcVector&, int>(),
                 py::arg("score"),
                 py::arg("blacklist") = ArcVector(),
@@ -196,16 +191,13 @@ void pybindings_operators(py::module& root) {
 
 
     auto nodetype = register_DerivedOperatorSet<ChangeNodeTypeSet,
-                                    SemiparametricBN<>,
-                                    SemiparametricBN<AdjListDag>>(operators, "ChangeNodeTypeSet");
+                                                    SemiparametricBN>(operators, "ChangeNodeTypeSet");
     nodetype.def(py::init<std::shared_ptr<Score>&, FactorTypeVector>(), 
                  py::arg("score"),
                  py::arg("type_whitelist") = FactorTypeVector());
     
-    register_OperatorPool<GaussianNetwork<>,
-                          GaussianNetwork<AdjListDag>,
-                          SemiparametricBN<>,
-                          SemiparametricBN<AdjListDag>>(operators);
+    register_OperatorPool<GaussianNetwork,
+                          SemiparametricBN>(operators);
 
     py::class_<OperatorSetType>(operators, "OperatorSetType")
         .def_property_readonly_static("ARCS", [](const py::object&) { 

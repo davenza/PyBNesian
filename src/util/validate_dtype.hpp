@@ -3,7 +3,6 @@
 
 #include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
-#include <graph/dag.hpp>
 #include <factors/factors.hpp>
 #include <util/util_types.hpp>
 

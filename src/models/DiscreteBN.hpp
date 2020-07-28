@@ -3,24 +3,28 @@
 
 #include <models/BayesianNetwork.hpp>
 #include <factors/discrete/DiscreteFactor.hpp>
-#include <graph/dag.hpp>
 
-using graph::AdjMatrixDag;
 using factors::discrete::DiscreteFactor;
 // using models::BayesianNetworkType, models::BayesianNetwork;
 
 namespace models {
 
-    template<typename D = AdjMatrixDag>
-    class DiscreteBN : public BayesianNetwork<DiscreteBN<D>> {
+    class DiscreteBN;
+
+    template<>
+    struct BN_traits<DiscreteBN> {
+        using CPD = DiscreteFactor;
+    };
+
+    class DiscreteBN : public BayesianNetwork<DiscreteBN> {
     public:
-        using DagType = D;
-        using CPD = LinearGaussianCPD;
+        // using DagType = D;
+        using CPD = DiscreteFactor;
         DiscreteBN(const std::vector<std::string>& nodes) : 
-                                            BayesianNetwork<DiscreteBN<D>>(nodes) {}
-        DiscreteBN(const ArcVector& arcs) : BayesianNetwork<DiscreteBN<D>>(arcs) {}
+                                            BayesianNetwork<DiscreteBN>(nodes) {}
+        DiscreteBN(const ArcVector& arcs) : BayesianNetwork<DiscreteBN>(arcs) {}
         DiscreteBN(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
-                                            BayesianNetwork<DiscreteBN<D>>(nodes, arcs) {}
+                                            BayesianNetwork<DiscreteBN>(nodes, arcs) {}
 
         
         static void requires(const DataFrame& df) {
@@ -36,11 +40,7 @@ namespace models {
         }
     };
 
-    template<typename D>
-    struct BN_traits<DiscreteBN<D>> {
-        using DagType = D;
-        using CPD = DiscreteFactor;
-    };
+
 }
 
 #endif //PGM_DATASET_DISCRETEBN_HPP

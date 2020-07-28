@@ -70,9 +70,9 @@ namespace models {
     class BayesianNetworkBase {
     public:
         virtual int num_nodes() const = 0;
-        virtual int num_edges() const = 0;
-        virtual const std::vector<std::string>& nodes() const = 0;
-        virtual ArcVector edges() const = 0;
+        virtual int num_arcs() const = 0;
+        virtual std::vector<std::string> nodes() const = 0;
+        virtual ArcVector arcs() const = 0;
         virtual const std::unordered_map<std::string, int>& indices() const = 0;
         virtual bool contains_node(const std::string& name) const = 0;
         virtual const std::string& name(int node_index) const = 0;
@@ -85,20 +85,20 @@ namespace models {
         virtual std::vector<std::string> parents(const std::string& node) const = 0;
         virtual std::vector<int> parent_indices(int node_index) const = 0;
         virtual std::vector<int> parent_indices(const std::string& node) const = 0;
-        virtual std::string parents_tostring(int node_index) const = 0;
-        virtual std::string parents_tostring(const std::string& node) const = 0;
-        virtual bool has_edge(int source, int dest) const = 0;
-        virtual bool has_edge(const std::string& source, const std::string& dest) const = 0;
+        virtual std::string parents_to_string(int node_index) const = 0;
+        virtual std::string parents_to_string(const std::string& node) const = 0;
+        virtual bool has_arc(int source, int dest) const = 0;
+        virtual bool has_arc(const std::string& source, const std::string& dest) const = 0;
         virtual bool has_path(int source_index, int dest_index) const = 0;
         virtual bool has_path(const std::string& source, const std::string& dest) const = 0;
-        virtual void add_edge(int source, int dest) = 0;
-        virtual void add_edge(const std::string& source, const std::string& dest) = 0;
-        virtual bool can_add_edge(int source_index, int dest_index) const = 0;
-        virtual bool can_add_edge(const std::string& source, const std::string& dest) const = 0;
-        virtual bool can_flip_edge(int source_index, int dest_index) = 0;
-        virtual bool can_flip_edge(const std::string& source, const std::string& dest) = 0;
-        virtual void remove_edge(int source, int dest) = 0;
-        virtual void remove_edge(const std::string& source, const std::string& dest) = 0;
+        virtual void add_arc(int source, int dest) = 0;
+        virtual void add_arc(const std::string& source, const std::string& dest) = 0;
+        virtual bool can_add_arc(int source_index, int dest_index) const = 0;
+        virtual bool can_add_arc(const std::string& source, const std::string& dest) const = 0;
+        virtual bool can_flip_arc(int source_index, int dest_index) = 0;
+        virtual bool can_flip_arc(const std::string& source, const std::string& dest) = 0;
+        virtual void remove_arc(int source, int dest) = 0;
+        virtual void remove_arc(const std::string& source, const std::string& dest) = 0;
         virtual void fit(const DataFrame& df) = 0;
         virtual VectorXd logl(const DataFrame& df) const = 0;
         virtual double slogl(const DataFrame& df) const = 0;
@@ -129,6 +129,10 @@ namespace models {
         BayesianNetwork(const ArcVector& arcs);
         BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs);
 
+        void debug_status(std::ostream& os) {
+            g.debug_status(os);
+        }
+
         int num_nodes() const override {
             return g.num_nodes();
         }
@@ -137,128 +141,121 @@ namespace models {
             return g.num_arcs();
         }
 
-        const std::vector<std::string>& nodes() const override {
-            return m_nodes;
+        std::vector<std::string> nodes() const override {
+            return g.nodes();
         }
 
-        ArcVector edges() const override {
-            ArcVector res;
-            res.reserve(num_edges());
-
-            for (auto [eit, eend] = g.edges(); eit != eend; ++eit) {
-                res.push_back(std::make_pair(name(g.source(*eit)), name(g.target(*eit))));
-            }
-
-            return res;
+        ArcVector arcs() const override {
+            return g.arcs();
         }
 
         const std::unordered_map<std::string, int>& indices() const override {
-            return m_indices;
+            return g.indices();
         }
 
         bool contains_node(const std::string& name) const override {
-            return m_indices.count(name) > 0;
+            return g.contains_node(name);
         }
 
         const std::string& name(int node_index) const override {
-            return m_nodes[node_index];
+            return g.name(node_index);
         }
 
         int num_parents(int node_index) const override {
-            return num_parents(g.node(node_index));
+            return g.num_parents(node_index);
         }
 
         int num_parents(const std::string& node) const override {
-            return num_parents(m_indices.at(node));
+            return g.num_parents(node);
         }
 
         int num_children(int node_index) const override {
-            return num_children(g.node(node_index));
+            return g.num_children(node_index);
         }
 
         int num_children(const std::string& node) const override {
-            return num_children(m_indices.at(node));
+            return g.num_children(node);
         }
 
         int index(const std::string& node) const override {
-            return m_indices.at(node);
+            return g.index(node);
         }
 
         std::vector<std::string> parents(int node_index) const override {
-            return parents(g.node(node_index));
+            return g.parents(node_index);
         }
 
         std::vector<std::string> parents(const std::string& node) const override {
-            return parents(m_indices.at(node));
+            return g.parents(node);
         }
 
         std::vector<int> parent_indices(int node_index) const override {
-            return parent_indices(g.node(node_index));
+            return g.parent_indices(node_index);
         }
 
         std::vector<int> parent_indices(const std::string& node) const override {
-            return parent_indices(m_indices.at(node));
+            return g.parent_indices(node);
         }
 
-        std::string parents_tostring(int node_index) const override {
-            return parents_tostring(g.node(node_index));
+        std::string parents_to_string(int node_index) const override {
+            return g.parents_to_string(node_index);
         }
 
-        std::string parents_tostring(const std::string& node) const override {
-            return parents_tostring(m_indices.at(node));
+        std::string parents_to_string(const std::string& node) const override {
+            return g.parents_to_string(node);
         }
 
-        bool has_edge(int source, int dest) const override {
-            return has_edge(g.node(source), g.node(dest));
+        bool has_arc(int source, int target) const override {
+            return g.has_arc(source, target);
         }
 
-        bool has_edge(const std::string& source, const std::string& dest) const override {
-            return has_edge(m_indices.at(source), m_indices.at(dest));
+        bool has_arc(const std::string& source, const std::string& target) const override {
+            return g.has_arc(source, target);
         }
 
-        bool has_path(int source_index, int dest_index) const override {
-            return has_path(g.node(source_index), g.node(dest_index));
+        bool has_path(int source_index, int target_index) const override {
+            return g.has_path(source_index, target_index);
         }
         
-        bool has_path(const std::string& source, const std::string& dest) const override {
-            return has_path(m_indices.at(source), m_indices.at(dest));
+        bool has_path(const std::string& source, const std::string& target) const override {
+            return g.has_path(source, target);
         }
 
-        void add_edge(int source, int dest) override {
-            add_edge(g.node(source), g.node(dest));
+        void add_arc(int source, int target) override {
+            g.add_arc(source, target);
         }
 
-        void add_edge(const std::string& source, const std::string& dest) override {
-            add_edge(m_indices.at(source), m_indices.at(dest));
+        void add_arc(const std::string& source, const std::string& target) override {
+            g.add_arc(source, target);
         }
 
-        bool can_add_edge(int source_index, int dest_index) const override {
-            return can_add_edge(node(source_index), node(dest_index));
+        bool can_add_arc(int source_index, int target_index) const override {
+            return g.can_add_arc(source_index, target_index);
         }
 
-        bool can_add_edge(const std::string& source, const std::string& dest) const override {
-            return can_add_edge(m_indices.at(source), m_indices.at(dest));
+        bool can_add_arc(const std::string& source, const std::string& target) const override {
+            return g.can_add_arc(source, target);
         }
 
-        bool can_flip_edge(int source_index, int dest_index) override {
-            return can_flip_edge(node(source_index), node(dest_index));
+        bool can_flip_arc(int source_index, int target_index) override {
+            return g.can_flip_arc(source_index, target_index);
         }
 
-        bool can_flip_edge(const std::string& source, const std::string& dest) override {
-            return can_flip_edge(m_indices.at(source), m_indices.at(dest));
+        bool can_flip_arc(const std::string& source, const std::string& target) override {
+            return g.can_flip_arc(source, target);
         }
 
-        void remove_edge(int source, int dest) override {
-            remove_edge(g.node(source), g.node(dest));
+        void remove_arc(int source, int target) override {
+            g.remove_arc(source, target);
         }
 
-        void remove_edge(const std::string& source, const std::string& dest) override {
-            remove_edge(m_indices.at(source), m_indices.at(dest));
+        void remove_arc(const std::string& source, const std::string& target) override {
+            g.remove_arc(source, target);
         }
 
         void check_blacklist(const ArcVector& arc_blacklist) const {
             for(auto& arc : arc_blacklist) {
-                if (has_edge(arc.first, arc.second)) {
+                if (has_arc(arc.first, arc.second)) {
                     throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in blacklist,"
                                                 " but it is present in the Bayesian Network.");
                 }
@@ -267,13 +264,13 @@ namespace models {
 
         void force_whitelist(const ArcVector& arc_whitelist) {
             for(auto& arc : arc_whitelist) {
-                if (!has_edge(arc.first, arc.second)) {
-                    if (has_edge(arc.second, arc.first)) {
+                if (!has_arc(arc.first, arc.second)) {
+                    if (has_arc(arc.second, arc.first)) {
                         throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in whitelist,"
                                                     " but edge " + arc.second + " -> " + arc.first + " is present"
                                                     " in the Bayesian Network.");
                     } else {
-                        add_edge(arc.first, arc.second);
+                        add_arc(arc.first, arc.second);
                     }
                 }
             }
@@ -301,7 +298,7 @@ namespace models {
         }
 
         CPD& cpd(const std::string& node) {
-            return cpd(m_indices.at(node));
+            return cpd(g.index(node));
         }
 
         VectorXd logl(const DataFrame& df) const override;
@@ -314,86 +311,27 @@ namespace models {
         void check_fitted() const;
     private:
         DirectedGraph g;
-        std::vector<std::string> m_nodes;
-        // Change to FNV hash function?
-        std::unordered_map<std::string, int> m_indices;
         std::vector<CPD> m_cpds;
     };
 
     template<typename Derived_>
     std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn) {
         os << "Bayesian network: " << std::endl;
-        for(auto [eit, eend] = bn.g.edges(); eit != eend; ++eit)
-            os << bn.name(bn.g.source(*eit)) << " -> " << bn.name(bn.g.target(*eit)) << std::endl;
+        for(auto& [source, target] : bn.g.arcs())
+            os << source << " -> " << target << std::endl;
         return os;
     }
 
     template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size()) {
-        if (nodes.empty()) {
-            throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
-        }
-        int i = 0;
-        for (const std::string& str : nodes) {
-            m_indices.insert(std::make_pair(str, i));
-            ++i;
-        }
-    };
+    BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {};
 
     template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const ArcVector& arcs) : g(0)
-    {
-        if (arcs.empty()) {
-            throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
-        }
-
-        for (auto& arc : arcs) {
-            if (m_indices.count(arc.first) == 0) {
-                m_indices.insert(std::make_pair(arc.first, m_nodes.size()));
-                m_nodes.push_back(arc.first);
-            }
-
-            if (m_indices.count(arc.second) == 0) {
-                m_indices.insert(std::make_pair(arc.second, m_nodes.size()));
-                m_nodes.push_back(arc.second);
-            }
-        }
-
-        g = DagType(m_nodes.size());
-
-        for(auto& arc : arcs) {
-            g.add_edge(node(arc.first), node(arc.second));
-        }
-
-        g.check_acyclic();
-    };
+    BayesianNetwork<Derived>::BayesianNetwork(const ArcVector& arcs) : g(arcs), m_cpds() {};
 
     template<typename Derived>
     BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes, 
-                                              const ArcVector& edges) 
-                                                 : g(nodes.size()), m_nodes(nodes), m_indices(nodes.size())
-    {
-        if (nodes.empty()) {
-            throw std::invalid_argument("Cannot define a BayesianNetwork without nodes");
-        }
-        int i = 0;
-        for (const std::string& str : nodes) {
-            m_indices.insert(std::make_pair(str, i));
-            ++i;
-        }
-
-        for(auto edge : edges) {
-            if (m_indices.count(edge.first) == 0) throw pybind11::index_error(
-                    "Node \"" + edge.first + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
-            
-            if (m_indices.count(edge.second) == 0) throw pybind11::index_error(
-                    "Node \"" + edge.second + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
-            g.add_edge(node(edge.first), node(edge.second));
-        }
-
-        g.check_acyclic();
-    };
-
+                                              const ArcVector& arcs) 
+                                                 : g(nodes, arcs), m_cpds() {};
     template<typename Derived>
     void BayesianNetwork<Derived>::compatible_cpd(const CPD& cpd) const {
         if (!contains_node(cpd.variable())) {
@@ -411,7 +349,7 @@ namespace models {
         auto pa = parents(cpd.variable());
         if (pa.size() != evidence.size()) {
             std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
-                                + "\nParents: " + parents_tostring(cpd.variable());
+                                + "\nParents: " + parents_to_string(cpd.variable());
 
             throw std::invalid_argument(err);
         }
@@ -463,9 +401,9 @@ namespace models {
     template<typename Derived>
     void BayesianNetwork<Derived>::fit(const DataFrame& df) {
         if (m_cpds.empty()) {
-            m_cpds.reserve(m_nodes.size());
+            m_cpds.reserve(g.num_nodes());
 
-            for (auto& node : m_nodes) {
+            for (auto& node : g.nodes()) {
                 auto cpd = static_cast<Derived*>(this)->create_cpd(node);
                 m_cpds.push_back(cpd);
                 m_cpds.back().fit(df);

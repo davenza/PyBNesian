@@ -84,12 +84,8 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("max_indegree") = 0,
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,
-                py::arg("patience") = 0,
-                py::arg("dag_type") = "matrix");
+                py::arg("patience") = 0);
 
-    register_GreedyHillClimbing<GaussianNetwork<>,
-                                GaussianNetwork<AdjListDag>,
-                                SemiparametricBN<>,
-                                SemiparametricBN<AdjListDag>>(algorithms);
+    register_GreedyHillClimbing<GaussianNetwork, SemiparametricBN>(algorithms);
 
 }

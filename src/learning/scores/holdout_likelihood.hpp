@@ -16,10 +16,8 @@ using learning::operators::Operator, learning::operators::ArcOperator, learning:
 namespace learning::scores {
 
     class HoldoutLikelihood : public ScoreImpl<HoldoutLikelihood,
-                                               GaussianNetwork<>,
-                                               GaussianNetwork<AdjListDag>,
-                                               SemiparametricBN<>,
-                                               SemiparametricBN<AdjListDag>> {
+                                               GaussianNetwork,
+                                               SemiparametricBN> {
     public:
 
         HoldoutLikelihood(const DataFrame& df, double test_ratio) : m_holdout(df, test_ratio) { }

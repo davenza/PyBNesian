@@ -11,7 +11,7 @@ df = util_test.generate_normal_data(10000)
 def test_create_spbn():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 0
+    assert spbn.num_arcs() == 0
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
@@ -19,7 +19,7 @@ def test_create_spbn():
 
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', 'c')])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 1
+    assert spbn.num_arcs() == 1
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
@@ -27,7 +27,7 @@ def test_create_spbn():
 
     spbn = SemiparametricBN([('a', 'c'), ('b', 'd'), ('c', 'd')])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 3
+    assert spbn.num_arcs() == 3
     assert spbn.nodes() == ['a', 'c', 'b', 'd']
 
     for n in spbn.nodes():
@@ -44,18 +44,18 @@ def test_create_spbn():
 
     with pytest.raises(ValueError) as ex:
         spbn = SemiparametricBN([('a', 'b'), ('b', 'c'), ('c', 'a')])
-    assert "The graph must be a DAG." in str(ex.value)
+    assert "must be a DAG" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
         spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', 'b'), ('b', 'c'), ('c', 'a')])
-    assert "The graph must be a DAG." in str(ex.value)
+    assert "must be a DAG" in str(ex.value)
 
 
     expected_node_type = {'a': FactorType.CKDE, 'b': FactorType.LinearGaussianCPD, 'c': FactorType.CKDE, 'd': FactorType.LinearGaussianCPD}
 
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 0
+    assert spbn.num_arcs() == 0
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
@@ -63,7 +63,7 @@ def test_create_spbn():
 
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', 'c')], [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 1
+    assert spbn.num_arcs() == 1
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
@@ -71,7 +71,7 @@ def test_create_spbn():
 
     spbn = SemiparametricBN([('a', 'c'), ('b', 'd'), ('c', 'd')], [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 3
+    assert spbn.num_arcs() == 3
     assert spbn.nodes() == ['a', 'c', 'b', 'd']
 
     for n in spbn.nodes():
@@ -88,17 +88,17 @@ def test_create_spbn():
 
     with pytest.raises(ValueError) as ex:
         spbn = SemiparametricBN([('a', 'b'), ('b', 'c'), ('c', 'a')], [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
-    assert "The graph must be a DAG." in str(ex.value)
+    assert "must be a DAG" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
         spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', 'b'), ('b', 'c'), ('c', 'a')], [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
-    assert "The graph must be a DAG." in str(ex.value)
+    assert "must be a DAG" in str(ex.value)
 
 
 def test_node_type():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
     assert spbn.num_nodes() == 4
-    assert spbn.num_edges() == 0
+    assert spbn.num_arcs() == 0
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
@@ -138,7 +138,7 @@ def test_fit():
 
     spbn.fit(df)
     
-    spbn.remove_edge('a', 'b')
+    spbn.remove_arc('a', 'b')
 
     cpd_b = spbn.cpd('b')
     lg_b = cpd_b.as_lg()

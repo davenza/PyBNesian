@@ -14,7 +14,6 @@ using namespace dataset;
 using Eigen::VectorXd, Eigen::MatrixXd;;
 using models::GaussianNetwork, models::BayesianNetworkType;
 using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
-using graph::DagType;
 using learning::operators::OperatorSet, learning::operators::OperatorSetType, 
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
 //using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
@@ -27,14 +26,6 @@ using util::ArcVector;
 namespace learning::algorithms {
 
     using OperatorSetTypeS = std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>;
-
-    DagType check_valid_dag_string(std::string& dag_type) {
-        if (dag_type == "matrix") return DagType::MATRIX;
-        if (dag_type == "list") return DagType::LIST;
-        else
-            throw std::invalid_argument("Wrong DAG type \"" + dag_type + "\" specified. The possible alternatives are " 
-                                "\"matrix\" (Adjacency matrix) or \"list\" (Adjacency list).");
-    }
 
     BayesianNetworkType check_valid_bn_string(std::string& bn_type) {
         if (bn_type == "gbn") return BayesianNetworkType::GBN;
@@ -100,7 +91,6 @@ namespace learning::algorithms {
         }
     }
 
-    template<typename DagType>
     py::object call_hc_validated_spbn(const DataFrame& df, 
                                ArcVector arc_blacklist, 
                                ArcVector arc_whitelist, 
@@ -111,7 +101,7 @@ namespace learning::algorithms {
                                int patience,
                                OperatorSetTypeS operators) 
     {
-        using Model = SemiparametricBN<DagType>;
+        using Model = SemiparametricBN;
         auto nodes = df.column_names();
 
         Model m = Model(nodes, arc_whitelist, type_whitelist);
@@ -130,34 +120,10 @@ namespace learning::algorithms {
                                                 type_whitelist, max_indegree, max_iters, epsilon, patience));
     }
 
-    py::object call_hc_validated_spbn(const DataFrame& df, 
-                                ArcVector arc_blacklist, 
-                                ArcVector arc_whitelist,
-                                FactorTypeVector type_whitelist,
-                                int max_indegree, 
-                                int max_iters,
-                                double epsilon,
-                                int patience,
-                                DagType dag_type,
-                                OperatorSetTypeS operators) 
-    {
-        switch(dag_type) {
-            case DagType::MATRIX:
-                return call_hc_validated_spbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, type_whitelist,
-                                                     max_indegree, max_iters, epsilon, patience, operators);
-            case DagType::LIST:
-                return call_hc_validated_spbn<AdjListDag>(df, arc_blacklist, arc_whitelist, type_whitelist, 
-                                                   max_indegree, max_iters, epsilon, patience, operators);
-            default:
-                throw std::invalid_argument("Wrong DAG type!");
-        }
-    }
-
-    template<typename DagType>
     py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
                                double epsilon, int patience, OperatorSetTypeS operators) 
     {
-        using Model = GaussianNetwork<DagType>;
+        using Model = GaussianNetwork;
         auto nodes = df.column_names();
 
         Model m(nodes, arc_whitelist);
@@ -176,24 +142,10 @@ namespace learning::algorithms {
                                                 type_whitelist, max_indegree, max_iters, epsilon, patience));
     }
 
-    py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
-                               double epsilon, int patience, DagType dag_type, OperatorSetTypeS& operators) 
-    {
-        switch(dag_type) {
-            case DagType::MATRIX:
-                return call_hc_validated_gbn<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, patience, operators);
-            case DagType::LIST:
-                return call_hc_validated_gbn<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, patience, operators);
-            default:
-                throw std::invalid_argument("Wrong DAG type!");
-        }
-    }
-
-    template<typename DagType>
     py::object call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
                  double epsilon, ScoreType score_type, OperatorSetTypeS& operators) 
     {
-        using Model = GaussianNetwork<DagType>;
+        using Model = GaussianNetwork;
         auto nodes = df.column_names();
 
         Model m(nodes, arc_whitelist);
@@ -215,27 +167,13 @@ namespace learning::algorithms {
                 throw std::invalid_argument("Wrong Score type!");
         }   
     }
-
-    py::object call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree,
-                 int max_iters, double epsilon, DagType dag_type, ScoreType score_type, OperatorSetTypeS operators) 
-    {
-        switch(dag_type) {
-            case DagType::MATRIX:
-                return call_hc<AdjMatrixDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, score_type, operators);
-            case DagType::LIST:
-                return call_hc<AdjListDag>(df, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, score_type, operators);
-            default:
-                throw std::invalid_argument("Wrong DAG type!");
-        }
-    }
     
     // TODO: Include start model.
     // TODO: Include test ratio of holdout / number k-folds.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
-                  int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str) {
+                  int max_indegree, int max_iters, double epsilon, int patience) {
         
-        auto dag_type = learning::algorithms::check_valid_dag_string(dag_type_str);
         auto bn_type = learning::algorithms::check_valid_bn_string(bn_str);
         auto score_type = learning::algorithms::check_valid_score_string(score_str);
         auto operators_type = learning::algorithms::check_valid_operators_string(operators_str);
@@ -254,18 +192,18 @@ namespace learning::algorithms {
             switch(bn_type) {
                 case BayesianNetworkType::GBN: {
                     return call_hc_validated_gbn(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
-                                            epsilon, patience, dag_type, operators_type);
+                                            epsilon, patience, operators_type);
                 }
                 case BayesianNetworkType::SPBN: {
                     return call_hc_validated_spbn(df, arc_blacklist, arc_whitelist, type_whitelist, 
-                                            max_indegree, max_iters, epsilon, patience, dag_type, operators_type);
+                                            max_indegree, max_iters, epsilon, patience, operators_type);
                 }
                 default:
                     throw std::invalid_argument("Wrong BayesianNetwork type!");
             }
         } else {
             return call_hc(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
-                        epsilon, dag_type, score_type, operators_type);
+                        epsilon, score_type, operators_type);
         }
     }
 }

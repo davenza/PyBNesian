@@ -2,22 +2,26 @@
 #define PGM_DATASET_GAUSSIANNETWORK_HPP
 
 #include <models/BayesianNetwork.hpp>
-#include <graph/dag.hpp>
-
-using graph::AdjMatrixDag;
 
 namespace models {
     
-    template<typename D = AdjMatrixDag>
-    class GaussianNetwork : public BayesianNetwork<GaussianNetwork<D>> {
+    class GaussianNetwork;
+    
+    template<>
+    struct BN_traits<GaussianNetwork> {
+        using CPD = LinearGaussianCPD;
+    };
+
+    // template<typename D = AdjMatrixDag>
+    class GaussianNetwork : public BayesianNetwork<GaussianNetwork> {
     public:
-        using DagType = D;
+        // using DagType = D;
         using CPD = LinearGaussianCPD;
         GaussianNetwork(const std::vector<std::string>& nodes) : 
-                                            BayesianNetwork<GaussianNetwork<D>>(nodes) {}
-        GaussianNetwork(const ArcVector& arcs) : BayesianNetwork<GaussianNetwork<D>>(arcs) {}
+                                            BayesianNetwork<GaussianNetwork>(nodes) {}
+        GaussianNetwork(const ArcVector& arcs) : BayesianNetwork<GaussianNetwork>(arcs) {}
         GaussianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
-                                            BayesianNetwork<GaussianNetwork<D>>(nodes, arcs) {}
+                                            BayesianNetwork<GaussianNetwork>(nodes, arcs) {}
 
         
         static void requires(const DataFrame& df) {
@@ -31,12 +35,6 @@ namespace models {
         constexpr BayesianNetworkType type() const override {
             return BayesianNetworkType::GBN;
         }
-    };
-
-    template<typename D>
-    struct BN_traits<GaussianNetwork<D>> {
-        using DagType = D;
-        using CPD = LinearGaussianCPD;
     };
 }
 

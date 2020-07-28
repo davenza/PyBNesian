@@ -1,11 +1,9 @@
 #ifndef PGM_DATASET_SCORES_HPP
 #define PGM_DATASET_SCORES_HPP
 
-#include <graph/dag.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
 
-using graph::AdjListDag;
 using models::GaussianNetwork, models::SemiparametricBN;
 
 namespace learning::scores {
@@ -113,15 +111,9 @@ namespace learning::scores {
         }
     };
 
-    class Score : public ScoreInterface<GaussianNetwork<>, 
-                                        GaussianNetwork<AdjListDag>, 
-                                        SemiparametricBN<>, 
-                                        SemiparametricBN<AdjListDag>> {
+    class Score : public ScoreInterface<GaussianNetwork, SemiparametricBN> {
     public:
-        using Base = ScoreInterface<GaussianNetwork<>, 
-                                        GaussianNetwork<AdjListDag>, 
-                                        SemiparametricBN<>, 
-                                        SemiparametricBN<AdjListDag>>;
+        using Base = ScoreInterface<GaussianNetwork, SemiparametricBN>;
         using Base::score;
         using Base::local_score;
         virtual std::string ToString() const = 0;

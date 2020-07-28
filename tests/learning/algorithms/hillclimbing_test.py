@@ -17,18 +17,18 @@ def test_hc_estimate():
     hc = GreedyHillClimbing()
 
     res = hc.estimate(df, pool, start, max_iters=1)
-    assert res.num_edges() == 1
-    added_edge = res.edges()[0]
+    assert res.num_arcs() == 1
+    added_edge = res.arcs()[0]
     op_delta = bic.score(res) - bic.score(start)
 
     # BIC is score equivalent, so if we blacklist the added_edge, its reverse will be added.
     res = hc.estimate(df, pool, start, max_iters=1, arc_blacklist=[added_edge])
-    assert res.num_edges() == 1
-    reversed_edge = res.edges()[0]
+    assert res.num_arcs() == 1
+    reversed_edge = res.arcs()[0]
     assert added_edge == reversed_edge[::-1]
 
     res = hc.estimate(df, pool, start, epsilon=(op_delta + 0.01))
-    assert res.num_edges() == start.num_edges()
+    assert res.num_arcs() == start.num_arcs()
 
 def test_hc_estimate_validation():
     start = GaussianNetwork(df.columns.values)
@@ -41,15 +41,15 @@ def test_hc_estimate_validation():
     hc = GreedyHillClimbing()
 
     res = hc.estimate_validation(df, pool, holdout, start, max_iters=1)
-    assert res.num_edges() == 1
-    added_edge = res.edges()[0]
+    assert res.num_arcs() == 1
+    added_edge = res.arcs()[0]
     op_delta = cv.score(res) - cv.score(start)
 
     # CV is score equivalent for GBNs, so if we blacklist the added_edge, its reverse will be added.
     res = hc.estimate_validation(df, pool, holdout, start, max_iters=1, arc_blacklist=[added_edge])
-    assert res.num_edges() == 1
-    reversed_edge = res.edges()[0]
+    assert res.num_arcs() == 1
+    reversed_edge = res.arcs()[0]
     assert added_edge == reversed_edge[::-1]
 
     res = hc.estimate_validation(df, pool, holdout, start, epsilon=(op_delta + 0.01))
-    assert res.num_edges() == start.num_edges()
+    assert res.num_arcs() == start.num_arcs()

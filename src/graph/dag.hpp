@@ -41,7 +41,7 @@ namespace graph {
             return num_vertices(g);
         }
 
-        int num_edges() const {
+        int num_arcs() const {
             return boost::num_edges(g);
         }
 

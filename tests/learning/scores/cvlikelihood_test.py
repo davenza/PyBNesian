@@ -295,17 +295,17 @@ def test_score():
 
     cv = CVLikelihood(df, 10, 0)
 
-    assert cv.score(gbn) == (
+    assert np.isclose(cv.score(gbn), (
                             cv.local_score(gbn, 'a', []) +
                             cv.local_score(gbn, 'b', ['a']) +
                             cv.local_score(gbn, 'c', ['a', 'b']) +
-                            cv.local_score(gbn, 'd', ['a', 'b', 'c']))
+                            cv.local_score(gbn, 'd', ['a', 'b', 'c'])))
 
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')], 
                             [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
 
-    assert cv.score(spbn) == (
+    assert np.isclose(cv.score(spbn), (
                             cv.local_score(spbn, 'a') +
                             cv.local_score(spbn, 'b') +
                             cv.local_score(spbn, 'c') +
-                            cv.local_score(spbn, 'd'))
+                            cv.local_score(spbn, 'd')))

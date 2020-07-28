@@ -4,7 +4,7 @@
 #include <pybind11/pybind11.h>
 
 #include <dataset/dataset.hpp>
-#include <graph/dag.hpp>
+#include <graph/new_dag.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <util/validate_dtype.hpp>
@@ -13,7 +13,6 @@
 namespace py = pybind11; 
 
 using dataset::DataFrame;
-using graph::DagType;
 using learning::scores::Score;
 using learning::operators::Operator, learning::operators::OperatorType, learning::operators::ArcOperator, 
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorPool;
@@ -33,7 +32,7 @@ namespace learning::algorithms {
     // TODO: Include start graph.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
-                  int max_indegree, int max_iters, double epsilon, int patience, std::string dag_type_str);
+                  int max_indegree, int max_iters, double epsilon, int patience);
 
     class GreedyHillClimbing {
 
@@ -73,7 +72,6 @@ namespace learning::algorithms {
                                        double epsilon) {
         Model::requires(df);
 
-
         auto current_model = start;
         current_model.check_blacklist(arc_blacklist);
         current_model.force_whitelist(arc_whitelist);
@@ -86,15 +84,15 @@ namespace learning::algorithms {
         
         auto iter = 0;
         while(iter < max_iters) {
-
             auto best_op = op.find_max(current_model);
+
             if (!best_op || best_op->delta() <= epsilon) {
                 break;
             }
 
             best_op->apply(current_model);
+
             op.update_scores(current_model, *best_op);
-        //     // std::cout << "New op" << std::endl;
             ++iter;
         }
 

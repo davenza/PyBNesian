@@ -12,8 +12,8 @@ namespace util {
     template<typename Model>
     struct is_gaussian_network : std::false_type {};
 
-    template<typename DagType>
-    struct is_gaussian_network<GaussianNetwork<DagType>> : std::true_type {};
+    template<>
+    struct is_gaussian_network<GaussianNetwork> : std::true_type {};
 
     template<typename Model>
     inline constexpr auto is_gaussian_network_v = is_gaussian_network<Model>::value;
@@ -25,8 +25,8 @@ namespace util {
     template<typename Model>
     struct is_semiparametricbn : std::false_type {};
 
-    template<typename DagType>
-    struct is_semiparametricbn<SemiparametricBN<DagType>> : std::true_type {};
+    template<>
+    struct is_semiparametricbn<SemiparametricBN> : std::true_type {};
 
     template<typename Model>
     inline constexpr auto is_semiparametricbn_v = is_semiparametricbn<Model>::value;

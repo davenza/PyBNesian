@@ -18,7 +18,7 @@ using learning::parameters::MLE;
 namespace learning::scores {
 
 
-    class BIC : public ScoreImpl<BIC, GaussianNetwork<>, GaussianNetwork<AdjListDag>> {
+    class BIC : public ScoreImpl<BIC, GaussianNetwork> {
     public:
         BIC(const DataFrame& df) : m_df(df) {}
 

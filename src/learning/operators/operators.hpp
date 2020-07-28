@@ -12,7 +12,6 @@ using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 using VectorXb = Matrix<bool, Dynamic, 1>;
 
-using graph::AdjListDag;
 using models::BayesianNetwork, models::BayesianNetworkBase;
 using factors::FactorType;
 using learning::scores::Score;
@@ -114,7 +113,7 @@ namespace learning::operators {
                double delta) :  ArcOperator(source, target, delta, OperatorType::ADD_ARC) {}
     
         void apply(BayesianNetworkBase& m) override {
-            m.add_edge(this->source(), this->target());
+            m.add_arc(this->source(), this->target());
         }
         std::shared_ptr<Operator> opposite() override;
         std::shared_ptr<Operator> copy() const override {
@@ -132,7 +131,7 @@ namespace learning::operators {
                   double delta) : ArcOperator(source, target, delta, OperatorType::REMOVE_ARC) {}
         
         void apply(BayesianNetworkBase& m) override {
-            m.remove_edge(this->source(), this->target());
+            m.remove_arc(this->source(), this->target());
         }
         std::shared_ptr<Operator> opposite() override {
             return std::make_shared<AddArc>(this->source(), this->target(), -this->delta());
@@ -152,8 +151,8 @@ namespace learning::operators {
                 double delta) : ArcOperator(source, target, delta, OperatorType::FLIP_ARC) {}
 
         void apply(BayesianNetworkBase& m) override {
-            m.remove_edge(this->source(), this->target());
-            m.add_edge(this->target(), this->source());
+            m.remove_arc(this->source(), this->target());
+            m.add_arc(this->target(), this->source());
         }
         std::shared_ptr<Operator> opposite() override {
             return std::make_shared<FlipArc>(this->target(), this->source(), -this->delta());
@@ -443,10 +442,7 @@ namespace learning::operators {
         }
     };
 
-    class OperatorSet : public OperatorSetInterface<GaussianNetwork<>, 
-                                                    GaussianNetwork<AdjListDag>,
-                                                    SemiparametricBN<>,
-                                                    SemiparametricBN<AdjListDag>>
+    class OperatorSet : public OperatorSetInterface<GaussianNetwork, SemiparametricBN>
     {
     public:
         void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
@@ -503,10 +499,7 @@ namespace learning::operators {
     };
 
     class ArcOperatorSet : public OperatorSetImpl<ArcOperatorSet,
-                                                  GaussianNetwork<>,
-                                                  GaussianNetwork<AdjListDag>,
-                                                  SemiparametricBN<>,
-                                                  SemiparametricBN<AdjListDag>>
+                                                  GaussianNetwork, SemiparametricBN>
     {
     public:
         ArcOperatorSet(std::shared_ptr<Score>& score, 
@@ -583,12 +576,12 @@ namespace learning::operators {
             
             for (auto source = 0; source < model.num_nodes(); ++source) {
                 if(valid_op(source, dest)) {
-                    if (model.has_edge(source, dest)) {            
+                    if (model.has_arc(source, dest)) {            
                         std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
                         double d = m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - 
                                     this->m_local_cache->local_score(dest);
                         delta(source, dest) = d;
-                    } else if (model.has_edge(dest, source)) {
+                    } else if (model.has_arc(dest, source)) {
                         auto new_parents_source = model.parent_indices(source);
                         std::iter_swap(std::find(new_parents_source.begin(), new_parents_source.end(), dest), new_parents_source.end() - 1);
                         
@@ -649,16 +642,16 @@ namespace learning::operators {
             auto source = idx % model.num_nodes();
             auto dest = idx / model.num_nodes();
 
-            if(model.has_edge(source, dest)) {
+            if(model.has_arc(source, dest)) {
                 return std::make_shared<RemoveArc>(model.name(source), model.name(dest), delta(source, dest));
-            } else if (model.has_edge(dest, source) && model.can_flip_edge(dest, source)) {
+            } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
                 return std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(dest, source));
-            } else if (model.can_add_edge(source, dest)) {
+            } else if (model.can_add_arc(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
@@ -685,11 +678,11 @@ namespace learning::operators {
             auto source = idx % model.num_nodes();
             auto dest = idx / model.num_nodes();
 
-            if(model.has_edge(source, dest)) {
+            if(model.has_arc(source, dest)) {
                 std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source), model.name(dest), delta(source, dest));
                 if (!tabu_set.contains(op))
                     return std::move(op);
-            } else if (model.has_edge(dest, source) && model.can_flip_edge(dest, source)) {
+            } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
@@ -698,7 +691,7 @@ namespace learning::operators {
                 std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(dest, source));
                 if (!tabu_set.contains(op))
                     return std::move(op);
-            } else if (model.can_add_edge(source, dest)) {
+            } else if (model.can_add_arc(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
@@ -753,7 +746,7 @@ namespace learning::operators {
         for (int i = 0; i < model.num_nodes(); ++i) {
             if (valid_op(i, dest_idx)) {
 
-                if (model.has_edge(i, dest_idx)) {
+                if (model.has_arc(i, dest_idx)) {
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
                     double d = m_score->local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
                                this->m_local_cache->local_score(dest_idx);
@@ -764,7 +757,7 @@ namespace learning::operators {
 
                     delta(dest_idx, i) = d + m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end())
                                             - this->m_local_cache->local_score(i);
-                } else if (model.has_edge(dest_idx, i)) {
+                } else if (model.has_arc(dest_idx, i)) {
                     auto new_parents_i = model.parent_indices(i);
                     std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
                         
@@ -785,8 +778,7 @@ namespace learning::operators {
     }
 
     class ChangeNodeTypeSet : public OperatorSetImpl<ChangeNodeTypeSet,
-                                                     SemiparametricBN<>,
-                                                     SemiparametricBN<AdjListDag>> {
+                                                     SemiparametricBN> {
     public:
         ChangeNodeTypeSet(std::shared_ptr<Score>& score, 
                           FactorTypeVector fv = FactorTypeVector()) : m_score(score),

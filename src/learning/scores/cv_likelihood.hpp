@@ -13,10 +13,8 @@ using models::GaussianNetwork, models::SemiparametricBN;
 namespace learning::scores {
 
     class CVLikelihood : public ScoreImpl<CVLikelihood, 
-                                   GaussianNetwork<>, 
-                                   GaussianNetwork<AdjListDag>, 
-                                   SemiparametricBN<>,
-                                   SemiparametricBN<AdjListDag>>
+                                            GaussianNetwork, 
+                                            SemiparametricBN>
     {
     public:
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}

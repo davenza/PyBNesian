@@ -58,10 +58,7 @@ py::class_<Score, std::shared_ptr<Score>> register_Score(py::module& m) {
 void pybindings_scores(py::module& root) {
     auto scores = root.def_submodule("scores", "Learning scores submodule.");
 
-    register_Score<GaussianNetwork<>, 
-                   GaussianNetwork<AdjListDag>, 
-                   SemiparametricBN<>, 
-                   SemiparametricBN<AdjListDag>>(scores);
+    register_Score<GaussianNetwork, SemiparametricBN>(scores);
 
     py::class_<BIC, Score, std::shared_ptr<BIC>>(scores, "BIC")
         .def(py::init<const DataFrame&>());

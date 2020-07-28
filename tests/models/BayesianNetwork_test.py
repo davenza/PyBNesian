@@ -11,17 +11,17 @@ def test_create_bn():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
 
     assert gbn.num_nodes() == 4
-    assert gbn.num_edges() == 0
+    assert gbn.num_arcs() == 0
     assert gbn.nodes() == ['a', 'b', 'c', 'd']
 
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'c')])
     assert gbn.num_nodes() == 4
-    assert gbn.num_edges() == 1
+    assert gbn.num_arcs() == 1
     assert gbn.nodes() == ['a', 'b', 'c', 'd']
 
     gbn = GaussianNetwork([('a', 'c'), ('b', 'd'), ('c', 'd')])
     assert gbn.num_nodes() == 4
-    assert gbn.num_edges() == 3
+    assert gbn.num_arcs() == 3
     assert gbn.nodes() == ['a', 'c', 'b', 'd']
 
     with pytest.raises(TypeError) as ex:
@@ -35,11 +35,11 @@ def test_create_bn():
 
     with pytest.raises(ValueError) as ex:
         gbn = GaussianNetwork([('a', 'b'), ('b', 'c'), ('c', 'a')])
-    assert "The graph must be a DAG." in str(ex.value)
+    assert "must be a DAG" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
         gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('b', 'c'), ('c', 'a')])
-    assert "The graph must be a DAG." in str(ex.value)
+    assert "must be a DAG" in str(ex.value)
     
 def gbn_generator():
     # Test different Networks created with different constructors.
@@ -140,94 +140,94 @@ def test_parent_children():
     assert gbn.num_children('c') == 0
     assert gbn.num_children('d') == 0
 
-def test_edges():
+def test_arcs():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
 
-    assert gbn.num_edges() == 0
-    assert gbn.edges() == []
-    assert not gbn.has_edge('a', 'b')
+    assert gbn.num_arcs() == 0
+    assert gbn.arcs() == []
+    assert not gbn.has_arc('a', 'b')
 
-    gbn.add_edge('a', 'b')
-    assert gbn.num_edges() == 1
-    assert gbn.edges() == [('a', 'b')]
+    gbn.add_arc('a', 'b')
+    assert gbn.num_arcs() == 1
+    assert gbn.arcs() == [('a', 'b')]
     assert gbn.parents('b') == ['a']
     assert gbn.num_parents('b') == 1
     assert gbn.num_children('a') == 1
-    assert gbn.has_edge('a', 'b')
+    assert gbn.has_arc('a', 'b')
 
-    gbn.add_edge('b', 'c')
-    assert gbn.num_edges() == 2
-    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c')])
+    gbn.add_arc('b', 'c')
+    assert gbn.num_arcs() == 2
+    assert set(gbn.arcs()) == set([('a', 'b'), ('b', 'c')])
     assert gbn.parents('c') == ['b']
     assert gbn.num_parents('c') == 1
     assert gbn.num_children('b') == 1
-    assert gbn.has_edge('b', 'c')
+    assert gbn.has_arc('b', 'c')
     
-    gbn.add_edge('d', 'c')
-    assert gbn.num_edges() == 3
-    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c'), ('d', 'c')])
+    gbn.add_arc('d', 'c')
+    assert gbn.num_arcs() == 3
+    assert set(gbn.arcs()) == set([('a', 'b'), ('b', 'c'), ('d', 'c')])
     assert set(gbn.parents('c')) == set(['b', 'd'])
     assert gbn.num_parents('c') == 2
     assert gbn.num_children('d') == 1
-    assert gbn.has_edge('d', 'c')
+    assert gbn.has_arc('d', 'c')
 
     assert gbn.has_path('a', 'c')
     assert not gbn.has_path('a', 'd')
     assert gbn.has_path('b', 'c')
     assert gbn.has_path('d', 'c')
 
-    assert not gbn.can_add_edge('c', 'a')
+    assert not gbn.can_add_arc('c', 'a')
     # This edge exists, but virtually we consider that the addition is allowed. 
-    assert gbn.can_add_edge('b', 'c')
-    assert gbn.can_add_edge('d', 'a')
+    assert gbn.can_add_arc('b', 'c')
+    assert gbn.can_add_arc('d', 'a')
 
-    gbn.add_edge('b', 'd')
-    assert gbn.num_edges() == 4
-    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c'), ('d', 'c'), ('b', 'd')])
+    gbn.add_arc('b', 'd')
+    assert gbn.num_arcs() == 4
+    assert set(gbn.arcs()) == set([('a', 'b'), ('b', 'c'), ('d', 'c'), ('b', 'd')])
     assert gbn.parents('d') == ['b']
     assert gbn.num_parents('d') == 1
     assert gbn.num_children('b') == 2
-    assert gbn.has_edge('b', 'd')
+    assert gbn.has_arc('b', 'd')
 
     assert gbn.has_path('a', 'd')
-    assert not gbn.can_add_edge('d', 'a')
-    assert not gbn.can_flip_edge('b', 'c')
-    assert gbn.can_flip_edge('a', 'b')
+    assert not gbn.can_add_arc('d', 'a')
+    assert not gbn.can_flip_arc('b', 'c')
+    assert gbn.can_flip_arc('a', 'b')
     # This edge does not exist, but it could be flipped if it did.
-    assert gbn.can_flip_edge('d', 'a')
+    assert gbn.can_flip_arc('d', 'a')
 
     # We can add an edge twice without changes.
-    gbn.add_edge('b', 'd')
-    assert gbn.num_edges() == 4
-    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'c'), ('d', 'c'), ('b', 'd')])
+    gbn.add_arc('b', 'd')
+    assert gbn.num_arcs() == 4
+    assert set(gbn.arcs()) == set([('a', 'b'), ('b', 'c'), ('d', 'c'), ('b', 'd')])
     assert gbn.parents('d') == ['b']
     assert gbn.num_parents('d') == 1
     assert gbn.num_children('b') == 2
-    assert gbn.has_edge('b', 'd')
+    assert gbn.has_arc('b', 'd')
 
-    gbn.remove_edge('b', 'c')
-    assert gbn.num_edges() == 3
-    assert set(gbn.edges()) == set([('a', 'b'), ('d', 'c'), ('b', 'd')])
+    gbn.remove_arc('b', 'c')
+    assert gbn.num_arcs() == 3
+    assert set(gbn.arcs()) == set([('a', 'b'), ('d', 'c'), ('b', 'd')])
     assert gbn.parents('c') == ['d']
     assert gbn.num_parents('c') == 1
     assert gbn.num_children('b') == 1
-    assert not gbn.has_edge('b', 'c')
+    assert not gbn.has_arc('b', 'c')
 
-    assert gbn.can_add_edge('b', 'c')
-    assert not gbn.can_add_edge('c', 'b')
+    assert gbn.can_add_arc('b', 'c')
+    assert not gbn.can_add_arc('c', 'b')
     assert gbn.has_path('a', 'c')
     assert gbn.has_path('b', 'c')
 
-    gbn.remove_edge('d', 'c')    
-    assert gbn.num_edges() == 2
-    assert set(gbn.edges()) == set([('a', 'b'), ('b', 'd')])
+    gbn.remove_arc('d', 'c')    
+    assert gbn.num_arcs() == 2
+    assert set(gbn.arcs()) == set([('a', 'b'), ('b', 'd')])
     assert gbn.parents('c') == []
     assert gbn.num_parents('c') == 0
     assert gbn.num_children('d') == 0
-    assert not gbn.has_edge('d', 'c')
+    assert not gbn.has_arc('d', 'c')
 
-    assert gbn.can_add_edge('b', 'c')
-    assert gbn.can_add_edge('c', 'b')
+    assert gbn.can_add_arc('b', 'c')
+    assert gbn.can_add_arc('c', 'b')
     assert not gbn.has_path('a', 'c')
     assert not gbn.has_path('b', 'c')
 
@@ -248,7 +248,7 @@ def test_fit():
 
     gbn.fit(df)
     
-    gbn.remove_edge('a', 'b')
+    gbn.remove_arc('a', 'b')
 
     cpd_b = gbn.cpd('b')
     assert cpd_b.evidence != gbn.parents('b')

@@ -1,7 +1,6 @@
 #include <util/validate_dtype.hpp>
 #include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
-#include <graph/dag.hpp>
 
 namespace py = pybind11;
 

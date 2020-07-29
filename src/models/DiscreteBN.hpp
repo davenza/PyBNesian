@@ -31,7 +31,7 @@ namespace models {
             requires_discrete_data(df);
         }
 
-        std::string ToString() const {
+        std::string ToString() const override {
             return "DiscreteBN";
         }
 

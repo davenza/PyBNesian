@@ -23,7 +23,7 @@ from numpy.distutils.conv_template import process_file as process_c_file
 __version__ = '0.0.1'
 
 # os.environ['CC'] = "ccache gcc"
-os.environ['CC'] = "clang-10"
+os.environ['CC'] = "ccache clang-10"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path

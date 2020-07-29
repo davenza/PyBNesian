@@ -57,18 +57,15 @@ namespace learning::parameters {
                                                          const VarType& variable,  
                                                          EvidenceIter evidence_begin,
                                                          EvidenceIter evidence_end) {
-        
         auto [y, x1, x2] = [&df, &variable, &evidence_begin, &evidence_end]() {
            if constexpr(contains_null) {
-               auto y_bitmap = df.combined_bitmap(variable);
-               auto x_bitmap = df.combined_bitmap(evidence_begin, evidence_end);
-               auto rows = df->num_rows();
-               auto combined_bitmap = util::bit_util::combined_bitmap(y_bitmap, x_bitmap, rows);
+               auto combined_bitmap = df.combined_bitmap(variable, std::make_pair(evidence_begin, evidence_end));
                auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
                auto x1 = df.to_eigen<false, ArrowType>(combined_bitmap, *evidence_begin);
                auto x2 = df.to_eigen<false, ArrowType>(combined_bitmap, *(evidence_begin + 1));
                return std::make_tuple(std::move(y), std::move(x1), std::move(x2));
            } else {
+               static_cast<void>(evidence_end);
                auto y = df.to_eigen<false, ArrowType, contains_null>(variable);
                auto x1 = df.to_eigen<false, ArrowType, contains_null>(*evidence_begin);
                auto x2 = df.to_eigen<false, ArrowType, contains_null>(*(evidence_begin + 1));

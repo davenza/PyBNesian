@@ -32,7 +32,11 @@ namespace dataset {
         int rows_train = std::distance(begin, test_begin) + std::distance(test_end, end);
 
         NumericBuilder<ArrowType> builder;
-        builder.Resize(rows_train);
+        auto status = builder.Resize(rows_train);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
 
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
@@ -45,7 +49,12 @@ namespace dataset {
         }
 
         std::shared_ptr<arrow::Array> out;
-        builder.Finish(&out);
+        status = builder.Finish(&out);
+        
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+        
         return out;
     }
 
@@ -60,7 +69,11 @@ namespace dataset {
         int rows_train = std::distance(begin, test_begin) + std::distance(test_end, end);
 
         NumericBuilder<ArrowType> builder;
-        builder.Resize(rows_train);
+        auto status = builder.Resize(rows_train);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
 
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
@@ -81,7 +94,12 @@ namespace dataset {
         }
 
         std::shared_ptr<arrow::Array> out;
-        builder.Finish(&out);
+        status = builder.Finish(&out);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+
         return out;
     }
 
@@ -93,7 +111,11 @@ namespace dataset {
         int rows_test = std::distance(test_begin, test_end);
 
         NumericBuilder<ArrowType> builder;
-        builder.Resize(rows_test);
+        auto status = builder.Resize(rows_test);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
 
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
@@ -102,7 +124,12 @@ namespace dataset {
         }
 
         std::shared_ptr<arrow::Array> out;
-        builder.Finish(&out);
+        status = builder.Finish(&out);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+
         return out;
     }
 
@@ -114,7 +141,11 @@ namespace dataset {
         int rows_test = std::distance(test_begin, test_end);
 
         NumericBuilder<ArrowType> builder;
-        builder.Resize(rows_test);
+        auto status = builder.Resize(rows_test);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
 
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
@@ -128,7 +159,12 @@ namespace dataset {
         }
 
         std::shared_ptr<arrow::Array> out;
-        builder.Finish(&out);
+        status = builder.Finish(&out);
+
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+
         return out;
     }
 

@@ -476,6 +476,9 @@ namespace factors::continuous {
 
         bool fitted() const { return m_fitted; }
 
+        arrow::Type::type data_type() const { return m_training_type; }
+        KDEBandwidth bandwidth_type() const { return m_bselector; }
+
         void fit(const DataFrame& df);
         VectorXd logl(const DataFrame& df) const;
         double slogl(const DataFrame& df) const;

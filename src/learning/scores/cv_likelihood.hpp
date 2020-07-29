@@ -6,7 +6,7 @@
 #include <factors/factors.hpp>
 #include <learning/scores/scores.hpp>
 
-using learning::scores::ScoreImpl;
+using learning::scores::Score, learning::scores::ScoreImpl;
 using factors::FactorType;
 using models::GaussianNetwork, models::SemiparametricBN;
 

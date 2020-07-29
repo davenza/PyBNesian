@@ -28,7 +28,7 @@ namespace models {
             requires_continuous_data(df);
         }
 
-        std::string ToString() const {
+        std::string ToString() const override {
             return "GaussianNetwork";
         }
 

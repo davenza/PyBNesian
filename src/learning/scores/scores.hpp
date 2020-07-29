@@ -140,6 +140,8 @@ namespace learning::scores {
     template<typename Derived, typename Model>
     class ScoreImpl<Derived, Model> : public Score {
     public:
+        using Score::score;
+        using Score::local_score;
         double score(const Model& m) const override {
             return static_cast<const Derived*>(this)->score(m);
         }
@@ -166,6 +168,8 @@ namespace learning::scores {
     template<typename Derived, typename Model, typename... Models>
     class ScoreImpl<Derived, Model, Models...> : public ScoreImpl<Derived, Models...> {
     public:
+        using ScoreImpl<Derived, Models...>::score;
+        using ScoreImpl<Derived, Models...>::local_score;
         double score(const Model& m) const override {
             return static_cast<const Derived*>(this)->score(m);
         }

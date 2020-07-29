@@ -99,7 +99,7 @@ namespace factors::discrete {
         auto var_dictionary = std::static_pointer_cast<arrow::DictionaryArray>(var_array)->dictionary();
         auto var_names = std::static_pointer_cast<arrow::StringArray>(var_dictionary);
 
-        if (variable_values.size() != var_names->length()) 
+        if (variable_values.size() != static_cast<size_t>(var_names->length())) 
             throw std::invalid_argument("Variable " + variable + " does not contain the same categories.");
 
         for (auto j = 0; j < var_names->length(); ++j) {
@@ -231,7 +231,7 @@ namespace factors::discrete {
 
             for (auto k = 0; k < parent_configurations; ++k) {
                 double index = k*m_cardinality(0);
-                for (auto j = 0; j < m_evidence.size(); ++j) {
+                for (size_t j = 0; j < m_evidence.size(); ++j) {
                     auto assignment_index = static_cast<int>(std::floor(index / m_strides(j+1))) 
                                                                 % m_cardinality(j+1);
                     table << m_evidence_values[j][assignment_index];

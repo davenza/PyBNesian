@@ -7,7 +7,13 @@
 #include <CL/cl2.hpp>
 
 #define CL_HPP_ENABLE_EXCEPTIONS
+#ifdef CL_HPP_MINIMUM_OPENCL_VERSION
+#undef CL_HPP_MINIMUM_OPENCL_VERSION
+#endif
 #define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#ifdef CL_HPP_TARGET_OPENCL_VERSION
+#undef CL_HPP_TARGET_OPENCL_VERSION
+#endif
 #define CL_HPP_TARGET_OPENCL_VERSION 120
 
 namespace opencl {
@@ -104,14 +110,14 @@ namespace opencl {
             auto reduction_buffers = create_reduction1d_buffers<ArrowType>(input_length);
             cl::Buffer output = new_buffer<typename ArrowType::c_type>(1);
             reduction1d<ArrowType, SumReduction<ArrowType>>(input_vec, input_length, reduction_buffers, output, 0);
-            return std::move(output);
+            return output;
         }
 
         template<typename ArrowType>
         cl::Buffer sum1d(cl::Buffer& input_vec, int input_length, std::vector<cl::Buffer>& reduc_buffers) {
             cl::Buffer output = new_buffer<typename ArrowType::c_type>(1);
             reduction1d<ArrowType, SumReduction<ArrowType>>(input_vec, input_length, reduc_buffers, output, 0);
-            return std::move(output);
+            return output;
         }
 
         template<typename ArrowType>
@@ -170,7 +176,7 @@ namespace opencl {
                                      opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
-        return std::move(b);
+        return b;
     }
 
     template<typename T>
@@ -195,7 +201,7 @@ namespace opencl {
                                                  opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
-        return std::move(b);
+        return b;
     }
 
     template<typename T>
@@ -210,7 +216,7 @@ namespace opencl {
                                                  opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
-        return std::move(b);
+        return b;
     }
 
     template<typename ArrowType>

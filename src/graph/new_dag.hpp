@@ -88,7 +88,7 @@ namespace graph {
             m_nodes.reserve(nodes.size());
             m_roots.reserve(nodes.size());
             m_leaves.reserve(nodes.size());
-            for (int i = 0; i < nodes.size(); ++i) {
+            for (size_t i = 0; i < nodes.size(); ++i) {
                 Node n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
@@ -130,7 +130,7 @@ namespace graph {
             m_nodes.reserve(nodes.size());
             m_roots.reserve(nodes.size());
             m_leaves.reserve(nodes.size());
-            for (int i = 0; i < nodes.size(); ++i) {
+            for (size_t i = 0; i < nodes.size(); ++i) {
                 Node n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
@@ -444,7 +444,7 @@ namespace graph {
         }
 
         bool is_valid(int idx) const {
-            return idx >= 0 && idx < m_nodes.size() && m_nodes[idx].is_valid();
+            return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
         }
 
         void check_valid_indices(int idx) const {

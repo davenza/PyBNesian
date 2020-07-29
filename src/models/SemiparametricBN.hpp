@@ -61,19 +61,19 @@ namespace models {
             requires_continuous_data(df);
         }
 
-        FactorType node_type(int node_index) const {
+        FactorType node_type(int node_index) const override {
             return m_factor_types[node_index];
         }
 
-        FactorType node_type(const std::string& node) const {
+        FactorType node_type(const std::string& node) const override {
             return node_type(this->index(node));
         }
 
-        void set_node_type(int node_index, FactorType new_type) {
+        void set_node_type(int node_index, FactorType new_type) override {
             m_factor_types[node_index] = new_type;
         }
 
-        void set_node_type(const std::string& node, FactorType new_type) {
+        void set_node_type(const std::string& node, FactorType new_type) override {
             set_node_type(this->index(node), new_type);
         }
 
@@ -112,7 +112,7 @@ namespace models {
             }
         }
 
-        std::string ToString() const {
+        std::string ToString() const override {
             return "SemiparametricBN";
         }
 

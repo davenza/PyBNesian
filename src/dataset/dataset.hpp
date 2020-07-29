@@ -692,12 +692,18 @@ namespace dataset {
     }
 
     inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
-        b.AddField(rb->schema()->field(i));
+        auto status = b.AddField(rb->schema()->field(i));
+        if (!status.ok()) {
+            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
+        }
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
     void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const StringType name) {
-        b.AddField(rb->schema()->GetFieldByName(name));
+        auto status = b.AddField(rb->schema()->GetFieldByName(name));
+        if (!status.ok()) {
+            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
+        }
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
@@ -732,7 +738,11 @@ namespace dataset {
     template<typename StringType, util::enable_if_stringable_t<StringType, int>>
     DataFrame DataFrame::loc(const StringType& name) const {
         arrow::SchemaBuilder b;
-        b.AddField(m_batch->schema()->GetFieldByName(name));
+        auto status = b.AddField(m_batch->schema()->GetFieldByName(name));
+        if (!status.ok()) {
+            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
+        }
+
         auto r = b.Finish();
         if (!r.ok()) {
             throw std::domain_error("Schema could not be created for column " + name);

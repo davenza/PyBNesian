@@ -68,8 +68,10 @@ namespace dataset {
         using arrow::internal::BitmapWordAlign;
 
         NumericBuilder<ArrowType> builder;
-
-        builder.Resize(n_rows);
+        auto status = builder.Resize(n_rows);
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
 
         auto bitmap_data = bitmap->data();
         const auto p = BitmapWordAlign<8>(bitmap_data, 0, n_rows);
@@ -89,7 +91,10 @@ namespace dataset {
             for(const uint64_t* i = u64_bitmap; i < end; ++i, offset += 64) {
 
                 if (*i == 0xFFFFFFFFFFFFFFFF) {
-                    builder.AppendValues(ar->raw_values() + offset, 64);
+                    status = builder.AppendValues(ar->raw_values() + offset, 64);
+                    if (!status.ok()) {
+                        throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+                    }
                 } else {
                     auto u8_buf = bitmap_data + (i-u64_bitmap)*8;
                     for(int64_t j = 0; j < 64; ++j) {
@@ -108,7 +113,11 @@ namespace dataset {
         }
 
         std::shared_ptr<Array> out;
-        builder.Finish(&out);
+        status = builder.Finish(&out);
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+        
         return out;
     }
 
@@ -202,11 +211,16 @@ case Type::TypeID:                                                              
 
     DataFrame DataFrame::loc(int i) const {
         arrow::SchemaBuilder b;
-        b.AddField(m_batch->schema()->field(i));
+        auto status = b.AddField(m_batch->schema()->field(i));
+        if (!status.ok()) {
+            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
+        }
+
         auto r = b.Finish();
         if (!r.ok()) {
             throw std::domain_error("Schema could not be created for column index " + std::to_string(i));
         }
+        
         Array_vector c = { m_batch->column(i) };
         return RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), c);
     }

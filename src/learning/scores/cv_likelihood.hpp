@@ -95,7 +95,8 @@ namespace learning::scores {
         CrossValidation m_cv;
     };
 
-    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+
+    template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int>>
     double CVLikelihood::local_score(const Model&,
                                      const VarType& variable, 
                                      const EvidenceIter evidence_begin,

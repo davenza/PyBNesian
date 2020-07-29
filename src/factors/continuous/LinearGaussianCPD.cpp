@@ -6,11 +6,10 @@
 #include <util/bit_util.hpp>
 #include <util/math_constants.hpp>
 #include <Eigen/Dense>
-#include <learning/parameters/mle.hpp>
+#include <learning/parameters/mle_LinearGaussianCPD.hpp>
 
 
 namespace py = pybind11;
-namespace pyarrow = arrow::py;
 
 using arrow::Type;
 using Eigen::Matrix, Eigen::Array, Eigen::Dynamic, Eigen::Map, Eigen::MatrixBase;

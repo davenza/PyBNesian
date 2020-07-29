@@ -116,7 +116,7 @@ namespace models {
             return "SemiparametricBN";
         }
 
-        constexpr BayesianNetworkType type() const override {
+        BayesianNetworkType type() const override {
             return BayesianNetworkType::SPBN;
         }
 

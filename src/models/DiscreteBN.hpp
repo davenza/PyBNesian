@@ -35,7 +35,7 @@ namespace models {
             return "DiscreteBN";
         }
 
-        constexpr BayesianNetworkType type() const override {
+        BayesianNetworkType type() const override {
             return BayesianNetworkType::DISCRETEBN;
         }
     };

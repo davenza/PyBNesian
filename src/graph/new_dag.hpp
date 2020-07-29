@@ -22,21 +22,6 @@ namespace graph {
                                                 m_parents(parents), 
                                                 m_children(children) {}
         
-        void debug_status(std::ostream& os) const {
-            os << "[" << m_idx << ", " << m_name << "] parents: [";
-
-            for (auto parent : m_parents) {
-                os << parent << ", ";
-            }
-            
-            os << "]; children: [";
-
-            for (auto children : m_children) {
-                os << children << ", ";
-            }
-            os << "]" << std::endl;
-        }
-
         const std::string& name() const {
             return m_name;
         }
@@ -90,22 +75,6 @@ namespace graph {
         std::unordered_set<int> m_children;
     };
 
-    // class Arc {
-    // public:
-    //     Arc(int source, int target) : m_source(source), m_target(target) {}
-
-    //     int source() const {
-    //         return m_source;
-    //     }
-
-    //     int target() const {
-    //         return m_target;
-    //     }
-    // private:
-    //     int m_source;
-    //     int m_target;
-    // };
-
     class DirectedGraph {
     public:
         DirectedGraph() : m_nodes(), m_num_arcs(0), m_indices(), m_roots(), m_leaves(), free_indices() {}
@@ -148,7 +117,7 @@ namespace graph {
                 }
             }
 
-            is_dag();
+            topological_sort();
         }
 
         DirectedGraph(const std::vector<std::string>& nodes, 
@@ -179,45 +148,9 @@ namespace graph {
                 add_arc(arc.first, arc.second);
             }
 
-            is_dag();
+            topological_sort();
         }
 
-        void debug_status(std::ostream& os) const {
-            os << "Directed Graph" << std::endl;
-            os << "Nodes:" << std::endl;
-
-            for (const auto& n : m_nodes) {
-                n.debug_status(os);
-            }
-
-            os << "Num arcs: " << m_num_arcs << std::endl;
-
-            os << "Indices: ";
-            for (const auto& in : m_indices) {
-                os << "(" << in.first << ", " << in.second << "), ";
-            }
-            os << std::endl;
-
-            os << "Roots: ";
-            for (const auto r : m_roots) {
-                os << m_nodes[r].name() << ", ";
-            }
-            os << std::endl;
-
-
-            os << "Leaves: ";
-            for (const auto l : m_leaves) {
-                os << m_nodes[l].name() << ", ";
-            }
-            os << std::endl;
-
-            os << "Free indices: ";
-            for (const auto f : free_indices) {
-                os << f << ", ";
-            }
-            os << std::endl;
-        }
-        
         const std::unordered_set<int>& roots() const {
             return m_roots;
         }
@@ -570,8 +503,12 @@ namespace graph {
         }
 
         bool is_dag() const {
-            topological_sort();
-            return true;
+            try {
+                topological_sort();
+                return true;
+            } catch(std::invalid_argument) {
+                return false;
+            }
         }
 
     private:

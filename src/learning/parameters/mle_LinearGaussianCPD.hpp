@@ -2,7 +2,7 @@
 #define PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
-#include <learning/parameters/mle.hpp>
+#include <learning/parameters/mle_base.hpp>
 
 using factors::continuous::LinearGaussianCPD;
 

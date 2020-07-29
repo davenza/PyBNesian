@@ -128,11 +128,7 @@ namespace models {
         BayesianNetwork(const std::vector<std::string>& nodes);
         BayesianNetwork(const ArcVector& arcs);
         BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs);
-
-        void debug_status(std::ostream& os) {
-            g.debug_status(os);
-        }
-
+        
         int num_nodes() const override {
             return g.num_nodes();
         }

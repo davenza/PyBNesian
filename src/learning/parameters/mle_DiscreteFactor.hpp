@@ -2,7 +2,7 @@
 #define PGM_DATASET_MLE_DISCRETEFACTOR_HPP
 
 #include <factors/discrete/DiscreteFactor.hpp>
-#include <learning/parameters/mle.hpp>
+#include <learning/parameters/mle_base.hpp>
 #include <util/bit_util.hpp>
 
 using arrow::Array;

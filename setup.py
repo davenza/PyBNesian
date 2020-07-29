@@ -22,7 +22,8 @@ from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.0.1'
 
-os.environ['CC'] = "ccache gcc"
+# os.environ['CC'] = "ccache gcc"
+os.environ['CC'] = "clang-10"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -40,6 +41,16 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 import pyarrow as pa
+
+# https://stackoverflow.com/questions/49266003/setuptools-build-shared-libary-from-c-code-then-build-cython-wrapper-linked
+ext_lib_path = 'lib/libfort'
+sources = ['fort.c']
+ext_libraries = [['fort', {
+               'sources': [os.path.join(ext_lib_path, src) for src in sources],
+               'include_dirs': [ext_lib_path],
+               'extra_compile_args': ['-D_GLIBCXX_USE_CXX11_ABI=0']
+               }
+]]
 
 ext_modules = [
     Extension(
@@ -68,9 +79,8 @@ ext_modules = [
          'src/learning/algorithms/hillclimbing.cpp',
          'src/graph/new_dag.cpp',
          'src/models/BayesianNetwork.cpp',
-         'src/models/NewBayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
-         'lib/libfort/fort.c'
+        #  'lib/libfort/fort.c'
          ],
         include_dirs=[
         #     # Path to pybind11 headers
@@ -83,7 +93,7 @@ ext_modules = [
             "lib/libfort",
             # "lib/OpenCL"
         ],
-        libraries=pa.get_libraries() + ["OpenCL"],
+        libraries=pa.get_libraries() + ["OpenCL"] + ["fort"],
         library_dirs=pa.get_library_dirs(),
         language='c++',
         # Included as isystem to avoid errors in arrow headers.
@@ -161,15 +171,17 @@ class BuildExt(build_ext):
         opts = self.c_opts.get(ct, [])
         link_opts = self.l_opts.get(ct, [])
         # Include this because the name mangling affects to find the pyarrow functions.
-        print("extra " + str(opts))
         opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")
-        # opts.append("-Werror")
-        opts.append("-Wall")
-        opts.append("-Wextra")
-        opts.append("-Wno-error=unused-variable")
+        # opts.append("-ferror-limit=1")
+
+        # opts.append("-Wall")
+        # opts.append("-Wextra")
+        # opts.append("-Wno-error=unused-variable")
         opts.append("-march=native")
         opts.append("-fdiagnostics-color=always")
-        # opts.append("-O0")
+
+        # This reduces the binary size because it removes the debug symbols. Check strip command to create release builds.
+        # opts.append("-g0")
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
             opts.append(cpp_flag(self.compiler))
@@ -178,7 +190,6 @@ class BuildExt(build_ext):
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
-            print("Other extra " + str(ext.extra_compile_args))
             ext.extra_compile_args.extend(opts)
             ext.extra_link_args.extend(link_opts)
         build_ext.build_extensions(self)
@@ -192,6 +203,7 @@ setup(
     description='A test project using pybind11',
     long_description='',
     ext_modules=ext_modules,
+    libraries=ext_libraries,
     setup_requires=['pybind11>=2.4', 'pyarrow'],
     install_requires=['pybind11>=2.4', 'pyarrow'],
     cmdclass={'build_ext': BuildExt},

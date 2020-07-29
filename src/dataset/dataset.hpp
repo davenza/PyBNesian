@@ -624,7 +624,7 @@ namespace dataset {
         std::shared_ptr<RecordBatch> m_batch;
     };
 
-    template<typename T, util::enable_if_index_container_t<T, int> = 0>
+    template<typename T, util::enable_if_index_container_t<T, int>>
     Array_vector DataFrame::indices_to_columns(const T cols) const {
         Array_vector v;
         v.reserve(cols.size());
@@ -639,7 +639,7 @@ namespace dataset {
         return v;    
     }
 
-    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
     Array_vector DataFrame::indices_to_columns(const IndexIter begin, const IndexIter end) const {
         Array_vector v;
         v.reserve(std::distance(begin, end));
@@ -729,7 +729,7 @@ namespace dataset {
         return cols;
     }
 
-    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+    template<typename StringType, util::enable_if_stringable_t<StringType, int>>
     DataFrame DataFrame::loc(const StringType& name) const {
         arrow::SchemaBuilder b;
         b.AddField(m_batch->schema()->GetFieldByName(name));
@@ -741,7 +741,8 @@ namespace dataset {
         return RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), c);
     }
 
-    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
     DataFrame DataFrame::loc(const IndexIter begin, const IndexIter end) const {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
         Array_vector new_cols;

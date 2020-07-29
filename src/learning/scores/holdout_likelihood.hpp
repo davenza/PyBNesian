@@ -99,7 +99,7 @@ namespace learning::scores {
         HoldOut m_holdout;
     };
 
-    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
+    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int>>
     double HoldoutLikelihood::local_score(const Model&,
                                           const VarType& variable, 
                                           const EvidenceIter evidence_begin, 

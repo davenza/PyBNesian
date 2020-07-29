@@ -32,7 +32,7 @@ namespace models {
             return "GaussianNetwork";
         }
 
-        constexpr BayesianNetworkType type() const override {
+        BayesianNetworkType type() const override {
             return BayesianNetworkType::GBN;
         }
     };

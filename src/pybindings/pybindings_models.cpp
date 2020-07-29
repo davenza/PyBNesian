@@ -14,9 +14,6 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
     std::string base_name = std::string("BayesianNetwork<") + derivedbn_name + ">";
     // TODO: Implement copy operation.
     py::class_<BaseClass, BayesianNetworkBase>(m, base_name.c_str())
-        .def("debug_status", [](BaseClass& self) {
-            self.debug_status(std::cout);
-        })
         .def("num_nodes", &BaseClass::num_nodes)
         .def("num_arcs", &BaseClass::num_arcs)
         .def("nodes", &BaseClass::nodes, py::return_value_policy::take_ownership)

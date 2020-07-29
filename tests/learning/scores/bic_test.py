@@ -104,9 +104,9 @@ def test_score():
     
     bic = BIC(df)
     
-    assert bic.score(gbn) == (bic.local_score(gbn, 'a', []) + 
+    assert np.isclose(bic.score(gbn), (bic.local_score(gbn, 'a', []) + 
                               bic.local_score(gbn, 'b', ['a']) + 
                               bic.local_score(gbn, 'c', ['a', 'b']) +
-                              bic.local_score(gbn, 'd', ['a', 'b', 'c']))
+                              bic.local_score(gbn, 'd', ['a', 'b', 'c'])))
 
 

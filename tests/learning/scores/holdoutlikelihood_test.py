@@ -247,17 +247,17 @@ def test_score():
 
     hl = HoldoutLikelihood(df, 0.2, 0)
 
-    assert hl.score(gbn) == (
+    assert np.isclose(hl.score(gbn), (
                             hl.local_score(gbn, 'a', []) +
                             hl.local_score(gbn, 'b', ['a']) +
                             hl.local_score(gbn, 'c', ['a', 'b']) +
-                            hl.local_score(gbn, 'd', ['a', 'b', 'c']))
+                            hl.local_score(gbn, 'd', ['a', 'b', 'c'])))
 
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')], 
                             [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
 
-    assert hl.score(spbn) == (
+    assert np.isclose(hl.score(spbn), (
                             hl.local_score(spbn, 'a') +
                             hl.local_score(spbn, 'b') +
                             hl.local_score(spbn, 'c') +
-                            hl.local_score(spbn, 'd'))
+                            hl.local_score(spbn, 'd')))

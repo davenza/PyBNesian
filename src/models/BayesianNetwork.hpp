@@ -69,6 +69,7 @@ namespace models {
 
     class BayesianNetworkBase {
     public:
+        virtual ~BayesianNetworkBase() = default;
         virtual int num_nodes() const = 0;
         virtual int num_arcs() const = 0;
         virtual std::vector<std::string> nodes() const = 0;
@@ -120,15 +121,11 @@ namespace models {
     public:
         // using DagType = typename BN_traits<Derived>::DagType;
         using CPD = typename BN_traits<Derived>::CPD;
-        // using node_descriptor = typename DagType::node_descriptor;
-        // using edge_descriptor = typename DagType::edge_descriptor;
-
-        // using node_iterator_t = typename DagType::node_iterator_t;
 
         BayesianNetwork(const std::vector<std::string>& nodes);
         BayesianNetwork(const ArcVector& arcs);
         BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs);
-        
+
         int num_nodes() const override {
             return g.num_nodes();
         }

@@ -506,7 +506,7 @@ namespace graph {
             try {
                 topological_sort();
                 return true;
-            } catch(std::invalid_argument) {
+            } catch(std::invalid_argument&) {
                 return false;
             }
         }

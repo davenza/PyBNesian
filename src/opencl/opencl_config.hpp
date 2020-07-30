@@ -331,7 +331,7 @@ namespace opencl {
         m_queue.enqueueNDRangeKernel(k_reduction, cl::NullRange,  cl::NDRange(global_size, input_cols), cl::NDRange(local_size, 1));
 
         if (num_groups == 1)
-            return std::move(res);
+            return res;
 
         update_reduction_status(length, num_groups, local_size, global_size, m_max_local_size);
 
@@ -352,7 +352,7 @@ namespace opencl {
         k_reduction.setArg(3, res);
 
         m_queue.enqueueNDRangeKernel(k_reduction, cl::NullRange,  cl::NDRange(global_size, input_cols), cl::NDRange(local_size, 1));
-        return std::move(res);
+        return res;
     }
 
     template<typename ArrowType, typename Reduction>

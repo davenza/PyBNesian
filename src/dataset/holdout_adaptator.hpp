@@ -113,7 +113,7 @@ namespace dataset {
     public:
         HoldOut(const DataFrame& df, double test_ratio, bool include_null = false) : 
                                                     HoldOut(df, test_ratio, std::random_device{}(), include_null) { }
-        HoldOut(const DataFrame& df, double test_ratio, int seed, bool include_null = false) :
+        HoldOut(const DataFrame& df, double test_ratio, long unsigned int seed, bool include_null = false) :
                                                                 m_seed(seed)
         {
             if (test_ratio <= 0 || test_ratio >= 1.0) {
@@ -160,7 +160,7 @@ namespace dataset {
     private:
         DataFrame m_train_df;
         DataFrame m_test_df;
-        int m_seed;
+        long unsigned int m_seed;
     };
 }
 

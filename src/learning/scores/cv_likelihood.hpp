@@ -17,8 +17,12 @@ namespace learning::scores {
                                             SemiparametricBN>
     {
     public:
+        using Base = ScoreImpl<CVLikelihood, GaussianNetwork, SemiparametricBN>;
+        using Base::score;
+        using Base::local_score;
+
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
-        CVLikelihood(const DataFrame& df, int k, int seed) : m_cv(df, k, seed) {}
+        CVLikelihood(const DataFrame& df, int k, long unsigned int seed) : m_cv(df, k, seed) {}
 
         template<typename Model>
         double score(const Model& model) const {
@@ -36,6 +40,7 @@ namespace learning::scores {
             return local_score(model, variable, parents.begin(), parents.end());
         }
         
+            // FIXME: This template is not needed now. Use just type GaussianNetwork.
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int> = 0>
         double local_score(const Model& model, 
                            const VarType& variable, 
@@ -50,6 +55,7 @@ namespace learning::scores {
             return local_score<>(variable_type, variable, parents.begin(), parents.end());
         }
 
+        // FIXME: This template is not needed now. Use just type SemiparametricBN.
         template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
         double local_score(const Model& model, 
                            const VarType& variable, 
@@ -59,7 +65,7 @@ namespace learning::scores {
             return local_score<>(variable_type, variable, evidence_begin, evidence_end);
         }
 
-        double local_score(FactorType variable_type, const int variable, 
+        double local_score(FactorType variable_type, int variable, 
                                    const typename std::vector<int>::const_iterator evidence_begin, 
                                    const typename std::vector<int>::const_iterator evidence_end) const override {
             return local_score<>(variable_type, variable, evidence_begin, evidence_end);
@@ -95,13 +101,11 @@ namespace learning::scores {
         CrossValidation m_cv;
     };
 
-
     template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int>>
     double CVLikelihood::local_score(const Model&,
                                      const VarType& variable, 
                                      const EvidenceIter evidence_begin,
                                      const EvidenceIter evidence_end) const {
-        
         LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
         double loglik = 0;
         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {

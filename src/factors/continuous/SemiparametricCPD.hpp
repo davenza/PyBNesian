@@ -37,7 +37,7 @@ namespace factors::continuous {
         LinearGaussianCPD& as_lg() {
             try {
                 return std::get<LinearGaussianCPD>(m_cpd);
-            } catch(std::bad_variant_access) {
+            } catch(std::bad_variant_access&) {
                 throw py::value_error("The SemiparametricBN is not a LinearGaussianCPD");
             }
         }
@@ -45,7 +45,7 @@ namespace factors::continuous {
         CKDE& as_ckde() {
             try {
                 return std::get<CKDE>(m_cpd);
-            } catch(std::bad_variant_access) {
+            } catch(std::bad_variant_access&) {
                 throw py::value_error("The SemiparametricBN is not a CKDE");
             }
         }

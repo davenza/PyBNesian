@@ -5,7 +5,7 @@
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
-#include <learning/parameters/mle.hpp>
+#include <learning/parameters/mle_LinearGaussianCPD.hpp>
 #include <util/math_constants.hpp>
 #include <util/bn_traits.hpp>
 

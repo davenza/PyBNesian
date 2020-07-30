@@ -15,7 +15,7 @@ namespace pybindings::learning::parameters {
             case FactorType::LinearGaussianCPD: {
                 auto* mle = new MLE<LinearGaussianCPD>();
                 auto pyobject = py::cast(mle);
-                return std::move(pyobject);
+                return pyobject;
             }
             default:
                 throw std::invalid_argument("MLE not available for FactorType " + f.ToString());

@@ -3,6 +3,7 @@
 #include <pybindings/pybindings_learning/pybindings_mle.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <learning/parameters/mle_base.hpp>
+#include <learning/parameters/mle_LinearGaussianCPD.hpp>
 
 namespace py = pybind11;
 

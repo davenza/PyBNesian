@@ -73,6 +73,7 @@ namespace learning::operators {
     class Operator {
     public:
         Operator(double delta, OperatorType type) : m_delta(delta), m_type(type) {}
+        virtual ~Operator() {};
 
         virtual void apply(BayesianNetworkBase& m) = 0;
         virtual std::shared_ptr<Operator> opposite() = 0;
@@ -111,7 +112,7 @@ namespace learning::operators {
         AddArc(std::string source, 
                std::string target,
                double delta) :  ArcOperator(source, target, delta, OperatorType::ADD_ARC) {}
-    
+
         void apply(BayesianNetworkBase& m) override {
             m.add_arc(this->source(), this->target());
         }
@@ -129,7 +130,7 @@ namespace learning::operators {
         RemoveArc(std::string source, 
                   std::string target,
                   double delta) : ArcOperator(source, target, delta, OperatorType::REMOVE_ARC) {}
-        
+
         void apply(BayesianNetworkBase& m) override {
             m.remove_arc(this->source(), this->target());
         }
@@ -445,6 +446,13 @@ namespace learning::operators {
     class OperatorSet : public OperatorSetInterface<GaussianNetwork, SemiparametricBN>
     {
     public:
+        using Base = OperatorSetInterface<GaussianNetwork, SemiparametricBN>;
+        using Base::cache_scores;
+        using Base::find_max;
+        using Base::update_scores;
+
+        virtual ~OperatorSet() {};
+
         void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
             m_local_cache = score_cache;
         }
@@ -466,17 +474,21 @@ namespace learning::operators {
     template<typename Derived, typename Model>
     class OperatorSetImpl<Derived, Model>  : public OperatorSet {
     public:
+        using Base = OperatorSet;
+        using Base::cache_scores;
+        using Base::find_max;
+        using Base::update_scores;
         void cache_scores(Model& m) override {
-            static_cast<Derived*>(this)->cache_scores(m);
+            static_cast<Derived*>(this)->template cache_scores<>(m);
         }
         std::shared_ptr<Operator> find_max(Model& m) override {
-            return static_cast<Derived*>(this)->find_max(m);
+            return static_cast<Derived*>(this)->template find_max<>(m);
         }
         std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet& tabu) override {
-            return static_cast<Derived*>(this)->find_max(m, tabu);
+            return static_cast<Derived*>(this)->template find_max<>(m, tabu);
         }
         void update_scores(Model& m, Operator& op) override {
-            static_cast<Derived*>(this)->update_scores(m, op);
+            static_cast<Derived*>(this)->template update_scores<>(m, op);
         }
     };
 
@@ -484,17 +496,21 @@ namespace learning::operators {
     class OperatorSetImpl<Derived, Model, Models...> : 
                 public OperatorSetImpl<Derived,Models...> {
     public:
+        using Base = OperatorSetImpl<Derived,Models...>;
+        using Base::cache_scores;
+        using Base::find_max;
+        using Base::update_scores;
         void cache_scores(Model& m) override {
-            static_cast<Derived*>(this)->cache_scores(m);
+            static_cast<Derived*>(this)->template cache_scores<>(m);
         }
         std::shared_ptr<Operator> find_max(Model& m) override {
-            return static_cast<Derived*>(this)->find_max(m);
+            return static_cast<Derived*>(this)->template find_max<>(m);
         }
         std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet& tabu) override {
-            return static_cast<Derived*>(this)->find_max(m, tabu);
+            return static_cast<Derived*>(this)->template find_max<>(m, tabu);
         }
         void update_scores(Model& m, Operator& op) override {
-            static_cast<Derived*>(this)->update_scores(m, op);
+            static_cast<Derived*>(this)->template update_scores<>(m, op);
         }
     };
 
@@ -681,7 +697,7 @@ namespace learning::operators {
             if(model.has_arc(source, dest)) {
                 std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source), model.name(dest), delta(source, dest));
                 if (!tabu_set.contains(op))
-                    return std::move(op);
+                    return op;
             } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
@@ -690,7 +706,7 @@ namespace learning::operators {
                 }
                 std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(dest, source));
                 if (!tabu_set.contains(op))
-                    return std::move(op);
+                    return op;
             } else if (model.can_add_arc(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
@@ -699,7 +715,7 @@ namespace learning::operators {
                 }
                 std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source), model.name(dest), delta(source, dest));
                 if (!tabu_set.contains(op))
-                    return std::move(op);
+                    return op;
             }
         }
 
@@ -911,7 +927,7 @@ namespace learning::operators {
             auto node_type = model.node_type(idx_max);
             std::shared_ptr<Operator> op = std::make_shared<ChangeNodeType>(model.name(idx_max), node_type.opposite(), delta(idx_max));
             if (tabu_set.contains(op))
-                return std::move(op);
+                return op;
 
         }
 

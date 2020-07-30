@@ -67,7 +67,7 @@ void pybindings_scores(py::module& root) {
         .def(py::init<const DataFrame&, int>(),
                 py::arg("df"),
                 py::arg("k") = 10)
-        .def(py::init<const DataFrame&, int, int>(),
+        .def(py::init<const DataFrame&, int, long unsigned int>(),
                 py::arg("df"),
                 py::arg("k") = 10,
                 py::arg("seed"))
@@ -77,7 +77,7 @@ void pybindings_scores(py::module& root) {
         .def(py::init<const DataFrame&, double>(),
                 py::arg("df"),
                 py::arg("test_ratio") = 0.2)
-        .def(py::init<const DataFrame&, double, int>(),
+        .def(py::init<const DataFrame&, double, long unsigned int>(),
                 py::arg("df"),
                 py::arg("test_ratio") = 0.2,
                 py::arg("seed"))

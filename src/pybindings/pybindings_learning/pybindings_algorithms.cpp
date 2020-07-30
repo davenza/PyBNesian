@@ -8,7 +8,7 @@ using learning::operators::OperatorPool;
 using learning::algorithms::GreedyHillClimbing;
 
 template<typename Model, typename... Models>
-py::class_<OperatorPool> register_GreedyHillClimbing(py::module& m) {
+py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
     auto hc = [&m]() {
         if constexpr (sizeof...(Models) == 0) {
             py::class_<GreedyHillClimbing> hc(m, "GreedyHillClimbing");

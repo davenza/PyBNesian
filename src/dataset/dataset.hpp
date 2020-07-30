@@ -100,7 +100,7 @@ namespace dataset {
             m_ptr = fill_data_bitmap<ArrowType>(m_ptr, *it, bitmap_data, rows);
         }
 
-        return std::move(m);
+        return m;
     }
 
     template<bool append_ones, typename ArrowType, bool contains_null>
@@ -130,7 +130,7 @@ namespace dataset {
                 std::memcpy(m_ptr, dwn_col->raw_values(), sizeof(typename ArrowType::c_type)*rows);
                 m_ptr += rows;
             }
-            return std::move(m);
+            return m;
         }
     }
 

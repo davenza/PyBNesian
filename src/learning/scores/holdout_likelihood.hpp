@@ -19,9 +19,12 @@ namespace learning::scores {
                                                GaussianNetwork,
                                                SemiparametricBN> {
     public:
+        using Base = ScoreImpl<HoldoutLikelihood, GaussianNetwork, SemiparametricBN>;
+        using Base::score;
+        using Base::local_score;
 
         HoldoutLikelihood(const DataFrame& df, double test_ratio) : m_holdout(df, test_ratio) { }
-        HoldoutLikelihood(const DataFrame& df, double test_ratio, int seed) : m_holdout(df, test_ratio, seed) { }
+        HoldoutLikelihood(const DataFrame& df, double test_ratio, long unsigned int seed) : m_holdout(df, test_ratio, seed) { }
 
         template<typename Model>
         double score(const Model& model) const {

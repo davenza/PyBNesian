@@ -196,7 +196,7 @@ namespace dataset {
 
     class CrossValidationProperties {
     public:
-        CrossValidationProperties(const DataFrame& df, int k, int seed, bool include_null) : k(k),
+        CrossValidationProperties(const DataFrame& df, int k, long unsigned int seed, bool include_null) : k(k),
                                                                                              m_seed(seed),
                                                                                              indices(), 
                                                                                              limits(), 
@@ -246,7 +246,7 @@ namespace dataset {
         friend class CrossValidation;
     private:
         int k;
-        unsigned int m_seed;
+        long unsigned int m_seed;
         std::vector<int> indices;
         std::vector<const_vecit<int>> limits;
         bool include_null;
@@ -256,7 +256,7 @@ namespace dataset {
     public:
         CrossValidation(const DataFrame df, int k, bool include_null = false) : CrossValidation(df, k, std::random_device{}(), include_null) { }
 
-        CrossValidation(const DataFrame df, int k, int seed, bool include_null = false) : 
+        CrossValidation(const DataFrame df, int k, long unsigned int seed, bool include_null = false) : 
                                                     m_df(df),
                                                     prop(std::make_shared<CrossValidationProperties>(m_df, k, seed, include_null)) { }
     

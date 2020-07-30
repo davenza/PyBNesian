@@ -52,6 +52,11 @@ ext_libraries = [['fort', {
                }
 ]]
 
+# Ignore warnings from this files.
+system_headers = ['-isystem' + d for d in [pa.get_include()]] +\
+                 ["-isystemlib/eigen-3.3.7"] +\
+                 ['-isystemlib/OpenCL']
+
 ext_modules = [
     Extension(
         'pgm_dataset',
@@ -80,26 +85,20 @@ ext_modules = [
          'src/graph/new_dag.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
-        #  'lib/libfort/fort.c'
          ],
         include_dirs=[
         #     # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
-            # pa.get_include(),
             "src",
-            "lib/eigen-3.3.7",
-            "lib/graph",
+            "lib/math_constants",
             "lib/libfort",
-            # "lib/OpenCL"
         ],
         libraries=pa.get_libraries() + ["OpenCL"] + ["fort"],
         library_dirs=pa.get_library_dirs(),
         language='c++',
         # Included as isystem to avoid errors in arrow headers.
-        extra_compile_args=['-isystem' + d for d in
-                                [pa.get_include()]
-                            ] + ['-isystemlib/OpenCL'],
+        extra_compile_args=system_headers,
     ),
 ]
 
@@ -174,8 +173,8 @@ class BuildExt(build_ext):
         opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")
         # opts.append("-ferror-limit=1")
 
-        # opts.append("-Wall")
-        # opts.append("-Wextra")
+        opts.append("-Wall")
+        opts.append("-Wextra")
         # opts.append("-Wno-error=unused-variable")
         opts.append("-march=native")
         opts.append("-fdiagnostics-color=always")

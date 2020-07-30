@@ -240,7 +240,11 @@ namespace factors::continuous {
         cl::Buffer _logl_impl(const DataFrame& df) const;
 
         template<typename ArrowType>
-        std::pair<cl::Buffer, uint64_t> allocate_mat(uint64_t m) const;
+        std::pair<cl::Buffer, uint64_t> allocate_mat() const {
+            using CType = typename ArrowType::c_type;
+            auto& opencl = OpenCLConfig::get();
+            return std::make_pair(opencl.new_buffer<CType>(N*64), 64);
+        }
 
         template<typename ArrowType, bool contains_null>
         void compute_bandwidth(const DataFrame& df, std::vector<std::string>& variables);
@@ -376,30 +380,6 @@ namespace factors::continuous {
             return _logl_impl<ArrowType, MultivariateKDE>(df);
     }
 
-    template<typename ArrowType>
-    std::pair<cl::Buffer, uint64_t> KDE::allocate_mat(uint64_t m) const {
-        using CType = typename ArrowType::c_type;
-        auto& opencl = OpenCLConfig::get();
-        // auto& device = opencl.device();
-
-        // cl_int err_code = CL_SUCCESS;
-
-        // uint64_t max_alloc = device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>(&err_code);
-        // if(err_code != CL_SUCCESS) {
-        //     throw std::runtime_error(std::string("Error while querying device info: ") +
-        //                              opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
-        // }
-
-        // double work_factor = std::ceil(static_cast<double>(static_cast<uint64_t>(N)*static_cast<uint64_t>(m)*sizeof(CType))
-        //                                                     / static_cast<double>(max_alloc));
-
-        // uint64_t allocatable_m = std::ceil(static_cast<double>(m) / work_factor);
-        // return std::make_pair(opencl.new_buffer<CType>(N*allocatable_m), allocatable_m);
-
-        // FIXME: Benchmark what size increases the performance.
-        return std::make_pair(opencl.new_buffer<CType>(N*64), 64);
-    }
-
     template<typename ArrowType, typename KDEType>
     cl::Buffer KDE::_logl_impl(const DataFrame& df) const {
         using CType = typename ArrowType::c_type;
@@ -412,7 +392,7 @@ namespace factors::continuous {
 
         auto res = opencl.new_buffer<CType>(m);
 
-        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(m);
+        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>();
         auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
 
         cl::Buffer tmp_mat_buffer;

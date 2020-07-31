@@ -12,9 +12,9 @@ using util::ArcVector;
 
 namespace graph {
 
-    class Node {
+    class DNode {
     public:
-        Node(int idx,
+        DNode(int idx,
              std::string name,
              std::unordered_set<int> parents = {}, 
              std::unordered_set<int> children = {}) : m_idx(idx), 
@@ -89,7 +89,7 @@ namespace graph {
             m_roots.reserve(nodes.size());
             m_leaves.reserve(nodes.size());
             for (size_t i = 0; i < nodes.size(); ++i) {
-                Node n(i, nodes[i]);
+                DNode n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
                 m_roots.insert(i);
@@ -131,7 +131,7 @@ namespace graph {
             m_roots.reserve(nodes.size());
             m_leaves.reserve(nodes.size());
             for (size_t i = 0; i < nodes.size(); ++i) {
-                Node n(i, nodes[i]);
+                DNode n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
                 m_roots.insert(i);
@@ -169,87 +169,62 @@ namespace graph {
 
         int num_parents(int idx) const {
             check_valid_indices(idx);
-            return m_nodes[idx].parents().size();
+            return num_parents_unsafe(idx);
         }
 
         int num_parents(const std::string& node) const {
-            return num_parents(m_indices.at(node));
+            auto f = check_names(node);
+            return num_parents_unsafe(f->second);
+        }
+
+        int num_parents_unsafe(int idx) const {
+            return m_nodes[idx].parents().size();
         }
 
         int num_children(int idx) const {
             check_valid_indices(idx);
-            return m_nodes[idx].children().size();
+            return num_children_unsafe(idx);
         }
 
         int num_children(const std::string& node) const {
-            return num_children(m_indices.at(node));
+            auto f = check_names(node);
+            return num_children_unsafe(f->second);
         }
 
-        // const std::vector<Node>& nodes() const {
-        //     return m_nodes;
-        // }
-        std::vector<std::string> nodes() const {
-            int visited_nodes = 0;
-            std::vector<std::string> res;
-            res.reserve(num_nodes());
-            for (auto it = m_nodes.begin(); visited_nodes < num_nodes(); ++it) {
-                if (it->is_valid()) {
-                    res.push_back(it->name());
-                    ++visited_nodes;
-                }
-            }
-
-            return res;
+        int num_children_unsafe(int idx) const {
+            return m_nodes[idx].children().size();
         }
+
+        std::vector<std::string> nodes() const;
         
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
         }
 
         int index(const std::string& node) const {
-            return m_indices.at(node);
+            auto f = check_names(node);
+            return f->second;
+        }
+
+        const std::string& name(int idx) const {
+            check_valid_indices(idx);
+            return m_nodes[idx].name();
         }
 
         bool contains_node(const std::string& name) const {
             return m_indices.count(name) > 0;
         }
 
-        ArcVector arcs() const {
-            ArcVector res;
-            res.reserve(m_num_arcs);
-
-            std::vector<int> stack {m_roots.begin(), m_roots.end()};
-
-            while (!stack.empty()) {
-                auto idx = stack.back();
-                stack.pop_back();
-                const auto& ch = m_nodes[idx].children();
-
-                for (auto children : ch) {
-                    res.push_back(std::make_pair(m_nodes[idx].name(), m_nodes[children].name()));
-                    stack.push_back(children);
-                }
-            }
-
-            return res;
-        }
+        ArcVector arcs() const;
 
         std::vector<std::string> parents(int idx) const {
             check_valid_indices(idx);
-            std::vector<std::string> res;
-
-            const auto& parent_indices = m_nodes[idx].parents();
-            res.reserve(parent_indices.size());
-
-            for (auto node : parent_indices) {
-                res.push_back(m_nodes[node].name());
-            }
-
-            return res;
+            return parents(m_nodes[idx]);
         }
 
         std::vector<std::string> parents(const std::string& node) const {
-            return parents(m_indices.at(node));
+            auto f = check_names(node);
+            return parents(m_nodes[f->second]);
         }
 
         std::vector<int> parent_indices(int idx) const {
@@ -259,189 +234,122 @@ namespace graph {
         }
 
         std::vector<int> parent_indices(const std::string& node) const {
-            return parent_indices(m_indices.at(node));
+            auto f = check_names(node);
+            const auto& p = m_nodes[f->second].parents();
+            return { p.begin(), p.end() };
         }
 
-        std::string parents_to_string(int idx) const;
+        std::string parents_to_string(int idx) const {
+            check_valid_indices(idx);
+            return parents_to_string(m_nodes[idx]);
+        }
 
         std::string parents_to_string(const std::string& node) const {
-            return parents_to_string(m_indices.at(node));
+            auto f = check_names(node);
+            return parents_to_string(m_nodes[f->second]);
         }
 
-        const std::string& name(int idx) const {
-            check_valid_indices(idx);
-            return m_nodes[idx].name();
-        }
-
-        void add_node(const std::string& node) {
-            int idx = [this]() {
-                if (!free_indices.empty()) {
-                    int idx = free_indices.back();
-                    free_indices.pop_back();
-                    return idx;
-                }
-                else {
-                    return num_nodes();
-                }
-            }();
-
-            Node n(idx, node);
-            m_nodes.push_back(n);
-            m_indices.insert(std::make_pair(node, idx));
-            m_roots.insert(idx);
-            m_leaves.insert(idx);
-        }
+        void add_node(const std::string& node);
 
         void remove_node(const std::string& node) {
-            remove_node(m_indices.at(node));
+            auto f = check_names(node);
+            remove_node_unsafe(f->second);
         }
 
         void remove_node(int node) {
             check_valid_indices(node);
-            
-            for (auto p : m_nodes[node].parents()) {
-                m_nodes[p].remove_children(node);
-            }
-
-            for (auto ch : m_nodes[node].children()) {
-                m_nodes[ch].remove_parent(node);
-            }
-
-            if (m_nodes[node].is_root()) {
-                m_roots.erase(node);
-            }
-
-            if (m_nodes[node].is_leaf()) {
-                m_leaves.erase(node);
-            }
-            
-            m_indices.erase(m_nodes[node].name());
-            m_num_arcs -= m_nodes[node].parents().size() + m_nodes[node].children().size();
-            m_nodes[node].invalidate();
-            free_indices.push_back(node);
+            remove_node_unsafe(node);
         }
+
+        void remove_node_unsafe(int index);
 
         void add_arc(int source, int target) {
             check_valid_indices(source, target);
-            
-            if (!has_arc(source, target)) {
-                if (m_nodes[target].is_root()) {
-                    m_roots.erase(target);
-                }
-
-                if (m_nodes[source].is_leaf()) {
-                    m_leaves.erase(source);
-                }
-
-                ++m_num_arcs;
-                m_nodes[target].add_parent(source);
-                m_nodes[source].add_children(target);
-            }
+            add_arc_unsafe(source, target);
         }
 
         void add_arc(const std::string& source, const std::string& target) {
-            add_arc(m_indices.at(source), m_indices.at(target));
+            auto [f, f2] = check_names(source, target);
+            add_arc_unsafe(f->second, f2->second);
         }
+
+        void add_arc_unsafe(int source, int target);
 
         bool has_arc(int source, int target) const {
             check_valid_indices(source, target);
-            
+            return has_arc_unsafe(source, target);
+        }
+
+        bool has_arc(const std::string& source, const std::string& target) const {
+            auto [f, f2] = check_names(source, target);
+            return has_arc_unsafe(f->second, f2->second);
+        }
+
+        bool has_arc_unsafe(int source, int target) const {
             const auto& p = m_nodes[target].parents();
             return p.find(source) != p.end();
         }
 
-        bool has_arc(const std::string& source, const std::string& target) const {
-            return has_arc(m_indices.at(source), m_indices.at(target));
-        }
-
         void remove_arc(int source, int target) {
             check_valid_indices(source, target);
-         
-            if (has_arc(source, target)) {
-                --m_num_arcs;
-                m_nodes[target].remove_parent(source);
-                m_nodes[source].remove_children(target);
+            remove_arc_unsafe(source, target);
 
-                if (m_nodes[target].is_root()) {
-                    m_roots.insert(target);
-                }
-
-                if (m_nodes[source].is_leaf()) {
-                    m_leaves.insert(source);
-                }
-            }
         }
 
         void remove_arc(const std::string& source, const std::string& target) {
-            remove_arc(m_indices.at(source), m_indices.at(target));
+            auto [f, f2] = check_names(source, target);
+            remove_arc_unsafe(f->second, f2->second);
         }
+
+        void remove_arc_unsafe(int source, int target);
 
         void flip_arc(int source, int target) {
             check_valid_indices(source, target);
-
-            m_nodes[target].remove_parent(source);
-            m_nodes[source].remove_children(target);
-
-            if (m_nodes[target].is_root()) {
-                m_roots.insert(target);
-            }
-
-            if (m_nodes[source].is_leaf()) {
-                m_leaves.insert(source);
-            }
-            
-            if (m_nodes[target].is_leaf()) {
-                m_leaves.erase(target);
-            }
-
-            if (m_nodes[source].is_root()) {
-                m_roots.erase(source);
-            }
-            
-            m_nodes[target].add_children(source);
-            m_nodes[source].add_parent(target);
-
+            flip_arc_unsafe(source, target);
         }
 
         void flip_arc(const std::string& source, const std::string& target) {
-            flip_arc(m_indices.at(source), m_indices.at(target));
+            auto [f, f2] = check_names(source, target);
+            flip_arc_unsafe(f->second, f2->second);
         }
 
+        void flip_arc_unsafe(int source, int target);
+
         bool can_add_arc(int source, int target) const {
-            if (num_parents(source) == 0 || num_children(target) == 0 || !has_path(target, source)) {
-                return true;
-            }
-            return false;
+            check_valid_indices(source, target);
+            return can_add_arc_unsafe(source, target);
         }
 
         bool can_add_arc(const std::string& source, const std::string& target) const {
-            return can_add_arc(m_indices.at(source), m_indices.at(target));
+            auto [f, f2] = check_names(source, target);
+            return can_add_arc_unsafe(f->second, f2->second);
         }
 
+        bool can_add_arc_unsafe(int source, int target) const;
+
         bool can_flip_arc(int source, int target) {
-            if (num_parents(target) == 0 || num_children(source) == 0) {
-                return true;
-            } else {
-                remove_arc(source, target);
-                bool thereis_path = has_path(source, target);
-                add_arc(source, target);
-                if (thereis_path) {
-                    return false;
-                } else {
-                    return true;
-                }
-            }
+            check_valid_indices(source, target);
+            return can_flip_arc_unsafe(source, target);
         }
 
         bool can_flip_arc(const std::string& source, const std::string& target) {
-            return can_flip_arc(m_indices.at(source), m_indices.at(target));
+            auto [f, f2] = check_names(source, target);
+            return can_flip_arc_unsafe(f->second, f2->second);
         }
 
-        bool has_path(int source, int target) const;
+        bool can_flip_arc_unsafe(int source, int target);
+
+        bool has_path(int source, int target) const {
+            check_valid_indices(source, target);
+            return has_path_unsafe(source, target);
+        }
 
         bool has_path(const std::string& source, const std::string& target) const {
-            return has_path(m_indices.at(source), m_indices.at(target));
+            auto [f, f2] = check_names(source, target);
+            return has_path_unsafe(f->second, f2->second);
         }
+
+        bool has_path_unsafe(int source, int target) const;
 
         bool is_valid(int idx) const {
             return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
@@ -453,54 +361,42 @@ namespace graph {
             }
         }
 
-        template<typename... Args>
-        void check_valid_indices(int idx, Args... indices) const {
-            if (!is_valid(idx)) {
-                throw std::invalid_argument("Node index " + std::to_string(idx) + " invalid.");
+        void check_valid_indices(int idx1, int idx2) const {
+            if (!is_valid(idx1)) {
+                throw std::invalid_argument("Node index " + std::to_string(idx1) + " invalid.");
             }
 
-            check_valid_indices(indices...);
+            if (!is_valid(idx2)) {
+                throw std::invalid_argument("Node index " + std::to_string(idx2) + " invalid.");
+            }
         }
 
-        std::vector<std::string> topological_sort() const {
-            std::vector<int> incoming_edges;
-            incoming_edges.reserve(m_nodes.size());
-
-            for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) {
-                if (it->is_valid()) {
-                    incoming_edges.push_back(it->parents().size());
-                } else {
-                    incoming_edges.push_back(-1);
-                }
+        typename std::unordered_map<std::string, int>::const_iterator check_names(const std::string& name) const {
+            auto f = m_indices.find(name);
+            if (f == m_indices.end()) {
+                throw std::invalid_argument("Node " + name + " not present in the graph.");
             }
 
-            std::vector<std::string> top_sort;
-            top_sort.reserve(num_nodes());
-
-            std::vector<int> stack{m_roots.begin(), m_roots.end()};
-
-            while (!stack.empty()) {
-                auto idx = stack.back();
-                stack.pop_back();
-
-                top_sort.push_back(m_nodes[idx].name());
-                
-                for (const auto& children : m_nodes[idx].children()) {
-                    --incoming_edges[children];
-                    if (incoming_edges[children] == 0) {
-                        stack.push_back(children);
-                    }
-                }
-            }
-            
-            for (auto it = incoming_edges.begin(); it != incoming_edges.end(); ++it) {
-                if (*it > 0) {
-                    throw std::invalid_argument("Graph must be a DAG to obtain a topological sort.");
-                }
-            }
-
-            return top_sort;
+            return f;
         }
+
+        std::pair<typename std::unordered_map<std::string, int>::const_iterator,
+                  typename std::unordered_map<std::string, int>::const_iterator> check_names(const std::string& v1,
+                                                                                            const std::string& v2) const {
+            auto f = m_indices.find(v1);
+            if (f == m_indices.end()) {
+                throw std::invalid_argument("Node " + v1 + " not present in the graph.");
+            }
+
+            auto f2 = m_indices.find(v2);
+            if (f2 == m_indices.end()) {
+                throw std::invalid_argument("Node " + v2 + " not present in the graph.");
+            }
+
+            return std::make_pair(f, f2);
+        }
+
+        std::vector<std::string> topological_sort() const;
 
         bool is_dag() const {
             try {
@@ -512,20 +408,17 @@ namespace graph {
         }
 
     private:
-        std::vector<Node> m_nodes;
+        std::vector<std::string> parents(const DNode& n) const;
+        std::string parents_to_string(const DNode& n) const;
+
+        std::vector<DNode> m_nodes;
         int m_num_arcs;
         // Change to FNV hash function?
         std::unordered_map<std::string, int> m_indices;
-
         std::unordered_set<int> m_roots;
         std::unordered_set<int> m_leaves;
         std::vector<int> free_indices;
     };
-
-
-
-
-
 }
 
 #endif //PGM_DATASET_DAG_HPP

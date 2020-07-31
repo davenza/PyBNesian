@@ -8,6 +8,7 @@ using factors::FactorType;
 
 namespace util {
     using ArcVector = std::vector<std::pair<std::string, std::string>>;
+    using EdgeVector = std::vector<std::pair<std::string, std::string>>;
     using FactorTypeVector = std::vector<std::pair<std::string, FactorType>>;
 }
 

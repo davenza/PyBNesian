@@ -85,6 +85,7 @@ ext_modules = [
          'src/learning/algorithms/pc.cpp',
          'src/learning/independence_tests/continuous/linearcorrelation.cpp',
          'src/graph/dag.cpp',
+         'src/graph/undirected.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          ],
@@ -93,7 +94,7 @@ ext_modules = [
             get_pybind_include(),
             get_pybind_include(user=True),
             "src",
-            "lib/math_constants",
+            "lib/boost",
             "lib/libfort",
         ],
         libraries=pa.get_libraries() + ["OpenCL"] + ["fort"],
@@ -176,7 +177,7 @@ class BuildExt(build_ext):
 
         opts.append("-Wall")
         opts.append("-Wextra")
-        # opts.append("-Wno-error=unused-variable")
+        # opts.append("-fsyntax-only")
         opts.append("-march=native")
         opts.append("-fdiagnostics-color=always")
 

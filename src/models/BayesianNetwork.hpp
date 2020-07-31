@@ -3,7 +3,7 @@
 
 #include <iterator>
 #include <dataset/dataset.hpp>
-#include <graph/new_dag.hpp>
+#include <graph/dag.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/SemiparametricCPD.hpp>
 #include <util/util_types.hpp>

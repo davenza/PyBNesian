@@ -36,27 +36,27 @@ namespace learning::scores {
             return s;
         }
 
-        template<typename Model, typename VarType, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
-        double local_score(const Model& model, const VarType& variable) const {
+        template<typename VarType>
+        double local_score(const GaussianNetwork& model, const VarType& variable) const {
             auto parents = model.parent_indices(variable);
             return local_score(model, variable, parents.begin(), parents.end());
         }
         
-        template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int> = 0>
-        double local_score(const Model& model,
+        template<typename VarType, typename EvidenceIter>
+        double local_score(const GaussianNetwork& model,
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
-        template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
-        double local_score(const Model& model, const VarType& variable) const {
+        template<typename VarType>
+        double local_score(const SemiparametricBN& model, const VarType& variable) const {
             FactorType variable_type = model.node_type(variable);
             auto parents = model.parent_indices(variable);
             return local_score<>(variable_type, variable, parents.begin(), parents.end());
         }
 
-        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
-        double local_score(const Model& model, 
+        template<typename VarType, typename EvidenceIter>
+        double local_score(const SemiparametricBN& model, 
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
@@ -102,8 +102,8 @@ namespace learning::scores {
         HoldOut m_holdout;
     };
 
-    template<typename Model, typename VarType, typename EvidenceIter, std::enable_if_t<util::is_gaussian_network_v<Model>, int>>
-    double HoldoutLikelihood::local_score(const Model&,
+    template<typename VarType, typename EvidenceIter>
+    double HoldoutLikelihood::local_score(const GaussianNetwork&,
                                           const VarType& variable, 
                                           const EvidenceIter evidence_begin, 
                                           const EvidenceIter evidence_end) const {

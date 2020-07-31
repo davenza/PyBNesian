@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_UTIL_TYPES_HPP
 #define PGM_DATASET_UTIL_TYPES_HPP
 
+#include <vector>
 #include <factors/factors.hpp>
 
 using factors::FactorType;

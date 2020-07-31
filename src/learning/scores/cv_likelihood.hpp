@@ -34,21 +34,20 @@ namespace learning::scores {
             return s;
         }
 
-        template<typename Model, typename VarType, util::enable_if_gaussian_network_t<Model, int> = 0>
-        double local_score(const Model& model, const VarType& variable) const {
+        template<typename VarType>
+        double local_score(const GaussianNetwork& model, const VarType& variable) const {
             auto parents = model.parent_indices(variable);
             return local_score(model, variable, parents.begin(), parents.end());
         }
         
-            // FIXME: This template is not needed now. Use just type GaussianNetwork.
-        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int> = 0>
-        double local_score(const Model& model, 
+        template<typename VarType, typename EvidenceIter>
+        double local_score(const GaussianNetwork& model, 
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const;
 
-        template<typename Model, typename VarType, util::enable_if_semiparametricbn_t<Model, int> = 0>
-        double local_score(const Model& model, const VarType& variable) const {
+        template<typename VarType>
+        double local_score(const SemiparametricBN& model, const VarType& variable) const {
             auto parents = model.parent_indices(variable);
             FactorType variable_type = model.node_type(variable);
             
@@ -56,8 +55,8 @@ namespace learning::scores {
         }
 
         // FIXME: This template is not needed now. Use just type SemiparametricBN.
-        template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_semiparametricbn_t<Model, int> = 0>
-        double local_score(const Model& model, 
+        template<typename VarType, typename EvidenceIter>
+        double local_score(const SemiparametricBN& model, 
                            const VarType& variable, 
                            const EvidenceIter evidence_begin, 
                            const EvidenceIter evidence_end) const {
@@ -101,8 +100,8 @@ namespace learning::scores {
         CrossValidation m_cv;
     };
 
-    template<typename Model, typename VarType, typename EvidenceIter, util::enable_if_gaussian_network_t<Model, int>>
-    double CVLikelihood::local_score(const Model&,
+    template<typename VarType, typename EvidenceIter>
+    double CVLikelihood::local_score(const GaussianNetwork&,
                                      const VarType& variable, 
                                      const EvidenceIter evidence_begin,
                                      const EvidenceIter evidence_end) const {

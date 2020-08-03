@@ -17,7 +17,8 @@ namespace learning::algorithms {
         void estimate(const DataFrame& df, 
                                  ArcVector& arc_blacklist, 
                                  ArcVector& arc_whitelist, 
-                                 const IndependenceTest& test);
+                                 const IndependenceTest& test,
+                                 double alpha);
 
     };
 }

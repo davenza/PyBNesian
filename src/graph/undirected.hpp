@@ -166,6 +166,16 @@ namespace graph {
             return neighbors(f->second);
         }
 
+        const std::unordered_set<int>& neighbor_indices(int idx) const {
+            check_valid_indices(idx);
+            return m_nodes[idx].neighbors();
+        }
+
+        const std::unordered_set<int>& neighbor_indices(const std::string& node) const {
+            auto f = check_names(node);
+            return neighbor_indices(f->second);
+        }
+
         void add_node(const std::string& node);
 
         void remove_node(int idx) {

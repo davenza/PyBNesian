@@ -86,6 +86,7 @@ ext_modules = [
          'src/learning/independence_tests/continuous/linearcorrelation.cpp',
          'src/graph/dag.cpp',
          'src/graph/undirected.cpp',
+         'src/graph/pdag.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          ],

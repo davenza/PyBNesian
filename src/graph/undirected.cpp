@@ -5,6 +5,27 @@ using boost::dynamic_bitset;
 
 namespace graph {
 
+    UndirectedGraph UndirectedGraph::Complete(const std::vector<std::string>& nodes) {
+        UndirectedGraph un;
+
+        std::unordered_set<int> neighbors;
+        for(int i = 0; i < nodes.size(); ++i) {
+            neighbors.insert(i);
+        }
+
+        un.m_nodes.reserve(nodes.size());
+        for (int i = 0; i < nodes.size(); ++i) {
+            neighbors.erase(i);
+            UNode n(i, nodes[i], neighbors);
+            un.m_nodes.push_back(n);
+            un.m_indices.insert(std::make_pair(nodes[i], i));
+            neighbors.insert(i);
+        }
+
+        un.m_num_edges = nodes.size() * (nodes.size() - 1) / 2;
+
+        return un;
+    }
 
     std::vector<std::string> UndirectedGraph::nodes() const {
         int visited_nodes = 0;
@@ -37,14 +58,14 @@ namespace graph {
 
         std::vector<int> stack;
 
-        while (!stack.empty() || !to_visit.none()) {
+        while (res.size() < static_cast<size_t>(m_num_edges)) {
             if (stack.empty()) {
                 stack.push_back(to_visit.find_first());
             }
 
             auto idx = stack.back();
-            to_visit.reset(idx);
             stack.pop_back();
+            to_visit.reset(idx);
 
             const auto& neighbors = m_nodes[idx].neighbors();
 

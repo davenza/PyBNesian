@@ -2,21 +2,34 @@
 #define PGM_DATASET_LINEARCORRELATION_HPP
 
 #include <dataset/dataset.hpp>
+#include <learning/independence_tests/independence.hpp>
 
 using dataset::DataFrame;
+using learning::independences::IndependenceTest;
 
-class LinearCorrelation {
-public:
-    LinearCorrelation(const DataFrame& df) : m_df(df) {}
+namespace learning::independences::continuous {
+
+    class LinearCorrelation : public IndependenceTest {
+    public:
+        LinearCorrelation(const DataFrame& df) : m_df(df) {}
 
 
-    template<typename VarType, typename EvidenceIter>
-    double pvalue(const VarType& v1, const VarType& v2, EvidenceIter evidence_begin, EvidenceIter evidence_end) const {
-        
-    }
+        double pvalue(int v1, int v2, 
+                        const typename std::vector<int>::const_iterator evidence_begin, 
+                        const typename std::vector<int>::const_iterator evidence_end) const override {
+            
+        }
 
-private:
-    const DataFrame m_df;
-};
+         double pvalue(const std::string& v1, const std::string& v2, 
+                            const typename std::vector<std::string>::const_iterator evidence_begin, 
+                            const typename std::vector<std::string>::const_iterator evidence_end) const override {
+
+        }
+
+    private:
+        const DataFrame m_df;
+    };
+}
+
 
 #endif //PGM_DATASET_LINEARCORRELATION_HPP

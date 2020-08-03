@@ -1,29 +1,36 @@
-#ifndef PGM_DATASET_DAG_HPP
-#define PGM_DATASET_DAG_HPP
+#ifndef PGM_DATASET_PDAG_HPP
+#define PGM_DATASET_PDAG_HPP
 
-#include <iostream>
-#include <pybind11/pybind11.h>
+#include <string>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <pybind11/pybind11.h>
+
 #include <util/util_types.hpp>
 
-using util::ArcVector;
+using util::ArcVector, util::EdgeVector;
 
 namespace graph {
-
-    class DNode {
+    
+    class PDNode {
     public:
-        DNode(int idx,
-             std::string name,
-             std::unordered_set<int> parents = {}, 
-             std::unordered_set<int> children = {}) : m_idx(idx), 
-                                                m_name(name), 
-                                                m_parents(parents), 
-                                                m_children(children) {}
+        PDNode(int idx,
+                std::string name,
+                std::unordered_set<int> parents = {}, 
+                std::unordered_set<int> children = {},
+                std::unordered_set<int> neighbors = {}) : m_idx(idx), 
+                                                            m_name(name), 
+                                                            m_neighbors(neighbors),
+                                                            m_parents(parents), 
+                                                            m_children(children) {}
         
         const std::string& name() const {
             return m_name;
+        }
+        
+        const std::unordered_set<int>& neighbors() const {
+            return m_neighbors;
         }
 
         const std::unordered_set<int>& parents() const {
@@ -34,12 +41,20 @@ namespace graph {
             return m_children;
         }
 
+        void add_neighbor(int p) {
+            m_neighbors.insert(p);
+        }
+
         void add_parent(int p) {
             m_parents.insert(p);
         }
 
         void add_children(int ch) {
             m_children.insert(ch);
+        }
+        
+        void remove_neighbor(int p) {
+            m_neighbors.erase(p);
         }
 
         void remove_parent(int p) {
@@ -50,17 +65,10 @@ namespace graph {
             m_children.erase(ch);
         }
 
-        bool is_root() const {
-            return m_parents.empty();
-        }
-
-        bool is_leaf() const {
-            return m_children.empty();
-        }
-
         void invalidate() {
             m_idx = -1;
             m_name.clear();
+            m_neighbors.clear();
             m_parents.clear();
             m_children.clear();
         }
@@ -71,38 +79,47 @@ namespace graph {
     private:
         int m_idx;
         std::string m_name;
+        std::unordered_set<int> m_neighbors;
         std::unordered_set<int> m_parents;
         std::unordered_set<int> m_children;
     };
 
-    class DirectedGraph {
-    public:
-        DirectedGraph() : m_nodes(), m_num_arcs(0), m_indices(), m_roots(), m_leaves(), free_indices() {}
 
-        DirectedGraph(const std::vector<std::string>& nodes) : m_nodes(), 
-                                                                m_num_arcs(0),
-                                                                m_indices(),
-                                                                m_roots(), 
-                                                                m_leaves(), 
-                                                                free_indices() {
+    class PartiallyDirectedGraph {
+    public:
+        PartiallyDirectedGraph() : m_nodes(), m_num_arcs(0), m_num_edges(0), m_indices(), free_indices() {}
+
+        PartiallyDirectedGraph(const std::vector<std::string>& nodes) : m_nodes(),
+                                                                        m_num_arcs(0),
+                                                                        m_num_edges(0),
+                                                                        m_indices(),
+                                                                        free_indices() {
             m_nodes.reserve(nodes.size());
-            m_roots.reserve(nodes.size());
-            m_leaves.reserve(nodes.size());
+            
             for (size_t i = 0; i < nodes.size(); ++i) {
-                DNode n(i, nodes[i]);
+                PDNode n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
-                m_roots.insert(i);
-                m_leaves.insert(i);
             }
-        };
+        }
 
-        DirectedGraph(const ArcVector& arcs) : m_nodes(), 
-                                                m_num_arcs(0),
-                                                m_indices(), 
-                                                m_roots(), 
-                                                m_leaves(), 
-                                                free_indices() {
+        PartiallyDirectedGraph(const EdgeVector& edges, const ArcVector& arcs) : m_nodes(),
+                                                                                    m_num_arcs(0),
+                                                                                    m_num_edges(0),
+                                                                                    m_indices(),
+                                                                                    free_indices() {
+
+            for (auto& edge : edges) {
+                if (m_indices.count(edge.first) == 0) {
+                    add_node(edge.first);
+                }
+
+                if (m_indices.count(edge.second) == 0) {
+                    add_node(edge.second);
+                }
+
+                add_edge(edge.first, edge.second);
+            }
 
             for (auto& arc : arcs) {
                 if (m_indices.count(arc.first) == 0) {
@@ -115,26 +132,30 @@ namespace graph {
 
                 add_arc(arc.first, arc.second);
             }
-
-            topological_sort();
         }
 
-        DirectedGraph(const std::vector<std::string>& nodes, 
-                      const ArcVector& arcs) : m_nodes(), 
-                                                m_num_arcs(0),
-                                                m_indices(),
-                                                m_roots(), 
-                                                m_leaves(), 
-                                                free_indices() {
+        PartiallyDirectedGraph(const std::vector<std::string>& nodes, 
+                                const EdgeVector& edges, 
+                                const ArcVector& arcs) : m_nodes(), 
+                                                         m_num_arcs(0),
+                                                         m_num_edges(0),
+                                                         m_indices(),
+                                                         free_indices() {
             m_nodes.reserve(nodes.size());
-            m_roots.reserve(nodes.size());
-            m_leaves.reserve(nodes.size());
             for (size_t i = 0; i < nodes.size(); ++i) {
-                DNode n(i, nodes[i]);
+                PDNode n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
-                m_roots.insert(i);
-                m_leaves.insert(i);
+            }
+
+            for (auto& edge : edges) {
+                if (m_indices.count(edge.first) == 0) throw pybind11::index_error(
+                    "Node \"" + edge.first + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
+            
+                if (m_indices.count(edge.second) == 0) throw pybind11::index_error(
+                    "Node \"" + edge.second + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
+
+                add_edge(edge.first, edge.second);
             }
 
             for (auto& arc : arcs) {
@@ -146,24 +167,32 @@ namespace graph {
 
                 add_arc(arc.first, arc.second);
             }
-
-            topological_sort();
-        }
-
-        const std::unordered_set<int>& roots() const {
-            return m_roots;
-        }
-
-        const std::unordered_set<int>& leaves() const {
-            return m_leaves;
         }
 
         int num_nodes() const {
             return m_nodes.size() - free_indices.size();
         }
 
+        int num_edges() const {
+            return m_num_edges;
+        }
+
         int num_arcs() const {
             return m_num_arcs;
+        }
+
+        int num_neighbors(int idx) const {
+            check_valid_indices(idx);
+            return num_neighbors_unsafe(idx);
+        }
+
+        int num_neighbors(const std::string& node) const {
+            auto f = check_names(node);
+            return num_neighbors_unsafe(f->second);
+        }
+
+        int num_neighbors_unsafe(int idx) const {
+            return m_nodes[idx].neighbors().size();
         }
 
         int num_parents(int idx) const {
@@ -195,7 +224,7 @@ namespace graph {
         }
 
         std::vector<std::string> nodes() const;
-        
+
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
         }
@@ -214,7 +243,18 @@ namespace graph {
             return m_indices.count(name) > 0;
         }
 
+        EdgeVector edges() const;
         ArcVector arcs() const;
+
+        std::vector<std::string> neighbors(int idx) const {
+            check_valid_indices(idx);
+            return neighbors(m_nodes[idx]);
+        }
+
+        std::vector<std::string> neighbors(const std::string& node) const {
+            auto f = check_names(node);
+            return neighbors(f->second);
+        }
 
         std::vector<std::string> parents(int idx) const {
             check_valid_indices(idx);
@@ -226,41 +266,31 @@ namespace graph {
             return parents(m_nodes[f->second]);
         }
 
-        std::vector<int> parent_indices(int idx) const {
-            check_valid_indices(idx);
-            const auto& p = m_nodes[idx].parents();
-            return { p.begin(), p.end() };
-        }
-
-        std::vector<int> parent_indices(const std::string& node) const {
-            auto f = check_names(node);
-            const auto& p = m_nodes[f->second].parents();
-            return { p.begin(), p.end() };
-        }
-
-        std::string parents_to_string(int idx) const {
-            check_valid_indices(idx);
-            return parents_to_string(m_nodes[idx]);
-        }
-
-        std::string parents_to_string(const std::string& node) const {
-            auto f = check_names(node);
-            return parents_to_string(m_nodes[f->second]);
-        }
-
         void add_node(const std::string& node);
+
+        void remove_node(int idx) {
+            check_valid_indices(idx);
+            remove_node_unsafe(idx);
+        }
 
         void remove_node(const std::string& node) {
             auto f = check_names(node);
             remove_node_unsafe(f->second);
         }
 
-        void remove_node(int node) {
-            check_valid_indices(node);
-            remove_node_unsafe(node);
+        void remove_node_unsafe(int index);
+
+        void add_edge(int source, int target) {
+            check_valid_indices(source, target);
+            add_edge_unsafe(source, target);
         }
 
-        void remove_node_unsafe(int index);
+        void add_edge(const std::string& source, const std::string& target) {
+            auto [f, f2] = check_names(source, target);
+            add_edge_unsafe(f->second, f2->second);
+        }
+
+        void add_edge_unsafe(int source, int target);
 
         void add_arc(int source, int target) {
             check_valid_indices(source, target);
@@ -273,6 +303,21 @@ namespace graph {
         }
 
         void add_arc_unsafe(int source, int target);
+
+        bool has_edge(int source, int target) const {
+            check_valid_indices(source, target);
+            return has_edge_unsafe(source, target);
+        }
+
+        bool has_edge(const std::string& source, const std::string& target) const {
+            auto [f, f2] = check_names(source, target);
+            return has_edge_unsafe(f->second, f2->second);
+        }
+
+        bool has_edge_unsafe(int source, int target) const {
+            const auto& p = m_nodes[target].neighbors();
+            return p.find(source) != p.end();
+        }
 
         bool has_arc(int source, int target) const {
             check_valid_indices(source, target);
@@ -288,6 +333,18 @@ namespace graph {
             const auto& p = m_nodes[target].parents();
             return p.find(source) != p.end();
         }
+
+        void remove_edge(int source, int target) {
+            check_valid_indices(source, target);
+            remove_edge_unsafe(source, target);
+        }
+
+        void remove_edge(const std::string& source, const std::string& target) {
+            auto [f, f2] = check_names(source, target);
+            remove_edge_unsafe(f->second, f2->second);
+        }
+
+        void remove_edge_unsafe(int source, int target);
 
         void remove_arc(int source, int target) {
             check_valid_indices(source, target);
@@ -314,41 +371,29 @@ namespace graph {
 
         void flip_arc_unsafe(int source, int target);
 
-        bool can_add_arc(int source, int target) const {
+        void direct(int source, int target) {
             check_valid_indices(source, target);
-            return can_add_arc_unsafe(source, target);
+            direct_unsafe(source, target);
         }
 
-        bool can_add_arc(const std::string& source, const std::string& target) const {
+        void direct(const std::string& source, const std::string& target) {
             auto [f, f2] = check_names(source, target);
-            return can_add_arc_unsafe(f->second, f2->second);
+            direct_unsafe(f->second, f2->second);
         }
 
-        bool can_add_arc_unsafe(int source, int target) const;
+        void direct_unsafe(int source, int target);
 
-        bool can_flip_arc(int source, int target) {
+        void undirect(int source, int target) {
             check_valid_indices(source, target);
-            return can_flip_arc_unsafe(source, target);
+            undirect_unsafe(source, target);
         }
 
-        bool can_flip_arc(const std::string& source, const std::string& target) {
+        void undirect(const std::string& source, const std::string& target) {
             auto [f, f2] = check_names(source, target);
-            return can_flip_arc_unsafe(f->second, f2->second);
+            undirect_unsafe(f->second, f2->second);
         }
 
-        bool can_flip_arc_unsafe(int source, int target);
-
-        bool has_path(int source, int target) const {
-            check_valid_indices(source, target);
-            return has_path_unsafe(source, target);
-        }
-
-        bool has_path(const std::string& source, const std::string& target) const {
-            auto [f, f2] = check_names(source, target);
-            return has_path_unsafe(f->second, f2->second);
-        }
-
-        bool has_path_unsafe(int source, int target) const;
+        void undirect_unsafe(int source, int target);
 
         bool is_valid(int idx) const {
             return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
@@ -395,29 +440,17 @@ namespace graph {
             return std::make_pair(f, f2);
         }
 
-        std::vector<std::string> topological_sort() const;
-
-        bool is_dag() const {
-            try {
-                topological_sort();
-                return true;
-            } catch(std::invalid_argument&) {
-                return false;
-            }
-        }
-
     private:
-        std::vector<std::string> parents(const DNode& n) const;
-        std::string parents_to_string(const DNode& n) const;
+        std::vector<std::string> neighbors(const PDNode& n) const;
+        std::vector<std::string> parents(const PDNode& n) const;
 
-        std::vector<DNode> m_nodes;
+        std::vector<PDNode> m_nodes;
         int m_num_arcs;
-        // Change to FNV hash function?
+        int m_num_edges;
         std::unordered_map<std::string, int> m_indices;
-        std::unordered_set<int> m_roots;
-        std::unordered_set<int> m_leaves;
         std::vector<int> free_indices;
     };
+
 }
 
-#endif //PGM_DATASET_DAG_HPP
+#endif //PGM_DATASET_PDAG_HPP

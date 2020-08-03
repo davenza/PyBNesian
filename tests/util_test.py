@@ -19,6 +19,23 @@ def generate_normal_data(size):
                     'd': d_array
                     })
 
+def generate_normal_data_indep(size):
+    np.random.seed(0)
+
+    a_array = np.random.normal(3, 0.5, size=size)
+    b_array = np.random.normal(2.5, 2, size=size)
+    c_array = -4.2 - 1.2*a_array + 3.2*b_array + np.random.normal(0, 0.75, size=size)
+    d_array = 1.5 - 0.3 * c_array + np.random.normal(0, 0.5, size=size)
+
+
+    return pd.DataFrame({
+                    'a': a_array,
+                    'b': b_array,
+                    'c': c_array,
+                    'd': d_array
+                    })
+
+
 
 def generate_discrete_data_uniform(size):
     np.random.seed(0)

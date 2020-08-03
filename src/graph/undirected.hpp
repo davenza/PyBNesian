@@ -72,18 +72,17 @@ namespace graph {
                                                     m_num_edges(0), 
                                                     m_indices(), 
                                                     free_indices() {
-            if (!edges.empty()) {
-                for (auto& edge : edges) {
-                    if (m_indices.count(edge.first) == 0) {
-                        add_node(edge.first);
-                    }
 
-                    if (m_indices.count(edge.second) == 0) {
-                        add_node(edge.second);
-                    }
-
-                    add_edge(edge.first, edge.second);
+            for (auto& edge : edges) {
+                if (m_indices.count(edge.first) == 0) {
+                    add_node(edge.first);
                 }
+
+                if (m_indices.count(edge.second) == 0) {
+                    add_node(edge.second);
+                }
+
+                add_edge(edge.first, edge.second);
             }
         }
 
@@ -111,6 +110,8 @@ namespace graph {
 
         }
 
+        static UndirectedGraph Complete(const std::vector<std::string>& nodes);
+        
         int num_nodes() const {
             return m_nodes.size() - free_indices.size();
         }
@@ -160,7 +161,17 @@ namespace graph {
             return neighbors(m_nodes[idx]);
         }
 
+        std::vector<std::string> neighbors(const std::string& node) const {
+            auto f = check_names(node);
+            return neighbors(f->second);
+        }
+
         void add_node(const std::string& node);
+
+        void remove_node(int idx) {
+            check_valid_indices(idx);
+            remove_node_unsafe(idx);
+        }
 
         void remove_node(const std::string& node) {
             auto f = check_names(node);

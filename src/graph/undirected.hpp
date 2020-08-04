@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <string>
 #include <util/util_types.hpp>
+#include <util/hash_utils.hpp>
 
 using util::EdgeVector;
 
@@ -51,12 +52,37 @@ namespace graph {
         std::unordered_set<int> m_neighbors;
     };
 
+    using UEdge = std::pair<int, int>;
+
+    // From https://stackoverflow.com/questions/28367913/how-to-stdhash-an-unordered-stdpair
+    struct UEdgeHash {
+        std::size_t operator()(UEdge const& edge) const {
+            size_t seed = 1;
+            
+            if (edge.first <= edge.second) {
+                util::hash_combine(seed, edge.first);
+                util::hash_combine(seed, edge.second);
+            } else {
+                util::hash_combine(seed, edge.second);
+                util::hash_combine(seed, edge.first);
+            }
+
+            return seed;
+        }
+    };
+
+    struct UEdgeEqualTo {
+        bool operator()(const UEdge& lhs, const UEdge& rhs) const {
+            return (lhs == rhs) || 
+                   (lhs.first == rhs.second && lhs.second == rhs.first);
+        }
+    };
 
     class UndirectedGraph {
     public:
-        UndirectedGraph() : m_nodes(), m_num_edges(0), m_indices(), free_indices() {}
-        UndirectedGraph(const std::vector<std::string>& nodes) : m_nodes(), 
-                                                                    m_num_edges(0), 
+        UndirectedGraph() : m_nodes(), m_edges(), m_indices(), free_indices() {}
+        UndirectedGraph(const std::vector<std::string>& nodes) : m_nodes(),
+                                                                    m_edges(),
                                                                     m_indices(), 
                                                                     free_indices() {
             m_nodes.reserve(nodes.size());
@@ -68,8 +94,8 @@ namespace graph {
             }
         }
 
-        UndirectedGraph(const EdgeVector& edges) : m_nodes(), 
-                                                    m_num_edges(0), 
+        UndirectedGraph(const EdgeVector& edges) : m_nodes(),
+                                                    m_edges(),
                                                     m_indices(), 
                                                     free_indices() {
 
@@ -88,7 +114,7 @@ namespace graph {
 
         UndirectedGraph(const std::vector<std::string>& nodes, 
                         const EdgeVector& edges) : m_nodes(), 
-                                                    m_num_edges(0),
+                                                    m_edges(),
                                                     m_indices(),
                                                     free_indices() {
             m_nodes.reserve(nodes.size());
@@ -117,7 +143,7 @@ namespace graph {
         }
 
         int num_edges() const {
-            return m_num_edges;
+            return m_edges.size();
         }
 
         int num_neighbors(int idx) const {
@@ -155,6 +181,7 @@ namespace graph {
         }
 
         EdgeVector edges() const;
+        auto edge_indices() const { return m_edges; }
 
         std::vector<std::string> neighbors(int idx) const {
             check_valid_indices(idx);
@@ -291,7 +318,7 @@ namespace graph {
         std::vector<std::string> neighbors(const UNode& n) const;
 
         std::vector<UNode> m_nodes;
-        int m_num_edges;
+        std::unordered_set<UEdge, UEdgeHash, UEdgeEqualTo> m_edges;
         std::unordered_map<std::string, int> m_indices;
         std::vector<int> free_indices;
     };

@@ -22,7 +22,11 @@ namespace graph {
             neighbors.insert(i);
         }
 
-        un.m_num_edges = nodes.size() * (nodes.size() - 1) / 2;
+        for (int i = 0; i < (nodes.size()-1); ++i) {
+            for (int j = i+1; i < nodes.size(); j++) {
+                un.m_edges.insert({i, j});
+            }
+        }
 
         return un;
     }
@@ -43,38 +47,10 @@ namespace graph {
 
     EdgeVector UndirectedGraph::edges() const {
         EdgeVector res;
-        if (m_num_edges == 0)
-            return res;
+        res.reserve(m_edges.size());
 
-        res.reserve(m_num_edges);
-
-        dynamic_bitset to_visit(m_nodes.size());
-
-        to_visit.set(0, m_nodes.size());
-
-        for (auto free : free_indices) {
-            to_visit.reset(free);
-        }
-
-        std::vector<int> stack;
-
-        while (res.size() < static_cast<size_t>(m_num_edges)) {
-            if (stack.empty()) {
-                stack.push_back(to_visit.find_first());
-            }
-
-            auto idx = stack.back();
-            stack.pop_back();
-            to_visit.reset(idx);
-
-            const auto& neighbors = m_nodes[idx].neighbors();
-
-            for (auto neighbor : neighbors) {
-                if (to_visit[neighbor]) {
-                    res.push_back(std::make_pair(m_nodes[idx].name(), m_nodes[neighbor].name()));
-                    stack.push_back(neighbor);
-                }
-            }
+        for (auto& edge : m_edges) {
+            res.push_back({m_nodes[edge.first].name(), m_nodes[edge.second].name()});
         }
 
         return res;
@@ -115,19 +91,18 @@ namespace graph {
 
     void UndirectedGraph::remove_node_unsafe(int index) {
         for (auto neighbor : m_nodes[index].neighbors()) {
+            m_edges.erase(std::make_pair(index, neighbor));
             m_nodes[neighbor].remove_neighbor(index);
         }
 
         m_indices.erase(m_nodes[index].name());
-        m_num_edges -= m_nodes[index].neighbors().size();
         m_nodes[index].invalidate();
         free_indices.push_back(index);
     }
 
     void UndirectedGraph::add_edge_unsafe(int source, int target) {
         if (!has_edge_unsafe(source, target)) {
-            ++m_num_edges;
-
+            m_edges.insert({source, target});
             m_nodes[source].add_neighbor(target);
             m_nodes[target].add_neighbor(source);
         }
@@ -135,8 +110,7 @@ namespace graph {
 
     void UndirectedGraph::remove_edge_unsafe(int source, int target) {
         if (has_edge_unsafe(source, target)) {
-            --m_num_edges;
-
+            m_edges.erase({source, target});
             m_nodes[source].remove_neighbor(target);
             m_nodes[target].remove_neighbor(source);
         }

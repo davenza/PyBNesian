@@ -1,11 +1,12 @@
 #include <pybind11/pybind11.h>
 #include <learning/operators/operators.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
+#include <learning/algorithms/pc.hpp>
 
 namespace py = pybind11;
 
 using learning::operators::OperatorPool;
-using learning::algorithms::GreedyHillClimbing;
+using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC;
 
 template<typename Model, typename... Models>
 py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
@@ -87,5 +88,10 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("patience") = 0);
 
     register_GreedyHillClimbing<GaussianNetwork, SemiparametricBN>(algorithms);
+
+
+    py::class_<PC>(algorithms, "PC")
+        .def(py::init<>())
+        .def("estimate", &PC::estimate);
 
 }

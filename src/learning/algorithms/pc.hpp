@@ -3,7 +3,7 @@
 
 #include <util/util_types.hpp>
 #include <models/GaussianNetwork.hpp>
-#include <learning/independence_tests/independence.hpp>
+#include <learning/independences/independence.hpp>
 
 using util::ArcVector;
 using models::GaussianNetwork;
@@ -13,12 +13,12 @@ namespace learning::algorithms {
     
 
     class PC {
-        
+    public:
         void estimate(const DataFrame& df, 
-                                 ArcVector& arc_blacklist, 
-                                 ArcVector& arc_whitelist, 
-                                 const IndependenceTest& test,
-                                 double alpha);
+                        ArcVector& arc_blacklist, 
+                        ArcVector& arc_whitelist, 
+                        const IndependenceTest& test,
+                        double alpha);
 
     };
 }

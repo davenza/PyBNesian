@@ -69,7 +69,7 @@ namespace learning::scores {
 
         auto mle_params = mle.estimate(m_df, variable, evidence_begin, evidence_end);
 
-        auto rows = m_df.valid_count(variable, std::make_pair(evidence_begin, evidence_end));
+        auto rows = m_df.valid_rows(variable, std::make_pair(evidence_begin, evidence_end));
         auto num_evidence = std::distance(evidence_begin, evidence_end);
         auto loglik = 0.5 * (1 + num_evidence - rows) - 0.5 * rows*std::log(2*util::pi<double>) - rows * std::log(std::sqrt(mle_params.variance));
 

@@ -46,7 +46,7 @@ namespace dataset {
 
     int64_t null_count(Array_iterator begin, Array_iterator end);
     Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end);
-    int64_t valid_count(Array_iterator begin, Array_iterator end);
+    int64_t valid_rows(Array_iterator begin, Array_iterator end);
 
     template<bool append_ones, typename ArrowType>
     inline typename ArrowType::c_type* fill_ones(typename ArrowType::c_type* ptr, int rows [[maybe_unused]]) {
@@ -184,13 +184,11 @@ namespace dataset {
 
         CType inv_N = 1 / static_cast<CType>(N - 1);
 
-        int i = 0;
-        for(auto it = v.begin(); it != v.end(); ++it, ++i) {
-            (*res)(i, i) = (*it).squaredNorm() * inv_N;
+        for (size_t i = 0; i < v.size(); ++i) {
+            (*res)(i, i) = v[i].squaredNorm() * inv_N;
 
-            int j = 0;
-            for(auto it2 = v.begin(); it2 != it; ++it2, ++j) {
-                (*res)(i, j) = (*res)(j, i) = (*it).dot(*it2) * inv_N;
+            for (size_t j = i+1; j < v.size(); ++j) {
+                (*res)(i, j) = (*res)(j, i) = v[i].dot(v[j]) * inv_N;
             }
         }
 
@@ -251,7 +249,7 @@ namespace dataset {
     EigenMatrix<ArrowType> cov(Array_ptr col) {
         if constexpr (contains_null) {
             auto bitmap = col->null_bitmap();
-            return cov<ArrowType>(col, bitmap);
+            return cov<ArrowType>(bitmap, col);
         } else {
             using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
             std::vector<EigenVector> columns;
@@ -387,30 +385,30 @@ namespace dataset {
             return dataset::null_count(v.begin(), v.end());
         }
 
-        int64_t valid_count() const {
+        int64_t valid_rows() const {
             auto cols = m_batch->columns();
-            return dataset::valid_count(cols.begin(), cols.end()); 
+            return dataset::valid_rows(cols.begin(), cols.end()); 
         }
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        int64_t valid_count(const T cols) const { 
-            return valid_count(cols.begin(), cols.end()); 
+        int64_t valid_rows(const T cols) const { 
+            return valid_rows(cols.begin(), cols.end()); 
         }
         template<typename V>
-        int64_t valid_count(std::initializer_list<V> cols) const { 
-            return valid_count(cols.begin(), cols.end()); 
+        int64_t valid_rows(std::initializer_list<V> cols) const { 
+            return valid_rows(cols.begin(), cols.end()); 
         }
-        int64_t valid_count(int i) const { return m_batch->num_rows() - m_batch->column(i)->null_count(); }
+        int64_t valid_rows(int i) const { return m_batch->num_rows() - m_batch->column(i)->null_count(); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        int64_t valid_count(const StringType& name) const { return m_batch->num_rows() - m_batch->GetColumnByName(name)->null_count(); }
+        int64_t valid_rows(const StringType& name) const { return m_batch->num_rows() - m_batch->GetColumnByName(name)->null_count(); }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        int64_t valid_count(const IndexIter begin, const IndexIter end) const {
+        int64_t valid_rows(const IndexIter begin, const IndexIter end) const {
             auto v = indices_to_columns(begin, end);
-            return dataset::valid_count(v.begin(), v.end());
+            return dataset::valid_rows(v.begin(), v.end());
         }
         template<typename ...Args>
-        int64_t valid_count(Args... args) const {
+        int64_t valid_rows(Args... args) const {
             auto v = indices_to_columns(args...);
-            return dataset::valid_count(v.begin(), v.end());
+            return dataset::valid_rows(v.begin(), v.end());
         }
 
         template<bool append_ones, typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
@@ -499,7 +497,6 @@ namespace dataset {
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end());
         }
 
-
         template<typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
         EigenMatrix<ArrowType> cov(const T cols) {
             if (null_count(cols) == 0) {
@@ -521,15 +518,15 @@ namespace dataset {
         template<typename ArrowType, typename V>
         EigenMatrix<ArrowType> cov(std::initializer_list<V> cols) {
             if (null_count(cols) == 0) {
-                return cov<ArrowType, false>(cols);
+                return cov<ArrowType, false, std::initializer_list<V>>(cols);
             } else {
-                return cov<ArrowType, true>(cols);
+                return cov<ArrowType, true, std::initializer_list<V>>(cols);
             }
         }
         template<typename ArrowType, bool contains_null, typename V>
         EigenMatrix<ArrowType> cov(std::initializer_list<V> cols) {
             auto c = indices_to_columns(cols);
-            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+            return dataset::cov<ArrowType, contains_null, std::initializer_list<V>>(c.begin(), c.end());
         }
         template<typename ArrowType, typename V>
         EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, std::initializer_list<V> cols) {
@@ -605,10 +602,12 @@ namespace dataset {
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
-        std::shared_ptr<RecordBatch> operator->() const;
+        std::vector<int> continuous_columns() const;
 
+        std::shared_ptr<RecordBatch> operator->() const;
         friend std::pair<DataFrame, DataFrame> generate_cv_pair(const DataFrame& df, int fold, const std::vector<int>& indices, 
                                                                 const std::vector<std::vector<int>::iterator>& test_limits);
+
     private:
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         Array_vector indices_to_columns(const T cols) const;

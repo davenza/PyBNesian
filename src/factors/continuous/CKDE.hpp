@@ -268,9 +268,9 @@ namespace factors::continuous {
         auto cov = df.cov<ArrowType, contains_null>(variables);
 
         if constexpr(std::is_same_v<ArrowType, arrow::DoubleType>) {
-            m_bandwidth = std::pow(static_cast<CType>(df.valid_count(variables)), -2 / static_cast<CType>(variables.size() + 4)) * (*cov);
+            m_bandwidth = std::pow(static_cast<CType>(df.valid_rows(variables)), -2 / static_cast<CType>(variables.size() + 4)) * (*cov);
         } else {
-            m_bandwidth = std::pow(static_cast<CType>(df.valid_count(variables)), -2 / static_cast<CType>(variables.size() + 4)) * 
+            m_bandwidth = std::pow(static_cast<CType>(df.valid_rows(variables)), -2 / static_cast<CType>(variables.size() + 4)) * 
                                 (cov->template cast<double>());
         }
     }
@@ -336,7 +336,7 @@ namespace factors::continuous {
             else
                 return read_data;
         } else {
-            auto m = df.valid_count(m_variables);
+            auto m = df.valid_rows(m_variables);
             VectorType read_data(m);
             auto bitmap = df.combined_bitmap(m_variables);
             auto bitmap_data = bitmap->data();
@@ -362,7 +362,7 @@ namespace factors::continuous {
         using CType = typename ArrowType::c_type;
 
         auto logl_buff = logl_buffer<ArrowType>(df);
-        auto m = df.valid_count(m_variables);
+        auto m = df.valid_rows(m_variables);
 
         auto& opencl = OpenCLConfig::get();
         auto buffer_sum = opencl.sum1d<ArrowType>(logl_buff, m);
@@ -515,7 +515,7 @@ namespace factors::continuous {
         auto& opencl = OpenCLConfig::get();
         if (!m_evidence.empty()) {
             auto logl_marg = m_marg.logl_buffer<ArrowType>(df);
-            auto m = df.valid_count(m_variables);
+            auto m = df.valid_rows(m_variables);
 
             
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
@@ -533,7 +533,7 @@ namespace factors::continuous {
             else
                 return read_data;
         } else {
-            auto m = df.valid_count(m_variables);
+            auto m = df.valid_rows(m_variables);
             VectorType read_data(m);
             auto bitmap = df.combined_bitmap(m_variables);
             auto bitmap_data = bitmap->data();
@@ -559,7 +559,7 @@ namespace factors::continuous {
         using CType = typename ArrowType::c_type;
 
         auto logl_joint = m_joint.logl_buffer<ArrowType>(df);
-        auto m = df.valid_count(m_variables);
+        auto m = df.valid_rows(m_variables);
 
         auto& opencl = OpenCLConfig::get();
         if(!m_evidence.empty()) {

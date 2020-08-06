@@ -197,7 +197,7 @@ case Type::TypeID:                                                              
         }
     }
 
-    int64_t valid_count(Array_iterator begin, Array_iterator end) {
+    int64_t valid_rows(Array_iterator begin, Array_iterator end) {
         if (std::distance(begin, end) == 0) {
             return 0;
         }
@@ -241,5 +241,56 @@ case Type::TypeID:                                                              
         }
 
         return dt;
+    }
+
+    std::vector<int> DataFrame::continuous_columns() const {
+        std::vector<int> res;
+
+        arrow::Type::type dt = arrow::Type::NA;
+        for (int i = 0; i < m_batch->num_columns() && dt == Type::NA; ++i) {
+            auto column = m_batch->column(i);
+            switch (column->type_id()) {
+                case Type::DOUBLE:
+                case Type::FLOAT:
+                    dt = column->type_id();
+                    res.push_back(i);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (dt == Type::NA) {
+            return res;
+        }
+
+        for (int i = res[0]+1; i < m_batch->num_columns(); ++i) {
+            auto column = m_batch->column(i);
+
+            switch(column->type_id()) {
+                case Type::DOUBLE: {
+                    if (dt == Type::FLOAT)
+                        throw std::invalid_argument("Column " + std::to_string(res[0]) + 
+                                            " [" + m_batch->column(res[0])->type()->ToString() + "] and "
+                                            "column " + std::to_string(i) + "[" + column->type()->ToString() + "] " 
+                                            "have different continuous data types");
+                    res.push_back(i);
+                    break;
+                }
+                case Type::FLOAT: {
+                    if (dt == Type::DOUBLE)
+                        throw std::invalid_argument("Column " + std::to_string(res[0]) + 
+                                            " [" + m_batch->column(res[0])->type()->ToString() + "] and "
+                                            "column " + std::to_string(i) + "[" + column->type()->ToString() + "] " 
+                                            "have different continuous data types");
+                    res.push_back(i);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        return res;
     }
 }

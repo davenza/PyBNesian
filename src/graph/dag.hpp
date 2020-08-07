@@ -6,74 +6,15 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
 
 using util::ArcVector;
 
+using graph::DNode;
+
 namespace graph {
 
-    class DNode {
-    public:
-        DNode(int idx,
-             std::string name,
-             std::unordered_set<int> parents = {}, 
-             std::unordered_set<int> children = {}) : m_idx(idx), 
-                                                m_name(name), 
-                                                m_parents(parents), 
-                                                m_children(children) {}
-        
-        const std::string& name() const {
-            return m_name;
-        }
-
-        const std::unordered_set<int>& parents() const {
-            return m_parents;
-        }
-
-        const std::unordered_set<int>& children() const {
-            return m_children;
-        }
-
-        void add_parent(int p) {
-            m_parents.insert(p);
-        }
-
-        void add_children(int ch) {
-            m_children.insert(ch);
-        }
-
-        void remove_parent(int p) {
-            m_parents.erase(p);
-        }
-
-        void remove_children(int ch) {
-            m_children.erase(ch);
-        }
-
-        bool is_root() const {
-            return m_parents.empty();
-        }
-
-        bool is_leaf() const {
-            return m_children.empty();
-        }
-
-        void invalidate() {
-            m_idx = -1;
-            m_name.clear();
-            m_parents.clear();
-            m_children.clear();
-        }
-
-        bool is_valid() const {
-            return m_idx != -1;
-        }
-    private:
-        int m_idx;
-        std::string m_name;
-        std::unordered_set<int> m_parents;
-        std::unordered_set<int> m_children;
-    };
 
     class DirectedGraph {
     public:

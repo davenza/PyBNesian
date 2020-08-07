@@ -6,77 +6,15 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <string>
+#include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
-#include <util/hash_utils.hpp>
+
 
 using util::EdgeVector;
 
+using graph::UNode, graph::EdgeHash, graph::EdgeEqualTo;
+
 namespace graph {
-
-    class UNode {
-    public:
-        UNode(int idx,
-             std::string name,
-             std::unordered_set<int> neighbors = {}) : m_idx(idx), 
-                                                m_name(name), 
-                                                m_neighbors(neighbors) {} 
-        
-        const std::string& name() const {
-            return m_name;
-        }
-
-        const std::unordered_set<int>& neighbors() const {
-            return m_neighbors;
-        }
-
-        void add_neighbor(int p) {
-            m_neighbors.insert(p);
-        }
-
-        void remove_neighbor(int p) {
-            m_neighbors.erase(p);
-        }
-
-        void invalidate() {
-            m_idx = -1;
-            m_name.clear();
-            m_neighbors.clear();
-        }
-
-        bool is_valid() const {
-            return m_idx != -1;
-        }
-    private:
-        int m_idx;
-        std::string m_name;
-        std::unordered_set<int> m_neighbors;
-    };
-
-    using UEdge = std::pair<int, int>;
-
-    // From https://stackoverflow.com/questions/28367913/how-to-stdhash-an-unordered-stdpair
-    struct UEdgeHash {
-        std::size_t operator()(UEdge const& edge) const {
-            size_t seed = 1;
-            
-            if (edge.first <= edge.second) {
-                util::hash_combine(seed, edge.first);
-                util::hash_combine(seed, edge.second);
-            } else {
-                util::hash_combine(seed, edge.second);
-                util::hash_combine(seed, edge.first);
-            }
-
-            return seed;
-        }
-    };
-
-    struct UEdgeEqualTo {
-        bool operator()(const UEdge& lhs, const UEdge& rhs) const {
-            return (lhs == rhs) || 
-                   (lhs.first == rhs.second && lhs.second == rhs.first);
-        }
-    };
 
     class UndirectedGraph {
     public:
@@ -181,7 +119,7 @@ namespace graph {
         }
 
         EdgeVector edges() const;
-        auto edge_indices() const { return m_edges; }
+        const auto& edge_indices() const { return m_edges; }
 
         std::vector<std::string> neighbors(int idx) const {
             check_valid_indices(idx);
@@ -318,7 +256,7 @@ namespace graph {
         std::vector<std::string> neighbors(const UNode& n) const;
 
         std::vector<UNode> m_nodes;
-        std::unordered_set<UEdge, UEdgeHash, UEdgeEqualTo> m_edges;
+        std::unordered_set<Edge, EdgeHash, EdgeEqualTo> m_edges;
         std::unordered_map<std::string, int> m_indices;
         std::vector<int> free_indices;
     };

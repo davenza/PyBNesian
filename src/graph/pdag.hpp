@@ -1,97 +1,27 @@
 #ifndef PGM_DATASET_PDAG_HPP
 #define PGM_DATASET_PDAG_HPP
 
+#include <pybind11/pybind11.h>
 #include <string>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
-#include <pybind11/pybind11.h>
-
+#include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
 
+using graph::PDNode, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo;
 using util::ArcVector, util::EdgeVector;
 
 namespace graph {
     
-    class PDNode {
-    public:
-        PDNode(int idx,
-                std::string name,
-                std::unordered_set<int> parents = {}, 
-                std::unordered_set<int> children = {},
-                std::unordered_set<int> neighbors = {}) : m_idx(idx), 
-                                                            m_name(name), 
-                                                            m_neighbors(neighbors),
-                                                            m_parents(parents), 
-                                                            m_children(children) {}
-        
-        const std::string& name() const {
-            return m_name;
-        }
-        
-        const std::unordered_set<int>& neighbors() const {
-            return m_neighbors;
-        }
-
-        const std::unordered_set<int>& parents() const {
-            return m_parents;
-        }
-
-        const std::unordered_set<int>& children() const {
-            return m_children;
-        }
-
-        void add_neighbor(int p) {
-            m_neighbors.insert(p);
-        }
-
-        void add_parent(int p) {
-            m_parents.insert(p);
-        }
-
-        void add_children(int ch) {
-            m_children.insert(ch);
-        }
-        
-        void remove_neighbor(int p) {
-            m_neighbors.erase(p);
-        }
-
-        void remove_parent(int p) {
-            m_parents.erase(p);
-        }
-
-        void remove_children(int ch) {
-            m_children.erase(ch);
-        }
-
-        void invalidate() {
-            m_idx = -1;
-            m_name.clear();
-            m_neighbors.clear();
-            m_parents.clear();
-            m_children.clear();
-        }
-
-        bool is_valid() const {
-            return m_idx != -1;
-        }
-    private:
-        int m_idx;
-        std::string m_name;
-        std::unordered_set<int> m_neighbors;
-        std::unordered_set<int> m_parents;
-        std::unordered_set<int> m_children;
-    };
-
 
     class PartiallyDirectedGraph {
     public:
-        PartiallyDirectedGraph() : m_nodes(), m_num_arcs(0), m_num_edges(0), m_indices(), free_indices() {}
+        PartiallyDirectedGraph() : m_nodes(), m_edges(), m_num_arcs(0), m_indices(), free_indices() {}
 
         PartiallyDirectedGraph(const std::vector<std::string>& nodes) : m_nodes(),
+                                                                        m_edges(),
                                                                         m_num_arcs(0),
-                                                                        m_num_edges(0),
                                                                         m_indices(),
                                                                         free_indices() {
             m_nodes.reserve(nodes.size());
@@ -104,8 +34,8 @@ namespace graph {
         }
 
         PartiallyDirectedGraph(const EdgeVector& edges, const ArcVector& arcs) : m_nodes(),
+                                                                                    m_edges(),
                                                                                     m_num_arcs(0),
-                                                                                    m_num_edges(0),
                                                                                     m_indices(),
                                                                                     free_indices() {
 
@@ -136,9 +66,9 @@ namespace graph {
 
         PartiallyDirectedGraph(const std::vector<std::string>& nodes, 
                                 const EdgeVector& edges, 
-                                const ArcVector& arcs) : m_nodes(), 
+                                const ArcVector& arcs) : m_nodes(),
+                                                         m_edges(),
                                                          m_num_arcs(0),
-                                                         m_num_edges(0),
                                                          m_indices(),
                                                          free_indices() {
             m_nodes.reserve(nodes.size());
@@ -174,7 +104,7 @@ namespace graph {
         }
 
         int num_edges() const {
-            return m_num_edges;
+            return m_edges.size();
         }
 
         int num_arcs() const {
@@ -244,6 +174,8 @@ namespace graph {
         }
 
         EdgeVector edges() const;
+        const auto& edge_indices() const { return m_edges; }
+
         ArcVector arcs() const;
 
         std::vector<std::string> neighbors(int idx) const {
@@ -445,8 +377,8 @@ namespace graph {
         std::vector<std::string> parents(const PDNode& n) const;
 
         std::vector<PDNode> m_nodes;
+        std::unordered_set<Edge, EdgeHash, EdgeEqualTo> m_edges;
         int m_num_arcs;
-        int m_num_edges;
         std::unordered_map<std::string, int> m_indices;
         std::vector<int> free_indices;
     };

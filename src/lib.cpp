@@ -6,6 +6,7 @@ namespace pyarrow = arrow::py;
 
 void pybindings_dataset(py::module& root);
 void pybindings_factors(py::module& root);
+void pybindings_graph(py::module& root);
 void pybindings_models(py::module& root);
 void pybindings_learning(py::module& root);
 
@@ -17,6 +18,7 @@ PYBIND11_MODULE(pgm_dataset, m) {
 
     pybindings_dataset(m);
     pybindings_factors(m);
+    pybindings_graph(m);
     pybindings_models(m);
     pybindings_learning(m);
 }

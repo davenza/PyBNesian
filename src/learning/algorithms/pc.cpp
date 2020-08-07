@@ -4,7 +4,7 @@
 #include <graph/undirected.hpp>
 #include <util/combinations.hpp>
 
-using graph::UndirectedGraph, graph::UEdge, graph::UEdgeHash, graph::UEdgeEqualTo;
+using graph::UndirectedGraph, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo;
 
 using util::Combinations, util::Combinations2Sets;
 
@@ -19,14 +19,14 @@ namespace learning::algorithms {
         return true;
     }
 
-    void remove_edges(UndirectedGraph& g, const std::vector<UEdge>& edges) {
+    void remove_edges(UndirectedGraph& g, const std::vector<Edge>& edges) {
         for (auto edge : edges) {
             g.remove_edge(edge.first, edge.second);
         }
     }
 
     std::optional<int> find_univariate_sepset(UndirectedGraph& g, 
-                                                const UEdge& edge, 
+                                                const Edge& edge, 
                                                 double alpha, 
                                                 const IndependenceTest& test) {
 
@@ -49,7 +49,7 @@ namespace learning::algorithms {
     }
 
     template<typename Comb>
-    std::optional<std::unordered_set<int>> evaluate_multivariate_sepset(const UEdge& edge,
+    std::optional<std::unordered_set<int>> evaluate_multivariate_sepset(const Edge& edge,
                                                                          Comb& comb,
                                                                          const IndependenceTest& test,
                                                                          double alpha) {
@@ -65,7 +65,7 @@ namespace learning::algorithms {
     }
 
     std::optional<std::unordered_set<int>> find_multivariate_sepset(UndirectedGraph& g, 
-                                                                   const UEdge& edge, 
+                                                                   const Edge& edge, 
                                                                    int sep_size,
                                                                    const IndependenceTest& test,
                                                                    double alpha) {
@@ -98,15 +98,15 @@ namespace learning::algorithms {
 
     class SepSet {
     public:
-        void insert(UEdge e, const std::unordered_set<int>& s) {
+        void insert(Edge e, const std::unordered_set<int>& s) {
             m_sep.insert(std::make_pair(e, s));
         }
 
-        void insert(UEdge e, std::unordered_set<int>&& s) {
+        void insert(Edge e, std::unordered_set<int>&& s) {
             m_sep.insert(std::make_pair(e, std::move(s)));
         }
 
-        const std::unordered_set<int>& sepset(UEdge e) {
+        const std::unordered_set<int>& sepset(Edge e) {
             auto f = m_sep.find(e);
             if (f == m_sep.end()) {
                 throw std::out_of_range("Edge (" + std::to_string(e.first) + ", " + std::to_string(e.second) + ") not found in sepset.");
@@ -115,7 +115,7 @@ namespace learning::algorithms {
             return f->second;
         }
     private:
-        std::unordered_map<UEdge, std::unordered_set<int>, UEdgeHash, UEdgeEqualTo> m_sep;
+        std::unordered_map<Edge, std::unordered_set<int>, EdgeHash, EdgeEqualTo> m_sep;
     };
 
 
@@ -143,7 +143,7 @@ namespace learning::algorithms {
             return std::make_pair(g, sepset);
         }
 
-        std::vector<UEdge> edges_to_remove;
+        std::vector<Edge> edges_to_remove;
 
         for (auto& edge : g.edge_indices()) {
             auto indep = find_univariate_sepset(g, edge, alpha, test);

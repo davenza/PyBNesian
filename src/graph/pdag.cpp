@@ -21,38 +21,10 @@ namespace graph {
 
     EdgeVector PartiallyDirectedGraph::edges() const {
         EdgeVector res;
-        if (m_num_edges == 0)
-            return res;
+        res.reserve(m_edges.size());
 
-        res.reserve(m_num_edges);
-
-        dynamic_bitset to_visit(m_nodes.size());
-
-        to_visit.set(0, m_nodes.size());
-
-        for (auto free : free_indices) {
-            to_visit.reset(free);
-        }
-
-        std::vector<int> stack;
-
-        while (res.size() < static_cast<size_t>(m_num_edges)) {
-            if (stack.empty()) {
-                stack.push_back(to_visit.find_first());
-            }
-
-            auto idx = stack.back();
-            stack.pop_back();
-            to_visit.reset(idx);
-
-            const auto& neighbors = m_nodes[idx].neighbors();
-
-            for (auto neighbor : neighbors) {
-                if (to_visit[neighbor]) {
-                    res.push_back(std::make_pair(m_nodes[idx].name(), m_nodes[neighbor].name()));
-                    stack.push_back(neighbor);
-                }
-            }
+        for (auto& edge : m_edges) {
+            res.push_back({m_nodes[edge.first].name(), m_nodes[edge.second].name()});
         }
 
         return res;
@@ -95,6 +67,14 @@ namespace graph {
         return res;
     }
 
+    std::vector<std::string> PartiallyDirectedGraph::neighbors(const PDNode& n) const {
+
+    }
+
+    std::vector<std::string> PartiallyDirectedGraph::parents(const PDNode& n) const {
+
+    }
+
     void PartiallyDirectedGraph::add_node(const std::string& node) {
         int idx = [this, &node]() {
             if (!free_indices.empty()) {
@@ -117,6 +97,7 @@ namespace graph {
 
     void PartiallyDirectedGraph::remove_node_unsafe(int index) {
         for (auto neighbor : m_nodes[index].neighbors()) {
+            m_edges.erase(std::make_pair(index, neighbor));
             m_nodes[neighbor].remove_neighbor(index);
         }
 
@@ -129,7 +110,6 @@ namespace graph {
         }
 
         m_indices.erase(m_nodes[index].name());
-        m_num_edges -= m_nodes[index].neighbors().size();
         m_num_arcs -= m_nodes[index].parents().size() + m_nodes[index].children().size();
         m_nodes[index].invalidate();
         free_indices.push_back(index);
@@ -137,7 +117,7 @@ namespace graph {
 
     void PartiallyDirectedGraph::add_edge_unsafe(int source, int target) {
         if (!has_edge_unsafe(source, target)) {
-            ++m_num_edges;
+            m_edges.insert({source, target});
             m_nodes[source].add_neighbor(target);
             m_nodes[target].add_neighbor(source);
         }
@@ -153,8 +133,7 @@ namespace graph {
 
     void PartiallyDirectedGraph::remove_edge_unsafe(int source, int target) {
         if (has_edge_unsafe(source, target)) {
-            --m_num_edges;
-
+            m_edges.erase({source, target});
             m_nodes[source].remove_neighbor(target);
             m_nodes[target].remove_neighbor(source);
         }
@@ -179,7 +158,7 @@ namespace graph {
 
     void PartiallyDirectedGraph::direct_unsafe(int source, int target) {
         if (has_edge_unsafe(source, target)) {
-            --m_num_edges;
+            m_edges.erase({source, target});
             ++m_num_arcs;
 
             m_nodes[source].remove_neighbor(target);
@@ -193,7 +172,7 @@ namespace graph {
     void PartiallyDirectedGraph::undirect_unsafe(int source, int target) {
         if (has_arc_unsafe(source, target)) {
             --m_num_arcs;
-            ++m_num_edges;
+            m_edges.insert({source, target});
 
             m_nodes[source].remove_children(target);
             m_nodes[source].add_neighbor(target);

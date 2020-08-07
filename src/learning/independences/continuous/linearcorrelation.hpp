@@ -4,10 +4,11 @@
 #include <dataset/dataset.hpp>
 #include <learning/independences/independence.hpp>
 #include <arrow/api.h>
+#include <Eigen/Dense>
 
 using dataset::DataFrame;
 using learning::independences::IndependenceTest;
-
+using Eigen::LLT, Eigen::Ref;
 
 namespace learning::independences::continuous {
 
@@ -34,7 +35,23 @@ namespace learning::independences::continuous {
         return -p12 / (sqrt(p11 * p22));
     }
 
-    double cor_general(MatrixXd& cov);
+    template<typename EigenMatrix>
+    double cor_general(EigenMatrix& cov) {
+        using Scalar = typename EigenMatrix::Scalar;
+        LLT<Ref<EigenMatrix>> llt(cov);
+
+        int d = cov.rows();
+        auto Lmatrix = llt.matrixL();
+        EigenMatrix identity = EigenMatrix::Identity(d, d);
+
+        Lmatrix.solveInPlace(identity);
+
+        Scalar p11 = cov(d-1, d-1)*cov(d-1, d-1);
+        Scalar p22 = cov(d-1, d-2)*cov(d-1, d-2) + cov(d-2, d-2)*cov(d-2, d-2);
+        Scalar p12 = cov(d-1, d-1)*cov(d-1, d-2);
+        
+        return static_cast<double>(-p12 / sqrt(p11 * p22));
+    }
 
     class LinearCorrelation : public IndependenceTest {
     public:
@@ -96,7 +113,8 @@ namespace learning::independences::continuous {
                         const typename std::vector<int>::const_iterator evidence_end) const override {
             if (m_cached_cov)
                 return pvalue_cached(v1, v2, evidence_begin, evidence_end);
-            // pvalue<>(v1, v2, evidence_begin, evidence_end);
+            else
+                return pvalue_impl(v1, v2, evidence_begin, evidence_end);
         }
 
          double pvalue(const std::string& v1, const std::string& v2, 
@@ -104,7 +122,8 @@ namespace learning::independences::continuous {
                             const typename std::vector<std::string>::const_iterator evidence_end) const override {
             if (m_cached_cov)
                 return pvalue_cached(v1, v2, evidence_begin, evidence_end);
-            // pvalue<>(v1, v2, evidence_begin, evidence_end);
+            else
+                return pvalue_impl(v1, v2, evidence_begin, evidence_end);
         }
 
 
@@ -123,6 +142,8 @@ namespace learning::independences::continuous {
         double pvalue_impl(const VarType& v1, const VarType& v2) const;
         template<typename VarType>
         double pvalue_impl(const VarType& v1, const VarType& v2, const VarType& cond) const;
+        template<typename VarType, typename Iter>
+        double pvalue_impl(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const;
 
         const DataFrame& m_df;
         bool m_cached_cov;
@@ -193,8 +214,58 @@ namespace learning::independences::continuous {
 
     template<typename VarType, typename Iter>
     double LinearCorrelation::pvalue_cached(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const {
+        std::vector<int> cached_indices;
+    
+        for (auto it = evidence_begin; it != evidence_end; ++it) {
+            cached_indices.push_back(cached_index(*it));
+        }
 
-        // double cor = cor_general(cov);
+        cached_indices.push_back(cached_index(v1));
+        cached_indices.push_back(cached_index(v2));
+
+        int k = std::distance(evidence_begin, evidence_end);
+        MatrixXd cov(k+2, k+2);
+
+        for (int i = 0; i < k+2; ++i) {
+            cov(i,i) = m_cov(cached_indices[i], cached_indices[i]);
+            for (int j = i+1; j < k+2; ++j) {
+                cov(i, j) = cov(j, i) = m_cov(cached_indices[i], cached_indices[j]);
+            }
+        }
+
+        double cor = cor_general(cov);
+        return cor_pvalue(cor, m_df->num_rows() - 2 - k);
+    }
+
+    template<typename VarType, typename Iter>
+    double LinearCorrelation::pvalue_impl(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const {
+
+        auto [cor, df] = [this, &v1, &v2, evidence_begin, evidence_end]() {
+            int k = std::distance(evidence_begin, evidence_end);
+            switch(m_df.col(v1)->type_id()) {
+                case Type::DOUBLE: {
+                    auto cov_ptr = m_df.cov<arrow::DoubleType>(std::make_pair(evidence_begin, evidence_end), v1, v2) ;
+                    auto& cov = *cov_ptr;
+                    double cor = cor_general(cov);
+                    return std::make_pair(cor, 
+                                m_df.valid_rows(v1, v2, std::make_pair(evidence_begin, evidence_end)) - 2 - k
+                            );
+                }
+                case Type::FLOAT: {
+                    auto cov_ptr = m_df.cov<arrow::FloatType>(std::make_pair(evidence_begin, evidence_end), v1, v2);
+                    auto& cov = *cov_ptr;
+                    double cor = cor_general(cov);
+                    return std::make_pair(cor, 
+                                m_df.valid_rows(v1, v2, std::make_pair(evidence_begin, evidence_end)) - 2 - k
+                            );
+                }
+                default:
+                    break;
+            }
+        }();
+
+
+        return cor_pvalue(cor, df);
     }
 
 }

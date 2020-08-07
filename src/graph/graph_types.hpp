@@ -70,6 +70,17 @@ namespace graph {
 
     using Arc = std::pair<int, int>;
 
+    struct ArcHash {
+        std::size_t operator()(Arc const& arc) const {
+            size_t seed = 1;
+            
+            util::hash_combine(seed, arc.first);
+            util::hash_combine(seed, arc.second);
+
+            return seed;
+        }
+    };
+
     class UNode {
     public:
         UNode(int idx,

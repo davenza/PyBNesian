@@ -75,8 +75,8 @@ namespace learning::algorithms {
         auto nbr2 = g.neighbor_indices(edge.second);
         nbr2.erase(edge.first);
 
-        bool set1_valid = nbr.size() >= sep_size;
-        bool set2_valid = nbr2.size() >= sep_size;
+        bool set1_valid = static_cast<int>(nbr.size()) >= sep_size;
+        bool set2_valid = static_cast<int>(nbr2.size()) >= sep_size;
 
         if (set1_valid) {
             if (set2_valid) {

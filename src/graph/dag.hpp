@@ -11,17 +11,17 @@
 
 using util::ArcVector;
 
-using graph::DNode;
+using graph::DNode, graph::Arc;
 
 namespace graph {
 
 
     class DirectedGraph {
     public:
-        DirectedGraph() : m_nodes(), m_num_arcs(0), m_indices(), m_roots(), m_leaves(), free_indices() {}
+        DirectedGraph() : m_nodes(), m_arcs(), m_indices(), m_roots(), m_leaves(), free_indices() {}
 
         DirectedGraph(const std::vector<std::string>& nodes) : m_nodes(), 
-                                                                m_num_arcs(0),
+                                                                m_arcs(),
                                                                 m_indices(),
                                                                 m_roots(), 
                                                                 m_leaves(), 
@@ -39,7 +39,7 @@ namespace graph {
         };
 
         DirectedGraph(const ArcVector& arcs) : m_nodes(), 
-                                                m_num_arcs(0),
+                                                m_arcs(),
                                                 m_indices(), 
                                                 m_roots(), 
                                                 m_leaves(), 
@@ -62,7 +62,7 @@ namespace graph {
 
         DirectedGraph(const std::vector<std::string>& nodes, 
                       const ArcVector& arcs) : m_nodes(), 
-                                                m_num_arcs(0),
+                                                m_arcs(),
                                                 m_indices(),
                                                 m_roots(), 
                                                 m_leaves(), 
@@ -104,7 +104,7 @@ namespace graph {
         }
 
         int num_arcs() const {
-            return m_num_arcs;
+            return m_arcs.size();
         }
 
         int num_parents(int idx) const {
@@ -352,7 +352,7 @@ namespace graph {
         std::string parents_to_string(const DNode& n) const;
 
         std::vector<DNode> m_nodes;
-        int m_num_arcs;
+        std::unordered_set<Arc, ArcHash> m_arcs;
         // Change to FNV hash function?
         std::unordered_map<std::string, int> m_indices;
         std::unordered_set<int> m_roots;

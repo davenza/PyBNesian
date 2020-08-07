@@ -9,7 +9,7 @@
 #include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
 
-using graph::PDNode, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo;
+using graph::PDNode, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo, graph::Arc, graph::ArcHash;
 using util::ArcVector, util::EdgeVector;
 
 namespace graph {
@@ -17,11 +17,11 @@ namespace graph {
 
     class PartiallyDirectedGraph {
     public:
-        PartiallyDirectedGraph() : m_nodes(), m_edges(), m_num_arcs(0), m_indices(), free_indices() {}
+        PartiallyDirectedGraph() : m_nodes(), m_edges(), m_arcs(), m_indices(), free_indices() {}
 
         PartiallyDirectedGraph(const std::vector<std::string>& nodes) : m_nodes(),
                                                                         m_edges(),
-                                                                        m_num_arcs(0),
+                                                                        m_arcs(),
                                                                         m_indices(),
                                                                         free_indices() {
             m_nodes.reserve(nodes.size());
@@ -35,7 +35,7 @@ namespace graph {
 
         PartiallyDirectedGraph(const EdgeVector& edges, const ArcVector& arcs) : m_nodes(),
                                                                                     m_edges(),
-                                                                                    m_num_arcs(0),
+                                                                                    m_arcs(),
                                                                                     m_indices(),
                                                                                     free_indices() {
 
@@ -68,7 +68,7 @@ namespace graph {
                                 const EdgeVector& edges, 
                                 const ArcVector& arcs) : m_nodes(),
                                                          m_edges(),
-                                                         m_num_arcs(0),
+                                                         m_arcs(),
                                                          m_indices(),
                                                          free_indices() {
             m_nodes.reserve(nodes.size());
@@ -108,7 +108,7 @@ namespace graph {
         }
 
         int num_arcs() const {
-            return m_num_arcs;
+            return m_arcs.size();
         }
 
         int num_neighbors(int idx) const {
@@ -378,7 +378,7 @@ namespace graph {
 
         std::vector<PDNode> m_nodes;
         std::unordered_set<Edge, EdgeHash, EdgeEqualTo> m_edges;
-        int m_num_arcs;
+        std::unordered_set<Arc, ArcHash> m_arcs;
         std::unordered_map<std::string, int> m_indices;
         std::vector<int> free_indices;
     };

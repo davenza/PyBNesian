@@ -54,8 +54,9 @@ ext_libraries = [['fort', {
 
 # Ignore warnings from this files.
 system_headers = ['-isystem' + d for d in [pa.get_include()]] +\
-                 ["-isystemlib/eigen-3.3.7"] +\
-                 ['-isystemlib/OpenCL']
+                 ['-isystemlib/eigen-3.3.7'] +\
+                 ['-isystemlib/OpenCL'] +\
+                 ['-isystemlib/boost']
 
 ext_modules = [
     Extension(
@@ -97,7 +98,6 @@ ext_modules = [
             get_pybind_include(),
             get_pybind_include(user=True),
             "src",
-            "lib/boost",
             "lib/libfort",
         ],
         libraries=pa.get_libraries() + ["OpenCL"] + ["fort"],

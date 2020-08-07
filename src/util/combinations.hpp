@@ -38,7 +38,7 @@ public:
                                                                      m_idx(idx) {
             m_subset.reserve(m_self->m_k);
             m_indices.reserve(m_self->m_k);
-            for (int i = 0; i < m_self->m_k; ++i) {
+            for (size_t i = 0, k = m_self->m_k; i < k; ++i) {
                 m_subset.push_back(m_self->m_elements[i]);
                 m_indices.push_back(i);
             }
@@ -58,13 +58,13 @@ public:
         }
 
         void next_subset() {
-            for (int i = m_subset.size()-1; i >= 0; --i) {
+            for (size_t i = m_subset.size()-1; i >= 0; --i) {
                 auto max_index = m_self->m_elements.size() - m_subset.size() + i;
                 if (m_indices[i] < max_index) {
                     ++m_indices[i];
                     m_subset[i] = m_self->m_elements[m_indices[i]];
                     
-                    for (int j = i + 1; j < m_subset.size(); ++j) {
+                    for (size_t j = i + 1, k = m_subset.size(); j < k; ++j) {
                         m_indices[j] = m_indices[j-1] + 1;
                         m_subset[j] = m_self->m_elements[m_indices[j]];
                     }
@@ -104,7 +104,7 @@ public:
     private:
         const Combinations<T>* m_self;
         std::vector<T> m_subset;
-        std::vector<int> m_indices;
+        std::vector<size_t> m_indices;
         int m_idx;
     };
 
@@ -128,10 +128,6 @@ private:
 
 template<typename Iter> Combinations(Iter begin, Iter end, int) -> 
                             Combinations<typename std::iterator_traits<Iter>::value_type>;
-// template<typename T> Combinations(std::vector<T>, int) -> Combinations<T>;
-// template<typename T> Combinations(const std::vector<T>&, int) -> Combinations<T>;
-// template<typename T> Combinations(std::vector<T>&&, int) -> Combinations<T>;
-
 
 template<typename T>
 class Combinations2Sets {
@@ -162,14 +158,14 @@ public:
                             std::inserter(common_elements, common_elements.end()));
 
         m_comb1 = Combinations<T>(std::move(v1), m_k);
-        if (common_elements.size() < k) {
+        if (static_cast<int>(common_elements.size()) < k) {
             m_comb2 = Combinations<T>(std::move(v2), m_k);
             m_comb2_valid_combinations = m_comb2.num_combinations();
         } else {
             auto common_end = common_elements.end();
-            for (auto i = 0; i < v2.size() - common_elements.size(); i++) {
+            for (size_t i = 0, common_start = v2.size() - common_elements.size(); i < common_start; ++i) {
                 if (common_elements.find(v2[i]) != common_end) {
-                    for (auto j = v2.size()-1; j >= v2.size() - common_elements.size(); --j) {
+                    for (size_t j = v2.size()-1; j >= common_start; --j) {
                         if (common_elements.find(v2[j]) == common_end) {
                             std::swap(v2[i], v2[j]);
                         }

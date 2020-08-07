@@ -20,19 +20,10 @@ namespace graph {
 
     ArcVector DirectedGraph::arcs() const {
         ArcVector res;
-        res.reserve(m_num_arcs);
+        res.reserve(m_arcs.size());
 
-        std::vector<int> stack {m_roots.begin(), m_roots.end()};
-
-        while (!stack.empty()) {
-            auto idx = stack.back();
-            stack.pop_back();
-            const auto& ch = m_nodes[idx].children();
-
-            for (auto children : ch) {
-                res.push_back(std::make_pair(m_nodes[idx].name(), m_nodes[children].name()));
-                stack.push_back(children);
-            }
+        for(auto& arc : m_arcs) {
+            res.push_back(std::make_pair(m_nodes[arc.first].name(), m_nodes[arc.second].name()));
         }
 
         return res;
@@ -89,10 +80,12 @@ namespace graph {
 
     void DirectedGraph::remove_node_unsafe(int index) {
         for (auto p : m_nodes[index].parents()) {
+            m_arcs.erase(std::make_pair(p, index));
             m_nodes[p].remove_children(index);
         }
 
         for (auto ch : m_nodes[index].children()) {
+            m_arcs.erase(std::make_pair(index, ch));
             m_nodes[ch].remove_parent(index);
         }
 
@@ -105,7 +98,6 @@ namespace graph {
         }
         
         m_indices.erase(m_nodes[index].name());
-        m_num_arcs -= m_nodes[index].parents().size() + m_nodes[index].children().size();
         m_nodes[index].invalidate();
         free_indices.push_back(index);
     }
@@ -120,7 +112,7 @@ namespace graph {
                 m_leaves.erase(source);
             }
 
-            ++m_num_arcs;
+            m_arcs.insert(std::make_pair(source, target));
             m_nodes[target].add_parent(source);
             m_nodes[source].add_children(target);
         }
@@ -128,7 +120,7 @@ namespace graph {
 
     void DirectedGraph::remove_arc_unsafe(int source, int target) {
         if (has_arc_unsafe(source, target)) {
-            --m_num_arcs;
+            m_arcs.erase(std::make_pair(source, target));
             m_nodes[target].remove_parent(source);
             m_nodes[source].remove_children(target);
 
@@ -143,6 +135,8 @@ namespace graph {
     }
 
     void DirectedGraph::flip_arc_unsafe(int source, int target) {
+        m_arcs.erase(std::make_pair(source, target));
+        m_arcs.insert(std::make_pair(target, source));
         m_nodes[target].remove_parent(source);
         m_nodes[source].remove_children(target);
 

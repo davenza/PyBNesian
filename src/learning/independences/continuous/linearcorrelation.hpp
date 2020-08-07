@@ -64,7 +64,7 @@ namespace learning::independences::continuous {
 
             if (m_df.null_count(continuous_indices) == 0) {
                 m_cached_cov = true;
-                for (int i = 0; i < continuous_indices.size(); ++i) {
+                for (int i = 0; i < static_cast<int>(continuous_indices.size()); ++i) {
                     m_indices.insert(std::make_pair(m_df->column_name(continuous_indices[i]), i));
                 }
                 switch(m_df->column(continuous_indices[0])->type_id()) {
@@ -174,7 +174,7 @@ namespace learning::independences::continuous {
                     return std::make_pair(cor, m_df.valid_rows(v1, v2) - 2);
                 }
                 default:
-                    break;
+                    throw std::invalid_argument("Column " + m_df.name(v1) + " is not continuous");
             }
         }();
 
@@ -205,7 +205,7 @@ namespace learning::independences::continuous {
                     return std::make_pair(cor, m_df.valid_rows(v1, v2) - 3);
                 }
                 default:
-                    break;
+                    throw std::invalid_argument("Column " + m_df.name(v1) + " is not continuous");
             }
         }();
 
@@ -260,7 +260,7 @@ namespace learning::independences::continuous {
                             );
                 }
                 default:
-                    break;
+                    throw std::invalid_argument("Column " + m_df.name(v1) + " is not continuous");
             }
         }();
 

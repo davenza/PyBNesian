@@ -16,12 +16,9 @@ using models::GaussianNetwork, models::BayesianNetworkType;
 using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
 using learning::operators::OperatorSet, learning::operators::OperatorSetType, 
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
-//using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet,
-    //   learning::operators::OperatorPool, learning::operators::OperatorSetType, 
-    //   learning::operators::OperatorSet;
+
 using util::ArcVector;
 
-// #include <util/benchmark_basic.hpp>
 
 namespace learning::algorithms {
 

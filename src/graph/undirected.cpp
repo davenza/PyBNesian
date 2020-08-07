@@ -9,12 +9,12 @@ namespace graph {
         UndirectedGraph un;
 
         std::unordered_set<int> neighbors;
-        for(int i = 0; i < nodes.size(); ++i) {
+        for(int i = 0, size = nodes.size(); i < size; ++i) {
             neighbors.insert(i);
         }
 
         un.m_nodes.reserve(nodes.size());
-        for (int i = 0; i < nodes.size(); ++i) {
+        for (int i = 0, size = nodes.size(); i < size; ++i) {
             neighbors.erase(i);
             UNode n(i, nodes[i], neighbors);
             un.m_nodes.push_back(n);
@@ -22,8 +22,8 @@ namespace graph {
             neighbors.insert(i);
         }
 
-        for (int i = 0; i < (nodes.size()-1); ++i) {
-            for (int j = i+1; i < nodes.size(); j++) {
+        for (int i = 0, limit = nodes.size() - 1; i < limit; ++i) {
+            for (int j = i + 1, size = nodes.size(); i < size; j++) {
                 un.m_edges.insert({i, j});
             }
         }

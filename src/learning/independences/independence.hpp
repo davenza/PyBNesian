@@ -6,6 +6,7 @@ namespace learning::independences {
 
     class IndependenceTest {
     public:
+        virtual ~IndependenceTest() {};
         virtual double pvalue(int v1, int v2) const = 0;
         virtual double pvalue(const std::string& v1, const std::string& v2) const = 0;
 

@@ -32,47 +32,39 @@ namespace graph {
 
     ArcVector PartiallyDirectedGraph::arcs() const {
         ArcVector res;
-        if (m_num_arcs == 0)
-            return res;
+        res.reserve(m_arcs.size());
 
-        res.reserve(m_num_arcs);
-
-        dynamic_bitset to_visit(m_nodes.size());
-
-        to_visit.set(0, m_nodes.size());
-
-        for (auto free : free_indices) {
-            to_visit.reset(free);
-        }
-
-        std::vector<int> stack;
-
-        while (res.size() < m_num_arcs) {
-            if (stack.empty()) {
-                stack.push_back(to_visit.find_first());
-            }
-
-            auto idx = stack.back();
-            stack.pop_back();
-            to_visit.reset(idx);
-
-            const auto& children = m_nodes[idx].children();
-
-            for (auto ch : children) {
-                res.push_back(std::make_pair(m_nodes[idx].name(), m_nodes[ch].name()));
-                stack.push_back(ch);
-            }
+        for (auto& arc : m_arcs) {
+            res.push_back({m_nodes[arc.first].name(), m_nodes[arc.second].name()});
         }
 
         return res;
     }
 
     std::vector<std::string> PartiallyDirectedGraph::neighbors(const PDNode& n) const {
+        std::vector<std::string> res;
 
+        const auto& neighbors_indices = n.neighbors();
+        res.reserve(neighbors_indices.size());
+
+        for (auto node : neighbors_indices) {
+            res.push_back(m_nodes[node].name());
+        }
+
+        return res;
     }
 
     std::vector<std::string> PartiallyDirectedGraph::parents(const PDNode& n) const {
+        std::vector<std::string> res;
 
+        const auto& parent_indices = n.parents();
+        res.reserve(parent_indices.size());
+
+        for (auto node : parent_indices) {
+            res.push_back(m_nodes[node].name());
+        }
+
+        return res;
     }
 
     void PartiallyDirectedGraph::add_node(const std::string& node) {
@@ -102,15 +94,16 @@ namespace graph {
         }
 
         for (auto p : m_nodes[index].parents()) {
+            m_arcs.erase(std::make_pair(p, index));
             m_nodes[p].remove_children(index);
         }
 
         for (auto ch : m_nodes[index].children()) {
+            m_arcs.erase(std::make_pair(index, ch));
             m_nodes[ch].remove_parent(index);
         }
 
         m_indices.erase(m_nodes[index].name());
-        m_num_arcs -= m_nodes[index].parents().size() + m_nodes[index].children().size();
         m_nodes[index].invalidate();
         free_indices.push_back(index);
     }
@@ -125,7 +118,7 @@ namespace graph {
 
     void PartiallyDirectedGraph::add_arc_unsafe(int source, int target) {
         if (!has_arc_unsafe(source, target)) {
-            ++m_num_arcs;
+            m_arcs.insert({source, target});
             m_nodes[target].add_parent(source);
             m_nodes[source].add_children(target);
         }
@@ -141,14 +134,16 @@ namespace graph {
 
     void PartiallyDirectedGraph::remove_arc_unsafe(int source, int target) {
         if (has_arc_unsafe(source, target)) {
-            --m_num_arcs;
-
+            m_arcs.erase({source, target});
             m_nodes[target].remove_parent(source);
             m_nodes[source].remove_children(target);
         }
     }
 
     void PartiallyDirectedGraph::flip_arc_unsafe(int source, int target) {
+        m_arcs.erase({source, target});
+        m_arcs.insert({target, source});
+
         m_nodes[target].remove_parent(source);
         m_nodes[source].remove_children(target);
 
@@ -159,7 +154,7 @@ namespace graph {
     void PartiallyDirectedGraph::direct_unsafe(int source, int target) {
         if (has_edge_unsafe(source, target)) {
             m_edges.erase({source, target});
-            ++m_num_arcs;
+            m_arcs.insert({source, target});
 
             m_nodes[source].remove_neighbor(target);
             m_nodes[source].add_children(target);
@@ -171,8 +166,8 @@ namespace graph {
 
     void PartiallyDirectedGraph::undirect_unsafe(int source, int target) {
         if (has_arc_unsafe(source, target)) {
-            --m_num_arcs;
             m_edges.insert({source, target});
+            m_arcs.erase({source, target});
 
             m_nodes[source].remove_children(target);
             m_nodes[source].add_neighbor(target);

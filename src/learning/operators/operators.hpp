@@ -653,7 +653,7 @@ namespace learning::operators {
             return delta_ptr[i1] >= delta_ptr[i2];
         });
 
-        for(auto it = sorted_idx.begin(); it != sorted_idx.end(); ++it) {
+        for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
             auto source = idx % model.num_nodes();
             auto dest = idx / model.num_nodes();
@@ -689,7 +689,7 @@ namespace learning::operators {
             return delta_ptr[i1] >= delta_ptr[i2];
         });
 
-        for(auto it = sorted_idx.begin(); it != sorted_idx.end(); ++it) {
+        for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
             auto source = idx % model.num_nodes();
             auto dest = idx / model.num_nodes();
@@ -888,7 +888,7 @@ namespace learning::operators {
             this->m_local_cache->cache_local_scores(model, *m_score);
         }
 
-        for(auto i = 0; i < model.num_nodes(); ++i) {
+        for(int i = 0, num_nodes = model.num_nodes(); i < num_nodes; ++i) {
             if(valid_op(i)) {
                 update_local_delta(model, i);
             }
@@ -922,7 +922,7 @@ namespace learning::operators {
             return delta_ptr[i1] >= delta_ptr[i2];
         });
 
-        for(auto it = sorted_idx.begin(); it != sorted_idx.end(); ++it) {
+        for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             int idx_max = *it;
             auto node_type = model.node_type(idx_max);
             std::shared_ptr<Operator> op = std::make_shared<ChangeNodeType>(model.name(idx_max), node_type.opposite(), delta(idx_max));

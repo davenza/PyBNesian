@@ -17,11 +17,11 @@ namespace util::bit_util {
     }
 
     Buffer_ptr combined_bitmap_with_null(std::vector<Array_ptr> columns) {
-        int first_col_idx = 0;
+        size_t first_col_idx = 0;
 
         auto length = columns[0]->length();
 
-        for(uint64_t i = 0; i < columns.size(); ++i) {
+        for(size_t i = 0, num_columns = columns.size(); i < num_columns; ++i) {
             auto col = columns[i];
             if (col->null_count()) {
                 first_col_idx = i;
@@ -32,7 +32,7 @@ namespace util::bit_util {
         auto res = arrow::Buffer::Copy(columns[first_col_idx]->null_bitmap(), arrow::default_cpu_memory_manager());
         auto bitmap = res.ValueOrDie();
 
-        for(uint64_t i = first_col_idx + 1; i < columns.size(); ++i) {
+        for(uint64_t i = first_col_idx + 1, num_columns = columns.size(); i < num_columns; ++i) {
             auto col = columns[i];
 
             if (col->null_count()) {

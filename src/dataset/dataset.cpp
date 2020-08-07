@@ -148,7 +148,7 @@ case Type::TypeID:                                                              
         std::vector<std::string> names;
         names.reserve(schema->num_fields());
 
-        for(auto i = 0; i < schema->num_fields(); ++i) {
+        for(int i = 0, num_fields = schema->num_fields(); i < num_fields; ++i) {
             names.push_back(schema->field(i)->name());
         }
 

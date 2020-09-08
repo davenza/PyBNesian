@@ -1,5 +1,5 @@
 #include <pybind11/pybind11.h>
-
+#include <pybind11/stl.h>
 #include <graph/dag.hpp>
 #include <graph/undirected.hpp>
 #include <graph/pdag.hpp>

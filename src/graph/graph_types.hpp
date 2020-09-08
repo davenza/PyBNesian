@@ -5,6 +5,8 @@
 
 namespace graph {
 
+    class PDNode;
+
     class DNode {
     public:
         DNode(int idx,
@@ -14,6 +16,11 @@ namespace graph {
                                                 m_name(name), 
                                                 m_parents(parents), 
                                                 m_children(children) {}
+        friend class PDNode;
+
+        int index() const {
+            return m_idx;
+        }
         
         const std::string& name() const {
             return m_name;
@@ -88,6 +95,12 @@ namespace graph {
              std::unordered_set<int> neighbors = {}) : m_idx(idx), 
                                                 m_name(name), 
                                                 m_neighbors(neighbors) {} 
+
+        friend class PDNode;
+
+        int index() const {
+            return m_idx;
+        }
         
         const std::string& name() const {
             return m_name;
@@ -157,7 +170,23 @@ namespace graph {
                                                             m_neighbors(neighbors),
                                                             m_parents(parents), 
                                                             m_children(children) {}
-        
+
+        PDNode(DNode&& dn) : m_idx(dn.m_idx),
+                             m_name(std::move(dn.m_name)),
+                             m_neighbors(),
+                             m_parents(std::move(dn.m_parents)),
+                             m_children(std::move(dn.m_children)) {}
+
+        PDNode(UNode&& un) : m_idx(un.m_idx),
+                             m_name(std::move(un.m_name)),
+                             m_neighbors(std::move(un.m_neighbors)),
+                             m_parents(),
+                             m_children() {}
+
+        int index() const {
+            return m_idx;
+        }
+
         const std::string& name() const {
             return m_name;
         }

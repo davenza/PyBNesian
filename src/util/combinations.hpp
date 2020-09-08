@@ -58,7 +58,7 @@ public:
         }
 
         void next_subset() {
-            for (size_t i = m_subset.size()-1; i >= 0; --i) {
+            for (int i = m_subset.size()-1; i >= 0; --i) {
                 auto max_index = m_self->m_elements.size() - m_subset.size() + i;
                 if (m_indices[i] < max_index) {
                     ++m_indices[i];

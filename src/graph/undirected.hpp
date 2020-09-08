@@ -7,12 +7,13 @@
 #include <unordered_map>
 #include <string>
 #include <graph/graph_types.hpp>
+#include <graph/pdag.hpp>
 #include <util/util_types.hpp>
 
 
 using util::EdgeVector;
 
-using graph::UNode, graph::EdgeHash, graph::EdgeEqualTo;
+using graph::UNode, graph::EdgeHash, graph::EdgeEqualTo, graph::PartiallyDirectedGraph;
 
 namespace graph {
 
@@ -75,7 +76,9 @@ namespace graph {
         }
 
         static UndirectedGraph Complete(const std::vector<std::string>& nodes);
-        
+
+        friend PartiallyDirectedGraph::PartiallyDirectedGraph(UndirectedGraph&& g);
+
         int num_nodes() const {
             return m_nodes.size() - free_indices.size();
         }
@@ -99,6 +102,17 @@ namespace graph {
         }
 
         std::vector<std::string> nodes() const;
+        const std::vector<UNode>& node_indices() const { return m_nodes; }
+        
+        const UNode& node(int idx) const {
+            check_valid_indices(idx);
+            return m_nodes[idx]; 
+        }
+        const UNode& node(const std::string& name) const {
+            auto f = check_names(name);
+            return m_nodes[f->second]; 
+        }
+
 
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;

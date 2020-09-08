@@ -247,4 +247,16 @@ namespace graph {
 
         return top_sort;
     }
+
+    PartiallyDirectedGraph::PartiallyDirectedGraph(DirectedGraph&& g) : m_nodes(),
+                                                                        m_edges(),
+                                                                        m_arcs(std::move(g.m_arcs)),
+                                                                        m_indices(std::move(g.m_indices)),
+                                                                        free_indices(std::move(g.free_indices)) {
+        m_nodes.reserve(g.m_nodes.size());
+
+        for (auto& dnode : g.m_nodes) {
+            m_nodes.push_back(std::move(dnode));
+        }
+    }
 }

@@ -6,7 +6,7 @@
 namespace py = pybind11;
 
 using learning::operators::OperatorPool;
-using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC;
+using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC, learning::algorithms::MeekRules;
 
 template<typename Model, typename... Models>
 py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
@@ -93,5 +93,11 @@ void pybindings_algorithms(py::module& root) {
     py::class_<PC>(algorithms, "PC")
         .def(py::init<>())
         .def("estimate", &PC::estimate);
+
+    py::class_<MeekRules>(algorithms, "MeekRules")
+        .def_static("rule1", &MeekRules::rule1)
+        .def_static("rule2", &MeekRules::rule2)
+        .def_static("rule3", &MeekRules::rule3);
+
 
 }

@@ -23,7 +23,7 @@ namespace graph {
         }
 
         for (int i = 0, limit = nodes.size() - 1; i < limit; ++i) {
-            for (int j = i + 1, size = nodes.size(); i < size; j++) {
+            for (int j = i + 1, size = nodes.size(); j < size; j++) {
                 un.m_edges.insert({i, j});
             }
         }
@@ -161,6 +161,18 @@ namespace graph {
             }
 
             return false;
+        }
+    }
+
+    PartiallyDirectedGraph::PartiallyDirectedGraph(UndirectedGraph&& g) : m_nodes(),
+                                                      m_edges(std::move(g.m_edges)),
+                                                      m_arcs(),
+                                                      m_indices(std::move(g.m_indices)),
+                                                      free_indices(std::move(g.free_indices)) {
+        m_nodes.reserve(g.m_nodes.size());
+
+        for (auto& unnode : g.m_nodes) {
+            m_nodes.push_back(std::move(unnode));
         }
     }
 }

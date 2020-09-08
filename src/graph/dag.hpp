@@ -7,14 +7,14 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <graph/graph_types.hpp>
+#include <graph/pdag.hpp>
 #include <util/util_types.hpp>
 
 using util::ArcVector;
 
-using graph::DNode, graph::Arc;
+using graph::DNode, graph::Arc, graph::PartiallyDirectedGraph;
 
 namespace graph {
-
 
     class DirectedGraph {
     public:
@@ -90,6 +90,8 @@ namespace graph {
 
             topological_sort();
         }
+
+        friend PartiallyDirectedGraph::PartiallyDirectedGraph(DirectedGraph&& g);
 
         const std::unordered_set<int>& roots() const {
             return m_roots;

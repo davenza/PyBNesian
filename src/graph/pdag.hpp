@@ -14,6 +14,8 @@ using util::ArcVector, util::EdgeVector;
 
 namespace graph {
     
+    class UndirectedGraph;
+    class DirectedGraph;
 
     class PartiallyDirectedGraph {
     public:
@@ -99,6 +101,10 @@ namespace graph {
             }
         }
 
+        PartiallyDirectedGraph(UndirectedGraph&& g);
+
+        PartiallyDirectedGraph(DirectedGraph&& g);
+
         int num_nodes() const {
             return m_nodes.size() - free_indices.size();
         }
@@ -154,6 +160,16 @@ namespace graph {
         }
 
         std::vector<std::string> nodes() const;
+        const std::vector<PDNode>& node_indices() const { return m_nodes; }
+        
+        const PDNode& node(int idx) const {
+            check_valid_indices(idx);
+            return m_nodes[idx]; 
+        }
+        const PDNode& node(const std::string& name) const {
+            auto f = check_names(name);
+            return m_nodes[f->second]; 
+        }
 
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
@@ -177,6 +193,7 @@ namespace graph {
         const auto& edge_indices() const { return m_edges; }
 
         ArcVector arcs() const;
+        const auto& arc_indices() const { return m_arcs; }
 
         std::vector<std::string> neighbors(int idx) const {
             check_valid_indices(idx);
@@ -188,6 +205,16 @@ namespace graph {
             return neighbors(f->second);
         }
 
+        const std::unordered_set<int>& neighbor_indices(int idx) const {
+            check_valid_indices(idx);
+            return m_nodes[idx].neighbors();
+        }
+
+        const std::unordered_set<int>& neighbor_indices(const std::string& node) const {
+            auto f = check_names(node);
+            return m_nodes[f->second].neighbors();
+        }
+
         std::vector<std::string> parents(int idx) const {
             check_valid_indices(idx);
             return parents(m_nodes[idx]);
@@ -197,6 +224,17 @@ namespace graph {
             auto f = check_names(node);
             return parents(m_nodes[f->second]);
         }
+
+        const std::unordered_set<int>& parent_indices(int idx) const {
+            check_valid_indices(idx);
+            return m_nodes[idx].parents();
+        }
+
+        const std::unordered_set<int>& parent_indices(const std::string& node) const {
+            auto f = check_names(node);
+            return m_nodes[f->second].parents();
+        }
+
 
         void add_node(const std::string& node);
 
@@ -264,6 +302,20 @@ namespace graph {
         bool has_arc_unsafe(int source, int target) const {
             const auto& p = m_nodes[target].parents();
             return p.find(source) != p.end();
+        }
+        
+        bool has_connection(int source, int target) const {
+            check_valid_indices(source, target);
+            return has_connection_unsafe(source, target);
+        }
+
+        bool has_connection(const std::string& source, const std::string& target) const {
+            auto [f, f2] = check_names(source, target);
+            return has_connection_unsafe(f->second, f2->second);
+        }
+
+        bool has_connection_unsafe(int source, int target) const {
+            return has_edge_unsafe(source, target) || has_arc_unsafe(source, target) || has_arc_unsafe(target, source);
         }
 
         void remove_edge(int source, int target) {

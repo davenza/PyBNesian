@@ -30,7 +30,7 @@ void pybindings_independence_tests(py::module& root) {
         });
 
     py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(independence_tests, "LinearCorrelation")
-        .def(py::init<const DataFrame&>())
+        .def(py::init<const DataFrame>())
         .def("pvalue", [](LinearCorrelation& self, int v1, int v2) {
             return self.pvalue(v1, v2);
         })

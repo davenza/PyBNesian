@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_LINEARCORRELATION_HPP
 #define PGM_DATASET_LINEARCORRELATION_HPP
 
+#include <iostream>
 #include <dataset/dataset.hpp>
 #include <learning/independences/independence.hpp>
 #include <arrow/api.h>
@@ -55,7 +56,7 @@ namespace learning::independences::continuous {
 
     class LinearCorrelation : public IndependenceTest {
     public:
-        LinearCorrelation(const DataFrame& df) : m_df(df), m_cached_cov(false), m_indices(), m_cov() {
+        LinearCorrelation(const DataFrame df) : m_df(df), m_cached_cov(false), m_indices(), m_cov() {
             auto continuous_indices = df.continuous_columns();
 
             if (continuous_indices.size() < 2) {
@@ -64,14 +65,16 @@ namespace learning::independences::continuous {
 
             if (m_df.null_count(continuous_indices) == 0) {
                 m_cached_cov = true;
-                for (int i = 0; i < static_cast<int>(continuous_indices.size()); ++i) {
+                for (int i = 0, size = continuous_indices.size(); i < size; ++i) {
                     m_indices.insert(std::make_pair(m_df->column_name(continuous_indices[i]), i));
                 }
                 switch(m_df->column(continuous_indices[0])->type_id()) {
                     case Type::DOUBLE:
-                        m_cov = *m_df.cov<arrow::DoubleType>(continuous_indices);
+                        m_cov = *(m_df.cov<arrow::DoubleType, false>(continuous_indices).release());
+                        break;
                     case Type::FLOAT:
-                        m_cov = m_df.cov<arrow::FloatType>(continuous_indices)->template cast<double>();
+                        m_cov = m_df.cov<arrow::FloatType, false>(continuous_indices)->template cast<double>();
+                        break;
                     default:
                         break;
                 }
@@ -128,7 +131,9 @@ namespace learning::independences::continuous {
 
 
     private:
-        int cached_index( int v) const { return m_indices.at(m_df->column_name(v)); }
+        int cached_index(int v) const {
+            return m_indices.at(m_df->column_name(v)); 
+        }
         int cached_index(const std::string& name) const { return m_indices.at(name); }
 
         template<typename VarType>
@@ -145,7 +150,7 @@ namespace learning::independences::continuous {
         template<typename VarType, typename Iter>
         double pvalue_impl(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const;
 
-        const DataFrame& m_df;
+        const DataFrame m_df;
         bool m_cached_cov;
         std::unordered_map<std::string, int> m_indices;
         MatrixXd m_cov;

@@ -239,6 +239,7 @@ namespace learning::independences::continuous {
         }
 
         double cor = cor_general(cov);
+        std::cout << "[C++] pcor: " << cor << std::endl;
         return cor_pvalue(cor, m_df->num_rows() - 2 - k);
     }
 

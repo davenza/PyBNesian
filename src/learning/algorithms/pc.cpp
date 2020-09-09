@@ -207,7 +207,9 @@ namespace learning::algorithms {
         int indep_sepsets = 0;
         int children_in_sepsets = 0;
 
+        std::cout << "\tS = ["  << g.name(children) << "] pvalue: " << test.pvalue(p1, p2, children) << std::endl; 
         if (test.pvalue(p1, p2, children) > alpha) {
+            std::cout << "[vstructure] "  << g.name(p1) << "_|_ " << g.name(p2) << " | " << g.name(children) << std::endl; 
             ++indep_sepsets;
             ++children_in_sepsets;
         }
@@ -223,7 +225,9 @@ namespace learning::algorithms {
         possible_sepset.erase(children);
 
         for (auto sp : possible_sepset) {
+            std::cout << "\tS = ["  << g.name(sp) << "] pvalue: " << test.pvalue(p1, p2, sp) << std::endl; 
             if (test.pvalue(p1, p2, sp) > alpha) {
+                std::cout << "[vstructure] "  << g.name(p1) << " _|_ " << g.name(p2) << " | " << g.name(sp) << std::endl; 
                 ++indep_sepsets;
             }
         }
@@ -246,7 +250,21 @@ namespace learning::algorithms {
         for (auto& sepset : comb) {
             double pvalue = test.pvalue(p1, p2, sepset.begin(), sepset.end());
 
+            std::cout << "\tS = [" << g.name(sepset[0]);
+            for(auto it = ++sepset.begin(), end = sepset.end(); it != end; ++it) {
+                std::cout << ", " << g.name(*it);
+            }
+            std::cout << "]; pvalue: " << pvalue << std::endl;
+
+
             if (pvalue > alpha) {
+                std::cout << "[vstructure] "  << g.name(p1) << " _|_ " << g.name(p2) << " | " << g.name(sepset[0]);
+                for(auto it = ++sepset.begin(), end = sepset.end(); it != end; ++it) {
+                    std::cout << ", " << g.name(*it);
+                }
+                std::cout << std::endl;
+
+
                 ++indep_sepsets;
 
                 if(std::find(sepset.begin(), sepset.end(), children) != sepset.end()) {
@@ -274,12 +292,18 @@ namespace learning::algorithms {
             int max_sepset = std::max(g.num_parents(p1) + g.num_neighbors(p1),
                                       g.num_parents(p2) + g.num_neighbors(p2));
             
+            std::cout << "==============================" << std::endl;
+            std::cout << "[vstructure] Unshielded triple " << g.name(p1) << " - " << g.name(children) << " - " << g.name(p2) << std::endl;
+            std::cout << "[vstructure] max sepset: " << max_sepset << std::endl; 
+            std::cout << "==============================" << std::endl;
+            
             double marg_pvalue = test.pvalue(p1, p2);
 
             int indep_sepsets = 0;
             int children_in_sepsets = 0;
-
+            std::cout << "\tS = []; pvalue: " << marg_pvalue << std::endl;
             if (marg_pvalue > alpha) {
+                std::cout << "[vstructure] "  << g.name(p1) << " _|_ " << g.name(p2) << " | ()" << std::endl; 
                 ++indep_sepsets;
             }
 
@@ -327,8 +351,11 @@ namespace learning::algorithms {
             }
 
             double ratio = static_cast<double>(children_in_sepsets) / indep_sepsets;
-
+            std::cout << "[vstructure] Sepsets: " << indep_sepsets << ", Children in sepsets: " << children_in_sepsets 
+                        << ", Ratio: " << ratio << std::endl;
             if (ratio == 0 || ratio < (ambiguous_threshold - ambiguous_slack)) {
+                std::cout << "[vstructure] Direct " << g.name(p1) << " -> " << g.name(children) << std::endl;
+                std::cout << "[vstructure] Direct " << g.name(p2) << " -> " << g.name(children) << std::endl;
                 g.direct(p1, children);
                 g.direct(p2, children);
             }
@@ -373,7 +400,7 @@ namespace learning::algorithms {
                                    double ambiguous_slack) {
         std::cout << "Starting vstructures" << std::endl; 
         for (const auto& node : pdag.node_indices()) {
-            if ((node.neighbors().size() + node.parents().size()) > 2) {
+            if ((node.neighbors().size() + node.parents().size()) >= 2) {
                 std::cout << "Evaluating vstructures at node " << node.name() << std::endl; 
                 evaluate_vstructures_at_node(pdag, node, sepset, test, alpha, ambiguous_threshold, ambiguous_slack);
             }
@@ -388,7 +415,7 @@ namespace learning::algorithms {
 
             for (const auto& neigh : pdag.neighbor_indices(children)) {
                 if (!pdag.has_connection_unsafe(arc.first, neigh)) {
-                    std::cout << "[Rule1]" << std::endl;
+                    std::cout << "[Rule1] Direct " << pdag.name(arc.second) << " -> " << pdag.name(neigh) << std::endl;
                     pdag.direct(arc.second, neigh);
                     changed = true;
                 }
@@ -448,7 +475,7 @@ namespace learning::algorithms {
             if (any_intersect(parents2, children1)) {
                 changed = true;
                 pdag.direct(edge.first, edge.second);
-                std::cout << "[Rule2]" << std::endl;
+                std::cout << "[Rule2] Direct " << pdag.name(edge.first) << " -> " << pdag.name(edge.second) << std::endl;
             }
 
             const auto& parents1 = n1.parents();
@@ -457,7 +484,7 @@ namespace learning::algorithms {
             if (any_intersect(parents1, children2)) {
                 changed = true;
                 pdag.direct(edge.second, edge.first);
-                std::cout << "[Rule2]" << std::endl;
+                std::cout << "[Rule2] Direct " << pdag.name(edge.first) << " -> " << pdag.name(edge.second) << std::endl;
             }            
         }
 
@@ -480,7 +507,7 @@ namespace learning::algorithms {
                     if (!pdag.has_connection(p[0], p[1])) {
                         pdag.direct(neigh, n.index());
                         changed = true;
-                        std::cout << "[Rule3]" << std::endl;
+                        std::cout << "[Rule3] Direct " << pdag.name(neigh) << " -> " << pdag.name(n.index()) << std::endl;
                     }
                 }
             }
@@ -500,6 +527,24 @@ namespace learning::algorithms {
         return changed;
     }
 
+    void show_skeleton(UndirectedGraph& g) {
+
+        auto edges = g.edges();
+
+        if (!edges.empty()) {
+            std::cout << "Skeleton: [(\"" << edges[0].first << "\", \"" << edges[0].second << "\")";
+
+            for(auto it = ++edges.begin(), end = edges.end(); it != end; ++it) {
+                std::cout << ", (\"" << it->first << "\", \"" << it->second << "\")";
+            }
+
+            std::cout << "]" << std::endl;
+            
+        } else {
+            std::cout << "Skeleton: []" << std::endl;
+        }
+    }
+
     PartiallyDirectedGraph PC::estimate(const DataFrame& df, 
                         ArcVector& arc_blacklist, 
                         ArcVector& arc_whitelist, 
@@ -511,6 +556,10 @@ namespace learning::algorithms {
         GaussianNetwork::requires(df);
 
         auto [skeleton, sepset] = find_skeleton(df, test, alpha);
+
+
+        show_skeleton(skeleton);
+
 
         PartiallyDirectedGraph pdag(std::move(skeleton));
 

@@ -1,4 +1,5 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <learning/independences/independence.hpp>
 #include <learning/independences/continuous/linearcorrelation.hpp>
 

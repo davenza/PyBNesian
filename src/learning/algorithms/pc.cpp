@@ -189,8 +189,14 @@ namespace learning::algorithms {
         return std::make_pair(g, sepset);
     }
 
-    inline bool is_unshielded_triple(const PartiallyDirectedGraph& g, int p1, int children, int p2) {
-        if (!g.has_connection(p1, p2)) {
+    struct vstructure {
+        int p1;
+        int p2;
+        int children;
+    };
+
+    inline bool is_unshielded_triple(const PartiallyDirectedGraph& g, const vstructure& vs) {
+        if (!g.has_connection(vs.p1, vs.p2)) {
             return true;
         }
 
@@ -198,36 +204,32 @@ namespace learning::algorithms {
     }
 
     std::pair<int, int> count_univariate_sepsets(const PartiallyDirectedGraph& g, 
-                                                 int p1, 
-                                                 int children, 
-                                                 int p2,
+                                                 const vstructure& vs,
                                                  const IndependenceTest& test,
                                                  double alpha) {
 
         int indep_sepsets = 0;
         int children_in_sepsets = 0;
 
-        std::cout << "\tS = ["  << g.name(children) << "] pvalue: " << test.pvalue(p1, p2, children) << std::endl; 
-        if (test.pvalue(p1, p2, children) > alpha) {
-            std::cout << "[vstructure] "  << g.name(p1) << "_|_ " << g.name(p2) << " | " << g.name(children) << std::endl; 
+        // std::cout << "\tS = ["  << g.name(vs.children) << "] pvalue: " << test.pvalue(vs.p1, vs.p2, vs.children) << std::endl; 
+        if (test.pvalue(vs.p1, vs.p2, vs.children) > alpha) {
+            // std::cout << "[vstructure] "  << g.name(vs.p1) << " _|_ " << g.name(vs.p2) << " | " << g.name(vs.children) << std::endl; 
             ++indep_sepsets;
             ++children_in_sepsets;
         }
         
         std::unordered_set<int> possible_sepset;
-        const auto& np1 = g.node(p1);
-        const auto& np2 = g.node(p2);
+        const auto& np1 = g.node(vs.p1);
+        const auto& np2 = g.node(vs.p2);
 
         possible_sepset.insert(np1.neighbors().begin(), np1.neighbors().end());
-        possible_sepset.insert(np1.parents().begin(), np1.parents().end());
         possible_sepset.insert(np2.neighbors().begin(), np2.neighbors().end());
-        possible_sepset.insert(np2.parents().begin(), np2.parents().end());
-        possible_sepset.erase(children);
+        possible_sepset.erase(vs.children);
 
         for (auto sp : possible_sepset) {
-            std::cout << "\tS = ["  << g.name(sp) << "] pvalue: " << test.pvalue(p1, p2, sp) << std::endl; 
-            if (test.pvalue(p1, p2, sp) > alpha) {
-                std::cout << "[vstructure] "  << g.name(p1) << " _|_ " << g.name(p2) << " | " << g.name(sp) << std::endl; 
+            // std::cout << "\tS = ["  << g.name(sp) << "] pvalue: " << test.pvalue(vs.p1, vs.p2, sp) << std::endl; 
+            if (test.pvalue(vs.p1, vs.p2, sp) > alpha) {
+                // std::cout << "[vstructure] "  << g.name(vs.p1) << " _|_ " << g.name(vs.p2) << " | " << g.name(sp) << std::endl; 
                 ++indep_sepsets;
             }
         }
@@ -237,9 +239,7 @@ namespace learning::algorithms {
 
     template<typename Comb>
     std::pair<int, int> count_multivariate_sepsets(const PartiallyDirectedGraph& g, 
-                                                   int p1,
-                                                   int children, 
-                                                   int p2,
+                                                   const vstructure& vs,
                                                    Comb& comb,
                                                    const IndependenceTest& test,
                                                    double alpha) {
@@ -248,26 +248,26 @@ namespace learning::algorithms {
         int children_in_sepsets = 0;
 
         for (auto& sepset : comb) {
-            double pvalue = test.pvalue(p1, p2, sepset.begin(), sepset.end());
+            double pvalue = test.pvalue(vs.p1, vs.p2, sepset.begin(), sepset.end());
 
-            std::cout << "\tS = [" << g.name(sepset[0]);
-            for(auto it = ++sepset.begin(), end = sepset.end(); it != end; ++it) {
-                std::cout << ", " << g.name(*it);
-            }
-            std::cout << "]; pvalue: " << pvalue << std::endl;
+            // std::cout << "\tS = [" << g.name(sepset[0]);
+            // for(auto it = ++sepset.begin(), end = sepset.end(); it != end; ++it) {
+            //     std::cout << ", " << g.name(*it);
+            // }
+            // std::cout << "]; pvalue: " << pvalue << std::endl;
 
 
             if (pvalue > alpha) {
-                std::cout << "[vstructure] "  << g.name(p1) << " _|_ " << g.name(p2) << " | " << g.name(sepset[0]);
-                for(auto it = ++sepset.begin(), end = sepset.end(); it != end; ++it) {
-                    std::cout << ", " << g.name(*it);
-                }
-                std::cout << std::endl;
+                // std::cout << "[vstructure] "  << g.name(vs.p1) << " _|_ " << g.name(vs.p2) << " | " << g.name(sepset[0]);
+                // for(auto it = ++sepset.begin(), end = sepset.end(); it != end; ++it) {
+                //     std::cout << ", " << g.name(*it);
+                // }
+                // std::cout << std::endl;
 
 
                 ++indep_sepsets;
 
-                if(std::find(sepset.begin(), sepset.end(), children) != sepset.end()) {
+                if(std::find(sepset.begin(), sepset.end(), vs.children) != sepset.end()) {
                     ++children_in_sepsets;
                 }
             }
@@ -278,71 +278,57 @@ namespace learning::algorithms {
     }
 
 
-    void is_unambiguous_vstructure(PartiallyDirectedGraph& g, 
-                                   int p1, 
-                                   int children, 
-                                   int p2, 
+    bool is_unambiguous_vstructure(const PartiallyDirectedGraph& g, 
+                                   const vstructure& vs,
                                    const IndependenceTest& test,
                                    double alpha,
                                    double ambiguous_threshold, 
                                    double ambiguous_slack) {
 
-        if (is_unshielded_triple(g, p1, children, p2)) {
+        if (is_unshielded_triple(g, vs)) {
 
-            int max_sepset = std::max(g.num_parents(p1) + g.num_neighbors(p1),
-                                      g.num_parents(p2) + g.num_neighbors(p2));
+            int max_sepset = std::max(g.num_neighbors(vs.p1), g.num_neighbors(vs.p2));
             
             std::cout << "==============================" << std::endl;
-            std::cout << "[vstructure] Unshielded triple " << g.name(p1) << " - " << g.name(children) << " - " << g.name(p2) << std::endl;
+            std::cout << "[vstructure] Unshielded triple " << g.name(vs.p1) << " - " << g.name(vs.children) << " - " << g.name(vs.p2) << std::endl;
             std::cout << "[vstructure] max sepset: " << max_sepset << std::endl; 
             std::cout << "==============================" << std::endl;
             
-            double marg_pvalue = test.pvalue(p1, p2);
+            double marg_pvalue = test.pvalue(vs.p1, vs.p2);
 
             int indep_sepsets = 0;
             int children_in_sepsets = 0;
-            std::cout << "\tS = []; pvalue: " << marg_pvalue << std::endl;
+            // std::cout << "\tS = []; pvalue: " << marg_pvalue << std::endl;
             if (marg_pvalue > alpha) {
-                std::cout << "[vstructure] "  << g.name(p1) << " _|_ " << g.name(p2) << " | ()" << std::endl; 
+                // std::cout << "[vstructure] "  << g.name(vs.p1) << " _|_ " << g.name(vs.p2) << " | ()" << std::endl; 
                 ++indep_sepsets;
             }
 
-            auto univariate_counts = count_univariate_sepsets(g, p1, children, p2, test, alpha);
+            auto univariate_counts = count_univariate_sepsets(g, vs, test, alpha);
 
             indep_sepsets += univariate_counts.first;
             children_in_sepsets += univariate_counts.second;
             
             if (max_sepset >= 2) {
-                std::vector<int> adj1;
-                const auto& np1 = g.node(p1);
-            
-                adj1.reserve(g.num_neighbors_unsafe(p1) + g.num_parents_unsafe(p1));
-                adj1.insert(adj1.end(), np1.neighbors().begin(), np1.neighbors().end());
-                adj1.insert(adj1.end(), np1.parents().begin(), np1.parents().end());
-
-                std::vector<int> adj2;
-                const auto& np2 = g.node(p2);
-
-                adj2.reserve(g.num_neighbors_unsafe(p2) + g.num_parents_unsafe(p2));
-                adj2.insert(adj2.end(), np2.neighbors().begin(), np2.neighbors().end());
-                adj2.insert(adj2.end(), np2.parents().begin(), np2.parents().end());
-
                 std::pair<int, int> multivariate_counts;
 
+                const auto& nbr1 = g.neighbor_indices(vs.p1);
+                const auto& nbr2 = g.neighbor_indices(vs.p2);
+
                 for (auto i = 2; i <= max_sepset; ++i) {
-                    bool set1_valid = adj1.size() >= i;
-                    bool set2_valid = adj2.size() >= i;
+                    bool set1_valid = nbr1.size() >= i;
+                    bool set2_valid = nbr2.size() >= i;
                     if (set1_valid) {
                         if (set2_valid) {
-                            Combinations2Sets comb(adj1.begin(), adj1.end(), adj2.begin(), adj2.end(), i);
-                            multivariate_counts = count_multivariate_sepsets(g, p1, children, p2, comb, test, alpha);
+                            Combinations2Sets comb(nbr1.begin(), nbr1.end(), nbr2.begin(), nbr2.end(), i);
+                            multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
                         } else {
-                            Combinations comb(adj1.begin(), adj1.end(), i);
-                            multivariate_counts = count_multivariate_sepsets(g, p1, children, p2, comb, test, alpha);
+                            Combinations comb(nbr1.begin(), nbr1.end(), i);
+                            multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
                         }
                     } else {
-                        Combinations comb(adj2.begin(), adj2.end(), i);
-                        multivariate_counts = count_multivariate_sepsets(g, p1, children, p2, comb, test, alpha);
+                        Combinations comb(nbr2.begin(), nbr2.end(), i);
+                        multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
                     }
 
                     indep_sepsets += multivariate_counts.first;
@@ -351,44 +337,55 @@ namespace learning::algorithms {
             }
 
             double ratio = static_cast<double>(children_in_sepsets) / indep_sepsets;
-            std::cout << "[vstructure] Sepsets: " << indep_sepsets << ", Children in sepsets: " << children_in_sepsets 
-                        << ", Ratio: " << ratio << std::endl;
+            // std::cout << "[vstructure] Sepsets: " << indep_sepsets << ", Children in sepsets: " << children_in_sepsets 
+            //             << ", Ratio: " << ratio << std::endl;
             if (ratio == 0 || ratio < (ambiguous_threshold - ambiguous_slack)) {
-                std::cout << "[vstructure] Direct " << g.name(p1) << " -> " << g.name(children) << std::endl;
-                std::cout << "[vstructure] Direct " << g.name(p2) << " -> " << g.name(children) << std::endl;
-                g.direct(p1, children);
-                g.direct(p2, children);
+                std::cout << "[vstructure] Valid vstructure  " << g.name(vs.p1) << " - " << g.name(vs.children) << " - " << g.name(vs.p2) << std::endl;
+                return true;
             }
         }
+
+        return false;
     }
     
-    void evaluate_vstructures_at_node(PartiallyDirectedGraph& g, 
-                                      const PDNode& node, 
-                                      const SepSet& sepset,
-                                      const IndependenceTest& test,
-                                      double alpha,
-                                      double ambiguous_threshold, 
-                                      double ambiguous_slack) {
+    std::vector<vstructure> evaluate_vstructures_at_node(const PartiallyDirectedGraph& g, 
+                                                         const PDNode& node, 
+                                                         const SepSet& sepset,
+                                                         const IndependenceTest& test,
+                                                         double alpha,
+                                                         double ambiguous_threshold, 
+                                                         double ambiguous_slack) {
         const auto& nbr = node.neighbors();
-        const auto& parents = node.parents();
 
-        std::vector<int> v;
-        v.reserve(nbr.size() + parents.size());
-        v.insert(v.end(), nbr.begin(), nbr.end());
-        v.insert(v.end(), parents.begin(), parents.end());
+        std::vector<int> v {nbr.begin(), nbr.end()};
 
+        std::vector<vstructure> res;
         if (v.size() == 2) {
-            is_unambiguous_vstructure(g, v[0], node.index(), v[1], test, alpha, ambiguous_threshold, ambiguous_slack);
+            vstructure vs { .p1 = v[0], .p2 = v[1], .children = node.index() };
+            if (is_unambiguous_vstructure(g, vs, test, alpha, ambiguous_threshold, ambiguous_slack))
+                res.push_back(std::move(vs));
         } else if (v.size() == 3) {
-            is_unambiguous_vstructure(g, v[0], node.index(), v[1], test, alpha, ambiguous_threshold, ambiguous_slack);
-            is_unambiguous_vstructure(g, v[0], node.index(), v[2], test, alpha, ambiguous_threshold, ambiguous_slack);
-            is_unambiguous_vstructure(g, v[1], node.index(), v[2], test, alpha, ambiguous_threshold, ambiguous_slack);
+            vstructure vs { .p1 = v[0], .p2 = v[1], .children = node.index() };
+            if (is_unambiguous_vstructure(g, vs, test, alpha, ambiguous_threshold, ambiguous_slack))
+                res.push_back(std::move(vs));
+
+            vs = { .p1 = v[0], .p2 = v[2], .children = node.index() };
+            if (is_unambiguous_vstructure(g, vs, test, alpha, ambiguous_threshold, ambiguous_slack))
+                res.push_back(std::move(vs));
+            
+            vs = { .p1 = v[1], .p2 = v[2], .children = node.index() };
+            if (is_unambiguous_vstructure(g, vs, test, alpha, ambiguous_threshold, ambiguous_slack))
+                res.push_back(std::move(vs));
         } else {
             Combinations comb(std::move(v), 2);
             for (const auto& parents : comb) {
-                is_unambiguous_vstructure(g, parents[0], node.index(), parents[1], test, alpha, ambiguous_threshold, ambiguous_slack);
+                vstructure vs { .p1 = parents[0], .p2 = parents[1], .children = node.index() };
+                if (is_unambiguous_vstructure(g, vs, test, alpha, ambiguous_threshold, ambiguous_slack))
+                    res.push_back(std::move(vs));
             }
         }
+
+        return res;
     }
 
 
@@ -398,14 +395,25 @@ namespace learning::algorithms {
                                    double alpha,
                                    double ambiguous_threshold, 
                                    double ambiguous_slack) {
-        std::cout << "Starting vstructures" << std::endl; 
+        std::cout << "Starting searching vstructures" << std::endl;
+
+        std::vector<vstructure> vs;
         for (const auto& node : pdag.node_indices()) {
-            if ((node.neighbors().size() + node.parents().size()) >= 2) {
+            if (node.neighbors().size() >= 2) {
                 std::cout << "Evaluating vstructures at node " << node.name() << std::endl; 
-                evaluate_vstructures_at_node(pdag, node, sepset, test, alpha, ambiguous_threshold, ambiguous_slack);
+                auto tmp = evaluate_vstructures_at_node(pdag, node, sepset, test, alpha, ambiguous_threshold, ambiguous_slack);
+
+                vs.insert(vs.end(), tmp.begin(), tmp.end());
             }
         }
-        std::cout << "Ending vstructures" << std::endl; 
+        std::cout << "Ending searching vstructures" << std::endl; 
+
+        for(const auto& vstructure : vs) {
+            std::cout << "[vstructure] Apply vstructure  " << pdag.name(vstructure.p1) << " -> " 
+                      << pdag.name(vstructure.children) << " <- " << pdag.name(vstructure.p2) << std::endl;
+            pdag.direct(vstructure.p1, vstructure.children);
+            pdag.direct(vstructure.p2, vstructure.children);
+        }
     }
 
     bool MeekRules::rule1(PartiallyDirectedGraph& pdag) {
@@ -556,10 +564,7 @@ namespace learning::algorithms {
         GaussianNetwork::requires(df);
 
         auto [skeleton, sepset] = find_skeleton(df, test, alpha);
-
-
         show_skeleton(skeleton);
-
 
         PartiallyDirectedGraph pdag(std::move(skeleton));
 

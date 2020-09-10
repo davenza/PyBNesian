@@ -45,11 +45,12 @@ namespace learning::independences::continuous {
         auto Lmatrix = llt.matrixL();
         EigenMatrix identity = EigenMatrix::Identity(d, d);
 
+        // Solves and saves the result in identity
         Lmatrix.solveInPlace(identity);
 
-        Scalar p11 = cov(d-1, d-1)*cov(d-1, d-1);
-        Scalar p22 = cov(d-1, d-2)*cov(d-1, d-2) + cov(d-2, d-2)*cov(d-2, d-2);
-        Scalar p12 = cov(d-1, d-1)*cov(d-1, d-2);
+        Scalar p11 = identity(d-1, d-1)*identity(d-1, d-1);
+        Scalar p22 = identity(d-1, d-2)*identity(d-1, d-2) + identity(d-2, d-2)*identity(d-2, d-2);
+        Scalar p12 = identity(d-1, d-1)*identity(d-1, d-2);
         
         return static_cast<double>(-p12 / sqrt(p11 * p22));
     }
@@ -200,14 +201,14 @@ namespace learning::independences::continuous {
                     auto cov_ptr = m_df.cov<arrow::DoubleType>(v1, v2, cond);
                     auto& cov = *cov_ptr;
                     double cor = cor_1cond(cov, 0, 1, 2);
-                    return std::make_pair(cor, m_df.valid_rows(v1, v2) - 3);
+                    return std::make_pair(cor, m_df.valid_rows(v1, v2, cond) - 3);
 
                 }
                 case Type::FLOAT: {
-                    auto cov_ptr = m_df.cov<arrow::FloatType>(v1, v2);
+                    auto cov_ptr = m_df.cov<arrow::FloatType>(v1, v2, cond);
                     auto& cov = *cov_ptr;
                     double cor = cor_1cond(cov, 0, 1, 2);
-                    return std::make_pair(cor, m_df.valid_rows(v1, v2) - 3);
+                    return std::make_pair(cor, m_df.valid_rows(v1, v2, cond) - 3);
                 }
                 default:
                     throw std::invalid_argument("Column " + m_df.name(v1) + " is not continuous");
@@ -220,6 +221,8 @@ namespace learning::independences::continuous {
     template<typename VarType, typename Iter>
     double LinearCorrelation::pvalue_cached(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const {
         std::vector<int> cached_indices;
+
+
     
         for (auto it = evidence_begin; it != evidence_end; ++it) {
             cached_indices.push_back(cached_index(*it));
@@ -228,18 +231,17 @@ namespace learning::independences::continuous {
         cached_indices.push_back(cached_index(v1));
         cached_indices.push_back(cached_index(v2));
 
-        int k = std::distance(evidence_begin, evidence_end);
-        MatrixXd cov(k+2, k+2);
+        int k = cached_indices.size();
+        MatrixXd cov(k, k);
 
-        for (int i = 0; i < k+2; ++i) {
+        for (int i = 0; i < k; ++i) {
             cov(i,i) = m_cov(cached_indices[i], cached_indices[i]);
-            for (int j = i+1; j < k+2; ++j) {
+            for (int j = i+1; j < k; ++j) {
                 cov(i, j) = cov(j, i) = m_cov(cached_indices[i], cached_indices[j]);
             }
         }
 
         double cor = cor_general(cov);
-        std::cout << "[C++] pcor: " << cor << std::endl;
         return cor_pvalue(cor, m_df->num_rows() - 2 - k);
     }
 

@@ -161,18 +161,25 @@ namespace graph {
 
             m_nodes[target].remove_neighbor(source);
             m_nodes[target].add_parent(source);
+        } else if (has_arc_unsafe(target, source)) {
+            m_arcs.insert({source, target});
+
+            m_nodes[source].add_children(target);
+            m_nodes[target].add_parent(source);
         }
     }
 
     void PartiallyDirectedGraph::undirect_unsafe(int source, int target) {
         if (has_arc_unsafe(source, target)) {
-            m_edges.insert({source, target});
             m_arcs.erase({source, target});
-
             m_nodes[source].remove_children(target);
-            m_nodes[source].add_neighbor(target);
 
             m_nodes[target].remove_parent(source);
+        }
+
+        if (!has_arc_unsafe(target, source)) {
+            m_edges.insert({source, target});
+            m_nodes[source].add_neighbor(target);
             m_nodes[target].add_neighbor(source);
         }
     }

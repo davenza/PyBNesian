@@ -1,4 +1,3 @@
-#include <iostream>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <util/validate_dtype.hpp>
 #include <dataset/dataset.hpp>

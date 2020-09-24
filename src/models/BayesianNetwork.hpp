@@ -105,6 +105,7 @@ namespace models {
         virtual double slogl(const DataFrame& df) const = 0;
         virtual std::string ToString() const = 0;
         virtual BayesianNetworkType type() const = 0;
+        virtual DataFrame sample(int n, long unsigned int seed) const = 0;
     };
 
     class SemiparametricBNBase {
@@ -297,6 +298,8 @@ namespace models {
         VectorXd logl(const DataFrame& df) const override;
         double slogl(const DataFrame& df) const override;
 
+        DataFrame sample(int n, long unsigned int seed = std::random_device{}()) const override;
+
         template<typename Derived_>
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
 
@@ -469,6 +472,47 @@ namespace models {
             accum += it->slogl(df);
         }
         return accum;
+    }
+
+    template<typename Derived>
+    DataFrame BayesianNetwork<Derived>::sample(int n, long unsigned int seed) const {
+        check_fitted();
+
+        std::unordered_map<std::string, Array_ptr> parents;
+        for (auto& name : g.topological_sort()) {
+            auto index = g.index(name);
+
+            auto array = m_cpds[index].sample(n, parents, seed);
+            parents.insert(std::make_pair(name, array));
+        }
+
+        arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
+
+        std::vector<Array_ptr> columns;
+        columns.reserve(g.num_nodes());
+
+        for (auto i = 0; i < g.num_nodes(); ++i) {
+            const auto& name = g.name(i);
+            auto found = parents.extract(name);
+            auto data_type = found.mapped()->type();
+            columns.push_back(std::move(found).mapped());
+
+            auto f = arrow::field(name, data_type);
+            auto status = b.AddField(f);
+            if (!status.ok()) {
+                throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
+            }
+        }
+
+        auto r = b.Finish();
+        if (!r.ok()) {
+            throw std::domain_error("Schema could not be created.");
+        }
+        auto schema = std::move(r).ValueOrDie();
+
+        auto rb = arrow::RecordBatch::Make(schema, n, columns);
+
+        return DataFrame(rb);
     }
 
     void requires_continuous_data(const DataFrame& df);

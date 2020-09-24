@@ -106,7 +106,7 @@ namespace learning::parameters {
         auto type_id = df.same_type(variable, evidence_pair);
 
         if (type_id != Type::DICTIONARY) {
-            throw py::value_error("Wrong data type to fit DiscreteFactor. Ccategorical data is expected.");
+            throw py::value_error("Wrong data type to fit DiscreteFactor. Categorical data is expected.");
         }
 
         return _fit(df, variable, evidence_begin, evidence_end);

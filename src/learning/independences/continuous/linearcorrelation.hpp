@@ -1,7 +1,6 @@
 #ifndef PGM_DATASET_LINEARCORRELATION_HPP
 #define PGM_DATASET_LINEARCORRELATION_HPP
 
-#include <iostream>
 #include <dataset/dataset.hpp>
 #include <learning/independences/independence.hpp>
 #include <arrow/api.h>

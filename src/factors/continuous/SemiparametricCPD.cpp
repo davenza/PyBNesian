@@ -45,4 +45,13 @@ namespace factors::continuous {
                     return cpd.ToString();
                 }, m_cpd);
     }
+
+    Array_ptr SemiparametricCPD::sample(int n, 
+                     std::unordered_map<std::string, Array_ptr>& parent_values, 
+                     long unsigned int seed) const {
+        
+        return std::visit([n, &parent_values, seed](auto& cpd) {
+            return cpd.sample(n, parent_values, seed);
+        }, m_cpd);
+    }
 }

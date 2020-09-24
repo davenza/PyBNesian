@@ -168,6 +168,42 @@ namespace factors::continuous {
         }
     }
 
+    Array_ptr LinearGaussianCPD::sample(int n, 
+                                        std::unordered_map<std::string, Array_ptr>& parent_values, 
+                                        long unsigned int seed) const {
+        arrow::NumericBuilder<arrow::DoubleType> builder;
+        builder.Resize(n);
+
+        std::mt19937 rng{seed};
+        std::normal_distribution<> normal(m_beta(0), std::sqrt(m_variance));
+
+        for(auto i = 0; i < n; ++i) {
+            builder.UnsafeAppend(normal(rng));
+        }
+
+        std::shared_ptr<arrow::DoubleArray> out;
+        auto status = builder.Finish(&out);
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+
+        if (!m_evidence.empty()) {
+            auto out_values = reinterpret_cast<double*>(out->values()->mutable_data());
+            for (auto j = 0; j < m_evidence.size(); ++j) {
+                auto found = parent_values.find(m_evidence[j]);
+                auto evidence = found->second;
+                auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence);
+                auto raw_evidence = dwn_evidence->raw_values();
+
+                for (auto i = 0; i < n; ++i) {
+                    out_values[i] += m_beta(j+1)*raw_evidence[i];
+                }
+            }
+        }
+
+        return out;
+    }
+
     std::string LinearGaussianCPD::ToString() const {
         std::stringstream stream;
         stream << std::setprecision(3);

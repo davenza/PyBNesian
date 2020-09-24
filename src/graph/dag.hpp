@@ -1,7 +1,6 @@
 #ifndef PGM_DATASET_DAG_HPP
 #define PGM_DATASET_DAG_HPP
 
-#include <iostream>
 #include <pybind11/pybind11.h>
 #include <vector>
 #include <unordered_set>

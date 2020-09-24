@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_CKDE_HPP
 #define PGM_DATASET_CKDE_HPP
 
+#include <random>
 #include <CL/cl2.hpp>
 #include <opencl/opencl_config.hpp>
 #include <pybind11/pybind11.h>
@@ -8,10 +9,11 @@
 #include <pybind11/eigen.h>
 #include <dataset/dataset.hpp>
 #include <util/math_constants.hpp>
+#include <util/bit_util.hpp>
 
 namespace py = pybind11;
 using dataset::DataFrame;
-using Eigen::VectorXd, Eigen::Ref, Eigen::LLT;
+using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
@@ -395,7 +397,6 @@ namespace factors::continuous {
 
         auto logl_buff = logl_buffer<ArrowType>(df);
         auto& opencl = OpenCLConfig::get();
-        
         if (df.null_count(m_variables) == 0) {
             VectorType read_data(df->num_rows());
             opencl.read_from_buffer(read_data.data(), logl_buff, df->num_rows());
@@ -546,6 +547,10 @@ namespace factors::continuous {
         VectorXd logl(const DataFrame& df) const;
         double slogl(const DataFrame& df) const;
 
+        Array_ptr sample(int n, 
+                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+                         long unsigned int seed = std::random_device{}()) const;
+
         std::string ToString() const;
     private:
         template<typename ArrowType>
@@ -558,7 +563,14 @@ namespace factors::continuous {
         double _slogl(const DataFrame& df) const;
 
         template<typename ArrowType>
-        void _fit(const DataFrame& df);
+        Array_ptr _sample(int n, 
+                          std::unordered_map<std::string, Array_ptr>& parent_values, 
+                          long unsigned int seed) const;
+        
+        template<typename ArrowType>
+        Array_ptr _sample_multivariate(int n, 
+                                std::unordered_map<std::string, Array_ptr>& parent_values, 
+                                long unsigned int seed) const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -676,6 +688,90 @@ namespace factors::continuous {
         CType result = 0;
         opencl.read_from_buffer(&result, buffer_sum, 1);
         return static_cast<double>(result);
+    }
+
+    template<typename ArrowType>
+    Array_ptr CKDE::_sample(int n, 
+                     std::unordered_map<std::string, Array_ptr>& parent_values, 
+                     long unsigned int seed) const {
+        using CType = typename ArrowType::c_type;
+        using VectorType = Matrix<CType, Dynamic, 1>;
+        using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+        
+        if (m_evidence.empty()) {
+            arrow::NumericBuilder<ArrowType> builder;
+            builder.Resize(n);
+            std::mt19937 rng{seed};
+            std::uniform_int_distribution<> uniform(0, N-1);
+            
+            std::normal_distribution<CType> normal(0, std::sqrt(m_joint.bandwidth()(0,0)));
+            VectorType training_data(N);
+            const auto& training_buffer = m_joint.training_buffer();
+            auto& opencl = OpenCLConfig::get();
+            opencl.read_from_buffer(training_data.data(), training_buffer, N);
+
+            for (auto i = 0; i < n; ++i) {
+                auto index = uniform(rng);
+                builder.UnsafeAppend(training_data(index) + normal(rng));
+            }
+
+            Array_ptr out;
+            auto status = builder.Finish(&out);
+            if (!status.ok()) {
+                throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+            }
+
+            return out;
+        } else {
+            return _sample_multivariate<ArrowType>(n, parent_values, seed);
+        }
+    }
+
+
+    template<typename ArrowType>
+    Array_ptr CKDE::_sample_multivariate(int n, 
+                            std::unordered_map<std::string, Array_ptr>& parent_values, 
+                            long unsigned int seed) const {
+        using CType = typename ArrowType::c_type;
+        using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+
+        MatrixType evidence_matrix(n, m_evidence.size());
+        for (const auto& evidence_name : m_evidence) {
+            auto found = parent_values.find(evidence_name);
+            auto evidence_array = found->second;
+
+            auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence_array);
+            auto raw_evidence = dwn_evidence->raw_values();
+        }
+
+
+
+        
+        const auto& bandwidth = m_joint.bandwidth();
+        const auto& marg_bandwidth = m_marg.bandwidth();
+        
+        auto cholesky = marg_bandwidth.llt();
+        auto matrixL = cholesky.matrixL();
+
+        auto d = m_evidence.size();
+        MatrixXd inverseL = MatrixXd::Identity(d, d);
+        // Solves and saves the result in identity
+        matrixL.solveInPlace(inverseL);
+        auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
+        auto cond_var = bandwidth(0,0) - R.squaredNorm();
+        auto transform = R.transpose() * inverseL;
+
+
+        
+
+        // for (auto i = 0; i < n; ++i) {
+            
+        // }
+
+
+        // opencl.read_from_buffer(training_)
+
+
     }
 
 }

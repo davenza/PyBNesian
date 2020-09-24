@@ -1,13 +1,14 @@
 #ifndef PGM_DATASET_DISCRETE_FACTOR_HPP
 #define PGM_DATASET_DISCRETE_FACTOR_HPP
 
-
-#include <iostream>
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
+#include <random>
 
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;
+
+using Array_ptr = std::shared_ptr<arrow::Array>;
 
 namespace factors::discrete {
 
@@ -121,7 +122,9 @@ namespace factors::discrete {
 
 
         const std::string& variable() const { return m_variable; }
+        const std::vector<std::string>& variable_values() const { return m_variable_values; }
         const std::vector<std::string>& evidence() const { return m_evidence; }
+        const std::vector<std::vector<std::string>>& evidence_values() const { return m_evidence_values; }
         bool fitted() const { return m_fitted; }
         void fit(const DataFrame& df);
         VectorXd logl(const DataFrame& df, bool check_domain=true) const;
@@ -140,12 +143,21 @@ namespace factors::discrete {
                                         m_evidence.begin(), m_evidence.end(), m_strides);
         }
 
+        Array_ptr sample(int n, 
+                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+                         long unsigned int seed = std::random_device{}()) const;
+
     private:
         void check_equal_domain(const DataFrame& df) const;
         VectorXd _logl(const DataFrame& df) const;
         VectorXd _logl_null(const DataFrame& df) const;
         double _slogl(const DataFrame& df) const;
         double _slogl_null(const DataFrame& df) const;
+
+        template<typename ArrowType>
+        Array_ptr sample_indices(int n, 
+                                 std::unordered_map<std::string, Array_ptr>& parent_values,
+                                 long unsigned int seed) const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -156,6 +168,81 @@ namespace factors::discrete {
         VectorXi m_strides;
         bool m_fitted;
     };
+
+    template<typename ArrowType>
+    Array_ptr DiscreteFactor::sample_indices(int n, 
+                                             std::unordered_map<std::string, Array_ptr>& parent_values, 
+                                             long unsigned int seed) const {
+
+        int parent_configurations = m_logprob.rows() / m_variable_values.size();
+        VectorXd accum_prob(m_logprob.rows());
+
+        for (auto i = 0; i < parent_configurations; ++i) {
+            auto offset = i*m_variable_values.size();
+
+            accum_prob(offset) = std::exp(m_logprob(offset));
+            for (auto j = 1; j < m_variable_values.size()-1; ++j) {
+                accum_prob(offset + j) = accum_prob(offset + j - 1) + std::exp(m_logprob(offset + j));
+            }
+        }
+
+        std::mt19937 rng{seed};
+        std::uniform_int_distribution<> uniform(0, 1);
+
+        using CType = typename ArrowType::c_type;
+        arrow::NumericBuilder<ArrowType> builder;
+        auto status = builder.Resize(n);
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+
+        if (!m_evidence.empty()) {
+            VectorXi parent_offset = VectorXi::Zero(n);
+            for (auto i = 0; i < m_evidence.size(); ++i) {
+                auto found = parent_values.find(m_evidence[i]);
+                auto array = found->second;
+
+                auto dwn_array = std::static_pointer_cast<arrow::DictionaryArray>(array);
+                auto array_indices = dwn_array->indices();
+
+                sum_to_discrete_indices(parent_offset, array_indices, m_strides(i+1));
+            }
+
+            for (auto i = 0; i < n; ++i) {
+                double random_number = uniform(rng);
+
+                CType index = m_variable_values.size()-1;
+                for (auto j = 0; j < m_variable_values.size()-1; ++j) {
+                    if (random_number < accum_prob(parent_offset(i) + j)) {
+                        index = j;
+                        break;
+                    }
+                }
+                builder.UnsafeAppend(index);
+            }
+        } else {
+            for (auto i = 0; i < n; ++i) {
+                double random_number = uniform(rng);
+
+                CType index = m_variable_values.size()-1;
+                for (auto j = 0; j < m_variable_values.size()-1; ++j) {
+                    if (random_number < accum_prob(j)) {
+                        index = j;
+                        break;
+                    }
+                }
+                builder.UnsafeAppend(index);
+            }
+        }
+        
+        std::shared_ptr<arrow::Array> out;
+        status = builder.Finish(&out);
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
+        
+        return out;
+    }
 
 }
 

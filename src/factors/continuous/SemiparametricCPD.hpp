@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_SEMIPARAMETRICCPD_HPP
 #define PGM_DATASET_SEMIPARAMETRICCPD_HPP
 
+#include <random>
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
@@ -49,6 +50,10 @@ namespace factors::continuous {
                 throw py::value_error("The SemiparametricBN is not a CKDE");
             }
         }
+
+        Array_ptr sample(int n, 
+                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+                         long unsigned int seed = std::random_device{}()) const;
 
         std::string ToString() const;
     private:

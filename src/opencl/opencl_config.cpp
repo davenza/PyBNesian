@@ -1,7 +1,6 @@
 #include <iostream>
 #include <opencl/opencl_config.hpp>
 
-
 namespace opencl {
 
 

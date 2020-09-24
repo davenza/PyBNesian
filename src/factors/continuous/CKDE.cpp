@@ -161,6 +161,21 @@ namespace factors::continuous {
         }
     }
 
+    Array_ptr CKDE::sample(int n, 
+                           std::unordered_map<std::string, Array_ptr>& parent_values, 
+                           long unsigned int seed) const {
+
+        switch(m_training_type) {
+            case Type::DOUBLE:
+                return _sample<arrow::DoubleType>(n, parent_values, seed);
+            case Type::FLOAT:
+                return _sample<arrow::FloatType>(n, parent_values, seed);
+            default:
+                throw std::runtime_error("Unreachable code.");
+        }
+
+    }
+
     std::string CKDE::ToString() const {
         std::stringstream stream;
         if (!m_evidence.empty()) {

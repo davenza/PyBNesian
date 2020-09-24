@@ -17,8 +17,6 @@ using arrow::NumericBuilder;
 template<typename T>
 using const_vecit = typename std::vector<T>::const_iterator;
 
-#include <iostream>
-
 namespace dataset {
 
 

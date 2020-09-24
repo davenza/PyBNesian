@@ -1,4 +1,3 @@
-#include <iostream>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <learning/parameters/mle.hpp>
 #include <util/math_constants.hpp>
@@ -6,6 +5,8 @@
 
 using dataset::DataFrame;
 using learning::parameters::MLE;
+
+using DataType_ptr = std::shared_ptr<arrow::DataType>;
 
 namespace factors::discrete {
 
@@ -60,32 +61,26 @@ namespace factors::discrete {
         auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(m_variable));
         auto dict_variable_values = std::static_pointer_cast<arrow::StringArray>(dict_variable->dictionary());
 
-        std::vector<std::string> variable_values;
-        variable_values.reserve(dict_variable_values->length());
-
+        m_variable_values.reserve(dict_variable_values->length());
         for (auto i = 0; i < dict_variable_values->length(); ++i) {
-            variable_values.push_back(dict_variable_values->GetString(i));
+            m_variable_values.push_back(dict_variable_values->GetString(i));
         }
 
-        m_variable_values = variable_values;
+        m_evidence_values.reserve(m_evidence.size());
 
-        std::vector<std::vector<std::string>> evidence_values;
-        evidence_values.reserve(m_evidence.size());
-
-        for (auto it = m_evidence.begin(); it != m_evidence.end(); ++it) {
+        for (auto it = m_evidence.begin(), end = m_evidence.end(); it != end; ++it) {
             auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
             auto dict_evidence_values = std::static_pointer_cast<arrow::StringArray>(dict_evidence->dictionary());
 
             std::vector<std::string> ev;
-            ev.reserve(dict_evidence->length());
+            ev.reserve(dict_evidence_values->length());
             for (auto j = 0; j < dict_evidence_values->length(); ++j) {
                 ev.push_back(dict_evidence_values->GetString(j));
             }
 
-            evidence_values.push_back(ev);
+            m_evidence_values.push_back(ev);
         }
 
-        m_evidence_values = evidence_values;
         m_fitted = true;
     }
 
@@ -205,6 +200,36 @@ namespace factors::discrete {
         }
     }
 
+    Array_ptr DiscreteFactor::sample(int n, 
+                                     std::unordered_map<std::string, Array_ptr>& parent_values, 
+                                     long unsigned int seed) const {
+        arrow::StringBuilder dict_builder;
+        dict_builder.AppendValues(m_variable_values);
+        std::shared_ptr<arrow::StringArray> dictionary;
+        auto status = dict_builder.Finish(&dictionary);
+        if (!status.ok()) {
+            throw std::runtime_error("Dictionary array could not be created. Error status: " + status.ToString());
+        }
+
+        Array_ptr indices;
+        DataType_ptr type;
+        if (m_variable_values.size() <= std::numeric_limits<typename arrow::Int8Type::c_type>::max()) {
+            type = arrow::dictionary(arrow::int8(), arrow::utf8());
+            indices = sample_indices<arrow::Int8Type>(n, parent_values, seed);
+        } else if (m_variable_values.size() <= std::numeric_limits<typename arrow::Int16Type::c_type>::max()) {
+            type = arrow::dictionary(arrow::int16(), arrow::utf8());
+            indices = sample_indices<arrow::Int16Type>(n, parent_values, seed);
+        } else if (m_variable_values.size() <= std::numeric_limits<typename arrow::Int32Type::c_type>::max()) {
+            type = arrow::dictionary(arrow::int32(), arrow::utf8());
+            indices = sample_indices<arrow::Int32Type>(n, parent_values, seed);
+        } else {
+            type = arrow::dictionary(arrow::int64(), arrow::utf8());
+            indices = sample_indices<arrow::Int64Type>(n, parent_values, seed);
+        }
+
+        return std::make_shared<arrow::DictionaryArray>(type, indices, dictionary);
+    }
+
     std::string DiscreteFactor::ToString() const {
         std::stringstream stream;
         stream << std::setprecision(3);
@@ -243,8 +268,6 @@ namespace factors::discrete {
                 table << fort::endr;
             }
 
-            std::cout << "m_evidence " << m_evidence.size() << std::endl;
-            std::cout << "cardinality " << m_cardinality(0);
             stream << table.to_string();
         } else {
             stream << "[DiscreteFactor] P(" << m_variable << ")" << std::endl;

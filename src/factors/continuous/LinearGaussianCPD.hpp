@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_LINEARGAUSSIANCPD_HPP
 #define PGM_DATASET_LINEARGAUSSIANCPD_HPP
 
+#include <random>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <Eigen/Dense>
@@ -40,14 +41,18 @@ namespace factors::continuous {
         std::string ToString() const;
 
         const VectorXd& beta() const { return m_beta; }
-        void setBeta(const VectorXd& new_beta) { 
+        void set_beta(const VectorXd& new_beta) { 
             if (static_cast<size_t>(new_beta.rows()) != (m_evidence.size() + 1))
                 throw std::invalid_argument("Wrong number of elements for the beta vector: " + std::to_string(new_beta.rows()) + 
                                         ". Expected size: " + std::to_string((m_evidence.size() + 1)));
             m_beta = new_beta; 
         }
         double variance() const { return m_variance; }
-        void setVariance(double v) { m_variance = v; }
+        void set_variance(double v) { m_variance = v; }
+
+        Array_ptr sample(int n, 
+                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+                         long unsigned int seed = std::random_device{}()) const;
 
     private:
         std::string m_variable;

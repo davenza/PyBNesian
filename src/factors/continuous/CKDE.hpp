@@ -211,6 +211,9 @@ namespace factors::continuous {
         }
         
         cl::Buffer& training_buffer() { return m_training; }
+        const cl::Buffer& training_buffer() const { return m_training; }
+
+        DataFrame training_data() const;
         
         int num_instances() const { return N; }
         int num_variables() const { return m_variables.size(); }
@@ -223,10 +226,14 @@ namespace factors::continuous {
 
         template<typename ArrowType>
         cl::Buffer logl_buffer(const DataFrame& df) const;
+        template<typename ArrowType>
+        cl::Buffer logl_buffer(const DataFrame& df, Buffer_ptr& bitmap) const;
 
         double slogl(const DataFrame& df) const;
-
     private:
+        template<typename ArrowType>
+        DataFrame _training_data() const;
+
         template<typename ArrowType, bool contains_null>
         void _fit(const DataFrame& df);
 
@@ -235,9 +242,8 @@ namespace factors::continuous {
         template<typename ArrowType>
         double _slogl(const DataFrame& df) const;
 
-
         template<typename ArrowType, typename KDEType>
-        cl::Buffer _logl_impl(const DataFrame& df) const;
+        cl::Buffer _logl_impl(cl::Buffer& test_buffer, int m) const;
 
         template<typename ArrowType>
         std::pair<cl::Buffer, uint64_t> allocate_mat() const {
@@ -275,6 +281,53 @@ namespace factors::continuous {
         }
     }
 
+    template<typename ArrowType>
+    DataFrame KDE::_training_data() const {
+        using CType = typename ArrowType::c_type;
+        using VectorType = Matrix<CType, Dynamic, 1>;
+        arrow::NumericBuilder<ArrowType> builder;
+
+        auto& opencl = OpenCLConfig::get();
+        VectorType tmp_buffer(N*m_variables.size());
+        opencl.read_from_buffer(tmp_buffer.data(), m_training, N*m_variables.size());
+
+        std::vector<Array_ptr> columns;
+        arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
+        for (int i = 0; i < m_variables.size(); ++i) {
+            builder.Resize(N);
+            auto status = builder.AppendValues(tmp_buffer.data() + i*N, N);
+
+            if (!status.ok()) {
+                throw std::runtime_error("Values could not be added. Error status: " + status.ToString());
+            }
+
+            Array_ptr out;
+            status = builder.Finish(&out);
+            if (!status.ok()) {
+               throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+            }
+
+            columns.push_back(out);
+            builder.Reset();
+
+            auto f = arrow::field(m_variables[i], out->type());
+            status = b.AddField(f);
+            if (!status.ok()) {
+                throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
+            }
+        }
+
+        auto r = b.Finish();
+        if (!r.ok()) {
+            throw std::domain_error("Schema could not be created.");
+        }
+        auto schema = std::move(r).ValueOrDie();
+
+        auto rb = arrow::RecordBatch::Make(schema, N, columns);
+        return DataFrame(rb);
+    }
+
+
     template<typename ArrowType, bool contains_null>
     void KDE::_fit(const DataFrame& df) {
         using CType = typename ArrowType::c_type;
@@ -287,14 +340,21 @@ namespace factors::continuous {
         auto llt_matrix = llt_cov.matrixLLT();
 
         auto& opencl = OpenCLConfig::get();
-        m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), d*d);
+
+        if constexpr(std::is_same_v<CType, double>) {
+            m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), d*d);
+        } else {
+            using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+            MatrixType casted_cholesky = llt_matrix.template cast<CType>();
+            m_H_cholesky = opencl.copy_to_buffer(casted_cholesky.data(), d*d);
+        }
 
         auto training_data = df.to_eigen<false, ArrowType, contains_null>(m_variables);
         N = training_data->rows();
         m_training = opencl.copy_to_buffer(training_data->data(), N * d);
 
         m_lognorm_const = -llt_matrix.diagonal().array().log().sum() 
-                          - 0.5 * d * std::log(2*util::pi<CType>)
+                          - 0.5 * d * std::log(2*util::pi<double>)
                           - std::log(N);
     }
 
@@ -311,12 +371,20 @@ namespace factors::continuous {
         auto llt_cov = bandwidth.llt();
         auto cholesky = llt_cov.matrixLLT();
         auto& opencl = OpenCLConfig::get();
-        m_H_cholesky = opencl.copy_to_buffer(cholesky.data(), d*d);
+
+        if constexpr (std::is_same_v<CType, double>) {
+            m_H_cholesky = opencl.copy_to_buffer(cholesky.data(), d*d);
+        } else {
+            using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+            MatrixType casted_cholesky = cholesky.template cast<CType>();
+            m_H_cholesky = opencl.copy_to_buffer(casted_cholesky.data(), d*d);
+        }
+
         m_training = training_data;
         m_training_type = training_type;
         N = training_instances;
         m_lognorm_const = -cholesky.diagonal().array().log().sum() 
-                          - 0.5 * d * std::log(2*util::pi<CType>)
+                          - 0.5 * d * std::log(2*util::pi<double>)
                           - std::log(N);
     }
 
@@ -374,22 +442,37 @@ namespace factors::continuous {
 
     template<typename ArrowType>
     cl::Buffer KDE::logl_buffer(const DataFrame& df) const {
-        if (m_variables.size() == 1)
-            return _logl_impl<ArrowType, UnivariateKDE>(df);
-        else
-            return _logl_impl<ArrowType, MultivariateKDE>(df);
-    }
-
-    template<typename ArrowType, typename KDEType>
-    cl::Buffer KDE::_logl_impl(const DataFrame& df) const {
-        using CType = typename ArrowType::c_type;
-        auto d = m_variables.size();
         auto& opencl = OpenCLConfig::get();
 
         auto test_matrix = df.to_eigen<false, ArrowType>(m_variables);
         auto m = test_matrix->rows();
-        auto test_buffer = opencl.copy_to_buffer(test_matrix->data(), m*d);
+        auto test_buffer = opencl.copy_to_buffer(test_matrix->data(), m*m_variables.size());
 
+        if (m_variables.size() == 1)
+            return _logl_impl<ArrowType, UnivariateKDE>(test_buffer, m);
+        else
+            return _logl_impl<ArrowType, MultivariateKDE>(test_buffer, m);
+    }
+
+    template<typename ArrowType>
+    cl::Buffer KDE::logl_buffer(const DataFrame& df, Buffer_ptr& bitmap) const {
+        auto& opencl = OpenCLConfig::get();
+
+        auto test_matrix = df.to_eigen<false, ArrowType>(bitmap, m_variables);
+        auto m = test_matrix->rows();
+        auto test_buffer = opencl.copy_to_buffer(test_matrix->data(), m*m_variables.size());
+
+        if (m_variables.size() == 1)
+            return _logl_impl<ArrowType, UnivariateKDE>(test_buffer, m);
+        else
+            return _logl_impl<ArrowType, MultivariateKDE>(test_buffer, m);
+    }
+
+    template<typename ArrowType, typename KDEType>
+    cl::Buffer KDE::_logl_impl(cl::Buffer& test_buffer, int m) const {
+        using CType = typename ArrowType::c_type;
+        auto d = m_variables.size();
+        auto& opencl = OpenCLConfig::get();
         auto res = opencl.new_buffer<CType>(m);
 
         auto [mat_logls, allocated_m] = allocate_mat<ArrowType>();
@@ -466,6 +549,9 @@ namespace factors::continuous {
         std::string ToString() const;
     private:
         template<typename ArrowType>
+        void _fit(const DataFrame& df);
+
+        template<typename ArrowType>
         VectorXd _logl(const DataFrame& df) const;
 
         template<typename ArrowType>
@@ -511,13 +597,20 @@ namespace factors::continuous {
         using VectorType = Matrix<CType, Dynamic, 1>;
 
         auto logl_joint = m_joint.logl_buffer<ArrowType>(df);
-
+        
+        auto combined_bitmap = df.combined_bitmap(m_variables);
+        auto m = df->num_rows();
+        if (combined_bitmap)
+            m = util::bit_util::non_null_count(combined_bitmap, df->num_rows());
+        
         auto& opencl = OpenCLConfig::get();
         if (!m_evidence.empty()) {
-            auto logl_marg = m_marg.logl_buffer<ArrowType>(df);
-            auto m = df.valid_rows(m_variables);
+            cl::Buffer logl_marg;
+            if (combined_bitmap)
+                logl_marg = m_marg.logl_buffer<ArrowType>(df, combined_bitmap);
+            else
+                logl_marg = m_marg.logl_buffer<ArrowType>(df);
 
-            
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
             k_substract.setArg(0, logl_joint);
             k_substract.setArg(1, logl_marg);
@@ -525,18 +618,9 @@ namespace factors::continuous {
             queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(m), cl::NullRange);
         }
 
-        if (df.null_count(m_variables) == 0) {
-            VectorType read_data(df->num_rows());
-            opencl.read_from_buffer(read_data.data(), logl_joint, df->num_rows());
-            if constexpr (!std::is_same_v<CType, double>)
-                return read_data.template cast<double>();
-            else
-                return read_data;
-        } else {
-            auto m = df.valid_rows(m_variables);
+        if (combined_bitmap) {
             VectorType read_data(m);
-            auto bitmap = df.combined_bitmap(m_variables);
-            auto bitmap_data = bitmap->data();
+            auto bitmap_data = combined_bitmap->data();
 
             opencl.read_from_buffer(read_data.data(), logl_joint, m);
 
@@ -551,6 +635,13 @@ namespace factors::continuous {
             }
 
             return res;
+        } else {
+            VectorType read_data(df->num_rows());
+            opencl.read_from_buffer(read_data.data(), logl_joint, df->num_rows());
+            if constexpr (!std::is_same_v<CType, double>)
+                return read_data.template cast<double>();
+            else
+                return read_data;
         }
     }
 
@@ -559,11 +650,19 @@ namespace factors::continuous {
         using CType = typename ArrowType::c_type;
 
         auto logl_joint = m_joint.logl_buffer<ArrowType>(df);
-        auto m = df.valid_rows(m_variables);
+
+        auto combined_bitmap = df.combined_bitmap(m_variables);
+        auto m = df->num_rows();
+        if (combined_bitmap)
+            m = util::bit_util::non_null_count(combined_bitmap, df->num_rows());
 
         auto& opencl = OpenCLConfig::get();
         if(!m_evidence.empty()) {
-            auto logl_marg = m_marg.logl_buffer<ArrowType>(df);
+            cl::Buffer logl_marg;
+            if (combined_bitmap)
+                logl_marg = m_marg.logl_buffer<ArrowType>(df, combined_bitmap);
+            else
+                logl_marg = m_marg.logl_buffer<ArrowType>(df);
             
             auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
             k_substract.setArg(0, logl_joint);

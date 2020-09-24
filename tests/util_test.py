@@ -3,8 +3,8 @@ import pandas as pd
 import pyarrow as pa
 
 
-def generate_normal_data(size):
-    np.random.seed(0)
+def generate_normal_data(size, seed=0):
+    np.random.seed(seed)
 
     a_array = np.random.normal(3, 0.5, size=size)
     b_array = 2.5 + 1.65*a_array + np.random.normal(0, 2, size=size)
@@ -19,8 +19,8 @@ def generate_normal_data(size):
                     'd': d_array
                     })
 
-def generate_normal_data_indep(size):
-    np.random.seed(0)
+def generate_normal_data_indep(size, seed=0):
+    np.random.seed(seed)
 
     a_array = np.random.normal(3, 0.5, size=size)
     b_array = np.random.normal(2.5, 2, size=size)
@@ -37,8 +37,8 @@ def generate_normal_data_indep(size):
 
 
 
-def generate_discrete_data_uniform(size):
-    np.random.seed(0)
+def generate_discrete_data_uniform(size, seed=0):
+    np.random.seed(seed)
 
     a_dict = np.asarray(['a1', 'a2'])
     b_dict = np.asarray(['b1', 'b2', 'b3'])
@@ -52,8 +52,8 @@ def generate_discrete_data_uniform(size):
                         }, dtype='category')
 
 
-def generate_discrete_data_dependent(size):
-    np.random.seed(0)
+def generate_discrete_data_dependent(size, seed=0):
+    np.random.seed(seed)
 
     a_dict = np.asarray(['a1', 'a2'])
     b_dict = np.asarray(['b1', 'b2', 'b3'])

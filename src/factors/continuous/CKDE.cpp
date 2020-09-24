@@ -10,9 +10,39 @@ namespace factors::continuous {
         auto d = m_variables.size();
         auto llt_cov = m_bandwidth.llt();
         auto llt_matrix = llt_cov.matrixLLT();
+        
+        m_lognorm_const = -llt_matrix.diagonal().array().log().sum() 
+                          - 0.5 * m_variables.size() * std::log(2*util::pi<double>) 
+                          - std::log(N);
+
 
         auto& opencl = OpenCLConfig::get();
-        m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), d*d);
+
+        switch (m_training_type) {
+            case Type::DOUBLE: {
+                m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), d*d);
+                break;
+            }
+            case Type::FLOAT: {
+                MatrixXf casted_cholesky = llt_matrix.template cast<float>();
+                m_H_cholesky = opencl.copy_to_buffer(casted_cholesky.data(), d*d);
+                break;
+            }
+            default:
+                throw std::invalid_argument("Unreachable code.");
+                
+        }
+    }
+
+    DataFrame KDE::training_data() const {
+        switch(m_training_type) {
+            case Type::DOUBLE:
+                return _training_data<arrow::DoubleType>();
+            case Type::FLOAT:
+                return _training_data<arrow::FloatType>();
+            default:
+                throw std::invalid_argument("Unreachable code.");
+        }
     }
 
     void KDE::fit(const DataFrame& df) {

@@ -47,6 +47,7 @@ void pybindings_factors(py::module& root) {
         .def_property_readonly("n", &KDE::num_instances)
         .def_property_readonly("d", &KDE::num_variables)
         .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth)
+        .def_property_readonly("dataset", &KDE::training_data)
         .def_property_readonly("fitted", &KDE::fitted)
         .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
         .def("logl", &KDE::logl, py::return_value_policy::take_ownership)

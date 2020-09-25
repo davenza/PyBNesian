@@ -38,6 +38,8 @@ namespace opencl {
         inline constexpr static const char* logl_values_mat_row = "logl_values_mat_row_double";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_double";
         inline constexpr static const char* substract_vectors = "substract_vectors_double";
+        inline constexpr static const char* accum_sumexp_mat_cols = "accum_sumexp_mat_cols_double";
+        inline constexpr static const char* add_accum_sumexp_mat_cols = "add_accum_sumexp_mat_cols_double";
     };
 
     template<>
@@ -55,6 +57,8 @@ namespace opencl {
         inline constexpr static const char* logl_values_mat_row = "logl_values_mat_row_float";
         inline constexpr static const char* finish_lse_offset = "finish_lse_offset_float";
         inline constexpr static const char* substract_vectors = "substract_vectors_float";
+        inline constexpr static const char* accum_sumexp_mat_cols = "accum_sumexp_mat_cols_float";
+        inline constexpr static const char* add_accum_sumexp_mat_cols = "add_accum_sumexp_mat_cols_float";
     };
 
     template<typename ArrowType>
@@ -147,6 +151,9 @@ namespace opencl {
         template<typename ArrowType>
         void logsumexp_cols_offset(cl::Buffer& input_mat, int input_rows, int input_cols, 
                                     cl::Buffer& output_vec, int output_offset, std::vector<cl::Buffer>& reduc_buffers);
+
+        template<typename ArrowType>
+        void accum_sumexp_cols(cl::Buffer& mat, int input_rows, int input_cols);
 
         int max_local_size() { return m_max_local_size; }
 
@@ -430,6 +437,44 @@ namespace opencl {
         finish_lse.setArg(1, static_cast<unsigned int>(output_offset));
         finish_lse.setArg(2, max_buffer);
         m_queue.enqueueNDRangeKernel(finish_lse, cl::NullRange, cl::NDRange(input_cols), cl::NullRange);
+    }
+
+    template<typename ArrowType>
+    void OpenCLConfig::accum_sumexp_cols(cl::Buffer& mat, int input_rows, int input_cols) {
+        using CType = typename ArrowType::c_type;
+        auto num_groups = static_cast<int>(std::ceil(static_cast<double>(input_rows) / 
+                                                    static_cast<double>(m_max_local_size)));
+
+        auto local_size = (input_rows > m_max_local_size) ? m_max_local_size : input_rows;
+        auto global_wg = static_cast<int>(std::ceil(static_cast<double>(num_groups*local_size) / 2));
+        auto local_wg = global_wg / num_groups;
+
+        auto& opencl = OpenCLConfig::get();
+        auto group_sums = opencl.new_buffer<CType>(num_groups*input_cols);
+        
+        auto k_accum_sumexp = kernel(OpenCL_kernel_traits<ArrowType>::accum_sumexp_mat_cols);
+        k_accum_sumexp.setArg(0, mat);
+        k_accum_sumexp.setArg(1, static_cast<unsigned int>(input_rows));
+        k_accum_sumexp.setArg(2, cl::Local(local_size*sizeof(CType)));
+        k_accum_sumexp.setArg(3, group_sums);
+        m_queue.enqueueNDRangeKernel(k_accum_sumexp, cl::NullRange, cl::NDRange(global_wg, input_cols), cl::NDRange(local_wg, 1));
+
+        if (num_groups > 1) {
+            accum_sumexp_cols<ArrowType>(group_sums, num_groups, input_cols);
+
+            auto k_add_accum_sumexp = kernel(OpenCL_kernel_traits<ArrowType>::accum_sumexp_mat_cols);
+            k_add_accum_sumexp.setArg(0, mat);
+            k_add_accum_sumexp.setArg(1, static_cast<unsigned int>(input_rows));
+            k_add_accum_sumexp.setArg(2, static_cast<unsigned int>(local_size));
+            k_add_accum_sumexp.setArg(3, static_cast<unsigned int>(local_size));
+            k_add_accum_sumexp.setArg(4, group_sums);
+            m_queue.enqueueNDRangeKernel(k_add_accum_sumexp, 
+                                         cl::NullRange, 
+                                         cl::NDRange((num_groups-1)*local_size, input_cols), 
+                                         cl::NullRange
+                                        );
+        }
+
     }
 }
 

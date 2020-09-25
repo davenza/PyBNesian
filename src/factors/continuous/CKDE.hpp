@@ -160,11 +160,17 @@ namespace factors::continuous {
                 queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(test_length*matrices_cols), cl::NullRange);
                 k_logl_values_mat.setArg(4, i);
                 queue.enqueueNDRangeKernel(k_logl_values_mat, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
-
             }
         }
     }
-    
+
+    template<typename ArrowType>
+    std::pair<cl::Buffer, uint64_t> allocate_mat(int rows) {
+        using CType = typename ArrowType::c_type;
+        auto& opencl = OpenCLConfig::get();
+        return std::make_pair(opencl.new_buffer<CType>(rows*64), 64);
+    }
+
     class KDE {
     public:
         KDE() : m_variables(), 
@@ -215,6 +221,11 @@ namespace factors::continuous {
         cl::Buffer& training_buffer() { return m_training; }
         const cl::Buffer& training_buffer() const { return m_training; }
 
+        cl::Buffer& cholesky_buffer()  { return m_H_cholesky; }
+        const cl::Buffer& cholesky_buffer() const { return m_H_cholesky; }
+
+        double lognorm_const() const { return m_lognorm_const; }
+
         DataFrame training_data() const;
         
         int num_instances() const { return N; }
@@ -246,13 +257,6 @@ namespace factors::continuous {
 
         template<typename ArrowType, typename KDEType>
         cl::Buffer _logl_impl(cl::Buffer& test_buffer, int m) const;
-
-        template<typename ArrowType>
-        std::pair<cl::Buffer, uint64_t> allocate_mat() const {
-            using CType = typename ArrowType::c_type;
-            auto& opencl = OpenCLConfig::get();
-            return std::make_pair(opencl.new_buffer<CType>(N*64), 64);
-        }
 
         template<typename ArrowType, bool contains_null>
         void compute_bandwidth(const DataFrame& df, std::vector<std::string>& variables);
@@ -476,7 +480,7 @@ namespace factors::continuous {
         auto& opencl = OpenCLConfig::get();
         auto res = opencl.new_buffer<CType>(m);
 
-        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>();
+        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N);
         auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
 
         cl::Buffer tmp_mat_buffer;
@@ -500,7 +504,6 @@ namespace factors::continuous {
                                                         m - remaining_m, remaining_m, d, m_H_cholesky, m_lognorm_const, 
                                                         tmp_mat_buffer, mat_logls);
         opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, res, (iterations - 1)*allocated_m, reduc_buffers);
-
 
         return res;
     }
@@ -571,6 +574,15 @@ namespace factors::continuous {
         Array_ptr _sample_multivariate(int n, 
                                 std::unordered_map<std::string, Array_ptr>& parent_values, 
                                 long unsigned int seed) const;
+
+        template<typename ArrowType>
+        VectorXi _sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
+                                              std::unordered_map<std::string, Array_ptr>& parent_values,
+                                              int n) const;
+        template<typename ArrowType, typename KDEType>
+        cl::Buffer _sample_indices_from_weights(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
+                                                      cl::Buffer& test_buffer,
+                                                      int n) const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -727,39 +739,52 @@ namespace factors::continuous {
         }
     }
 
-
     template<typename ArrowType>
     Array_ptr CKDE::_sample_multivariate(int n, 
                             std::unordered_map<std::string, Array_ptr>& parent_values, 
                             long unsigned int seed) const {
         using CType = typename ArrowType::c_type;
+        using VectorType = Matrix<CType, Dynamic, 1>;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
 
-        MatrixType evidence_matrix(n, m_evidence.size());
-        for (const auto& evidence_name : m_evidence) {
-            auto found = parent_values.find(evidence_name);
-            auto evidence_array = found->second;
-
-            auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence_array);
-            auto raw_evidence = dwn_evidence->raw_values();
+        VectorType random_prob(n);
+        std::mt19937 rng{seed};
+        std::uniform_real_distribution<CType> uniform(0, 1);
+        for(auto i = 0; i < n; ++i) {
+            random_prob(i) = uniform(rng);
         }
 
+        VectorXi sample_indices = _sample_indices_multivariate<ArrowType>(random_prob, parent_values, n);
 
 
         
-        const auto& bandwidth = m_joint.bandwidth();
-        const auto& marg_bandwidth = m_marg.bandwidth();
-        
-        auto cholesky = marg_bandwidth.llt();
-        auto matrixL = cholesky.matrixL();
+        // MatrixType evidence_matrix(n, m_evidence.size());
+        // for (const auto& evidence_name : m_evidence) {
+        //     auto found = parent_values.find(evidence_name);
+        //     auto evidence_array = found->second;
 
-        auto d = m_evidence.size();
-        MatrixXd inverseL = MatrixXd::Identity(d, d);
-        // Solves and saves the result in identity
-        matrixL.solveInPlace(inverseL);
-        auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
-        auto cond_var = bandwidth(0,0) - R.squaredNorm();
-        auto transform = R.transpose() * inverseL;
+        //     auto dwn_evidence = std::static_pointer_cast<ArrowType>(evidence_array);
+        //     auto raw_evidence = dwn_evidence->raw_values();
+
+
+        // }
+
+
+
+        
+        // const auto& bandwidth = m_joint.bandwidth();
+        // const auto& marg_bandwidth = m_marg.bandwidth();
+        
+        // auto cholesky = marg_bandwidth.llt();
+        // auto matrixL = cholesky.matrixL();
+
+        // auto d = m_evidence.size();
+        // MatrixXd inverseL = MatrixXd::Identity(d, d);
+        // // Solves and saves the result in identity
+        // matrixL.solveInPlace(inverseL);
+        // auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
+        // auto cond_var = bandwidth(0,0) - R.squaredNorm();
+        // auto transform = R.transpose() * inverseL;
 
 
         
@@ -772,6 +797,84 @@ namespace factors::continuous {
         // opencl.read_from_buffer(training_)
 
 
+    }
+
+    template<typename ArrowType>
+    VectorXi CKDE::_sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
+                                          std::unordered_map<std::string, Array_ptr>& parent_values,
+                                          int n) const {
+        using CType = typename ArrowType::c_type;
+        using ArrowArray = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+
+        MatrixType test_matrix(n, m_evidence.size());
+
+        for (auto i = 0; i < m_evidence.size(); ++i) {
+            auto found = parent_values.find(m_evidence[i]);
+            auto evidence = found->second;
+
+            auto dwn_evidence = std::static_pointer_cast<ArrowArray>(evidence);
+            auto raw_evidence = dwn_evidence->raw_values();
+
+            std::memcpy(test_matrix.data() + i*n, raw_evidence, sizeof(CType)*n);
+        }
+
+        auto& opencl = OpenCLConfig::get();
+        auto test_buffer = opencl.copy_to_buffer(test_matrix.data(), n*m_evidence.size());
+
+        cl::Buffer indices_buffer;
+        if (m_variables.size() == 1)
+            indices_buffer = _sample_indices_from_weights<ArrowType, UnivariateKDE>(random_prob, test_buffer, n);
+        else
+            indices_buffer = _sample_indices_from_weights<ArrowType, MultivariateKDE>(random_prob, test_buffer, n);
+
+        VectorXi res(n);
+        opencl.read_from_buffer(res.data(), indices_buffer, n);
+        return res;
+    }
+
+    template<typename ArrowType, typename KDEType>
+    cl::Buffer CKDE::_sample_indices_from_weights(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
+                                                  cl::Buffer& test_buffer,
+                                                  int n) const {
+        using CType = typename ArrowType::c_type;
+
+        auto& opencl = OpenCLConfig::get();
+        auto res = opencl.new_buffer<int>(n);
+
+        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N);
+        auto iterations = std::ceil(static_cast<double>(n) / static_cast<double>(allocated_m));
+
+        cl::Buffer tmp_mat_buffer;
+        if constexpr(std::is_same_v<KDEType, MultivariateKDE>) {
+            if (N > allocated_m)
+                tmp_mat_buffer = opencl.new_buffer<CType>(N*m_variables.size());
+            else
+                tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_variables.size());
+        }
+
+        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
+
+
+        for (auto i = 0; i < (iterations-1); ++i) {
+            KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, test_buffer, n, 
+                                                        i*allocated_m, allocated_m, m_evidence.size(), 
+                                                        m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
+                                                        tmp_mat_buffer, mat_logls);
+
+            // opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, allocated_m, logsum, 0, reduc_buffers);
+
+            opencl.accum_sumexp_cols<ArrowType>(mat_logls, N, allocated_m);
+
+        }
+        // auto remaining_n = n - (iterations - 1)*allocated_m;
+        // KDEType::template execute_logl_mat<ArrowType>(kde_marg.training_buffer(), N, test_buffer, n, 
+        //                                                 n - remaining_n, remaining_n, d, m_H_cholesky, m_lognorm_const, 
+        //                                                 tmp_mat_buffer, mat_logls);
+        // opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, logsum, 0, reduc_buffers);
+        // opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, res, (iterations - 1)*allocated_m, reduc_buffers);
+
+        // return res;
     }
 
 }

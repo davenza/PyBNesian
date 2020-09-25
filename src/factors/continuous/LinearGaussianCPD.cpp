@@ -192,11 +192,26 @@ namespace factors::continuous {
             for (auto j = 0; j < m_evidence.size(); ++j) {
                 auto found = parent_values.find(m_evidence[j]);
                 auto evidence = found->second;
-                auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence);
-                auto raw_evidence = dwn_evidence->raw_values();
 
-                for (auto i = 0; i < n; ++i) {
-                    out_values[i] += m_beta(j+1)*raw_evidence[i];
+                switch (evidence->type_id()) {
+                    case Type::DOUBLE: {
+                        auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence);
+                        auto raw_evidence = dwn_evidence->raw_values();
+
+                        for (auto i = 0; i < n; ++i) {
+                            out_values[i] += m_beta(j+1)*raw_evidence[i];
+                        }
+                    }
+                    case Type::FLOAT: {
+                        auto dwn_evidence = std::static_pointer_cast<arrow::FloatArray>(evidence);
+                        auto raw_evidence = dwn_evidence->raw_values();
+
+                        for (auto i = 0; i < n; ++i) {
+                            out_values[i] += m_beta(j+1)*raw_evidence[i];
+                        }
+                    }
+                    default:
+                        throw std::invalid_argument("Wrong data type for LinearGaussianCPD parent data.");
                 }
             }
         }

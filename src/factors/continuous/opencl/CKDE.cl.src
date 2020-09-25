@@ -229,5 +229,98 @@ __kernel void substract_vectors_@dt@(__global @dt@ *v1, __constant @dt@ *v2) {
 }
 
 
+// A variation of the code in https://community.khronos.org/t/is-there-any-opencl-library-having-prefix-sum/3945/4.
+// This version works in the columns of a matrix and exp() the input values before performing the prefix sum.
+// It is best explained in Blelloch, 1990 "Prefix Sums and Their Applications":
+//  https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf
+__kernel void accum_sumexp_mat_cols_@dt@(__global @dt@ *mat, 
+                                         __private uint mat_rows,
+                                         __local @dt@ *local_block,
+                                         __global @dt@ *sums)
+{
+    uint row_id = get_global_id(0);
+    uint col_id = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_size = get_local_size(0);
+    uint group_id = get_group_id(0);
+
+
+    local_block[2*local_id] = exp(mat[IDX(min(2*row_id, mat_rows-1), col_id, mat_rows)]);
+    local_block[2*local_id+1] = exp(mat[IDX(min(2*row_id+1, mat_rows-1), col_id, mat_rows)]);
+
+	uint offset = 1;
+	/* build the sum in place up the tree */
+	// for (int d = block_size >> 1; d > 0; d >>= 1)
+	for (uint d = group_size / 2 ; d > 0; d /= 2)
+	{
+		barrier (CLK_LOCAL_MEM_FENCE);
+
+		if (local_id < d)
+		{
+			uint ai = offset * (2 * local_id + 1) - 1;
+			uint bi = offset * (2 * local_id + 2) - 1;
+
+			local_block[bi] += local_block[ai];
+		}
+		offset *= 2;
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	/* store the value in sum buffer before making it to 0 */
+	sums[IDX(group_id, col_id, get_num_groups(0))] = local_block[group_size - 1];
+
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+	/* scan back down the tree */
+
+	/* clear the last element */
+	local_block[group_size - 1] = 0;
+
+	/* traverse down the tree building the scan in the place */
+	for (uint d = 1; d < group_size; d *= 2)
+	{
+		// offset >>= 1;
+		offset /= 2;
+		barrier(CLK_LOCAL_MEM_FENCE);
+
+		if (local_id < d)
+		{
+			uint ai = offset * (2 * local_id + 1) - 1;
+			uint bi = offset * (2 * local_id + 2) - 1;
+
+			@dt@ t = local_block[ai];
+			local_block[ai] = local_block[bi];
+			local_block[bi] += t;
+		}
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+    /*write the results back to global memory */
+
+    if ((2*row_id+1) < mat_rows) {
+        mat[IDX(2*row_id, col_id, mat_rows)] = local_block[2*local_id];
+        mat[IDX(2*row_id+1, col_id, mat_rows)] = local_block[2*local_id+1];
+    } else if (2*row_id < mat_rows) {
+        mat[IDX(2*row_id, col_id, mat_rows)] = local_block[2*local_id];
+    }
+}
+
+__kernel void add_accum_sumexp_mat_cols_@dt@(__global @dt@ *mat, 
+                                             __private uint mat_rows,
+                                             __private uint mat_offset,
+                                             __private uint size_per_group,
+                                             __global @dt@ *sums) {
+    
+
+    uint row_id = get_global_id(0);
+    uint col_id = get_global_id(1);
+    uint local_id = get_local_id(0);
+    uint group_id = get_group_id(0);
+    uint num_groups = get_num_groups(0) + 1;
+
+    mat[IDX(row_id + mat_offset, col_id, mat_rows)] += sums[IDX((row_id / size_per_group)+1, col_id, num_groups)];
+}
 
 /**end repeat**/

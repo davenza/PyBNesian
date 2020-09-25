@@ -34,7 +34,6 @@ def test_kde_variables():
         assert cpd.variables == variables
 
 def test_kde_bandwidth():
-
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         for instances in [50, 1000, 10000]:
             npdata = df.loc[:, variables].to_numpy()

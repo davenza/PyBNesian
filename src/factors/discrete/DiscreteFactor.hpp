@@ -143,8 +143,7 @@ namespace factors::discrete {
                                         m_evidence.begin(), m_evidence.end(), m_strides);
         }
 
-        Array_ptr sample(int n, 
-                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+        Array_ptr sample(int n, const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
 
     private:
@@ -155,8 +154,7 @@ namespace factors::discrete {
         double _slogl_null(const DataFrame& df) const;
 
         template<typename ArrowType>
-        Array_ptr sample_indices(int n, 
-                                 std::unordered_map<std::string, Array_ptr>& parent_values,
+        Array_ptr sample_indices(int n, const DataFrame& evidence_values,
                                  long unsigned int seed) const;
 
         std::string m_variable;
@@ -170,8 +168,7 @@ namespace factors::discrete {
     };
 
     template<typename ArrowType>
-    Array_ptr DiscreteFactor::sample_indices(int n, 
-                                             std::unordered_map<std::string, Array_ptr>& parent_values, 
+    Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values, 
                                              long unsigned int seed) const {
 
         int parent_configurations = m_logprob.rows() / m_variable_values.size();
@@ -199,8 +196,7 @@ namespace factors::discrete {
         if (!m_evidence.empty()) {
             VectorXi parent_offset = VectorXi::Zero(n);
             for (auto i = 0; i < m_evidence.size(); ++i) {
-                auto found = parent_values.find(m_evidence[i]);
-                auto array = found->second;
+                auto array = evidence_values->GetColumnByName(m_evidence[i]);
 
                 auto dwn_array = std::static_pointer_cast<arrow::DictionaryArray>(array);
                 auto array_indices = dwn_array->indices();

@@ -169,7 +169,7 @@ namespace factors::continuous {
     }
 
     Array_ptr LinearGaussianCPD::sample(int n, 
-                                        std::unordered_map<std::string, Array_ptr>& parent_values, 
+                                        const DataFrame& evidence_values, 
                                         long unsigned int seed) const {
         arrow::NumericBuilder<arrow::DoubleType> builder;
         builder.Resize(n);
@@ -190,8 +190,7 @@ namespace factors::continuous {
         if (!m_evidence.empty()) {
             auto out_values = reinterpret_cast<double*>(out->values()->mutable_data());
             for (auto j = 0; j < m_evidence.size(); ++j) {
-                auto found = parent_values.find(m_evidence[j]);
-                auto evidence = found->second;
+                auto evidence = evidence_values->GetColumnByName(m_evidence[j]);
 
                 switch (evidence->type_id()) {
                     case Type::DOUBLE: {

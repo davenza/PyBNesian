@@ -118,18 +118,21 @@ namespace opencl {
 
         cl::Program program (context, source);
 
-        try{
-            program.build();
-        } catch(...) {
+
+        cl_int err_code = CL_SUCCESS;
+        err_code = program.build();
+        if (err_code != CL_SUCCESS) {
             cl_int buildErr = CL_SUCCESS;
             auto buildInfo = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(&buildErr);
             for (auto &pair : buildInfo) {
                 std::cerr << pair.second << std::endl << std::endl;
             }
-            throw std::runtime_error("Error compilating OpenCL code.");
+
+            throw std::runtime_error(std::string("Error in OpenCL code: ") + 
+                                    opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
         }
 
-        cl_int err_code = CL_SUCCESS;
+        err_code = CL_SUCCESS;
         int max_local_size = dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(&err_code);
         if (err_code != CL_SUCCESS) {
             throw std::runtime_error(std::string("Maximum work group size could not be determined. ") + 

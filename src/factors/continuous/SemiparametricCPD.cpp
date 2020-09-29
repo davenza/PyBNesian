@@ -46,12 +46,11 @@ namespace factors::continuous {
                 }, m_cpd);
     }
 
-    Array_ptr SemiparametricCPD::sample(int n, 
-                     std::unordered_map<std::string, Array_ptr>& parent_values, 
-                     long unsigned int seed) const {
+    Array_ptr SemiparametricCPD::sample(int n, const DataFrame& evidence_values, 
+                                        long unsigned int seed) const {
         
-        return std::visit([n, &parent_values, seed](auto& cpd) {
-            return cpd.sample(n, parent_values, seed);
+        return std::visit([n, &evidence_values, seed](auto& cpd) {
+            return cpd.sample(n, evidence_values, seed);
         }, m_cpd);
     }
 }

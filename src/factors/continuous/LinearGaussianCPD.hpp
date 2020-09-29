@@ -51,7 +51,7 @@ namespace factors::continuous {
         void set_variance(double v) { m_variance = v; }
 
         Array_ptr sample(int n, 
-                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+                         const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
 
     private:

@@ -25,8 +25,23 @@ namespace dataset {
         return PyObject_IsInstance(pyobj_ptr, protocolClass);
     }
 
+    bool is_pandas_series(py::handle pyobject) {
+        PyObject* pyobj_ptr = pyobject.ptr();
+
+        PyObject* module = PyImport_ImportModule("pandas");
+        PyObject* moduleDict = PyModule_GetDict(module);
+        PyObject* protocolClass = PyDict_GetItemString(moduleDict, "Series");
+
+        return PyObject_IsInstance(pyobj_ptr, protocolClass);
+    }
+
     py::object pandas_to_pyarrow_record_batch(py::handle pyobject) {
         auto d = py::module::import("pyarrow").attr("RecordBatch").attr("from_pandas")(pyobject);
+        return d;
+    }
+
+    py::object pandas_to_pyarrow_array(py::handle pyobject) {
+        auto d = py::module::import("pyarrow").attr("Array").attr("from_pandas")(pyobject);
         return d;
     }
 

@@ -11,6 +11,10 @@
 #include <util/math_constants.hpp>
 #include <util/bit_util.hpp>
 
+
+#include <iostream>
+
+
 namespace py = pybind11;
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
@@ -551,7 +555,7 @@ namespace factors::continuous {
         double slogl(const DataFrame& df) const;
 
         Array_ptr sample(int n, 
-                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+                         const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
 
         std::string ToString() const;
@@ -566,23 +570,17 @@ namespace factors::continuous {
         double _slogl(const DataFrame& df) const;
 
         template<typename ArrowType>
-        Array_ptr _sample(int n, 
-                          std::unordered_map<std::string, Array_ptr>& parent_values, 
-                          long unsigned int seed) const;
+        Array_ptr _sample(int n, const DataFrame& evidence_values, long unsigned int seed) const;
         
         template<typename ArrowType>
-        Array_ptr _sample_multivariate(int n, 
-                                std::unordered_map<std::string, Array_ptr>& parent_values, 
-                                long unsigned int seed) const;
+        Array_ptr _sample_multivariate(int n, const DataFrame& evidence_values, long unsigned int seed) const;
 
         template<typename ArrowType>
-        VectorXi _sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
-                                              std::unordered_map<std::string, Array_ptr>& parent_values,
+        VectorXi _sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1>& random_prob,
+                                              const DataFrame& evidence_values,
                                               int n) const;
         template<typename ArrowType, typename KDEType>
-        cl::Buffer _sample_indices_from_weights(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
-                                                      cl::Buffer& test_buffer,
-                                                      int n) const;
+        cl::Buffer _sample_indices_from_weights(cl::Buffer& random_prob, cl::Buffer& test_buffer, int n) const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -703,9 +701,7 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    Array_ptr CKDE::_sample(int n, 
-                     std::unordered_map<std::string, Array_ptr>& parent_values, 
-                     long unsigned int seed) const {
+    Array_ptr CKDE::_sample(int n, const DataFrame& evidence_values, long unsigned int seed) const {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<CType, Dynamic, 1>;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
@@ -721,7 +717,7 @@ namespace factors::continuous {
             const auto& training_buffer = m_joint.training_buffer();
             auto& opencl = OpenCLConfig::get();
             opencl.read_from_buffer(training_data.data(), training_buffer, N);
-
+            
             for (auto i = 0; i < n; ++i) {
                 auto index = uniform(rng);
                 builder.UnsafeAppend(training_data(index) + normal(rng));
@@ -735,83 +731,96 @@ namespace factors::continuous {
 
             return out;
         } else {
-            return _sample_multivariate<ArrowType>(n, parent_values, seed);
+            return _sample_multivariate<ArrowType>(n, evidence_values, seed);
         }
     }
 
     template<typename ArrowType>
-    Array_ptr CKDE::_sample_multivariate(int n, 
-                            std::unordered_map<std::string, Array_ptr>& parent_values, 
-                            long unsigned int seed) const {
+    Array_ptr CKDE::_sample_multivariate(int n, const DataFrame& evidence_values, long unsigned int seed) const {
         using CType = typename ArrowType::c_type;
+        using ArrowArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using VectorType = Matrix<CType, Dynamic, 1>;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
 
         VectorType random_prob(n);
         std::mt19937 rng{seed};
         std::uniform_real_distribution<CType> uniform(0, 1);
+        std::cout << "Generating random prob" << std::endl;
         for(auto i = 0; i < n; ++i) {
             random_prob(i) = uniform(rng);
         }
 
-        VectorXi sample_indices = _sample_indices_multivariate<ArrowType>(random_prob, parent_values, n);
+        std::cout << "Generating sample indices" << std::endl;
+        VectorXi sample_indices = _sample_indices_multivariate<ArrowType>(random_prob, evidence_values, n);
 
-
+        std::cout << "Generating matrix values" << std::endl;
+        const auto& bandwidth = m_joint.bandwidth();
+        const auto& marg_bandwidth = m_marg.bandwidth();
         
-        // MatrixType evidence_matrix(n, m_evidence.size());
-        // for (const auto& evidence_name : m_evidence) {
-        //     auto found = parent_values.find(evidence_name);
-        //     auto evidence_array = found->second;
+        auto cholesky = marg_bandwidth.llt();
+        auto matrixL = cholesky.matrixL();
 
-        //     auto dwn_evidence = std::static_pointer_cast<ArrowType>(evidence_array);
-        //     auto raw_evidence = dwn_evidence->raw_values();
+        auto d = m_evidence.size();
+        MatrixXd inverseL = MatrixXd::Identity(d, d);
 
+        // Solves and saves the result in inverseL
+        matrixL.solveInPlace(inverseL);
+        auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
+        auto cond_var = bandwidth(0,0) - R.squaredNorm();
+        auto transform = (R.transpose() * inverseL).template cast<CType>();
 
-        // }
+        std::cout << "Obtaining evidence substract" << std::endl;
+        MatrixType training_dataset(N, m_variables.size());
+        auto& opencl = OpenCLConfig::get();
+        opencl.read_from_buffer(training_dataset.data(), m_joint.training_buffer(), N*m_variables.size());
 
+        MatrixType evidence_substract(n, m_evidence.size());
+        for (auto j = 0; j < m_evidence.size(); ++j) {
+            auto evidence = evidence_values->GetColumnByName(m_evidence[j]);
+            auto dwn_evidence = std::static_pointer_cast<ArrowArrayType>(evidence);
+            auto raw_values = dwn_evidence->raw_values();
+            for (auto i = 0; i < n; ++i) {
+                evidence_substract(i, j) = raw_values[i] - training_dataset(sample_indices(i), j+1);
+            }
+        }
 
+        auto cond_mean = (evidence_substract*transform).eval();
 
-        
-        // const auto& bandwidth = m_joint.bandwidth();
-        // const auto& marg_bandwidth = m_marg.bandwidth();
-        
-        // auto cholesky = marg_bandwidth.llt();
-        // auto matrixL = cholesky.matrixL();
+        std::normal_distribution<CType> normal(0, std::sqrt(cond_var));
+        arrow::NumericBuilder<ArrowType> builder;
+        builder.Resize(n);
+        std::cout << "Generating final values" << std::endl;
 
-        // auto d = m_evidence.size();
-        // MatrixXd inverseL = MatrixXd::Identity(d, d);
-        // // Solves and saves the result in identity
-        // matrixL.solveInPlace(inverseL);
-        // auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
-        // auto cond_var = bandwidth(0,0) - R.squaredNorm();
-        // auto transform = R.transpose() * inverseL;
+        for (auto i = 0; i < n; ++i) {
+            cond_mean(i) += training_dataset(sample_indices(i), 0) + normal(rng);
+        }
 
+        std::cout << "Vector generated" << std::endl;
+        builder.AppendValues(cond_mean.data(), n);
 
-        
+        std::cout << "Finishing array" << std::endl;
+        Array_ptr out;
+        auto status = builder.Finish(&out);
+        if (!status.ok()) {
+            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
+        }
 
-        // for (auto i = 0; i < n; ++i) {
-            
-        // }
-
-
-        // opencl.read_from_buffer(training_)
-
-
+        return out;
     }
 
     template<typename ArrowType>
-    VectorXi CKDE::_sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
-                                          std::unordered_map<std::string, Array_ptr>& parent_values,
-                                          int n) const {
+    VectorXi CKDE::_sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1>& random_prob,
+                                                const DataFrame& evidence_values,
+                                                int n) const {
         using CType = typename ArrowType::c_type;
         using ArrowArray = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+        std::cout << "\tCopying test data to Eigen" << std::endl;
 
         MatrixType test_matrix(n, m_evidence.size());
 
         for (auto i = 0; i < m_evidence.size(); ++i) {
-            auto found = parent_values.find(m_evidence[i]);
-            auto evidence = found->second;
+            auto evidence = evidence_values->GetColumnByName(m_evidence[i]);
 
             auto dwn_evidence = std::static_pointer_cast<ArrowArray>(evidence);
             auto raw_evidence = dwn_evidence->raw_values();
@@ -820,13 +829,17 @@ namespace factors::continuous {
         }
 
         auto& opencl = OpenCLConfig::get();
+        std::cout << "\tCopying test data to OpenCL" << std::endl;
         auto test_buffer = opencl.copy_to_buffer(test_matrix.data(), n*m_evidence.size());
+        std::cout << "\tCopying random prob data to OpenCL" << std::endl;
+        auto buff_random_prob = opencl.copy_to_buffer(random_prob.data(), n);
 
+        std::cout << "\tSampling indices" << std::endl;
         cl::Buffer indices_buffer;
-        if (m_variables.size() == 1)
-            indices_buffer = _sample_indices_from_weights<ArrowType, UnivariateKDE>(random_prob, test_buffer, n);
+        if (m_evidence.size() == 1)
+            indices_buffer = _sample_indices_from_weights<ArrowType, UnivariateKDE>(buff_random_prob, test_buffer, n);
         else
-            indices_buffer = _sample_indices_from_weights<ArrowType, MultivariateKDE>(random_prob, test_buffer, n);
+            indices_buffer = _sample_indices_from_weights<ArrowType, MultivariateKDE>(buff_random_prob, test_buffer, n);
 
         VectorXi res(n);
         opencl.read_from_buffer(res.data(), indices_buffer, n);
@@ -834,16 +847,19 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType, typename KDEType>
-    cl::Buffer CKDE::_sample_indices_from_weights(Matrix<typename ArrowType::c_type, Dynamic, 1> random_prob,
+    cl::Buffer CKDE::_sample_indices_from_weights(cl::Buffer& random_prob,
                                                   cl::Buffer& test_buffer,
                                                   int n) const {
         using CType = typename ArrowType::c_type;
 
         auto& opencl = OpenCLConfig::get();
+        std::cout << "\t\tStart filling indices" << std::endl;
         auto res = opencl.new_buffer<int>(n);
+        opencl.fill_buffer<int>(res, N-1, n);
 
+        std::cout << "\t\tGenerating buffers" << std::endl;
         auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N);
-        auto iterations = std::ceil(static_cast<double>(n) / static_cast<double>(allocated_m));
+        auto iterations = static_cast<int>(std::ceil(static_cast<double>(n) / static_cast<double>(allocated_m)));
 
         cl::Buffer tmp_mat_buffer;
         if constexpr(std::is_same_v<KDEType, MultivariateKDE>) {
@@ -856,25 +872,74 @@ namespace factors::continuous {
         auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
 
 
+        auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
+        k_exp.setArg(0, mat_logls);
+
+        auto k_normalize_accum_sumexp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normalize_accum_sum_mat_cols);
+        k_normalize_accum_sumexp.setArg(0, mat_logls);
+        k_normalize_accum_sumexp.setArg(1, static_cast<unsigned int>(N));
+
+        auto k_find_random_indices = opencl.kernel(OpenCL_kernel_traits<ArrowType>::find_random_indices);
+        k_find_random_indices.setArg(0, mat_logls);
+        k_find_random_indices.setArg(1, static_cast<unsigned int>(N));
+        k_find_random_indices.setArg(3, random_prob);
+        k_find_random_indices.setArg(4, res);
+
+        std::cout << "\t\tIterating over test data" << std::endl;
         for (auto i = 0; i < (iterations-1); ++i) {
+            std::cout << "\t\t\tComputing logl" << std::endl;
             KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, test_buffer, n, 
                                                         i*allocated_m, allocated_m, m_evidence.size(), 
                                                         m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                         tmp_mat_buffer, mat_logls);
 
-            // opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, allocated_m, logsum, 0, reduc_buffers);
+            std::cout << "\t\t\tExponenting" << std::endl;
+            opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+            
+            std::cout << "\t\t\tPrefix summing" << std::endl;
+            auto total_sum = opencl.accum_sum_cols<ArrowType>(mat_logls, N, allocated_m);
+            
+            std::cout << "\t\t\tNormalizing prefix sum" << std::endl;
+            k_normalize_accum_sumexp.setArg(2, total_sum);
+            opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp, 
+                                                cl::NullRange, 
+                                                cl::NDRange(N-1, allocated_m), 
+                                                cl::NullRange);
+        
 
-            opencl.accum_sumexp_cols<ArrowType>(mat_logls, N, allocated_m);
-
+            std::cout << "\t\t\tFinding indices" << std::endl << std::endl;
+            k_find_random_indices.setArg(2, static_cast<unsigned int>(i*allocated_m));
+            opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, allocated_m), cl::NullRange);
         }
-        // auto remaining_n = n - (iterations - 1)*allocated_m;
-        // KDEType::template execute_logl_mat<ArrowType>(kde_marg.training_buffer(), N, test_buffer, n, 
-        //                                                 n - remaining_n, remaining_n, d, m_H_cholesky, m_lognorm_const, 
-        //                                                 tmp_mat_buffer, mat_logls);
-        // opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, logsum, 0, reduc_buffers);
-        // opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, res, (iterations - 1)*allocated_m, reduc_buffers);
+        std::cout << "\t\tIndices in reamining test data" << std::endl;
 
-        // return res;
+        auto offset = (iterations - 1)*allocated_m;
+        auto remaining_m = n - offset;
+        std::cout << "\t\t\tComputing logl" << std::endl;
+        KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, test_buffer, n, 
+                                                    offset, remaining_m, m_evidence.size(), 
+                                                    m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
+                                                    tmp_mat_buffer, mat_logls);
+        
+        std::cout << "\t\t\tExponenting" << std::endl;
+        opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+
+        std::cout << "\t\t\tPrefix summing" << std::endl;
+        auto total_sum = opencl.accum_sum_cols<ArrowType>(mat_logls, N, remaining_m);
+        
+        std::cout << "\t\t\tNormalizing prefix sum" << std::endl;
+        k_normalize_accum_sumexp.setArg(2, total_sum);
+        opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp, 
+                                        cl::NullRange, 
+                                        cl::NDRange(N-1, remaining_m), 
+                                        cl::NullRange
+                                    );
+
+        std::cout << "\t\t\tFinding indices" << std::endl;
+        k_find_random_indices.setArg(2, static_cast<unsigned int>(offset));
+        opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, remaining_m), cl::NullRange);
+
+        return res;
     }
 
 }

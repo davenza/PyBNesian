@@ -51,8 +51,7 @@ namespace factors::continuous {
             }
         }
 
-        Array_ptr sample(int n, 
-                         std::unordered_map<std::string, Array_ptr>& parent_values, 
+        Array_ptr sample(int n, const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
 
         std::string ToString() const;

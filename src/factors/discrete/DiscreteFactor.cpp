@@ -200,8 +200,7 @@ namespace factors::discrete {
         }
     }
 
-    Array_ptr DiscreteFactor::sample(int n, 
-                                     std::unordered_map<std::string, Array_ptr>& parent_values, 
+    Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, 
                                      long unsigned int seed) const {
         arrow::StringBuilder dict_builder;
         dict_builder.AppendValues(m_variable_values);
@@ -215,16 +214,16 @@ namespace factors::discrete {
         DataType_ptr type;
         if (m_variable_values.size() <= std::numeric_limits<typename arrow::Int8Type::c_type>::max()) {
             type = arrow::dictionary(arrow::int8(), arrow::utf8());
-            indices = sample_indices<arrow::Int8Type>(n, parent_values, seed);
+            indices = sample_indices<arrow::Int8Type>(n, evidence_values, seed);
         } else if (m_variable_values.size() <= std::numeric_limits<typename arrow::Int16Type::c_type>::max()) {
             type = arrow::dictionary(arrow::int16(), arrow::utf8());
-            indices = sample_indices<arrow::Int16Type>(n, parent_values, seed);
+            indices = sample_indices<arrow::Int16Type>(n, evidence_values, seed);
         } else if (m_variable_values.size() <= std::numeric_limits<typename arrow::Int32Type::c_type>::max()) {
             type = arrow::dictionary(arrow::int32(), arrow::utf8());
-            indices = sample_indices<arrow::Int32Type>(n, parent_values, seed);
+            indices = sample_indices<arrow::Int32Type>(n, evidence_values, seed);
         } else {
             type = arrow::dictionary(arrow::int64(), arrow::utf8());
-            indices = sample_indices<arrow::Int64Type>(n, parent_values, seed);
+            indices = sample_indices<arrow::Int64Type>(n, evidence_values, seed);
         }
 
         return std::make_shared<arrow::DictionaryArray>(type, indices, dictionary);

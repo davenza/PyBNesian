@@ -84,4 +84,17 @@ namespace util::bit_util {
     uint64_t non_null_count(Buffer_ptr bitmap, uint64_t length) {
         return arrow::internal::CountSetBits(bitmap->data(), 0, length);
     }
+
+    // Extracted from arrow/util/bit_util.h
+    int round_to_power2(int value) {
+        value--;
+        value |= value >> 1;
+        value |= value >> 2;
+        value |= value >> 4;
+        value |= value >> 8;
+        value |= value >> 16;
+        value++;
+        return value;
+    }
+
 }

@@ -195,8 +195,7 @@ prefixSum(__global TYPE *output, __global TYPE *input, __local TYPE *block,
 __kernel
 void
 ScanLargeArrays(__global TYPE *output, __global TYPE *input,
-		__ltput[2 * gid] = block[2 * tid];
-		output[2 * gid + 1] = block[2 * tid + 1];ocal TYPE *block, // Size : block_size
+		__local TYPE *block, // Size : block_size
 		const uint block_size,// size of block
 		const uint length,// no of elements
 		__global TYPE *sumBuffer)// sum of blocks
@@ -213,8 +212,7 @@ ScanLargeArrays(__global TYPE *output, __global TYPE *input,
 	block[2 * tid + 1] = input[2 * gid + 1];
 
 	/* build the sum in place up the tree */
-	// for (int d = block_size >> 1; d > 0; d >>= 1)
-	for (int d = block_size / 2; d > 0; d /= 2)
+	for (int d = block_size >> 1; d > 0; d >>= 1)
 	{
 		barrier (CLK_LOCAL_MEM_FENCE);
 
@@ -245,8 +243,7 @@ ScanLargeArrays(__global TYPE *output, __global TYPE *input,
 	/* traverse down the tree building the scan in the place */
 	for (int d = 1; d < block_size; d *= 2)
 	{
-		// offset >>= 1;
-		offset /= 2;
+		offset >>= 1;
 		barrier(CLK_LOCAL_MEM_FENCE);
 
 		if (tid < d)

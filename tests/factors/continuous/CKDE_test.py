@@ -316,3 +316,21 @@ def test_ckde_slogl_null():
     cpd2 = CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.slogl(df_null_float), cpd2.slogl(df_null_float))), "Order of evidence changes slogl() result."
+
+def test_sample():
+    SAMPLE_SIZE = 1000000
+
+    small_train = util_test.generate_normal_data(100, seed=2)
+    validation_df = util_test.generate_normal_data(SAMPLE_SIZE, seed=3)
+
+    print("Training data:")
+    print(small_train)
+    print("Validation data:")
+    print(validation_df)
+
+    cpd = CKDE('a', ['b'])
+    cpd.fit(small_train)
+    print()
+    sampled = cpd.sample(SAMPLE_SIZE, validation_df, 0)
+
+    assert sampled is not None

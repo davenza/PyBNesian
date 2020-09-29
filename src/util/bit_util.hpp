@@ -35,6 +35,8 @@ namespace util::bit_util {
     Buffer_ptr combined_bitmap(Buffer_ptr bitmap1, Buffer_ptr bitmap2, uint64_t length);
     Buffer_ptr combined_bitmap_with_null(std::vector<Array_ptr> columns);
 
+    // Extracted from arrow/util/bit_util.h
+    int round_to_power2(int value);
 }
 
 #endif //PGM_DATASET_BIT_UTIL_HPP

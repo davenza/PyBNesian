@@ -27,9 +27,11 @@ namespace dataset {
     typedef py::handle PyDataset;
 
     bool is_pandas_dataframe(py::handle pyobject);
+    bool is_pandas_series(py::handle pyobject);
 
     std::shared_ptr<RecordBatch> to_record_batch(py::handle pyobject);
     py::object pandas_to_pyarrow_record_batch(py::handle pyobject);
+    py::object pandas_to_pyarrow_array(py::handle pyobject);
 
     template<typename ArrowType>
     using EigenMatrix = std::unique_ptr<Matrix<typename ArrowType::c_type, Dynamic, Dynamic>>;
@@ -842,6 +844,60 @@ namespace pybind11::detail {
     };
 } // namespace pybind11::detail
 
+namespace pybind11::detail {
+    template <> struct type_caster<Array_ptr> {
+    public:
+        /**
+         * This macro establishes the name 'inty' in
+         * function signatures and declares a local variable
+         * 'value' of type inty
+         */
+        PYBIND11_TYPE_CASTER(Array_ptr, _("pyarrow.Array"));
 
+        /**
+         * Conversion part 1 (Python->C++): convert a PyObject into a inty
+         * instance or return false upon failure. The second argument
+         * indicates whether implicit conversions should be applied.
+         */
+        bool load(handle src, bool) {
+            PyObject* py_ptr = src.ptr();
+
+            if (pyarrow::is_array(py_ptr)) {
+                auto result = pyarrow::unwrap_array(py_ptr);
+                if (result.ok()) {
+                    value = result.ValueOrDie();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            else if (dataset::is_pandas_series(src)) {
+                auto a = dataset::pandas_to_pyarrow_array(src);
+                auto result = pyarrow::unwrap_array(a.ptr());
+
+                if (result.ok()) {
+                    value = result.ValueOrDie();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        /**
+         * Conversion part 2 (C++ -> Python): convert an inty instance into
+         * a Python object. The second and third arguments are used to
+         * indicate the return value policy and parent object (for
+         * ``return_value_policy::reference_internal``) and are generally
+         * ignored by implicit casters.
+         */
+        static handle cast(Array_ptr src, return_value_policy /* policy */, handle /* parent */) {
+            PyObject* wrapped_rb = pyarrow::wrap_array(src);
+            return wrapped_rb;
+        }
+    };
+} // namespace pybind11::detail
 
 #endif //PGM_DATASET_DATASET_HPP

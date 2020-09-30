@@ -459,8 +459,6 @@ __kernel void find_random_indices_double(__global double *mat,
                                        __global double *random_numbers,
                                        __global int *indices) {
     
-
-
     int row_id = get_global_id(0);
     int col_id = get_global_id(1);
     
@@ -913,8 +911,6 @@ __kernel void find_random_indices_float(__global float *mat,
                                        __global float *random_numbers,
                                        __global int *indices) {
     
-
-
     int row_id = get_global_id(0);
     int col_id = get_global_id(1);
     

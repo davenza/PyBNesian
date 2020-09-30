@@ -1,6 +1,6 @@
 #include <factors/continuous/CKDE.hpp>
 #include <opencl/opencl_config.hpp>
-
+#include <util/validate_dtype.hpp>
 
 using opencl::OpenCLConfig;
 
@@ -162,6 +162,15 @@ namespace factors::continuous {
     }
 
     Array_ptr CKDE::sample(int n, const DataFrame& evidence_values, long unsigned int seed) const {
+        if (!m_evidence.empty()) {
+            auto type_id = evidence_values.same_type(m_evidence);
+
+            if (type_id != m_training_type) {
+                throw std::invalid_argument("Data type of evidence values (" + util::to_type(type_id)->name() + 
+                            ") is different from CKDE training data (" + util::to_type(m_training_type)->name() + ").");
+            }
+        }
+
         switch(m_training_type) {
             case Type::DOUBLE:
                 return _sample<arrow::DoubleType>(n, evidence_values, seed);

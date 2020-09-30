@@ -477,21 +477,8 @@ namespace opencl {
         auto global_wg = static_cast<int>(std::ceil(static_cast<double>(num_groups*local_size) / 2));
         auto local_wg = global_wg / num_groups;
 
-        // std::cout << "local_size: " << local_size << ". global_wg: " << global_wg << ". local_wg: " << local_wg << std::endl;
-
         auto& opencl = OpenCLConfig::get();
         auto group_sums = opencl.new_buffer<CType>(num_groups*input_cols);
-
-        // // 
-        // using MatrixType = Matrix<CType, Dynamic, Dynamic>;
-        // MatrixType read_matexp(input_rows, input_cols);
-        // read_from_buffer(read_matexp.data(), mat, input_rows*input_cols);
-
-        // for (auto i = 0; i < read_matexp.cols(); ++i) {
-        //     std::cout << "Before matexp m = " << i << " (Sum: " << read_matexp.col(i).sum() << "):" << std::endl;
-        //     std::cout << read_matexp.col(i).transpose() << std::endl;
-        // }
-        // // 
         
         auto k_accum_sumexp = kernel(OpenCL_kernel_traits<ArrowType>::accum_sum_mat_cols);
         k_accum_sumexp.setArg(0, mat);
@@ -500,40 +487,8 @@ namespace opencl {
         k_accum_sumexp.setArg(3, group_sums);
         m_queue.enqueueNDRangeKernel(k_accum_sumexp, cl::NullRange, cl::NDRange(global_wg, input_cols), cl::NDRange(local_wg, 1));
 
-        // // 
-        // read_from_buffer(read_matexp.data(), mat, input_rows*input_cols);
-
-        // for (auto i = 0; i < read_matexp.cols(); ++i) {
-        //     // std::cout << "matexp m = " << i << " (Sum: " << read_matexp.col(i).array().exp().sum() << "):" << std::endl;
-        //     std::cout << "Prefix sum matexp m = " << i <<  ":" << std::endl;
-        //     // std::cout << read_matexp.col(i).array().exp().transpose() << std::endl;
-        //     std::cout << read_matexp.col(i).transpose() << std::endl;
-        // }
-
-
-        // MatrixType read_sums(num_groups, input_cols);
-        // read_from_buffer(read_sums.data(), group_sums, num_groups*input_cols);
-
-        // for (auto i = 0; i < read_sums.cols(); ++i) {
-        //     std::cout << "group sums m = " << i << ":" << std::endl;
-        //     std::cout << read_sums.col(i).transpose() << std::endl;
-        // }
-        // // 
-
         if (num_groups > 1) {
-            // std::cout << "=====================" << std::endl;
-            // std::cout << "Summing sums:" << std::endl;
-            // std::cout << "=====================" << std::endl;
             auto total_sum = accum_sum_cols<ArrowType>(group_sums, num_groups, input_cols);
-
-            // // 
-            // read_from_buffer(read_sums.data(), group_sums, num_groups*input_cols);
-
-            // for (auto i = 0; i < read_sums.cols(); ++i) {
-            //     std::cout << "accum group sums m = " << i << ":" << std::endl;
-            //     std::cout << read_sums.col(i).transpose() << std::endl;
-            // }
-            // // 
 
             auto k_add_accum_sumexp = kernel(OpenCL_kernel_traits<ArrowType>::add_accum_sum_mat_cols);
             k_add_accum_sumexp.setArg(0, mat);
@@ -547,18 +502,6 @@ namespace opencl {
                                          cl::NDRange(input_rows - local_size, input_cols), 
                                          cl::NullRange
                                         );
-
-            // //
-            // read_from_buffer(read_matexp.data(), mat, input_rows*input_cols);
-            // using VectorType = Matrix<CType, Dynamic, 1>;
-            // VectorType read_total_sum(input_cols);
-            // read_from_buffer(read_total_sum.data(), total_sum, input_cols);
-
-            // for (auto i = 0; i < read_matexp.cols(); ++i) {
-            //     std::cout << "Final sum matexp m = " << i <<  " (Sum: " << read_total_sum(i) << "):" << std::endl;
-            //     std::cout << read_matexp.col(i).transpose() << std::endl;
-            // }
-            // // 
             
             return total_sum;
         } else {

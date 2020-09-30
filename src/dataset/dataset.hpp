@@ -8,7 +8,6 @@
 #include <util/parameter_traits.hpp>
 #include <util/bit_util.hpp>
 
-
 namespace pyarrow = arrow::py;
 namespace py = pybind11;
 
@@ -612,7 +611,9 @@ namespace dataset {
 
     private:
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        Array_vector indices_to_columns(const T cols) const;
+        Array_vector indices_to_columns(const T cols) const {
+            return indices_to_columns(cols.begin(), cols.end());
+        }
 
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         Array_vector indices_to_columns(const IndexIter begin, const IndexIter end) const;
@@ -624,36 +625,6 @@ namespace dataset {
 
         std::shared_ptr<RecordBatch> m_batch;
     };
-
-    template<typename T, util::enable_if_index_container_t<T, int>>
-    Array_vector DataFrame::indices_to_columns(const T cols) const {
-        Array_vector v;
-        v.reserve(cols.size());
-
-        for (auto c : cols) {
-            if constexpr (util::is_integral_container_v<T>)
-                v.push_back(m_batch->column(c));
-            else if constexpr (util::is_string_container_v<T>)
-                v.push_back(m_batch->GetColumnByName(c));
-        }
-
-        return v;    
-    }
-
-    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
-    Array_vector DataFrame::indices_to_columns(const IndexIter begin, const IndexIter end) const {
-        Array_vector v;
-        v.reserve(std::distance(begin, end));
-
-        for (auto it = begin; it != end; ++it) {
-            if constexpr (util::is_integral_iterator_v<IndexIter>)
-                v.push_back(m_batch->column(*it));
-            else if constexpr (util::is_string_iterator_v<IndexIter>)
-                v.push_back(m_batch->GetColumnByName(*it));
-        }
-
-        return v;    
-    }
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     inline int size_argument(const T arg) { return arg.size(); }
@@ -667,12 +638,19 @@ namespace dataset {
     inline int size_argument(const StringType) { return 1; }
 
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
-        arrays.push_back(rb->column(i));
+        if (i < rb->num_columns())
+            arrays.push_back(rb->column(i));
+        else
+            throw std::invalid_argument("Column index " + std::to_string(i) + " do not exist in DataFrame.");
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const StringType name) {
-        arrays.push_back(rb->GetColumnByName(name));
+        auto c = rb->GetColumnByName(name);
+        if (c)
+            arrays.push_back(c);
+        else
+            throw std::invalid_argument("Column \"" + name + "\" do not exist in DataFrame.");
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
@@ -724,6 +702,14 @@ namespace dataset {
         append_schema(rb, arrays, arg.begin(), arg.end()); 
     }
 
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
+    Array_vector DataFrame::indices_to_columns(const IndexIter begin, const IndexIter end) const {
+        Array_vector v;
+        v.reserve(std::distance(begin, end));
+        append_columns(m_batch, v, begin, end);
+        return v;
+    }
+
     template<typename ...Args>
     Array_vector DataFrame::indices_to_columns(Args... args) const {
         Array_vector cols;
@@ -739,7 +725,12 @@ namespace dataset {
     template<typename StringType, util::enable_if_stringable_t<StringType, int>>
     DataFrame DataFrame::loc(const StringType& name) const {
         arrow::SchemaBuilder b;
-        auto status = b.AddField(m_batch->schema()->GetFieldByName(name));
+        auto f = m_batch->schema()->GetFieldByName(name);
+        if (!f) {
+            throw std::invalid_argument("Column \"" + name + "\" do not exist in DataFrame.");
+        }
+
+        auto status = b.AddField(f);
         if (!status.ok()) {
             throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
         }
@@ -759,8 +750,8 @@ namespace dataset {
         Array_vector new_cols;
         new_cols.reserve(std::distance(begin, end));
 
-        append_schema(m_batch, b, begin, end);
         append_columns(m_batch, new_cols, begin, end);
+        append_schema(m_batch, b, begin, end);
 
         auto r = b.Finish();
         if (!r.ok()) {
@@ -777,8 +768,8 @@ namespace dataset {
         int total_size = (size_argument(args) + ...);
         new_cols.reserve(total_size);
 
-        (append_schema(m_batch, b, args),...);
         (append_columns(m_batch, new_cols, args),...);
+        (append_schema(m_batch, b, args),...);
 
         auto r = b.Finish();
         if (!r.ok()) {

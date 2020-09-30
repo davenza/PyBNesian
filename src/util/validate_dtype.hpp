@@ -17,6 +17,9 @@ namespace util {
     void check_edge_list(const DataFrame& df, const ArcVector& list);
     void check_node_type_list(const DataFrame& df, const FactorTypeVector& list);
 
+    std::shared_ptr<arrow::DataType> to_type(arrow::Type::type t); 
+
+
 }
 
 #endif //PGM_DATASET_VALIDATE_DTYPE_HPP

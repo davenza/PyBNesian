@@ -250,8 +250,8 @@ case Type::TypeID:                                                              
         for (auto it = begin+1; it != end; ++it) {
             if((*it)->type_id() != dt) {
                 throw std::invalid_argument("Column 0 [" + (*begin)->type()->ToString() + "] and "
-                                            "column " + std::to_string(std::distance(begin, it)) + "[" + (*it)->type()->ToString() + "] " 
-                                            "have different data types");
+                                            "column " + std::to_string(std::distance(begin, it)) + 
+                                            " [" + (*it)->type()->ToString() + "] have different data types");
             }
         }
 

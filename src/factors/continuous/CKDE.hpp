@@ -11,10 +11,6 @@
 #include <util/math_constants.hpp>
 #include <util/bit_util.hpp>
 
-
-#include <iostream>
-
-
 namespace py = pybind11;
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
@@ -579,6 +575,7 @@ namespace factors::continuous {
         VectorXi _sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1>& random_prob,
                                               const DataFrame& evidence_values,
                                               int n) const;
+
         template<typename ArrowType, typename KDEType>
         cl::Buffer _sample_indices_from_weights(cl::Buffer& random_prob, cl::Buffer& test_buffer, int n) const;
 
@@ -745,15 +742,12 @@ namespace factors::continuous {
         VectorType random_prob(n);
         std::mt19937 rng{seed};
         std::uniform_real_distribution<CType> uniform(0, 1);
-        std::cout << "Generating random prob" << std::endl;
         for(auto i = 0; i < n; ++i) {
             random_prob(i) = uniform(rng);
         }
 
-        std::cout << "Generating sample indices" << std::endl;
         VectorXi sample_indices = _sample_indices_multivariate<ArrowType>(random_prob, evidence_values, n);
 
-        std::cout << "Generating matrix values" << std::endl;
         const auto& bandwidth = m_joint.bandwidth();
         const auto& marg_bandwidth = m_marg.bandwidth();
         
@@ -769,7 +763,6 @@ namespace factors::continuous {
         auto cond_var = bandwidth(0,0) - R.squaredNorm();
         auto transform = (R.transpose() * inverseL).template cast<CType>();
 
-        std::cout << "Obtaining evidence substract" << std::endl;
         MatrixType training_dataset(N, m_variables.size());
         auto& opencl = OpenCLConfig::get();
         opencl.read_from_buffer(training_dataset.data(), m_joint.training_buffer(), N*m_variables.size());
@@ -789,16 +782,13 @@ namespace factors::continuous {
         std::normal_distribution<CType> normal(0, std::sqrt(cond_var));
         arrow::NumericBuilder<ArrowType> builder;
         builder.Resize(n);
-        std::cout << "Generating final values" << std::endl;
 
         for (auto i = 0; i < n; ++i) {
             cond_mean(i) += training_dataset(sample_indices(i), 0) + normal(rng);
         }
 
-        std::cout << "Vector generated" << std::endl;
         builder.AppendValues(cond_mean.data(), n);
 
-        std::cout << "Finishing array" << std::endl;
         Array_ptr out;
         auto status = builder.Finish(&out);
         if (!status.ok()) {
@@ -815,7 +805,6 @@ namespace factors::continuous {
         using CType = typename ArrowType::c_type;
         using ArrowArray = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
-        std::cout << "\tCopying test data to Eigen" << std::endl;
 
         MatrixType test_matrix(n, m_evidence.size());
 
@@ -829,12 +818,9 @@ namespace factors::continuous {
         }
 
         auto& opencl = OpenCLConfig::get();
-        std::cout << "\tCopying test data to OpenCL" << std::endl;
         auto test_buffer = opencl.copy_to_buffer(test_matrix.data(), n*m_evidence.size());
-        std::cout << "\tCopying random prob data to OpenCL" << std::endl;
         auto buff_random_prob = opencl.copy_to_buffer(random_prob.data(), n);
 
-        std::cout << "\tSampling indices" << std::endl;
         cl::Buffer indices_buffer;
         if (m_evidence.size() == 1)
             indices_buffer = _sample_indices_from_weights<ArrowType, UnivariateKDE>(buff_random_prob, test_buffer, n);
@@ -853,11 +839,9 @@ namespace factors::continuous {
         using CType = typename ArrowType::c_type;
 
         auto& opencl = OpenCLConfig::get();
-        std::cout << "\t\tStart filling indices" << std::endl;
         auto res = opencl.new_buffer<int>(n);
         opencl.fill_buffer<int>(res, N-1, n);
 
-        std::cout << "\t\tGenerating buffers" << std::endl;
         auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N);
         auto iterations = static_cast<int>(std::ceil(static_cast<double>(n) / static_cast<double>(allocated_m)));
 
@@ -885,49 +869,37 @@ namespace factors::continuous {
         k_find_random_indices.setArg(3, random_prob);
         k_find_random_indices.setArg(4, res);
 
-        std::cout << "\t\tIterating over test data" << std::endl;
         for (auto i = 0; i < (iterations-1); ++i) {
-            std::cout << "\t\t\tComputing logl" << std::endl;
             KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, test_buffer, n, 
                                                         i*allocated_m, allocated_m, m_evidence.size(), 
                                                         m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                         tmp_mat_buffer, mat_logls);
 
-            std::cout << "\t\t\tExponenting" << std::endl;
             opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
             
-            std::cout << "\t\t\tPrefix summing" << std::endl;
             auto total_sum = opencl.accum_sum_cols<ArrowType>(mat_logls, N, allocated_m);
             
-            std::cout << "\t\t\tNormalizing prefix sum" << std::endl;
             k_normalize_accum_sumexp.setArg(2, total_sum);
             opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp, 
                                                 cl::NullRange, 
                                                 cl::NDRange(N-1, allocated_m), 
                                                 cl::NullRange);
         
-
-            std::cout << "\t\t\tFinding indices" << std::endl << std::endl;
             k_find_random_indices.setArg(2, static_cast<unsigned int>(i*allocated_m));
             opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, allocated_m), cl::NullRange);
         }
-        std::cout << "\t\tIndices in reamining test data" << std::endl;
 
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = n - offset;
-        std::cout << "\t\t\tComputing logl" << std::endl;
         KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, test_buffer, n, 
                                                     offset, remaining_m, m_evidence.size(), 
                                                     m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                     tmp_mat_buffer, mat_logls);
         
-        std::cout << "\t\t\tExponenting" << std::endl;
         opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
 
-        std::cout << "\t\t\tPrefix summing" << std::endl;
         auto total_sum = opencl.accum_sum_cols<ArrowType>(mat_logls, N, remaining_m);
         
-        std::cout << "\t\t\tNormalizing prefix sum" << std::endl;
         k_normalize_accum_sumexp.setArg(2, total_sum);
         opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp, 
                                         cl::NullRange, 
@@ -935,13 +907,11 @@ namespace factors::continuous {
                                         cl::NullRange
                                     );
 
-        std::cout << "\t\t\tFinding indices" << std::endl;
         k_find_random_indices.setArg(2, static_cast<unsigned int>(offset));
         opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, remaining_m), cl::NullRange);
 
         return res;
     }
-
 }
 
 #endif //PGM_DATASET_CKDE_HPP

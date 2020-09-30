@@ -358,8 +358,6 @@ __kernel void find_random_indices_@dt@(__global @dt@ *mat,
                                        __global @dt@ *random_numbers,
                                        __global int *indices) {
     
-
-
     int row_id = get_global_id(0);
     int col_id = get_global_id(1);
     

@@ -1,5 +1,6 @@
 import numpy as np
 import pyarrow as pa
+import pandas as pd
 from pgm_dataset.factors.continuous import CKDE
 from scipy.stats import gaussian_kde
 
@@ -318,19 +319,31 @@ def test_ckde_slogl_null():
     assert np.all(np.isclose(cpd.slogl(df_null_float), cpd2.slogl(df_null_float))), "Order of evidence changes slogl() result."
 
 def test_sample():
-    SAMPLE_SIZE = 1000000
+    SAMPLE_SIZE = 10000
 
-    small_train = util_test.generate_normal_data(100, seed=2)
-    validation_df = util_test.generate_normal_data(SAMPLE_SIZE, seed=3)
+    cpd = CKDE('a', [])
+    cpd.fit(df)
+    
+    sampled = cpd.sample(SAMPLE_SIZE, None, 0)
 
-    print("Training data:")
-    print(small_train)
-    print("Validation data:")
-    print(validation_df)
+    assert sampled.type == pa.float64()
+    assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
 
-    cpd = CKDE('a', ['b'])
-    cpd.fit(small_train)
-    print()
-    sampled = cpd.sample(SAMPLE_SIZE, validation_df, 0)
 
-    assert sampled is not None
+    from scipy.stats import kstest
+    import pandas as pd
+    LINSPACE_SIZE = 1000
+    x_range = np.linspace(0, 6, LINSPACE_SIZE)
+
+    test_result = kstest(sampled, lambda x: np.exp(cpd.logl(pd.DataFrame({'a': x}))))
+
+
+
+    cpd = CKDE('b', ['a'])
+    cpd.fit(df)
+
+    sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0)})
+    sampled = cpd.sample(SAMPLE_SIZE, sampling_df, 0)
+
+    assert sampled.type == pa.float64()
+    assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE

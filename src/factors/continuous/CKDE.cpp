@@ -179,7 +179,23 @@ namespace factors::continuous {
             default:
                 throw std::runtime_error("Unreachable code.");
         }
+    }
 
+    VectorXd CKDE::cdf(const DataFrame& df) const {
+        auto type_id = df.same_type(m_variables);
+
+        if (type_id != m_training_type) {
+            throw std::invalid_argument("Data type of training and test datasets is different.");
+        }
+
+        switch(type_id) {
+            case Type::DOUBLE:
+                return _cdf<arrow::DoubleType>(df);
+            case Type::FLOAT:
+                return _cdf<arrow::FloatType>(df);
+            default:
+                throw std::runtime_error("Unreachable code.");
+        }
     }
 
     std::string CKDE::ToString() const {

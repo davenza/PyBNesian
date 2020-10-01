@@ -13,7 +13,7 @@
 
 namespace py = pybind11;
 using dataset::DataFrame;
-using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
+    using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
@@ -37,20 +37,32 @@ namespace factors::continuous {
                                                     const typename ArrowType::c_type lognorm_const,
                                                     cl::Buffer&,
                                                     cl::Buffer& output_mat);
+        template<typename ArrowType>
+        static void execute_conditional_means(const cl::Buffer& joint_training,
+                                                const cl::Buffer&,
+                                                const unsigned int training_rows, 
+                                                const cl::Buffer& evidence_test,
+                                                const unsigned int test_physical_rows,
+                                                const unsigned int test_offset,
+                                                const unsigned int test_length, 
+                                                const unsigned int,
+                                                const cl::Buffer& transform_mean,
+                                                cl::Buffer&,
+                                                cl::Buffer& output_mat);
     };
 
     template<typename ArrowType>
     void UnivariateKDE::execute_logl_mat(const cl::Buffer& training_vec, 
-                                                   const unsigned int training_length,
-                                                   const cl::Buffer& test_vec,
-                                                   const unsigned int,
-                                                   const unsigned int test_offset,
-                                                   const unsigned int test_length,
-                                                   const unsigned int,
-                                                   const cl::Buffer& cholesky, 
-                                                   const typename ArrowType::c_type lognorm_const,
-                                                   cl::Buffer&,
-                                                   cl::Buffer& output_mat) 
+                                                const unsigned int training_length,
+                                                const cl::Buffer& test_vec,
+                                                const unsigned int,
+                                                const unsigned int test_offset,
+                                                const unsigned int test_length,
+                                                const unsigned int,
+                                                const cl::Buffer& cholesky, 
+                                                const typename ArrowType::c_type lognorm_const,
+                                                cl::Buffer&,
+                                                cl::Buffer& output_mat)
     {
         auto& opencl = OpenCLConfig::get();
         auto k_logl_values_1d_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_1d_mat);
@@ -63,6 +75,31 @@ namespace factors::continuous {
         k_logl_values_1d_mat.setArg(6, output_mat);
         auto queue = opencl.queue();        
         queue.enqueueNDRangeKernel(k_logl_values_1d_mat, cl::NullRange,  cl::NDRange(training_length*test_length), cl::NullRange);
+    }
+
+    template<typename ArrowType>
+    void UnivariateKDE::execute_conditional_means(const cl::Buffer& joint_training,
+                                                            const cl::Buffer&,
+                                                            const unsigned int training_rows, 
+                                                            const cl::Buffer& evidence_test,
+                                                            const unsigned int test_physical_rows,
+                                                            const unsigned int test_offset,
+                                                            const unsigned int test_length, 
+                                                            const unsigned int,
+                                                            const cl::Buffer& transform_mean,
+                                                            cl::Buffer&,
+                                                            cl::Buffer& output_mat) {
+        auto& opencl = OpenCLConfig::get();
+        auto k_conditional_means_1d = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_1d);
+        k_conditional_means_1d.setArg(0, joint_training);
+        k_conditional_means_1d.setArg(1, training_rows);
+        k_conditional_means_1d.setArg(2, evidence_test);
+        k_conditional_means_1d.setArg(3, test_physical_rows);
+        k_conditional_means_1d.setArg(4, test_offset);
+        k_conditional_means_1d.setArg(5, transform_mean);
+        k_conditional_means_1d.setArg(6, output_mat);
+        auto queue = opencl.queue();        
+        queue.enqueueNDRangeKernel(k_conditional_means_1d, cl::NullRange,  cl::NDRange(training_rows*test_length), cl::NullRange);
     }
 
     struct MultivariateKDE {
@@ -78,6 +115,19 @@ namespace factors::continuous {
                                         const typename ArrowType::c_type lognorm_const,
                                         cl::Buffer& tmp_mat,
                                         cl::Buffer& output_mat);
+
+        template<typename ArrowType>
+        static void execute_conditional_means(const cl::Buffer& joint_training,
+                                                const cl::Buffer& marg_training,
+                                                const unsigned int training_rows, 
+                                                const cl::Buffer& evidence_test,
+                                                const unsigned int test_physical_rows,
+                                                const unsigned int test_offset,
+                                                const unsigned int test_length, 
+                                                const unsigned int evidence_cols,
+                                                const cl::Buffer& transform_mean,
+                                                cl::Buffer& tmp_mat,
+                                                cl::Buffer& output_mat);
     };
 
     template<typename ArrowType>
@@ -91,7 +141,7 @@ namespace factors::continuous {
                                                      const cl::Buffer& cholesky, 
                                                      const typename ArrowType::c_type lognorm_const,
                                                      cl::Buffer& tmp_mat,
-                                                     cl::Buffer& output_mat) 
+                                                     cl::Buffer& output_mat)
     {
         auto& opencl = OpenCLConfig::get();
         
@@ -160,6 +210,82 @@ namespace factors::continuous {
                 queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(test_length*matrices_cols), cl::NullRange);
                 k_logl_values_mat.setArg(4, i);
                 queue.enqueueNDRangeKernel(k_logl_values_mat, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
+            }
+        }
+    }
+
+    template<typename ArrowType>
+    void MultivariateKDE::execute_conditional_means(const cl::Buffer& joint_training,
+                                                            const cl::Buffer& marg_training,
+                                                            const unsigned int training_rows, 
+                                                            const cl::Buffer& evidence_test,
+                                                            const unsigned int test_physical_rows,
+                                                            const unsigned int test_offset,
+                                                            const unsigned int test_length, 
+                                                            const unsigned int evidence_cols,
+                                                            const cl::Buffer& transform_mean,
+                                                            cl::Buffer& tmp_mat,
+                                                            cl::Buffer& output_mat) {
+
+        auto& opencl = OpenCLConfig::get();
+        
+        auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract);
+        auto& queue = opencl.queue();
+
+        if (training_rows > test_length) {
+            k_substract.setArg(0, marg_training);
+            k_substract.setArg(1, training_rows);
+            k_substract.setArg(2, 0u);
+            k_substract.setArg(3, training_rows);
+            k_substract.setArg(4, evidence_test);
+            k_substract.setArg(5, test_physical_rows);
+            k_substract.setArg(6, test_offset);
+            k_substract.setArg(8, tmp_mat);
+
+            auto k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_column);
+
+            k_conditional_means.setArg(0, joint_training);
+            k_conditional_means.setArg(1, static_cast<unsigned int>(training_rows));
+            k_conditional_means.setArg(2, tmp_mat);
+            k_conditional_means.setArg(3, static_cast<unsigned int>(training_rows));
+            k_conditional_means.setArg(4, transform_mean);
+            k_conditional_means.setArg(5, static_cast<unsigned int>(evidence_cols));
+            k_conditional_means.setArg(6, output_mat);
+            k_conditional_means.setArg(8, static_cast<unsigned int>(training_rows));
+
+            for (unsigned int i = 0; i < test_length; ++i) {
+                k_substract.setArg(7, i);
+                queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(training_rows*evidence_cols), cl::NullRange);
+                k_conditional_means.setArg(7, i);
+                queue.enqueueNDRangeKernel(k_conditional_means, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
+
+            }
+        } else {
+            k_substract.setArg(0, evidence_test);
+            k_substract.setArg(1, test_physical_rows);
+            k_substract.setArg(2, test_offset);
+            k_substract.setArg(3, test_length);
+            k_substract.setArg(4, marg_training);
+            k_substract.setArg(5, training_rows);
+            k_substract.setArg(6, 0);
+            k_substract.setArg(8, tmp_mat);
+
+            auto k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_row);
+
+            k_conditional_means.setArg(0, joint_training);
+            k_conditional_means.setArg(1, static_cast<unsigned int>(training_rows));
+            k_conditional_means.setArg(2, tmp_mat);
+            k_conditional_means.setArg(3, static_cast<unsigned int>(test_length));
+            k_conditional_means.setArg(4, transform_mean);
+            k_conditional_means.setArg(5, static_cast<unsigned int>(evidence_cols));
+            k_conditional_means.setArg(6, output_mat);
+            k_conditional_means.setArg(8, static_cast<unsigned int>(test_length));
+
+            for(unsigned int i = 0; i < training_rows; ++i) {
+                k_substract.setArg(7, i);
+                queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(test_length*evidence_cols), cl::NullRange);
+                k_conditional_means.setArg(7, i);
+                queue.enqueueNDRangeKernel(k_conditional_means, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
             }
         }
     }
@@ -553,6 +679,8 @@ namespace factors::continuous {
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
+        
+        VectorXd cdf(const DataFrame& df) const;
 
         std::string ToString() const;
     private:
@@ -578,6 +706,15 @@ namespace factors::continuous {
 
         template<typename ArrowType, typename KDEType>
         cl::Buffer _sample_indices_from_weights(cl::Buffer& random_prob, cl::Buffer& test_buffer, int n) const;
+
+        template<typename ArrowType>
+        VectorXd _cdf(const DataFrame& df) const;
+
+        template<typename ArrowType>
+        cl::Buffer _cdf_univariate(cl::Buffer& test_buffer, int m) const;
+
+        template<typename ArrowType, typename KDEType>
+        cl::Buffer _cdf_multivariate(cl::Buffer& variable_test_buffer, cl::Buffer& evidence_test_buffer, int m) const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -848,13 +985,10 @@ namespace factors::continuous {
         cl::Buffer tmp_mat_buffer;
         if constexpr(std::is_same_v<KDEType, MultivariateKDE>) {
             if (N > allocated_m)
-                tmp_mat_buffer = opencl.new_buffer<CType>(N*m_variables.size());
+                tmp_mat_buffer = opencl.new_buffer<CType>(N*m_evidence.size());
             else
-                tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_variables.size());
+                tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_evidence.size());
         }
-
-        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
-
 
         auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
         k_exp.setArg(0, mat_logls);
@@ -888,7 +1022,6 @@ namespace factors::continuous {
             k_find_random_indices.setArg(2, static_cast<unsigned int>(i*allocated_m));
             opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, allocated_m), cl::NullRange);
         }
-
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = n - offset;
         KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, test_buffer, n, 
@@ -909,6 +1042,199 @@ namespace factors::continuous {
 
         k_find_random_indices.setArg(2, static_cast<unsigned int>(offset));
         opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, remaining_m), cl::NullRange);
+
+        return res;
+    }
+
+    template<typename ArrowType>
+    VectorXd CKDE::_cdf(const DataFrame& df) const {
+        using CType = typename ArrowType::c_type;
+        using VectorType = Matrix<CType, Dynamic, 1>;
+        auto& opencl = OpenCLConfig::get();
+
+        cl::Buffer res_buffer;
+        auto test_matrix = df.to_eigen<false, ArrowType>(m_variables);
+        auto m = test_matrix->rows();
+
+        auto test_buffer = opencl.copy_to_buffer(test_matrix->data(), m);
+        if (m_evidence.empty()) {
+            res_buffer = _cdf_univariate<ArrowType>(test_buffer, m);
+        } else {
+            auto evidence_test_buffer = opencl.copy_to_buffer(test_matrix->data()+m, m*m_evidence.size());
+            if (m_evidence.size() == 1) {
+                res_buffer = _cdf_multivariate<ArrowType, UnivariateKDE>(test_buffer, evidence_test_buffer, m);
+            }
+            else {
+                res_buffer = _cdf_multivariate<ArrowType, MultivariateKDE>(test_buffer, evidence_test_buffer, m);
+            }
+        }
+
+        if (df.null_count(m_variables) == 0) {
+            VectorType read_data(df->num_rows());
+            opencl.read_from_buffer(read_data.data(), res_buffer, df->num_rows());
+            if constexpr (!std::is_same_v<CType, double>)
+                return read_data.template cast<double>();
+            else
+                return read_data;
+        } else {
+            auto valid = df.valid_rows(m_variables);
+            VectorType read_data(valid);
+            auto bitmap = df.combined_bitmap(m_variables);
+            auto bitmap_data = bitmap->data();
+
+            opencl.read_from_buffer(read_data.data(), res_buffer, valid);
+
+            VectorXd res(df->num_rows());
+
+            for (int i = 0, k = 0; i < df->num_rows(); ++i) {
+                if(arrow::BitUtil::GetBit(bitmap_data, i)) {
+                    res(i) = static_cast<double>(read_data[k++]);
+                } else {
+                    res(i) = util::nan<double>;
+                }
+            }
+
+            return res;
+        }
+    }
+
+    template<typename ArrowType>
+    cl::Buffer CKDE::_cdf_univariate(cl::Buffer& test_buffer, int m) const {
+        using CType = typename ArrowType::c_type;
+        auto& opencl = OpenCLConfig::get();
+        auto res = opencl.new_buffer<CType>(m);
+
+        auto [mu, allocated_m] = allocate_mat<ArrowType>(N);
+        auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
+
+        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
+
+        auto k_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::univariate_normal_cdf);
+        k_cdf.setArg(0, m_joint.training_buffer());
+        k_cdf.setArg(1, static_cast<unsigned int>(N));
+        k_cdf.setArg(2, test_buffer);
+        k_cdf.setArg(4, static_cast<CType>(1.0 / m_joint.bandwidth()(0,0)));
+        k_cdf.setArg(5, static_cast<CType>(1.0 / N));
+        k_cdf.setArg(6, mu);
+
+        for (auto i = 0; i < (iterations-1); ++i) {
+            k_cdf.setArg(3, static_cast<unsigned int>(i*allocated_m));
+            opencl.queue().enqueueNDRangeKernel(k_cdf, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+            opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m, reduc_buffers);
+        }
+
+        auto offset = (iterations - 1)*allocated_m;
+        auto remaining_m = m - offset;
+
+        k_cdf.setArg(3, static_cast<unsigned int>(offset));
+        opencl.queue().enqueueNDRangeKernel(k_cdf, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+        opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset, reduc_buffers);
+
+        return res;
+    }
+
+    template<typename ArrowType, typename KDEType>
+    cl::Buffer CKDE::_cdf_multivariate(cl::Buffer& variable_test_buffer, cl::Buffer& evidence_test_buffer, int m) const {
+        using CType = typename ArrowType::c_type;
+
+        const auto& bandwidth = m_joint.bandwidth();
+        const auto& marg_bandwidth = m_marg.bandwidth();
+        
+        auto cholesky = marg_bandwidth.llt();
+        auto matrixL = cholesky.matrixL();
+
+        auto d = m_evidence.size();
+        MatrixXd inverseL = MatrixXd::Identity(d, d);
+
+        // Solves and saves the result in inverseL
+        matrixL.solveInPlace(inverseL);
+        auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
+        auto cond_var = bandwidth(0,0) - R.squaredNorm();
+        auto transform = (R.transpose() * inverseL).template cast<CType>().eval();
+        
+        auto& opencl = OpenCLConfig::get();
+        auto transform_buffer = opencl.copy_to_buffer(transform.data(), m_evidence.size());
+
+        auto res = opencl.new_buffer<CType>(m);
+
+        auto [mu, allocated_m] = allocate_mat<ArrowType>(N);
+        auto W = opencl.new_buffer<CType>(N*allocated_m) ;
+        auto log_sum_W = opencl.new_buffer<CType>(allocated_m);
+
+        auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
+
+        cl::Buffer tmp_mat_buffer;
+        if constexpr(std::is_same_v<KDEType, MultivariateKDE>) {
+            if (N > allocated_m)
+                tmp_mat_buffer = opencl.new_buffer<CType>(N*m_evidence.size());
+            else
+                tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_evidence.size());
+        }
+
+        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
+
+        auto k_substract_mat_vec = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_mat_vec);
+        k_substract_mat_vec.setArg(0, W);
+        k_substract_mat_vec.setArg(1, static_cast<unsigned int>(N));
+        k_substract_mat_vec.setArg(2, log_sum_W);
+
+        auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
+        k_exp.setArg(0, W);
+
+        auto k_normal_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normal_cdf);
+        k_normal_cdf.setArg(0, mu);
+        k_normal_cdf.setArg(1, N);
+        k_normal_cdf.setArg(2, variable_test_buffer);
+        k_normal_cdf.setArg(3, static_cast<CType>(1.0 / cond_var));
+
+        auto k_product = opencl.kernel(OpenCL_kernel_traits<ArrowType>::product_elementwise);
+        k_product.setArg(0, mu);
+        k_product.setArg(1, W);
+
+        for (auto i = 0; i < (iterations-1); ++i) {
+            // Computes Weigths
+            KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, evidence_test_buffer, m, 
+                                                        i*allocated_m, allocated_m, m_evidence.size(), 
+                                                        m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
+                                                        tmp_mat_buffer, W);
+
+            opencl.logsumexp_cols_offset<ArrowType>(W, N, allocated_m, log_sum_W, 0, reduc_buffers);
+            opencl.queue().enqueueNDRangeKernel(k_substract_mat_vec, cl::NullRange, cl::NDRange(N, allocated_m), cl::NullRange);
+            opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+
+            // Computes conditional mu.
+            KDEType::template execute_conditional_means<ArrowType>(m_joint.training_buffer(), 
+                                                                    m_marg.training_buffer(),
+                                                                    N, evidence_test_buffer, m, 
+                                                                    i*allocated_m, allocated_m, 
+                                                                    m_evidence.size(), transform_buffer,
+                                                                    tmp_mat_buffer, mu);
+            opencl.queue().enqueueNDRangeKernel(k_normal_cdf, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+            opencl.queue().enqueueNDRangeKernel(k_product, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+            opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m, reduc_buffers);
+        }
+        auto offset = (iterations - 1)*allocated_m;
+        auto remaining_m = m - offset;
+        // Computes Weigths
+        KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, evidence_test_buffer, m, 
+                                                    offset, remaining_m, m_evidence.size(), 
+                                                    m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
+                                                    tmp_mat_buffer, W);
+
+        opencl.logsumexp_cols_offset<ArrowType>(W, N, remaining_m, log_sum_W, 0, reduc_buffers);
+        opencl.queue().enqueueNDRangeKernel(k_substract_mat_vec, cl::NullRange, cl::NDRange(N, remaining_m), cl::NullRange);
+        opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+
+        // Computes conditional mu.
+        KDEType::template execute_conditional_means<ArrowType>(m_joint.training_buffer(), 
+                                                                m_marg.training_buffer(),
+                                                                N, evidence_test_buffer, m, 
+                                                                offset, remaining_m, 
+                                                                m_evidence.size(), transform_buffer,
+                                                                tmp_mat_buffer, mu);
+        opencl.queue().enqueueNDRangeKernel(k_normal_cdf, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+        opencl.queue().enqueueNDRangeKernel(k_product, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+        opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset, reduc_buffers);
 
         return res;
     }

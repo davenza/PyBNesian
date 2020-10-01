@@ -468,6 +468,103 @@ __kernel void find_random_indices_double(__global double *mat,
 }
 
 
+__kernel void substract_mat_vec_double(__global double *mat,
+                                      __private uint mat_rows,
+                                      __global double *vec) {
+    
+    int row_id = get_global_id(0);
+    int col_id = get_global_id(1);
+
+    mat[IDX(row_id, col_id, mat_rows)] -= vec[col_id];
+}
+
+__kernel void conditional_means_1d_mat_double(__constant double *train_mat,
+                                           __private uint train_physical_rows,
+                                           __constant double *test_vector,
+                                           __private uint test_physical_rows,
+                                           __private uint test_offset,
+                                           __constant double *transform_mean,
+                                           __global double *result) 
+{
+    int i = get_global_id(0);
+    int train_idx = ROW(i, train_physical_rows);
+    int test_idx = COL(i, train_physical_rows);
+
+    result[i] = train_mat[IDX(train_idx, 0, train_physical_rows)] + 
+                            transform_mean[0]*(
+                                            train_mat[IDX(train_idx, 1, train_physical_rows)] - 
+                                            test_vector[IDX(test_offset + test_idx, 0, test_physical_rows)]
+                                            );
+}
+
+__kernel void conditional_means_column_double(__global double *training_data,
+                                            __private uint training_data_physical_rows,
+                                            __constant double *substract_evidence,
+                                            __private uint substract_evidence_physical_rows,
+                                            __constant double *transform_vector,
+                                            __private uint evidence_columns,
+                                            __global double *res,
+                                            __private uint res_col_idx,
+                                            __private uint res_physical_rows) {
+    uint i = get_global_id(0);
+    double mean = training_data[IDX(i, 0, training_data_physical_rows)];
+
+    for (uint j = 0; j < evidence_columns; ++j) {
+        mean += transform_vector[j]*substract_evidence[IDX(i, j, substract_evidence_physical_rows)];
+    }
+
+    res[IDX(i, res_col_idx, res_physical_rows)] = mean;
+}
+
+__kernel void conditional_means_row_double(__global double *training_data,
+                                            __private uint training_data_physical_rows,
+                                            __constant double *substract_evidence,
+                                            __private uint substract_evidence_physical_rows,
+                                            __constant double *transform_vector,
+                                            __private uint evidence_columns,
+                                            __global double *res,
+                                            __private uint res_row_idx,
+                                            __private uint res_physical_rows) {
+    uint i = get_global_id(0);
+    double mean = training_data[IDX(res_row_idx, 0, training_data_physical_rows)];
+
+    for (uint j = 0; j < evidence_columns; ++j) {
+        mean -= transform_vector[j]*substract_evidence[IDX(i, j, substract_evidence_physical_rows)];
+    }
+
+    res[IDX(res_row_idx, i, res_physical_rows)] = mean;
+}
+
+__kernel void univariate_normal_cdf_double(__constant double *means,
+                                         __private uint means_physical_rows,
+                                         __constant double *x,
+                                         __private uint x_offset,
+                                        __private double inv_std,
+                                        __private double inv_N,
+                                        __global double *cdf_mat) {
+    uint i = get_global_id(0);
+
+    int means_idx = ROW(i, means_physical_rows);
+    int x_idx = COL(i, means_physical_rows);
+
+    cdf_mat[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * inv_N * (x[x_offset + x_idx] - means[means_idx]));
+}
+
+__kernel void normal_cdf_double(__global double *means,
+                         __private uint means_physical_rows,
+                         __constant double *x,
+                         __private double inv_std) {
+    uint i = get_global_id(0);
+
+    int col_idx = COL(i, means_physical_rows);
+    means[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[col_idx] - means[i]));
+}
+
+__kernel void product_elementwise_double(__global double *mat1, __constant double *mat2) {
+    uint i = get_global_id(0);
+    mat1[i] *= mat2[i];
+}
+
 
 #line 13
 
@@ -919,6 +1016,103 @@ __kernel void find_random_indices_float(__global float *mat,
         indices[mat_offset + col_id] = row_id;
 }
 
+
+__kernel void substract_mat_vec_float(__global float *mat,
+                                      __private uint mat_rows,
+                                      __global float *vec) {
+    
+    int row_id = get_global_id(0);
+    int col_id = get_global_id(1);
+
+    mat[IDX(row_id, col_id, mat_rows)] -= vec[col_id];
+}
+
+__kernel void conditional_means_1d_mat_float(__constant float *train_mat,
+                                           __private uint train_physical_rows,
+                                           __constant float *test_vector,
+                                           __private uint test_physical_rows,
+                                           __private uint test_offset,
+                                           __constant float *transform_mean,
+                                           __global float *result) 
+{
+    int i = get_global_id(0);
+    int train_idx = ROW(i, train_physical_rows);
+    int test_idx = COL(i, train_physical_rows);
+
+    result[i] = train_mat[IDX(train_idx, 0, train_physical_rows)] + 
+                            transform_mean[0]*(
+                                            train_mat[IDX(train_idx, 1, train_physical_rows)] - 
+                                            test_vector[IDX(test_offset + test_idx, 0, test_physical_rows)]
+                                            );
+}
+
+__kernel void conditional_means_column_float(__global float *training_data,
+                                            __private uint training_data_physical_rows,
+                                            __constant float *substract_evidence,
+                                            __private uint substract_evidence_physical_rows,
+                                            __constant float *transform_vector,
+                                            __private uint evidence_columns,
+                                            __global float *res,
+                                            __private uint res_col_idx,
+                                            __private uint res_physical_rows) {
+    uint i = get_global_id(0);
+    float mean = training_data[IDX(i, 0, training_data_physical_rows)];
+
+    for (uint j = 0; j < evidence_columns; ++j) {
+        mean += transform_vector[j]*substract_evidence[IDX(i, j, substract_evidence_physical_rows)];
+    }
+
+    res[IDX(i, res_col_idx, res_physical_rows)] = mean;
+}
+
+__kernel void conditional_means_row_float(__global float *training_data,
+                                            __private uint training_data_physical_rows,
+                                            __constant float *substract_evidence,
+                                            __private uint substract_evidence_physical_rows,
+                                            __constant float *transform_vector,
+                                            __private uint evidence_columns,
+                                            __global float *res,
+                                            __private uint res_row_idx,
+                                            __private uint res_physical_rows) {
+    uint i = get_global_id(0);
+    float mean = training_data[IDX(res_row_idx, 0, training_data_physical_rows)];
+
+    for (uint j = 0; j < evidence_columns; ++j) {
+        mean -= transform_vector[j]*substract_evidence[IDX(i, j, substract_evidence_physical_rows)];
+    }
+
+    res[IDX(res_row_idx, i, res_physical_rows)] = mean;
+}
+
+__kernel void univariate_normal_cdf_float(__constant float *means,
+                                         __private uint means_physical_rows,
+                                         __constant float *x,
+                                         __private uint x_offset,
+                                        __private float inv_std,
+                                        __private float inv_N,
+                                        __global float *cdf_mat) {
+    uint i = get_global_id(0);
+
+    int means_idx = ROW(i, means_physical_rows);
+    int x_idx = COL(i, means_physical_rows);
+
+    cdf_mat[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * inv_N * (x[x_offset + x_idx] - means[means_idx]));
+}
+
+__kernel void normal_cdf_float(__global float *means,
+                         __private uint means_physical_rows,
+                         __constant float *x,
+                         __private float inv_std) {
+    uint i = get_global_id(0);
+
+    int col_idx = COL(i, means_physical_rows);
+    means[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[col_idx] - means[i]));
+}
+
+__kernel void product_elementwise_float(__global float *mat1, __constant float *mat2) {
+    uint i = get_global_id(0);
+    mat1[i] *= mat2[i];
+}
 
 
 

@@ -7,11 +7,6 @@
 #include <CL/cl2.hpp>
 #include <util/bit_util.hpp>
 
-// 
-#include <iostream>
-#include <Eigen/Dense>
-using Eigen::Matrix, Eigen::Dynamic;
-// 
 
 #define CL_HPP_ENABLE_EXCEPTIONS
 #ifdef CL_HPP_MINIMUM_OPENCL_VERSION
@@ -50,13 +45,13 @@ namespace opencl {
         inline constexpr static const char* add_accum_sum_mat_cols = "add_accum_sum_mat_cols_double";
         inline constexpr static const char* normalize_accum_sum_mat_cols = "normalize_accum_sum_mat_cols_double";
         inline constexpr static const char* find_random_indices = "find_random_indices_double";
-        inline constexpr static const char* substract_mat_vec = "substract_mat_vec_double";
         inline constexpr static const char* conditional_means_1d = "conditional_means_1d_mat_double";
         inline constexpr static const char* conditional_means_column = "conditional_means_column_double";
         inline constexpr static const char* conditional_means_row = "conditional_means_row_double";
         inline constexpr static const char* univariate_normal_cdf = "univariate_normal_cdf_double";
         inline constexpr static const char* normal_cdf = "normal_cdf_double";
         inline constexpr static const char* product_elementwise = "product_elementwise_double";
+        inline constexpr static const char* division_elementwise = "division_elementwise_double";
     };
 
     template<>
@@ -79,13 +74,13 @@ namespace opencl {
         inline constexpr static const char* add_accum_sum_mat_cols = "add_accum_sum_mat_cols_float";
         inline constexpr static const char* normalize_accum_sum_mat_cols = "normalize_accum_sum_mat_cols_float";
         inline constexpr static const char* find_random_indices = "find_random_indices_float";
-        inline constexpr static const char* substract_mat_vec = "substract_mat_vec_float";
         inline constexpr static const char* conditional_means_1d = "conditional_means_1d_mat_float";
         inline constexpr static const char* conditional_means_column = "conditional_means_column_float";
         inline constexpr static const char* conditional_means_row = "conditional_means_row_float";
         inline constexpr static const char* univariate_normal_cdf = "univariate_normal_cdf_float";
         inline constexpr static const char* normal_cdf = "normal_cdf_float";
         inline constexpr static const char* product_elementwise = "product_elementwise_float";
+        inline constexpr static const char* division_elementwise = "division_elementwise_float";
     };
 
     template<typename ArrowType>

@@ -64,6 +64,7 @@ void pybindings_factors(py::module& root) {
         .def("fit", &CKDE::fit)
         .def("logl", &CKDE::logl, py::return_value_policy::take_ownership)
         .def("slogl", &CKDE::slogl)
+        .def("cdf", &CKDE::cdf)
         .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);

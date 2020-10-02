@@ -17,10 +17,10 @@
 #define MAX_ASSIGN(n1, n2) n1 = max((n1), (n2))
 #define SUM_ASSIGN(n1, n2) n1 += (n2)
 
-#line 13
+#line 15
 
 
-#line 19
+#line 21
 
 __kernel void max1d_double(__constant double *input,
                                       __private uint input_length,
@@ -116,7 +116,7 @@ __kernel void max_mat_cols_double(__constant double *mat,
 }
 
 
-#line 19
+#line 21
 
 __kernel void sum1d_double(__constant double *input,
                                       __private uint input_length,
@@ -467,16 +467,16 @@ __kernel void find_random_indices_double(__global double *mat,
         indices[mat_offset + col_id] = row_id;
 }
 
-
-__kernel void substract_mat_vec_double(__global double *mat,
+__kernel void divide_mat_vec_double(__global double *mat,
                                       __private uint mat_rows,
                                       __global double *vec) {
     
     int row_id = get_global_id(0);
     int col_id = get_global_id(1);
 
-    mat[IDX(row_id, col_id, mat_rows)] -= vec[col_id];
+    mat[IDX(row_id, col_id, mat_rows)] /= vec[col_id];
 }
+
 
 __kernel void conditional_means_1d_mat_double(__constant double *train_mat,
                                            __private uint train_physical_rows,
@@ -489,11 +489,11 @@ __kernel void conditional_means_1d_mat_double(__constant double *train_mat,
     int i = get_global_id(0);
     int train_idx = ROW(i, train_physical_rows);
     int test_idx = COL(i, train_physical_rows);
-
+    
     result[i] = train_mat[IDX(train_idx, 0, train_physical_rows)] + 
                             transform_mean[0]*(
-                                            train_mat[IDX(train_idx, 1, train_physical_rows)] - 
-                                            test_vector[IDX(test_offset + test_idx, 0, test_physical_rows)]
+                                            test_vector[IDX(test_offset + test_idx, 0, test_physical_rows)] -
+                                            train_mat[IDX(train_idx, 1, train_physical_rows)]
                                             );
 }
 
@@ -547,17 +547,21 @@ __kernel void univariate_normal_cdf_double(__constant double *means,
     int means_idx = ROW(i, means_physical_rows);
     int x_idx = COL(i, means_physical_rows);
 
-    cdf_mat[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * inv_N * (x[x_offset + x_idx] - means[means_idx]));
+    cdf_mat[i] = inv_N*(0.5 + 0.5*erf(M_SQRT1_2 * inv_std * (x[x_offset + x_idx] - means[means_idx])));
 }
 
 __kernel void normal_cdf_double(__global double *means,
                          __private uint means_physical_rows,
                          __constant double *x,
+                         __private uint x_offset,
                          __private double inv_std) {
     uint i = get_global_id(0);
 
     int col_idx = COL(i, means_physical_rows);
-    means[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[col_idx] - means[i]));
+
+    // printf("[%d] train mean %g test %g, cdf %g", i, means[i], x[col_idx],
+    //                                     0.5 + 0.5*erf(M_SQRT1_2 * inv_std * (x[col_idx] - means[i])));
+    means[i] = 0.5 + 0.5*erf(M_SQRT1_2 * inv_std * (x[x_offset + col_idx] - means[i]));
 }
 
 __kernel void product_elementwise_double(__global double *mat1, __constant double *mat2) {
@@ -565,11 +569,18 @@ __kernel void product_elementwise_double(__global double *mat1, __constant doubl
     mat1[i] *= mat2[i];
 }
 
+__kernel void division_elementwise_double(__global double *mat1, __private uint mat1_offset,  __constant double *mat2) {
+    uint i = get_global_id(0);
+    mat1[mat1_offset + i] /= mat2[i];
+}
 
-#line 13
 
 
-#line 19
+
+#line 15
+
+
+#line 21
 
 __kernel void max1d_float(__constant float *input,
                                       __private uint input_length,
@@ -665,7 +676,7 @@ __kernel void max_mat_cols_float(__constant float *mat,
 }
 
 
-#line 19
+#line 21
 
 __kernel void sum1d_float(__constant float *input,
                                       __private uint input_length,
@@ -1016,16 +1027,16 @@ __kernel void find_random_indices_float(__global float *mat,
         indices[mat_offset + col_id] = row_id;
 }
 
-
-__kernel void substract_mat_vec_float(__global float *mat,
+__kernel void divide_mat_vec_float(__global float *mat,
                                       __private uint mat_rows,
                                       __global float *vec) {
     
     int row_id = get_global_id(0);
     int col_id = get_global_id(1);
 
-    mat[IDX(row_id, col_id, mat_rows)] -= vec[col_id];
+    mat[IDX(row_id, col_id, mat_rows)] /= vec[col_id];
 }
+
 
 __kernel void conditional_means_1d_mat_float(__constant float *train_mat,
                                            __private uint train_physical_rows,
@@ -1038,11 +1049,11 @@ __kernel void conditional_means_1d_mat_float(__constant float *train_mat,
     int i = get_global_id(0);
     int train_idx = ROW(i, train_physical_rows);
     int test_idx = COL(i, train_physical_rows);
-
+    
     result[i] = train_mat[IDX(train_idx, 0, train_physical_rows)] + 
                             transform_mean[0]*(
-                                            train_mat[IDX(train_idx, 1, train_physical_rows)] - 
-                                            test_vector[IDX(test_offset + test_idx, 0, test_physical_rows)]
+                                            test_vector[IDX(test_offset + test_idx, 0, test_physical_rows)] -
+                                            train_mat[IDX(train_idx, 1, train_physical_rows)]
                                             );
 }
 
@@ -1096,23 +1107,34 @@ __kernel void univariate_normal_cdf_float(__constant float *means,
     int means_idx = ROW(i, means_physical_rows);
     int x_idx = COL(i, means_physical_rows);
 
-    cdf_mat[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * inv_N * (x[x_offset + x_idx] - means[means_idx]));
+    cdf_mat[i] = inv_N*(0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[x_offset + x_idx] - means[means_idx])));
 }
 
 __kernel void normal_cdf_float(__global float *means,
                          __private uint means_physical_rows,
                          __constant float *x,
+                         __private uint x_offset,
                          __private float inv_std) {
     uint i = get_global_id(0);
 
     int col_idx = COL(i, means_physical_rows);
-    means[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[col_idx] - means[i]));
+
+    // printf("[%d] train mean %g test %g, cdf %g", i, means[i], x[col_idx],
+    //                                     0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[col_idx] - means[i])));
+    means[i] = 0.5 + 0.5*erf(M_SQRT1_2_F * inv_std * (x[x_offset + col_idx] - means[i]));
 }
 
 __kernel void product_elementwise_float(__global float *mat1, __constant float *mat2) {
     uint i = get_global_id(0);
     mat1[i] *= mat2[i];
 }
+
+__kernel void division_elementwise_float(__global float *mat1, __private uint mat1_offset,  __constant float *mat2) {
+    uint i = get_global_id(0);
+    mat1[mat1_offset + i] /= mat2[i];
+}
+
+
 
 
 

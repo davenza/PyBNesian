@@ -1128,6 +1128,7 @@ namespace factors::continuous {
 
         k_cdf.setArg(3, static_cast<unsigned int>(offset));
         opencl.queue().enqueueNDRangeKernel(k_cdf, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+
         opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset, reduc_buffers);
 
         return res;
@@ -1159,9 +1160,9 @@ namespace factors::continuous {
 
         auto [mu, allocated_m] = allocate_mat<ArrowType>(N);
         auto W = opencl.new_buffer<CType>(N*allocated_m) ;
-        auto log_sum_W = opencl.new_buffer<CType>(allocated_m);
+        auto sum_W = opencl.new_buffer<CType>(allocated_m);
 
-        auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
+        auto iterations = static_cast<int>(std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m)));
 
         cl::Buffer tmp_mat_buffer;
         if constexpr(std::is_same_v<KDEType, MultivariateKDE>) {
@@ -1173,23 +1174,22 @@ namespace factors::continuous {
 
         auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
 
-        auto k_substract_mat_vec = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_mat_vec);
-        k_substract_mat_vec.setArg(0, W);
-        k_substract_mat_vec.setArg(1, static_cast<unsigned int>(N));
-        k_substract_mat_vec.setArg(2, log_sum_W);
-
         auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
         k_exp.setArg(0, W);
 
         auto k_normal_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normal_cdf);
         k_normal_cdf.setArg(0, mu);
-        k_normal_cdf.setArg(1, N);
+        k_normal_cdf.setArg(1, static_cast<unsigned int>(N));
         k_normal_cdf.setArg(2, variable_test_buffer);
-        k_normal_cdf.setArg(3, static_cast<CType>(1.0 / cond_var));
+        k_normal_cdf.setArg(4, static_cast<CType>(1.0 / cond_var));
 
         auto k_product = opencl.kernel(OpenCL_kernel_traits<ArrowType>::product_elementwise);
         k_product.setArg(0, mu);
         k_product.setArg(1, W);
+
+        auto k_divide = opencl.kernel(OpenCL_kernel_traits<ArrowType>::division_elementwise);
+        k_divide.setArg(0, res);
+        k_divide.setArg(2, sum_W);
 
         for (auto i = 0; i < (iterations-1); ++i) {
             // Computes Weigths
@@ -1197,10 +1197,9 @@ namespace factors::continuous {
                                                         i*allocated_m, allocated_m, m_evidence.size(), 
                                                         m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                         tmp_mat_buffer, W);
-
-            opencl.logsumexp_cols_offset<ArrowType>(W, N, allocated_m, log_sum_W, 0, reduc_buffers);
-            opencl.queue().enqueueNDRangeKernel(k_substract_mat_vec, cl::NullRange, cl::NDRange(N, allocated_m), cl::NullRange);
+            
             opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+            opencl.sum_cols_offset<ArrowType>(W, N, allocated_m, sum_W, 0, reduc_buffers);
 
             // Computes conditional mu.
             KDEType::template execute_conditional_means<ArrowType>(m_joint.training_buffer(), 
@@ -1209,10 +1208,14 @@ namespace factors::continuous {
                                                                     i*allocated_m, allocated_m, 
                                                                     m_evidence.size(), transform_buffer,
                                                                     tmp_mat_buffer, mu);
+            k_normal_cdf.setArg(3, static_cast<unsigned int>(i*allocated_m));
             opencl.queue().enqueueNDRangeKernel(k_normal_cdf, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
             opencl.queue().enqueueNDRangeKernel(k_product, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
             opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m, reduc_buffers);
+            k_divide.setArg(1, static_cast<unsigned int>(i*allocated_m));
+            opencl.queue().enqueueNDRangeKernel(k_divide, cl::NullRange, cl::NDRange(allocated_m), cl::NullRange);
         }
+
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = m - offset;
         // Computes Weigths
@@ -1220,10 +1223,9 @@ namespace factors::continuous {
                                                     offset, remaining_m, m_evidence.size(), 
                                                     m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                     tmp_mat_buffer, W);
-
-        opencl.logsumexp_cols_offset<ArrowType>(W, N, remaining_m, log_sum_W, 0, reduc_buffers);
-        opencl.queue().enqueueNDRangeKernel(k_substract_mat_vec, cl::NullRange, cl::NDRange(N, remaining_m), cl::NullRange);
+        
         opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+        opencl.sum_cols_offset<ArrowType>(W, N, remaining_m, sum_W, 0, reduc_buffers);
 
         // Computes conditional mu.
         KDEType::template execute_conditional_means<ArrowType>(m_joint.training_buffer(), 
@@ -1232,9 +1234,13 @@ namespace factors::continuous {
                                                                 offset, remaining_m, 
                                                                 m_evidence.size(), transform_buffer,
                                                                 tmp_mat_buffer, mu);
+
+        k_normal_cdf.setArg(3, static_cast<unsigned int>(offset));
         opencl.queue().enqueueNDRangeKernel(k_normal_cdf, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
         opencl.queue().enqueueNDRangeKernel(k_product, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
         opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset, reduc_buffers);
+        k_divide.setArg(1, static_cast<unsigned int>(offset));
+        opencl.queue().enqueueNDRangeKernel(k_divide, cl::NullRange, cl::NDRange(remaining_m), cl::NullRange);
 
         return res;
     }

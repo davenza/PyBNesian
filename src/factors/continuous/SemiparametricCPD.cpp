@@ -40,6 +40,12 @@ namespace factors::continuous {
                 }, m_cpd);
     }
 
+    VectorXd SemiparametricCPD::cdf(const DataFrame& df) const {
+        return std::visit([&df](auto& cpd) -> VectorXd {
+                            return cpd.cdf(df);
+                        }, m_cpd);
+    }
+
     std::string SemiparametricCPD::ToString() const {
         return std::visit([](auto& cpd) {
                     return cpd.ToString();

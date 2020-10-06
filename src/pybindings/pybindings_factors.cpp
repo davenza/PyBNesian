@@ -94,7 +94,16 @@ void pybindings_factors(py::module& root) {
         .def("as_ckde", &SemiparametricCPD::as_ckde, py::return_value_policy::reference_internal)
         .def("fit", &SemiparametricCPD::fit)
         .def("logl", &SemiparametricCPD::logl, py::return_value_policy::take_ownership)
-        .def("slogl", &SemiparametricCPD::slogl);
+        .def("slogl", &SemiparametricCPD::slogl)
+        .def("cdf", &SemiparametricCPD::cdf, py::return_value_policy::take_ownership)
+        .def("sample", [](const SemiparametricCPD& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
+            if (evidence_values) {
+                return self.sample(n, *evidence_values, seed);
+            }
+            else {
+                return self.sample(n, DataFrame(), seed);
+            }
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed") = 0);
     
     py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
     py::implicitly_convertible<CKDE, SemiparametricCPD>();

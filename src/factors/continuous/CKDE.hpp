@@ -273,13 +273,13 @@ namespace factors::continuous {
             auto k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_row);
 
             k_conditional_means.setArg(0, joint_training);
-            k_conditional_means.setArg(1, static_cast<unsigned int>(training_rows));
+            k_conditional_means.setArg(1, training_rows);
             k_conditional_means.setArg(2, tmp_mat);
-            k_conditional_means.setArg(3, static_cast<unsigned int>(test_length));
+            k_conditional_means.setArg(3, test_length);
             k_conditional_means.setArg(4, transform_mean);
-            k_conditional_means.setArg(5, static_cast<unsigned int>(evidence_cols));
+            k_conditional_means.setArg(5, evidence_cols);
             k_conditional_means.setArg(6, output_mat);
-            k_conditional_means.setArg(8, static_cast<unsigned int>(test_length));
+            k_conditional_means.setArg(8, training_rows);
 
             for(unsigned int i = 0; i < training_rows; ++i) {
                 k_substract.setArg(7, i);
@@ -1113,7 +1113,7 @@ namespace factors::continuous {
         k_cdf.setArg(0, m_joint.training_buffer());
         k_cdf.setArg(1, static_cast<unsigned int>(N));
         k_cdf.setArg(2, test_buffer);
-        k_cdf.setArg(4, static_cast<CType>(1.0 / m_joint.bandwidth()(0,0)));
+        k_cdf.setArg(4, static_cast<CType>(1.0 / std::sqrt(m_joint.bandwidth()(0,0))));
         k_cdf.setArg(5, static_cast<CType>(1.0 / N));
         k_cdf.setArg(6, mu);
 
@@ -1122,7 +1122,6 @@ namespace factors::continuous {
             opencl.queue().enqueueNDRangeKernel(k_cdf, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
             opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m, reduc_buffers);
         }
-
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = m - offset;
 
@@ -1181,7 +1180,7 @@ namespace factors::continuous {
         k_normal_cdf.setArg(0, mu);
         k_normal_cdf.setArg(1, static_cast<unsigned int>(N));
         k_normal_cdf.setArg(2, variable_test_buffer);
-        k_normal_cdf.setArg(4, static_cast<CType>(1.0 / cond_var));
+        k_normal_cdf.setArg(4, static_cast<CType>(1.0 / std::sqrt(cond_var)));
 
         auto k_product = opencl.kernel(OpenCL_kernel_traits<ArrowType>::product_elementwise);
         k_product.setArg(0, mu);
@@ -1191,11 +1190,13 @@ namespace factors::continuous {
         k_divide.setArg(0, res);
         k_divide.setArg(2, sum_W);
 
+        auto new_lognorm_marg = m_marg.lognorm_const() + std::log(N);
+
         for (auto i = 0; i < (iterations-1); ++i) {
             // Computes Weigths
             KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, evidence_test_buffer, m, 
                                                         i*allocated_m, allocated_m, m_evidence.size(), 
-                                                        m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
+                                                        m_marg.cholesky_buffer(), new_lognorm_marg, 
                                                         tmp_mat_buffer, W);
             
             opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
@@ -1215,13 +1216,12 @@ namespace factors::continuous {
             k_divide.setArg(1, static_cast<unsigned int>(i*allocated_m));
             opencl.queue().enqueueNDRangeKernel(k_divide, cl::NullRange, cl::NDRange(allocated_m), cl::NullRange);
         }
-
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = m - offset;
         // Computes Weigths
         KDEType::template execute_logl_mat<ArrowType>(m_marg.training_buffer(), N, evidence_test_buffer, m, 
                                                     offset, remaining_m, m_evidence.size(), 
-                                                    m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
+                                                    m_marg.cholesky_buffer(), new_lognorm_marg, 
                                                     tmp_mat_buffer, W);
         
         opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);

@@ -448,7 +448,7 @@ __kernel void univariate_normal_cdf_@dt@(__constant @dt@ *means,
     int means_idx = ROW(i, means_physical_rows);
     int x_idx = COL(i, means_physical_rows);
 
-    cdf_mat[i] = inv_N*(0.5 + 0.5*erf(@SQRT1_2@ * inv_std * (x[x_offset + x_idx] - means[means_idx])));
+    cdf_mat[i] = inv_N*(0.5*erfc(@SQRT1_2@ * inv_std * -(x[x_offset + x_idx] - means[means_idx])));
 }
 
 __kernel void normal_cdf_@dt@(__global @dt@ *means,
@@ -457,12 +457,9 @@ __kernel void normal_cdf_@dt@(__global @dt@ *means,
                          __private uint x_offset,
                          __private @dt@ inv_std) {
     uint i = get_global_id(0);
-
     int col_idx = COL(i, means_physical_rows);
 
-    // printf("[%d] train mean %g test %g, cdf %g", i, means[i], x[col_idx],
-    //                                     0.5 + 0.5*erf(@SQRT1_2@ * inv_std * (x[col_idx] - means[i])));
-    means[i] = 0.5 + 0.5*erf(@SQRT1_2@ * inv_std * (x[x_offset + col_idx] - means[i]));
+    means[i] = 0.5*erfc(@SQRT1_2@ * inv_std * (means[i] - x[x_offset + col_idx]));
 }
 
 __kernel void product_elementwise_@dt@(__global @dt@ *mat1, __constant @dt@ *mat2) {

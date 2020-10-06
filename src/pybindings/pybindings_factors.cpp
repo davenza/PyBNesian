@@ -39,7 +39,16 @@ void pybindings_factors(py::module& root) {
         .def_property_readonly("fitted", &LinearGaussianCPD::fitted)
         .def("fit", &LinearGaussianCPD::fit)
         .def("logl", &LinearGaussianCPD::logl, py::return_value_policy::take_ownership)
-        .def("slogl", &LinearGaussianCPD::slogl);
+        .def("slogl", &LinearGaussianCPD::slogl)
+        .def("cdf", &LinearGaussianCPD::cdf, py::return_value_policy::take_ownership)
+        .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
+            if (evidence_values) {
+                return self.sample(n, *evidence_values, seed);
+            }
+            else {
+                return self.sample(n, DataFrame(), seed);
+            }
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed") = 0);
 
     py::class_<KDE>(continuous, "KDE")
         .def(py::init<std::vector<std::string>>())

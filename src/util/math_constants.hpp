@@ -11,6 +11,9 @@ namespace util {
     inline auto constexpr pi = boost::math::constants::pi<T>();
 
     template<typename T>
+    inline auto constexpr one_div_root_two = boost::math::constants::one_div_root_two<T>();
+
+    template<typename T>
     inline auto constexpr nan = std::numeric_limits<T>::quiet_NaN();
 }
 

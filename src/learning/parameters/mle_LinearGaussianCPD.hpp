@@ -184,10 +184,6 @@ namespace learning::parameters {
         auto type_id = df.same_type(variable, evidence_pair);
         bool contains_null = df.null_count(variable, evidence_pair) > 0;
 
-        if (type_id != Type::DOUBLE && type_id != Type::FLOAT) {
-            throw py::value_error("Wrong data type to fit the linear regression. \"double\" or \"float\" data is expected.");
-        }
-
         switch(type_id) {
             case Type::DOUBLE: {
                 if (contains_null)
@@ -204,7 +200,7 @@ namespace learning::parameters {
                 break;
             }
             default:
-                throw std::invalid_argument("Unreachable code.");
+                throw std::invalid_argument("Wrong data type to fit the linear regression. \"double\" or \"float\" data is expected.");
         }
     }
 

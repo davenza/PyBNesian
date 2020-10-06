@@ -7,20 +7,21 @@
 #include <util/math_constants.hpp>
 #include <Eigen/Dense>
 #include <learning/parameters/mle_LinearGaussianCPD.hpp>
+#include <boost/math/distributions/normal.hpp>
 
 
 namespace py = pybind11;
 
 using arrow::Type;
-using Eigen::Matrix, Eigen::Array, Eigen::Dynamic, Eigen::Map, Eigen::MatrixBase;
+using Eigen::Matrix, Eigen::Dynamic, Eigen::Array;
 
 using dataset::DataFrame;
 
 using learning::parameters::MLE;
-using util::pi;
+using util::pi, util::one_div_root_two;
+using boost::math::normal_distribution;
 
 typedef std::shared_ptr<arrow::Array> Array_ptr;
-
 
 namespace factors::continuous {
 
@@ -64,22 +65,25 @@ namespace factors::continuous {
                             const std::string& var, const std::vector<std::string>& evidence) {
         using CType = typename ArrowType::c_type;
         using ArrayVecType = Array<CType, Dynamic, 1>;
-        
-        ArrayVecType means = ArrayVecType::Constant(df->num_rows(), beta[0]);
-
-        int idx = 1;
-        for (auto it = evidence.begin(); it != evidence.end(); ++it, ++idx) {
-            auto ev_array = df.to_eigen<false, ArrowType, false>(*it);
-            means += static_cast<CType>(beta[idx]) * ev_array->array();
-        }
-
-        auto var_array = df.to_eigen<false, ArrowType, false>(var);
 
         double inv_std = 1 / std::sqrt(variance);
-        ArrayVecType logl = -0.5 * (inv_std * (var_array->array() - means)).square();
 
+        ArrayVecType logl;
+        auto var_array = df.to_eigen<false, ArrowType, false>(var);
+        if (evidence.empty()) {
+            logl = -0.5 * (inv_std * (var_array->array() - beta(0))).square();
+        } else {
+            ArrayVecType means = ArrayVecType::Constant(df->num_rows(), beta(0));
+            int idx = 1;
+            for (auto it = evidence.begin(); it != evidence.end(); ++it, ++idx) {
+                auto ev_array = df.to_eigen<false, ArrowType, false>(*it);
+                means += static_cast<CType>(beta[idx]) * ev_array->array();
+            }
+
+            logl = -0.5 * (inv_std * (var_array->array() - means)).square();
+        }
+        
         logl += -0.5*std::log(variance) - 0.5*std::log(2*pi<CType>);
-
         return logl.matrix();
     }
 
@@ -126,8 +130,84 @@ namespace factors::continuous {
         return accum;
     }
 
+    template<typename ArrowType>
+    Matrix<typename ArrowType::c_type, Dynamic, 1> 
+    cdf_impl(const DataFrame& df, const VectorXd& beta, double variance, 
+                            const std::string& var, const std::vector<std::string>& evidence) {
+        using CType = typename ArrowType::c_type;
+        using ArrayVecType = Array<CType, Dynamic, 1>;
+
+        CType inv_std = static_cast<CType>(1. / std::sqrt(variance));
+        auto var_ptr = df.to_eigen<false, ArrowType, false>(var);
+        auto var_array = *var_ptr;
+
+        ArrayVecType t(df->num_rows());
+        if (evidence.empty()) {
+            for (int64_t i = 0, end = df->num_rows(); i < end; ++i) {
+                t(i) = std::erfc((beta(0) - var_array(i))*inv_std*one_div_root_two<CType>);
+            }
+        } else {
+            ArrayVecType means = ArrayVecType::Constant(df->num_rows(), beta[0]);
+
+            int idx = 1;
+            for (auto it = evidence.begin(); it != evidence.end(); ++it, ++idx) {
+                auto ev_array = df.to_eigen<false, ArrowType, false>(*it);
+                means += static_cast<CType>(beta[idx]) * ev_array->array();
+            }
+
+            for (int64_t i = 0, end = df->num_rows(); i < end; ++i) {
+                t(i) = std::erfc((means(i) - var_array(i))*inv_std*one_div_root_two<CType>);
+            }
+        }
+
+        return (0.5*t).matrix();
+    }
+
+    template<typename ArrowType>
+    Matrix<typename ArrowType::c_type, Dynamic, 1> 
+    cdf_impl_null(const DataFrame& df, const VectorXd& beta, double variance, 
+                            const std::string& var, const std::vector<std::string>& evidence) {
+        using CType = typename ArrowType::c_type;
+        using ArrayVecType = Array<CType, Dynamic, 1>;
+
+        CType inv_std = static_cast<CType>(1. / std::sqrt(variance));
+        auto combined_bitmap = df.combined_bitmap(var, evidence);
+        auto bitmap_data = combined_bitmap->data();
+
+        auto var_ptr = df.to_eigen<false, ArrowType, false>(var);
+        auto var_array = *var_ptr;
+
+        ArrayVecType t(df->num_rows());
+        if (evidence.empty()) {
+            for (int64_t i = 0, end = df->num_rows(); i < end; ++i) {
+                if (arrow::BitUtil::GetBit(bitmap_data, i))
+                    t(i) = std::erfc((beta(0) - var_array(i))*inv_std*one_div_root_two<CType>);
+                else
+                    t(i) = util::nan<CType>;
+            }            
+        } else {
+            auto non_null = util::bit_util::non_null_count(combined_bitmap, df->num_rows());
+            ArrayVecType means = ArrayVecType::Constant(non_null, beta[0]);
+
+            int idx = 1;
+            for (auto it = evidence.begin(); it != evidence.end(); ++it, ++idx) {
+                auto ev_array = df.to_eigen<false, ArrowType>(combined_bitmap, *it);
+                means += static_cast<CType>(beta[idx]) * ev_array->array();
+            }
+
+            for (int64_t i = 0, k = 0, end = df->num_rows(); i < end; ++i) {
+                if (arrow::BitUtil::GetBit(bitmap_data, i))
+                    t(i) = std::erfc((means(k++) - var_array(i))*inv_std*one_div_root_two<CType>);
+                else
+                    t(i) = util::nan<CType>;
+            }
+        }
+
+        return (0.5*t).matrix();
+    }
+
     VectorXd LinearGaussianCPD::logl(const DataFrame& df) const {
-        switch(df.col(m_variable)->type_id()) {
+        switch(df.same_type(m_variable, m_evidence)) {
             case Type::DOUBLE: {
                 if(df.null_count(m_variable, m_evidence) == 0)
                     return logl_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
@@ -150,7 +230,7 @@ namespace factors::continuous {
     }
 
     double LinearGaussianCPD::slogl(const DataFrame& df) const {
-        switch(df.col(m_variable)->type_id()) {
+        switch(df.same_type(m_variable, m_evidence)) {
             case Type::DOUBLE: {
                 if(df.null_count(m_variable, m_evidence) == 0)
                     return slogl_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
@@ -164,7 +244,30 @@ namespace factors::continuous {
                     return slogl_impl_null<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
             }
             default:
-                throw py::value_error("Wrong data type to compute logl. (double) or (float) data is expected.");
+                throw py::value_error("Wrong data type to compute slogl. (double) or (float) data is expected.");
+        }
+    }
+
+    VectorXd LinearGaussianCPD::cdf(const DataFrame& df) const {
+        switch(df.same_type(m_variable, m_evidence)) {
+            case Type::DOUBLE: {
+                if(df.null_count(m_variable, m_evidence) == 0)
+                    return cdf_impl<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
+                else
+                    return cdf_impl_null<arrow::DoubleType>(df, m_beta, m_variance, m_variable, m_evidence);
+            }
+            case Type::FLOAT: {
+                if(df.null_count(m_variable, m_evidence) == 0) {
+                    auto t = cdf_impl<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return t.template cast<double>();
+                }
+                else {
+                    auto t = cdf_impl_null<arrow::FloatType>(df, m_beta, m_variance, m_variable, m_evidence);
+                    return t.template cast<double>();
+                }
+            }
+            default:
+                throw py::value_error("Wrong data type to compute cdf. (double) or (float) data is expected.");
         }
     }
 

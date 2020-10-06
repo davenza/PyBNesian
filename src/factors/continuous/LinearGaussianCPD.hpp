@@ -50,10 +50,11 @@ namespace factors::continuous {
         double variance() const { return m_variance; }
         void set_variance(double v) { m_variance = v; }
 
+        VectorXd cdf(const DataFrame& df) const;
+
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
-
     private:
         std::string m_variable;
         std::vector<std::string> m_evidence;

@@ -139,3 +139,7 @@ cython_debug/
 
 # IDE
 .idea
+
+# Ignore generated OpenCL
+src/factors/continuous/opencl/CKDE.cl
+src/factors/continuous/opencl/cumsum.cl

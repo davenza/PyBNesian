@@ -5,10 +5,10 @@
 #include <dataset/dataset.hpp>
 #include <util/bit_util.hpp>
 #include <util/math_constants.hpp>
+#include <util/arrow_macros.hpp>
 #include <Eigen/Dense>
 #include <learning/parameters/mle_LinearGaussianCPD.hpp>
 #include <boost/math/distributions/normal.hpp>
-
 
 namespace py = pybind11;
 
@@ -275,7 +275,8 @@ namespace factors::continuous {
                                         const DataFrame& evidence_values, 
                                         long unsigned int seed) const {
         arrow::NumericBuilder<arrow::DoubleType> builder;
-        builder.Resize(n);
+        RAISE_STATUS_ERROR(builder.Resize(n));
+
 
         std::mt19937 rng{seed};
         std::normal_distribution<> normal(m_beta(0), std::sqrt(m_variance));
@@ -285,14 +286,17 @@ namespace factors::continuous {
         }
 
         std::shared_ptr<arrow::DoubleArray> out;
-        auto status = builder.Finish(&out);
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Finish(&out));
 
         if (!m_evidence.empty()) {
+            try {
+                evidence_values.has_columns(m_evidence);
+            } catch (const std::domain_error& ex) {
+                throw std::domain_error(std::string("Evidence values not present for sampling:\n") + ex.what());
+            }
+
             auto out_values = reinterpret_cast<double*>(out->values()->mutable_data());
-            for (auto j = 0; j < m_evidence.size(); ++j) {
+            for (size_t j = 0; j < m_evidence.size(); ++j) {
                 auto evidence = evidence_values->GetColumnByName(m_evidence[j]);
 
                 switch (evidence->type_id()) {
@@ -303,6 +307,7 @@ namespace factors::continuous {
                         for (auto i = 0; i < n; ++i) {
                             out_values[i] += m_beta(j+1)*raw_evidence[i];
                         }
+                        break;
                     }
                     case Type::FLOAT: {
                         auto dwn_evidence = std::static_pointer_cast<arrow::FloatArray>(evidence);
@@ -311,9 +316,13 @@ namespace factors::continuous {
                         for (auto i = 0; i < n; ++i) {
                             out_values[i] += m_beta(j+1)*raw_evidence[i];
                         }
+                        break;
                     }
-                    default:
-                        throw std::invalid_argument("Wrong data type for LinearGaussianCPD parent data.");
+                    default: {
+                        throw std::invalid_argument("Wrong data type \"" + evidence->type()->ToString() + 
+                                                        "\" for LinearGaussianCPD parent data.");
+
+                    }
                 }
             }
         }

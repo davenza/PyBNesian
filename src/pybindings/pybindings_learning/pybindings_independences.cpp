@@ -1,11 +1,15 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <learning/independences/independence.hpp>
 #include <learning/independences/continuous/linearcorrelation.hpp>
+#include <learning/independences/continuous/kdtree.hpp>
 
 namespace py = pybind11;
 
 using learning::independences::IndependenceTest, learning::independences::continuous::LinearCorrelation;
+
+using learning::independences::KDTree;
 
 void pybindings_independence_tests(py::module& root) {
     auto independence_tests = root.def_submodule("independences", "Independence Hypothesis tests.");
@@ -50,4 +54,8 @@ void pybindings_independence_tests(py::module& root) {
         .def("pvalue", [](LinearCorrelation& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
             return self.pvalue(v1, v2, cond.begin(), cond.end());
         });
+
+    py::class_<KDTree>(independence_tests, "KDTree")
+        .def(py::init<DataFrame, int>())
+        .def("query", &KDTree::query, py::arg("test_df"), py::arg("k") = 1, py::arg("p") = 2.);
 }

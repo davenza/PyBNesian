@@ -41,14 +41,22 @@ void pybindings_factors(py::module& root) {
         .def("logl", &LinearGaussianCPD::logl, py::return_value_policy::take_ownership)
         .def("slogl", &LinearGaussianCPD::slogl)
         .def("cdf", &LinearGaussianCPD::cdf, py::return_value_policy::take_ownership)
-        .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
+        .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values) {
+            if (evidence_values) {
+                return self.sample(n, *evidence_values, std::random_device{}());
+            }
+            else {
+                return self.sample(n, DataFrame(), std::random_device{}());
+            }
+        }, py::arg("n"), py::arg("evidence_values"))
+        .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, long unsigned int seed) {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);
             }
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed") = 0);
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"));
 
     py::class_<KDE>(continuous, "KDE")
         .def(py::init<std::vector<std::string>>())
@@ -74,14 +82,22 @@ void pybindings_factors(py::module& root) {
         .def("logl", &CKDE::logl, py::return_value_policy::take_ownership)
         .def("slogl", &CKDE::slogl)
         .def("cdf", &CKDE::cdf, py::return_value_policy::take_ownership)
-        .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
+        .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values) {
+            if (evidence_values) {
+                return self.sample(n, *evidence_values, std::random_device{}());
+            }
+            else {
+                return self.sample(n, DataFrame(), std::random_device{}());
+            }
+        }, py::arg("n"), py::arg("evidence_values"))
+        .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values, long unsigned int seed) {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);
             }
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed") = 0);
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"));
 
     py::class_<SemiparametricCPD>(continuous, "SemiparametricCPD")
         .def(py::init<LinearGaussianCPD>())
@@ -96,14 +112,26 @@ void pybindings_factors(py::module& root) {
         .def("logl", &SemiparametricCPD::logl, py::return_value_policy::take_ownership)
         .def("slogl", &SemiparametricCPD::slogl)
         .def("cdf", &SemiparametricCPD::cdf, py::return_value_policy::take_ownership)
-        .def("sample", [](const SemiparametricCPD& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
+        .def("sample", [](const SemiparametricCPD& self, int n, std::optional<const DataFrame> evidence_values) {
+            if (evidence_values) {
+                return self.sample(n, *evidence_values, std::random_device{}());
+            }
+            else {
+                return self.sample(n, DataFrame(), std::random_device{}());
+            }
+        }, py::arg("n"), py::arg("evidence_values"))
+        .def("sample", [](const SemiparametricCPD& self, 
+                          int n, 
+                          std::optional<const DataFrame> evidence_values, 
+                          long unsigned int seed) 
+        {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);
             }
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed") = 0);
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"));
     
     py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
     py::implicitly_convertible<CKDE, SemiparametricCPD>();

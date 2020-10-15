@@ -16,6 +16,9 @@ using factors::continuous::SemiparametricCPD;
 
 using util::ArcVector, util::FactorTypeVector;
 
+using Field_ptr = std::shared_ptr<arrow::Field>;
+using Array_ptr = std::shared_ptr<arrow::Array>;
+
 namespace models {
 
     template<typename Model>
@@ -105,7 +108,7 @@ namespace models {
         virtual double slogl(const DataFrame& df) const = 0;
         virtual std::string ToString() const = 0;
         virtual BayesianNetworkType type() const = 0;
-        virtual DataFrame sample(int n, long unsigned int seed) const = 0;
+        virtual DataFrame sample(int n, long unsigned int seed, bool ordered) const = 0;
     };
 
     class SemiparametricBNBase {
@@ -298,7 +301,7 @@ namespace models {
         VectorXd logl(const DataFrame& df) const override;
         double slogl(const DataFrame& df) const override;
 
-        DataFrame sample(int n, long unsigned int seed = std::random_device{}()) const override;
+        DataFrame sample(int n, long unsigned int seed = std::random_device{}(), bool ordered = false) const override;
 
         template<typename Derived_>
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
@@ -475,47 +478,38 @@ namespace models {
     }
 
     template<typename Derived>
-    DataFrame BayesianNetwork<Derived>::sample(int n, long unsigned int seed) const {
+    DataFrame BayesianNetwork<Derived>::sample(int n, long unsigned int seed, bool ordered) const {
         check_fitted();
 
-        DataFrame parents;
+        DataFrame parents(n);
+
         int i = 0;
         for (auto& name : g.topological_sort()) {
             auto index = g.index(name);
-
             auto array = m_cpds[index].sample(n, parents, seed);
-
-            parents->AddColumn(i, name, array);
+            
+            auto res = parents->AddColumn(i, name, array);
+            parents = DataFrame(std::move(res).ValueOrDie());
             ++i;
         }
 
-        // arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
+        if (ordered) {
+            std::vector<Field_ptr> fields;
+            std::vector<Array_ptr> columns;
+            
+            auto schema = parents->schema();
+            for (auto& name : nodes()) {
+                fields.push_back(schema->GetFieldByName(name));
+                columns.push_back(parents->GetColumnByName(name));
+            }
 
-        // std::vector<Array_ptr> columns;
-        // columns.reserve(g.num_nodes());
+            auto new_schema = std::make_shared<arrow::Schema>(fields);
 
-        // for (auto i = 0; i < g.num_nodes(); ++i) {
-        //     const auto& name = g.name(i);
-        //     auto found = parents.extract(name);
-        //     auto data_type = found.mapped()->type();
-        //     columns.push_back(std::move(found).mapped());
-
-        //     auto f = arrow::field(name, data_type);
-        //     auto status = b.AddField(f);
-        //     if (!status.ok()) {
-        //         throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
-        //     }
-        // }
-
-        // auto r = b.Finish();
-        // if (!r.ok()) {
-        //     throw std::domain_error("Schema could not be created.");
-        // }
-        // auto schema = std::move(r).ValueOrDie();
-
-        // auto rb = arrow::RecordBatch::Make(schema, n, columns);
-
-        // return DataFrame(rb);
+            auto new_rb = arrow::RecordBatch::Make(new_schema, n, columns);
+            return DataFrame(new_rb);
+        } else {
+            return parents;
+        }
     }
 
     void requires_continuous_data(const DataFrame& df);

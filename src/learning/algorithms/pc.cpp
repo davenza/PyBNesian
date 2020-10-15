@@ -230,8 +230,7 @@ namespace learning::algorithms {
     }
 
     template<typename Comb>
-    std::pair<int, int> count_multivariate_sepsets(const PartiallyDirectedGraph& g, 
-                                                   const vstructure& vs,
+    std::pair<int, int> count_multivariate_sepsets(const vstructure& vs,
                                                    Comb& comb,
                                                    const IndependenceTest& test,
                                                    double alpha) {
@@ -262,7 +261,7 @@ namespace learning::algorithms {
 
         if (is_unshielded_triple(g, vs)) {
 
-            int max_sepset = std::max(g.num_neighbors(vs.p1), g.num_neighbors(vs.p2));
+            size_t max_sepset = std::max(g.num_neighbors(vs.p1), g.num_neighbors(vs.p2));
 
             double marg_pvalue = test.pvalue(vs.p1, vs.p2);
 
@@ -283,20 +282,20 @@ namespace learning::algorithms {
                 const auto& nbr1 = g.neighbor_indices(vs.p1);
                 const auto& nbr2 = g.neighbor_indices(vs.p2);
 
-                for (auto i = 2; i <= max_sepset; ++i) {
+                for (size_t i = 2; i <= max_sepset; ++i) {
                     bool set1_valid = nbr1.size() >= i;
                     bool set2_valid = nbr2.size() >= i;
                     if (set1_valid) {
                         if (set2_valid) {
                             Combinations2Sets comb(nbr1.begin(), nbr1.end(), nbr2.begin(), nbr2.end(), i);
-                            multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
+                            multivariate_counts = count_multivariate_sepsets(vs, comb, test, alpha);
                         } else {
                             Combinations comb(nbr1.begin(), nbr1.end(), i);
-                            multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
+                            multivariate_counts = count_multivariate_sepsets(vs, comb, test, alpha);
                         }
                     } else {
                         Combinations comb(nbr2.begin(), nbr2.end(), i);
-                        multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
+                        multivariate_counts = count_multivariate_sepsets(vs, comb, test, alpha);
                     }
 
                     indep_sepsets += multivariate_counts.first;
@@ -314,8 +313,7 @@ namespace learning::algorithms {
     }
     
     std::vector<vstructure> evaluate_vstructures_at_node(const PartiallyDirectedGraph& g, 
-                                                         const PDNode& node, 
-                                                         const SepSet& sepset,
+                                                         const PDNode& node,
                                                          const IndependenceTest& test,
                                                          double alpha,
                                                          double ambiguous_threshold, 
@@ -354,8 +352,7 @@ namespace learning::algorithms {
     }
 
 
-    void direct_unshielded_triples(PartiallyDirectedGraph& pdag, 
-                                   const SepSet& sepset, 
+    void direct_unshielded_triples(PartiallyDirectedGraph& pdag,
                                    const IndependenceTest& test,
                                    double alpha,
                                    double ambiguous_threshold, 
@@ -363,7 +360,7 @@ namespace learning::algorithms {
         std::vector<vstructure> vs;
         for (const auto& node : pdag.node_indices()) {
             if (node.neighbors().size() >= 2) {
-                auto tmp = evaluate_vstructures_at_node(pdag, node, sepset, test, alpha, ambiguous_threshold, ambiguous_slack);
+                auto tmp = evaluate_vstructures_at_node(pdag, node, test, alpha, ambiguous_threshold, ambiguous_slack);
 
                 vs.insert(vs.end(), tmp.begin(), tmp.end());
             }
@@ -504,7 +501,7 @@ namespace learning::algorithms {
 
         PartiallyDirectedGraph pdag(std::move(skeleton));
 
-        direct_unshielded_triples(pdag, sepset, test, alpha, ambiguous_threshold, ambiguous_slack);
+        direct_unshielded_triples(pdag, test, alpha, ambiguous_threshold, ambiguous_slack);
 
         bool changed = true;
         while(changed) {

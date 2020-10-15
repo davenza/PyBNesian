@@ -10,10 +10,11 @@
 #include <dataset/dataset.hpp>
 #include <util/math_constants.hpp>
 #include <util/bit_util.hpp>
+#include <util/arrow_macros.hpp>
 
 namespace py = pybind11;
 using dataset::DataFrame;
-    using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
+using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
@@ -425,28 +426,19 @@ namespace factors::continuous {
 
         std::vector<Array_ptr> columns;
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
-        for (int i = 0; i < m_variables.size(); ++i) {
-            builder.Resize(N);
-            auto status = builder.AppendValues(tmp_buffer.data() + i*N, N);
-
-            if (!status.ok()) {
-                throw std::runtime_error("Values could not be added. Error status: " + status.ToString());
-            }
+        for (size_t i = 0; i < m_variables.size(); ++i) {
+            auto status = builder.Resize(N);
+            RAISE_STATUS_ERROR(builder.AppendValues(tmp_buffer.data() + i*N, N));
 
             Array_ptr out;
-            status = builder.Finish(&out);
-            if (!status.ok()) {
-               throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-            }
+            RAISE_STATUS_ERROR(builder.Finish(&out));
+
 
             columns.push_back(out);
             builder.Reset();
 
             auto f = arrow::field(m_variables[i], out->type());
-            status = b.AddField(f);
-            if (!status.ok()) {
-                throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
-            }
+            RAISE_STATUS_ERROR(b.AddField(f));
         }
 
         auto r = b.Finish();
@@ -838,11 +830,10 @@ namespace factors::continuous {
     Array_ptr CKDE::_sample(int n, const DataFrame& evidence_values, long unsigned int seed) const {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<CType, Dynamic, 1>;
-        using MatrixType = Matrix<CType, Dynamic, Dynamic>;
         
         if (m_evidence.empty()) {
             arrow::NumericBuilder<ArrowType> builder;
-            builder.Resize(n);
+            RAISE_STATUS_ERROR(builder.Resize(n));
             std::mt19937 rng{seed};
             std::uniform_int_distribution<> uniform(0, N-1);
             
@@ -858,11 +849,7 @@ namespace factors::continuous {
             }
 
             Array_ptr out;
-            auto status = builder.Finish(&out);
-            if (!status.ok()) {
-                throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-            }
-
+            RAISE_STATUS_ERROR(builder.Finish(&out));
             return out;
         } else {
             return _sample_multivariate<ArrowType>(n, evidence_values, seed);
@@ -875,6 +862,12 @@ namespace factors::continuous {
         using ArrowArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using VectorType = Matrix<CType, Dynamic, 1>;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
+
+        try {
+            evidence_values.has_columns(m_evidence);
+        } catch (const std::domain_error& ex) {
+            throw std::domain_error(std::string("Evidence values not present for sampling:\n") + ex.what());
+        }
 
         VectorType random_prob(n);
         std::mt19937 rng{seed};
@@ -905,7 +898,7 @@ namespace factors::continuous {
         opencl.read_from_buffer(training_dataset.data(), m_joint.training_buffer(), N*m_variables.size());
 
         MatrixType evidence_substract(n, m_evidence.size());
-        for (auto j = 0; j < m_evidence.size(); ++j) {
+        for (size_t j = 0; j < m_evidence.size(); ++j) {
             auto evidence = evidence_values->GetColumnByName(m_evidence[j]);
             auto dwn_evidence = std::static_pointer_cast<ArrowArrayType>(evidence);
             auto raw_values = dwn_evidence->raw_values();
@@ -918,19 +911,16 @@ namespace factors::continuous {
 
         std::normal_distribution<CType> normal(0, std::sqrt(cond_var));
         arrow::NumericBuilder<ArrowType> builder;
-        builder.Resize(n);
+        RAISE_STATUS_ERROR(builder.Resize(n));
 
         for (auto i = 0; i < n; ++i) {
             cond_mean(i) += training_dataset(sample_indices(i), 0) + normal(rng);
         }
 
-        builder.AppendValues(cond_mean.data(), n);
+        RAISE_STATUS_ERROR(builder.AppendValues(cond_mean.data(), n));
 
         Array_ptr out;
-        auto status = builder.Finish(&out);
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Finish(&out));
 
         return out;
     }
@@ -945,7 +935,7 @@ namespace factors::continuous {
 
         MatrixType test_matrix(n, m_evidence.size());
 
-        for (auto i = 0; i < m_evidence.size(); ++i) {
+        for (size_t i = 0; i < m_evidence.size(); ++i) {
             auto evidence = evidence_values->GetColumnByName(m_evidence[i]);
 
             auto dwn_evidence = std::static_pointer_cast<ArrowArray>(evidence);

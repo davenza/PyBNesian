@@ -47,7 +47,8 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("cpd", py::overload_cast<const std::string&>(&BaseClass::cpd), py::return_value_policy::reference_internal)
         .def("cpd", py::overload_cast<int>(&BaseClass::cpd), py::return_value_policy::reference_internal)
         .def("logl", &BaseClass::logl, py::return_value_policy::take_ownership)
-        .def("slogl", &BaseClass::slogl);
+        .def("slogl", &BaseClass::slogl)
+        .def("sample", &BaseClass::sample, py::return_value_policy::move);
 
     return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
             .def(py::init<const std::vector<std::string>&>())
@@ -102,7 +103,12 @@ void pybindings_models(py::module& root) {
         .def("remove_arc", py::overload_cast<int, int>(&BayesianNetworkBase::remove_arc))
         .def("fit", &BayesianNetworkBase::fit)
         .def("logl", &BayesianNetworkBase::logl, py::return_value_policy::take_ownership)
-        .def("slogl", &BayesianNetworkBase::slogl);
+        .def("slogl", &BayesianNetworkBase::slogl)
+        .def("sample", [](const BayesianNetworkBase& self, int n, long unsigned int ordered) {
+                return self.sample(n, std::random_device{}(), ordered);
+        }, py::return_value_policy::move, py::arg("n"), py::arg("ordered") = false)
+        .def("sample", &BayesianNetworkBase::sample, py::return_value_policy::move, 
+                py::arg("n"), py::arg("seed"), py::arg("ordered") = false);
 
     register_BayesianNetwork<GaussianNetwork>(models, "GaussianNetwork");
     

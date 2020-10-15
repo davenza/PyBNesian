@@ -83,10 +83,7 @@ namespace dataset {
         using arrow::internal::BitmapWordAlign;
 
         NumericBuilder<ArrowType> builder;
-        auto status = builder.Resize(n_rows);
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Resize(n_rows));
 
         auto bitmap_data = bitmap->data();
         const auto p = BitmapWordAlign<8>(bitmap_data, 0, n_rows);
@@ -106,10 +103,7 @@ namespace dataset {
             for(const uint64_t* i = u64_bitmap; i < end; ++i, offset += 64) {
 
                 if (*i == 0xFFFFFFFFFFFFFFFF) {
-                    status = builder.AppendValues(ar->raw_values() + offset, 64);
-                    if (!status.ok()) {
-                        throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-                    }
+                    RAISE_STATUS_ERROR(builder.AppendValues(ar->raw_values() + offset, 64));
                 } else {
                     auto u8_buf = bitmap_data + (i-u64_bitmap)*8;
                     for(int64_t j = 0; j < 64; ++j) {
@@ -128,10 +122,7 @@ namespace dataset {
         }
 
         std::shared_ptr<Array> out;
-        status = builder.Finish(&out);
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Finish(&out));
         
         return out;
     }
@@ -224,12 +215,16 @@ case Type::TypeID:                                                              
             return (*begin)->length();
     }
 
+    void DataFrame::has_columns(int i) const {
+        if (i >= m_batch->num_columns()) {
+            throw std::domain_error("Index " + std::to_string(i) + 
+                                    " do no exist for DataFrame with " + std::to_string(m_batch->num_columns()) + " columns.");
+        }
+    }
+
     DataFrame DataFrame::loc(int i) const {
         arrow::SchemaBuilder b;
-        auto status = b.AddField(m_batch->schema()->field(i));
-        if (!status.ok()) {
-            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(b.AddField(m_batch->schema()->field(i)));
 
         auto r = b.Finish();
         if (!r.ok()) {

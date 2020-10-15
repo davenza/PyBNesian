@@ -3,6 +3,7 @@
 
 #include <random>
 #include <dataset/dataset.hpp>
+#include <util/arrow_macros.hpp>
 
 using Array_ptr =  std::shared_ptr<arrow::Array>;
 using Array_vector =  std::vector<Array_ptr>;
@@ -22,11 +23,7 @@ namespace dataset {
         int rows = std::distance(begin, end);
 
         NumericBuilder<ArrowType> builder;
-        auto status = builder.Resize(rows);
-        
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Resize(rows));
 
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
@@ -35,12 +32,8 @@ namespace dataset {
         }
 
         std::shared_ptr<arrow::Array> out;
-        status = builder.Finish(&out);
-        
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
-        
+        RAISE_STATUS_ERROR(builder.Finish(&out));
+
         return out;
     }
 
@@ -52,11 +45,7 @@ namespace dataset {
         int rows = std::distance(begin, end);
 
         NumericBuilder<ArrowType> builder;
-        auto status = builder.Resize(rows);
-        
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Resize(rows));
 
         auto dwn_col = std::static_pointer_cast<ArrayType>(col);
         auto raw_values = dwn_col->raw_values();
@@ -70,11 +59,7 @@ namespace dataset {
         }
 
         std::shared_ptr<arrow::Array> out;
-        status = builder.Finish(&out);
-
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Finish(&out));
 
         return out;
     }

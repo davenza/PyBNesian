@@ -203,12 +203,11 @@ namespace factors::discrete {
     Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, 
                                      long unsigned int seed) const {
         arrow::StringBuilder dict_builder;
-        dict_builder.AppendValues(m_variable_values);
+        RAISE_STATUS_ERROR(dict_builder.AppendValues(m_variable_values));
+
+
         std::shared_ptr<arrow::StringArray> dictionary;
-        auto status = dict_builder.Finish(&dictionary);
-        if (!status.ok()) {
-            throw std::runtime_error("Dictionary array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(dict_builder.Finish(&dictionary));
 
         Array_ptr indices;
         DataType_ptr type;

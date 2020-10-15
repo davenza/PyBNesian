@@ -4,6 +4,7 @@
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
 #include <random>
+#include <util/arrow_macros.hpp>
 
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;
@@ -178,7 +179,7 @@ namespace factors::discrete {
             auto offset = i*m_variable_values.size();
 
             accum_prob(offset) = std::exp(m_logprob(offset));
-            for (auto j = 1; j < m_variable_values.size()-1; ++j) {
+            for (size_t j = 1, end = m_variable_values.size()-1; j < end; ++j) {
                 accum_prob(offset + j) = accum_prob(offset + j - 1) + std::exp(m_logprob(offset + j));
             }
         }
@@ -188,14 +189,17 @@ namespace factors::discrete {
 
         using CType = typename ArrowType::c_type;
         arrow::NumericBuilder<ArrowType> builder;
-        auto status = builder.Resize(n);
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Resize(n));
 
         if (!m_evidence.empty()) {
+            try {
+                evidence_values.has_columns(m_evidence);
+            } catch (const std::domain_error& ex) {
+                throw std::domain_error(std::string("Evidence values not present for sampling:\n") + ex.what());
+            }
+
             VectorXi parent_offset = VectorXi::Zero(n);
-            for (auto i = 0; i < m_evidence.size(); ++i) {
+            for (size_t i = 0; i < m_evidence.size(); ++i) {
                 auto array = evidence_values->GetColumnByName(m_evidence[i]);
 
                 auto dwn_array = std::static_pointer_cast<arrow::DictionaryArray>(array);
@@ -208,7 +212,7 @@ namespace factors::discrete {
                 double random_number = uniform(rng);
 
                 CType index = m_variable_values.size()-1;
-                for (auto j = 0; j < m_variable_values.size()-1; ++j) {
+                for (size_t j = 0, end = m_variable_values.size()-1; j < end; ++j) {
                     if (random_number < accum_prob(parent_offset(i) + j)) {
                         index = j;
                         break;
@@ -221,7 +225,7 @@ namespace factors::discrete {
                 double random_number = uniform(rng);
 
                 CType index = m_variable_values.size()-1;
-                for (auto j = 0; j < m_variable_values.size()-1; ++j) {
+                for (size_t j = 0, end = m_variable_values.size()-1; j < end; ++j) {
                     if (random_number < accum_prob(j)) {
                         index = j;
                         break;
@@ -232,10 +236,7 @@ namespace factors::discrete {
         }
         
         std::shared_ptr<arrow::Array> out;
-        status = builder.Finish(&out);
-        if (!status.ok()) {
-            throw std::runtime_error("New array could not be created. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(builder.Finish(&out));
         
         return out;
     }

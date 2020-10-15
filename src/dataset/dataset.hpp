@@ -7,6 +7,9 @@
 #include <Eigen/Dense>
 #include <util/parameter_traits.hpp>
 #include <util/bit_util.hpp>
+#include <util/arrow_macros.hpp>
+
+#include <iostream>
 
 namespace pyarrow = arrow::py;
 namespace py = pybind11;
@@ -16,6 +19,7 @@ using Eigen::MatrixXd, Eigen::MatrixXf, Eigen::VectorXd, Eigen::VectorXf, Eigen:
 using arrow::Type, arrow::Buffer, arrow::DoubleType, arrow::FloatType, arrow::RecordBatch;
 
 
+using Field_ptr = std::shared_ptr<arrow::Field>;
 using Array_ptr = std::shared_ptr<arrow::Array>;
 using Array_vector =  std::vector<Array_ptr>;
 using Array_iterator =  Array_vector::iterator;
@@ -266,13 +270,32 @@ namespace dataset {
 
     class DataFrame {
     public:
-
         DataFrame() = default;
+
+        DataFrame(int64_t num_rows) : m_batch(arrow::RecordBatch::Make(
+                                                arrow::schema({}),
+                                                num_rows,
+                                                Array_vector()
+                                                )) {}
 
         DataFrame(std::shared_ptr<RecordBatch> rb);
 
         const std::shared_ptr<RecordBatch>& record_batch() const { return m_batch; }
         std::vector<std::string> column_names() const;
+
+        template<typename T, util::enable_if_index_container_t<T, int> = 0>
+        void has_columns(const T cols) const { has_columns(cols.begin(), cols.end()); }
+        template<typename V>
+        void has_columns(std::initializer_list<V> cols) const { has_columns(cols.begin(), cols.end()); }
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        void has_columns(const IndexIter begin, const IndexIter end) const;
+        void has_columns(int i) const;
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        void has_columns(const StringType& name) const;
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        void has_columns(std::pair<IndexIter, IndexIter> it);
+        template<typename ...Args>
+        void has_columns(Args... args) const;
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         DataFrame loc(const T cols) const { return loc(cols.begin(), cols.end()); }
@@ -286,6 +309,10 @@ namespace dataset {
         template<typename ...Args>
         DataFrame loc(Args... args) const;
 
+        arrow::Type::type same_type() const {
+            Array_vector cols = m_batch->columns();
+            return same_type(cols.begin(), cols.end());
+        }
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         arrow::Type::type same_type(const T cols) const { return same_type(cols.begin(), cols.end()); }
         template<typename V>
@@ -326,7 +353,82 @@ namespace dataset {
             }
             return res;
         }
+
+        template<typename ArrowType>
+        std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>
+        downcast(int i) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            auto a = m_batch->column(i);
+            return std::static_pointer_cast<ArrayType>(a);
+        }
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>
+        downcast(const StringType& name) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            auto a = m_batch->GetColumnByName(name);
+            return std::static_pointer_cast<ArrayType>(a);
+        }
+        template<typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
+        std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>>
+        downcast_vector(const T n) const { 
+            return downcast_vector<ArrowType>(n.begin(), n.end());
+        }
+        template<typename ArrowType, typename V>
+        std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_vector(std::initializer_list<V> n) const { 
+            return downcast_vector<ArrowType>(n.begin(), n.end());
+        }
+        template<typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_vector(const IndexIter begin, const IndexIter end) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            Array_vector v = indices_to_columns(begin, end);
+            std::vector<std::shared_ptr<ArrayType>> res;
+            res.reserve(v.size());
+            for (auto& array : v) {
+                res.push_back(std::static_pointer_cast<ArrayType>(array));
+            }
+
+            return res;
+        }
         
+        template<typename ArrowType>
+        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_map(int i) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            auto a = m_batch->column(i);
+            return { { name(i), std::static_pointer_cast<ArrayType>(a) } };
+        }
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_map(const StringType& name) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            auto a = m_batch->GetColumnByName(name);
+            return { {name, std::static_pointer_cast<ArrayType>(a) } };
+        }
+        template<typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
+        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_map(const T n) const { 
+            return downcast_map<ArrowType>(n.begin(), n.end());
+        }
+        template<typename ArrowType, typename V>
+        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_map(std::initializer_list<V> n) const { 
+            return downcast_map<ArrowType>(n.begin(), n.end());
+        }
+        template<typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_map(const IndexIter begin, const IndexIter end) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            std::unordered_map<std::string, std::shared_ptr<ArrayType>> res;
+            
+            for (auto it = begin; it != end; ++it) {
+                res.insert({name(*it), std::static_pointer_cast<ArrayType>(col(*it))});
+            }
+
+            return res;
+        }
+
         Buffer_ptr combined_bitmap() const { 
             Array_vector cols = m_batch->columns(); 
             return dataset::combined_bitmap(cols.begin(), cols.end());
@@ -410,6 +512,16 @@ namespace dataset {
         int64_t valid_rows(Args... args) const {
             auto v = indices_to_columns(args...);
             return dataset::valid_rows(v.begin(), v.end());
+        }
+
+        template<bool append_ones, typename ArrowType>
+        EigenMatrix<ArrowType> to_eigen() const {
+            auto cols = m_batch->columns();
+            if (null_count() == 0) {
+                return dataset::to_eigen<append_ones, ArrowType, false>(cols.begin(), cols.end());
+            } else {
+                return dataset::to_eigen<append_ones, ArrowType, true>(cols.begin(), cols.end());
+            }
         }
 
         template<bool append_ones, typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
@@ -671,18 +783,12 @@ namespace dataset {
     }
 
     inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
-        auto status = b.AddField(rb->schema()->field(i));
-        if (!status.ok()) {
-            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(b.AddField(rb->schema()->field(i)));
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
     void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const StringType name) {
-        auto status = b.AddField(rb->schema()->GetFieldByName(name));
-        if (!status.ok()) {
-            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(b.AddField(rb->schema()->GetFieldByName(name)));
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
@@ -723,6 +829,31 @@ namespace dataset {
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int>>
+    void DataFrame::has_columns(const StringType& name) const {
+        auto c = m_batch->GetColumnByName(name);
+        if (!c) {
+            throw std::domain_error("Column \"" + name + "\" not found in DataFrame");
+        }
+    }
+
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
+    void DataFrame::has_columns(const IndexIter begin, const IndexIter end) const {
+        for(auto it = begin; it != end; ++it) {
+            has_columns(*it);
+        }
+    }
+
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
+    void DataFrame::has_columns(std::pair<IndexIter, IndexIter> it) {
+        has_columns(it.first, it.second);
+    }
+
+    template<typename ...Args>
+    void DataFrame::has_columns(Args... args) const {
+        (has_columns(args),...);
+    }
+
+    template<typename StringType, util::enable_if_stringable_t<StringType, int>>
     DataFrame DataFrame::loc(const StringType& name) const {
         arrow::SchemaBuilder b;
         auto f = m_batch->schema()->GetFieldByName(name);
@@ -730,10 +861,7 @@ namespace dataset {
             throw std::invalid_argument("Column \"" + name + "\" do not exist in DataFrame.");
         }
 
-        auto status = b.AddField(f);
-        if (!status.ok()) {
-            throw std::runtime_error("Field could not be added to the Schema. Error status: " + status.ToString());
-        }
+        RAISE_STATUS_ERROR(b.AddField(f));
 
         auto r = b.Finish();
         if (!r.ok()) {

@@ -231,7 +231,7 @@ def test_arcs():
     assert not gbn.has_path('a', 'c')
     assert not gbn.has_path('b', 'c')
 
-def test_fit():
+def test_bn_fit():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     with pytest.raises(ValueError) as ex:
@@ -258,7 +258,7 @@ def test_fit():
     cpd_b = gbn.cpd('b')
     assert cpd_b.evidence == gbn.parents('b')
 
-def test_cpd():
+def test_bn_cpd():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     with pytest.raises(ValueError) as ex:
@@ -344,7 +344,7 @@ def test_add_cpds():
     assert "variable which is not present" in str(ex.value)
 
 
-def test_logl():
+def test_bn_logl():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     gbn.fit(df)
@@ -367,3 +367,29 @@ def test_logl():
     assert np.all(np.isclose(ll, sum_ll))
     assert np.isclose(sll, ll.sum())
     assert sll == sum_sll
+
+def test_bn_sample():
+    gbn = GaussianNetwork(['a', 'c', 'b', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+
+    gbn.fit(df)
+    sample = gbn.sample(1000, 0, False)
+
+    # Not ordered, so topological sort.
+    assert sample.schema.names == ['a', 'b', 'c', 'd']
+    assert sample.num_rows == 1000
+    
+    sample_ordered = gbn.sample(1000, 0, True)
+    assert sample_ordered.schema.names == ['a', 'c', 'b', 'd']
+    assert sample_ordered.num_rows == 1000
+
+    assert sample.column(0).equals(sample_ordered.column(0))
+    assert sample.column(1).equals(sample_ordered.column(2))
+    assert sample.column(2).equals(sample_ordered.column(1))
+    assert sample.column(3).equals(sample_ordered.column(3))
+
+    other_seed = gbn.sample(1000, 1, False)
+
+    assert not sample.column(0).equals(other_seed.column(0))
+    assert not sample.column(1).equals(other_seed.column(2))
+    assert not sample.column(2).equals(other_seed.column(1))
+    assert not sample.column(3).equals(other_seed.column(3))

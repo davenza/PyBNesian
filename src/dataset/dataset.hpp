@@ -1,6 +1,7 @@
 #ifndef PGM_DATASET_DATASET_HPP
 #define PGM_DATASET_DATASET_HPP
 
+#include <tuple>
 #include <arrow/api.h>
 #include <arrow/python/pyarrow.h>
 #include <pybind11/pybind11.h>
@@ -35,6 +36,29 @@ namespace dataset {
     std::shared_ptr<RecordBatch> to_record_batch(py::handle pyobject);
     py::object pandas_to_pyarrow_record_batch(py::handle pyobject);
     py::object pandas_to_pyarrow_array(py::handle pyobject);
+
+    Array_ptr copy_array(const Array_ptr& array);
+
+    Array_ptr copy_array_dictionary(const Array_ptr& array);
+    Array_ptr copy_array_string(const Array_ptr& array);
+
+    template<typename ArrowType>
+    Array_ptr copy_array_numeric(const Array_ptr& array) {
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+
+        arrow::NumericBuilder<ArrowType> builder;
+        auto dwn_array = std::static_pointer_cast<ArrayType>(array);
+
+        if (array->null_count() > 0) {
+            RAISE_STATUS_ERROR(builder.AppendValues(dwn_array->raw_values(), array->length(), array->null_bitmap_data()));
+        } else {
+            RAISE_STATUS_ERROR(builder.AppendValues(dwn_array->raw_values(), array->length()));
+        }
+
+        Array_ptr out;
+        RAISE_STATUS_ERROR(builder.Finish(&out));
+        return out;
+    }
 
     template<typename ArrowType>
     using EigenMatrix = std::unique_ptr<Matrix<typename ArrowType::c_type, Dynamic, Dynamic>>;
@@ -268,6 +292,28 @@ namespace dataset {
         }
     }
 
+
+    template<bool copy, typename... Args>
+    class IndexLOC {
+    public:
+        IndexLOC(Args... args) : m_args(args...) {}
+
+        const std::tuple<Args...>& columns() const { return m_args; }
+    private:
+        const std::tuple<Args...> m_args;
+    };
+
+    template<typename... Args>
+    using CopyLOC = IndexLOC<true, Args...>;
+    template<typename... Args>
+    using MoveLOC = IndexLOC<false, Args...>;
+
+    // This is necessary because C++17 do not allow alias template type deduction.
+    template<typename... Args>
+    CopyLOC<Args...> Copy(Args... args) { 
+        return CopyLOC<Args...>(args...);
+    }
+
     class DataFrame {
     public:
         DataFrame() = default;
@@ -284,30 +330,30 @@ namespace dataset {
         std::vector<std::string> column_names() const;
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        void has_columns(const T cols) const { has_columns(cols.begin(), cols.end()); }
+        void has_columns(const T& cols) const { has_columns(cols.begin(), cols.end()); }
         template<typename V>
-        void has_columns(std::initializer_list<V> cols) const { has_columns(cols.begin(), cols.end()); }
+        void has_columns(const std::initializer_list<V>& cols) const { has_columns(cols.begin(), cols.end()); }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        void has_columns(const IndexIter begin, const IndexIter end) const;
+        void has_columns(const IndexIter& begin, const IndexIter& end) const;
         void has_columns(int i) const;
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         void has_columns(const StringType& name) const;
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        void has_columns(std::pair<IndexIter, IndexIter> it);
+        void has_columns(const std::pair<IndexIter, IndexIter>& it);
         template<typename ...Args>
-        void has_columns(Args... args) const;
+        void has_columns(const Args&... args) const;
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        DataFrame loc(const T cols) const { return loc(cols.begin(), cols.end()); }
+        DataFrame loc(const T& cols) const { return loc(cols.begin(), cols.end()); }
         template<typename V>
-        DataFrame loc(std::initializer_list<V> cols) const { return loc(cols.begin(), cols.end()); }
+        DataFrame loc(const std::initializer_list<V>& cols) const { return loc(cols.begin(), cols.end()); }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        DataFrame loc(const IndexIter begin, const IndexIter end) const;
+        DataFrame loc(const IndexIter& begin, const IndexIter& end) const;
         DataFrame loc(int i) const;
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         DataFrame loc(const StringType& name) const;
         template<typename ...Args>
-        DataFrame loc(Args... args) const;
+        DataFrame loc(const Args&... args) const;
 
         arrow::Type::type same_type() const {
             Array_vector cols = m_batch->columns();
@@ -331,9 +377,17 @@ namespace dataset {
             return same_type(v.begin(), v.end());
         }
 
-        Array_ptr col(int i) const { return m_batch->column(i); }
+        Array_ptr col(int i) const { 
+            if (i < m_batch->num_columns())
+                return m_batch->column(i);
+            else
+                throw std::invalid_argument("Column index " + std::to_string(i) + " do not exist in DataFrame.");
+        }
+
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        Array_ptr col(const StringType& name) const { return m_batch->GetColumnByName(name); }
+        Array_ptr col(const StringType& name) const { 
+            return m_batch->GetColumnByName(name); 
+        }
 
         const std::string& name(int i) const { return m_batch->column_name(i); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
@@ -368,6 +422,20 @@ namespace dataset {
             auto a = m_batch->GetColumnByName(name);
             return std::static_pointer_cast<ArrayType>(a);
         }
+
+        template<typename ArrowType>
+        std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>>
+        downcast_vector() const { 
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            Array_vector v = indices_to_columns();
+            std::vector<std::shared_ptr<ArrayType>> res;
+            res.reserve(v.size());
+            for (auto& array : v) {
+                res.push_back(std::static_pointer_cast<ArrayType>(array));
+            }
+
+            return res;
+        }
         template<typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
         std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>>
         downcast_vector(const T n) const { 
@@ -378,11 +446,26 @@ namespace dataset {
         downcast_vector(std::initializer_list<V> n) const { 
             return downcast_vector<ArrowType>(n.begin(), n.end());
         }
+
         template<typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
         downcast_vector(const IndexIter begin, const IndexIter end) const {
             using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
             Array_vector v = indices_to_columns(begin, end);
+            std::vector<std::shared_ptr<ArrayType>> res;
+            res.reserve(v.size());
+            for (auto& array : v) {
+                res.push_back(std::static_pointer_cast<ArrayType>(array));
+            }
+
+            return res;
+        }
+
+        template<typename ArrowType, typename ...Args>
+        std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_vector(Args... args) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            Array_vector v = indices_to_columns(args...);
             std::vector<std::shared_ptr<ArrayType>> res;
             res.reserve(v.size());
             for (auto& array : v) {
@@ -722,16 +805,20 @@ namespace dataset {
                                                                 const std::vector<std::vector<int>::iterator>& test_limits);
 
     private:
+
+        Array_vector indices_to_columns() const {
+            return m_batch->columns();
+        }
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        Array_vector indices_to_columns(const T cols) const {
+        Array_vector indices_to_columns(const T& cols) const {
             return indices_to_columns(cols.begin(), cols.end());
         }
 
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        Array_vector indices_to_columns(const IndexIter begin, const IndexIter end) const;
+        Array_vector indices_to_columns(const IndexIter& begin, const IndexIter& end) const;
 
         template<typename ...Args>
-        Array_vector indices_to_columns(Args... args) const;
+        Array_vector indices_to_columns(const Args&... args) const;
 
         arrow::Type::type same_type(Array_iterator begin, Array_iterator end) const;
 
@@ -739,15 +826,55 @@ namespace dataset {
     };
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    inline int size_argument(const T arg) { return arg.size(); }
+    inline int size_argument(const T& arg) { return arg.size(); }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline int size_argument(const std::pair< IndexIter, IndexIter> it) { return std::distance(it.first, it.second); }
+    inline int size_argument(const std::pair<IndexIter, IndexIter>& it) { return std::distance(it.first, it.second); }
 
     inline int size_argument(int) { return 1; }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    inline int size_argument(const StringType) { return 1; }
+    inline int size_argument(const StringType&) { return 1; }
+
+    template<bool copy, typename... Args>
+    inline int size_argument(const IndexLOC<copy, Args...>& loc) { 
+        return std::apply([](const auto&... args) {
+            return (size_argument(args) + ...);
+        }, loc.columns());
+    }
+
+    inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
+        if (i < rb->num_columns())
+            arrays.push_back(copy_array(rb->column(i)));
+        else
+            throw std::invalid_argument("Column index " + std::to_string(i) + " do not exist in DataFrame.");
+    }
+
+    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+    inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const StringType& name) {
+        auto c = rb->GetColumnByName(name);
+        if (c)
+            arrays.push_back(copy_array(c));
+        else
+            throw std::invalid_argument("Column \"" + name + "\" do not exist in DataFrame.");
+    }
+
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const IndexIter& begin, const IndexIter& end) {
+        for (auto it = begin; it != end; ++it) {
+            append_copy_columns(rb, arrays, *it);
+        }
+    }
+
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const std::pair<IndexIter, IndexIter>& it) {
+        return append_copy_columns(rb, it.first, it.second);
+    }
+
+    template<typename T, util::enable_if_index_container_t<T, int> = 0>
+    inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const T& arg) { 
+        return append_copy_columns(rb, arg.begin(), arg.end()); 
+    }
 
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
         if (i < rb->num_columns())
@@ -757,7 +884,7 @@ namespace dataset {
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const StringType name) {
+    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const StringType& name) {
         auto c = rb->GetColumnByName(name);
         if (c)
             arrays.push_back(c);
@@ -766,20 +893,34 @@ namespace dataset {
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const IndexIter begin, const IndexIter end) {
+    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const IndexIter& begin, const IndexIter& end) {
         for (auto it = begin; it != end; ++it) {
             append_columns(rb, arrays, *it);
         }
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const std::pair<IndexIter, IndexIter> it) {
+    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const std::pair<IndexIter, IndexIter>& it) {
         append_columns(rb, arrays, it.first, it.second);
     }
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const T arg) { 
+    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const T& arg) { 
         append_columns(rb, arrays, arg.begin(), arg.end()); 
+    }
+
+    template<typename ...Args>
+    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const CopyLOC<Args...>& cols) {
+        std::apply([&rb, &arrays](const auto&...args) {
+            return (append_copy_columns(rb, arrays, args),...);
+        }, cols.columns());
+    }
+
+    template<typename ...Args>
+    inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const MoveLOC<Args...>& cols) {
+        std::apply([&rb, &arrays](const auto&... args) {
+            (append_columns(rb, arrays, args),...);
+        }, cols.columns());
     }
 
     inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
@@ -787,29 +928,36 @@ namespace dataset {
     }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const StringType name) {
+    void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const StringType& name) {
         RAISE_STATUS_ERROR(b.AddField(rb->schema()->GetFieldByName(name)));
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, IndexIter begin, IndexIter end) {
+    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const IndexIter& begin, const IndexIter& end) {
         for (auto it = begin; it != end; ++it) {
             append_schema(rb, b, *it);
         }
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, std::pair<IndexIter, IndexIter> it) {
+    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const std::pair<IndexIter, IndexIter>& it) {
         append_schema(rb, b, it.first, it.second);
     }
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    inline void append_schema(const RecordBatch_ptr& rb, Array_vector& arrays, const T arg) { 
-        append_schema(rb, arrays, arg.begin(), arg.end()); 
+    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const T& arg) { 
+        append_schema(rb, b, arg.begin(), arg.end()); 
+    }
+
+    template<bool copy, typename ...Args>
+    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const IndexLOC<copy, Args...>& cols) { 
+        std::apply([&rb, &b](const auto&... args) {
+            (append_schema(rb, b, args),...);
+        }, cols.columns());
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
-    Array_vector DataFrame::indices_to_columns(const IndexIter begin, const IndexIter end) const {
+    Array_vector DataFrame::indices_to_columns(const IndexIter& begin, const IndexIter& end) const {
         Array_vector v;
         v.reserve(std::distance(begin, end));
         append_columns(m_batch, v, begin, end);
@@ -817,7 +965,7 @@ namespace dataset {
     }
 
     template<typename ...Args>
-    Array_vector DataFrame::indices_to_columns(Args... args) const {
+    Array_vector DataFrame::indices_to_columns(const Args&... args) const {
         Array_vector cols;
 
         int total_size = (size_argument(args) + ...);
@@ -837,19 +985,19 @@ namespace dataset {
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
-    void DataFrame::has_columns(const IndexIter begin, const IndexIter end) const {
+    void DataFrame::has_columns(const IndexIter& begin, const IndexIter& end) const {
         for(auto it = begin; it != end; ++it) {
             has_columns(*it);
         }
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
-    void DataFrame::has_columns(std::pair<IndexIter, IndexIter> it) {
+    void DataFrame::has_columns(const std::pair<IndexIter, IndexIter>& it) {
         has_columns(it.first, it.second);
     }
 
     template<typename ...Args>
-    void DataFrame::has_columns(Args... args) const {
+    void DataFrame::has_columns(const Args&... args) const {
         (has_columns(args),...);
     }
 
@@ -873,7 +1021,7 @@ namespace dataset {
 
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
-    DataFrame DataFrame::loc(const IndexIter begin, const IndexIter end) const {
+    DataFrame DataFrame::loc(const IndexIter& begin, const IndexIter& end) const {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
         Array_vector new_cols;
         new_cols.reserve(std::distance(begin, end));
@@ -889,7 +1037,7 @@ namespace dataset {
     }
 
     template<typename ...Args>
-    DataFrame DataFrame::loc(Args... args) const {
+    DataFrame DataFrame::loc(const Args&... args) const {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
         Array_vector new_cols;
 

@@ -261,3 +261,34 @@ def test_lg_cdf_null():
                         cpd.cdf(df_null), 
                         cpd2.cdf(df_null), equal_nan=True)),\
                      "The order of the evidence changes the cdf() result."
+
+def test_lg_sample():
+    SAMPLE_SIZE = 1000
+
+    cpd = LinearGaussianCPD('a', [])
+    cpd.fit(df)
+    
+    sampled = cpd.sample(SAMPLE_SIZE, None, 0)
+
+    assert sampled.type == pa.float64()
+    assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
+        
+    cpd = LinearGaussianCPD('b', ['a'])
+    cpd.fit(df)
+
+    sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0)})
+    sampled = cpd.sample(SAMPLE_SIZE, sampling_df, 0)
+
+    assert sampled.type == pa.float64()
+    assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
+    
+
+    cpd = LinearGaussianCPD('c', ['a', 'b'])
+    cpd.fit(df)
+
+    sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0),
+                                'b': np.full((SAMPLE_SIZE,), 7.45)})
+    sampled = cpd.sample(SAMPLE_SIZE, sampling_df, 0)
+
+    assert sampled.type == pa.float64()
+    assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE

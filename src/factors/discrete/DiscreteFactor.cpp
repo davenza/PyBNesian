@@ -205,7 +205,6 @@ namespace factors::discrete {
         arrow::StringBuilder dict_builder;
         RAISE_STATUS_ERROR(dict_builder.AppendValues(m_variable_values));
 
-
         std::shared_ptr<arrow::StringArray> dictionary;
         RAISE_STATUS_ERROR(dict_builder.Finish(&dictionary));
 

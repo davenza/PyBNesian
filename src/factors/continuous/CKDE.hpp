@@ -433,19 +433,14 @@ namespace factors::continuous {
             Array_ptr out;
             RAISE_STATUS_ERROR(builder.Finish(&out));
 
-
             columns.push_back(out);
             builder.Reset();
 
             auto f = arrow::field(m_variables[i], out->type());
             RAISE_STATUS_ERROR(b.AddField(f));
         }
-
-        auto r = b.Finish();
-        if (!r.ok()) {
-            throw std::domain_error("Schema could not be created.");
-        }
-        auto schema = std::move(r).ValueOrDie();
+        
+        RAISE_RESULT_ERROR(auto schema, b.Finish())
 
         auto rb = arrow::RecordBatch::Make(schema, N, columns);
         return DataFrame(rb);

@@ -470,7 +470,7 @@ def test_ckde_cdf_null():
                              cpd2.cdf(df_null_float), 
                              atol=0.0005, equal_nan=True)), "Order of evidence changes cdf() result."
 
-def test_sample():
+def test_ckde_sample():
     SAMPLE_SIZE = 1000
 
     cpd = CKDE('a', [])

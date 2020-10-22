@@ -9,4 +9,10 @@
         }                                                                               \
     }                                                                                   
 
+#define RAISE_RESULT_ERROR(res, expr)                                                       \
+    auto __result = (expr);                                                                 \
+    RAISE_STATUS_ERROR(__result.status())                                                   \
+    res = std::move(__result).ValueOrDie();                                                
+
+
 #endif //PGM_DATASET_ARROW_MACROS_HPP

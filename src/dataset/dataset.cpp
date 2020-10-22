@@ -74,78 +74,134 @@ namespace dataset {
         return nullptr;
     }
 
-    template<typename ArrowType>
-    std::shared_ptr<Array> copy_array(std::shared_ptr<arrow::NumericArray<ArrowType>> ar,
-                    std::shared_ptr<Buffer> bitmap,
-                    uint64_t n_rows) {
 
-        using arrow::BitUtil::GetBit;
-        using arrow::internal::BitmapWordAlign;
-
-        NumericBuilder<ArrowType> builder;
-        RAISE_STATUS_ERROR(builder.Resize(n_rows));
-
-        auto bitmap_data = bitmap->data();
-        const auto p = BitmapWordAlign<8>(bitmap_data, 0, n_rows);
-
-        for(int64_t i = 0; i < p.leading_bits; ++i) {
-            if(GetBit(bitmap_data, i)) {
-                builder.UnsafeAppend(ar->Value(i));
-            }
-        }
-
-        if (p.aligned_words > 0) {
-            const uint64_t* u64_bitmap = reinterpret_cast<const uint64_t*>(p.aligned_start);
-
-            const uint64_t* end = u64_bitmap + p.aligned_words;
-
-            int64_t offset = p.leading_bits;
-            for(const uint64_t* i = u64_bitmap; i < end; ++i, offset += 64) {
-
-                if (*i == 0xFFFFFFFFFFFFFFFF) {
-                    RAISE_STATUS_ERROR(builder.AppendValues(ar->raw_values() + offset, 64));
-                } else {
-                    auto u8_buf = bitmap_data + (i-u64_bitmap)*8;
-                    for(int64_t j = 0; j < 64; ++j) {
-                        if(GetBit(u8_buf, j)) {
-                            builder.UnsafeAppend(ar->Value(offset+j));
-                        }
-                    }
-                }
-            }
-        }
-
-        for (int64_t i = p.trailing_bit_offset; i < ar->length(); ++i) {
-            if (GetBit(bitmap_data, i)) {
-                builder.UnsafeAppend(ar->Value(i));
-            }
-        }
-
-        std::shared_ptr<Array> out;
-        RAISE_STATUS_ERROR(builder.Finish(&out));
-        
-        return out;
-    }
-
-
-#define CASE_DOWNCAST_COPY(TypeID, Data_Type)                                                                \
-case Type::TypeID:                                                                                           \
-        return copy_array<Data_Type>(std::static_pointer_cast<arrow::NumericArray<Data_Type>>(ar),           \
-                                                bitmap,                                                      \
-                                                n_rows);                                                     \
-
-    std::shared_ptr<Array> copy_array_with_bitmap(std::shared_ptr<Array> ar,
-                                std::shared_ptr<Buffer> bitmap,
-                                std::shared_ptr<DataType> dt,
-                                uint64_t n_rows) {
-        switch (dt->id()) {
-            CASE_DOWNCAST_COPY(DOUBLE, arrow::DoubleType);
-            CASE_DOWNCAST_COPY(FLOAT, arrow::FloatType);
+    Array_ptr copy_array(const Array_ptr& array) {
+        switch (array->type_id()) {
+            case Type::DOUBLE:
+                return copy_array_numeric<arrow::DoubleType>(array);
+            case Type::FLOAT:
+                return copy_array_numeric<arrow::FloatType>(array);
+            case Type::INT64:
+                return copy_array_numeric<arrow::Int64Type>(array);
+            case Type::UINT64:
+                return copy_array_numeric<arrow::UInt64Type>(array);
+            case Type::INT32:
+                return copy_array_numeric<arrow::Int32Type>(array);
+            case Type::UINT32:
+                return copy_array_numeric<arrow::UInt32Type>(array);
+            case Type::INT16:
+                return copy_array_numeric<arrow::Int16Type>(array);
+            case Type::UINT16:
+                return copy_array_numeric<arrow::UInt16Type>(array);
+            case Type::INT8:
+                return copy_array_numeric<arrow::Int8Type>(array);
+            case Type::UINT8:
+                return copy_array_numeric<arrow::UInt8Type>(array);
+            case Type::STRING:
+                return copy_array_string(array);
+            case Type::DICTIONARY:
+                return copy_array_dictionary(array);
             default:
-                return nullptr;
+                throw std::invalid_argument("Not supported datatype copy.");
         }
     }
-#undef CASE_DOWNCAST_COPY
+
+    Array_ptr copy_array_string(const Array_ptr& array) {
+        arrow::StringBuilder builder;
+
+        auto dwn_array = std::static_pointer_cast<arrow::StringArray>(array);
+        auto res_offsets = arrow::Buffer::Copy(dwn_array->value_offsets(), arrow::default_cpu_memory_manager());
+        RAISE_STATUS_ERROR(res_offsets.status())
+        auto new_value_offsets = std::move(res_offsets).ValueOrDie();
+
+        auto res_values = arrow::Buffer::Copy(dwn_array->value_data(), arrow::default_cpu_memory_manager());
+        RAISE_STATUS_ERROR(res_values.status())
+        auto new_values = std::move(res_values).ValueOrDie();
+
+        auto null_count = array->null_count();
+        return std::make_shared<arrow::StringArray>(dwn_array->length(), 
+                        new_value_offsets, new_values, dwn_array->null_bitmap(), null_count);
+    }
+
+    Array_ptr copy_array_dictionary(const Array_ptr& array) {
+        auto dwn_array = std::static_pointer_cast<arrow::DictionaryArray>(array);
+        auto new_dictionary = copy_array(dwn_array->dictionary());
+        auto new_indices = copy_array(dwn_array->indices());
+        return std::make_shared<arrow::DictionaryArray>(array->type(), new_indices, new_dictionary);
+    }
+
+    // template<typename ArrowType>
+    // std::shared_ptr<Array> copy_array(std::shared_ptr<arrow::NumericArray<ArrowType>> ar,
+    //                 std::shared_ptr<Buffer> bitmap,
+    //                 uint64_t n_rows) {
+
+    //     using arrow::BitUtil::GetBit;
+    //     using arrow::internal::BitmapWordAlign;
+
+    //     NumericBuilder<ArrowType> builder;
+    //     RAISE_STATUS_ERROR(builder.Resize(n_rows));
+
+    //     auto bitmap_data = bitmap->data();
+    //     const auto p = BitmapWordAlign<8>(bitmap_data, 0, n_rows);
+
+    //     for(int64_t i = 0; i < p.leading_bits; ++i) {
+    //         if(GetBit(bitmap_data, i)) {
+    //             builder.UnsafeAppend(ar->Value(i));
+    //         }
+    //     }
+
+    //     if (p.aligned_words > 0) {
+    //         const uint64_t* u64_bitmap = reinterpret_cast<const uint64_t*>(p.aligned_start);
+
+    //         const uint64_t* end = u64_bitmap + p.aligned_words;
+
+    //         int64_t offset = p.leading_bits;
+    //         for(const uint64_t* i = u64_bitmap; i < end; ++i, offset += 64) {
+
+    //             if (*i == 0xFFFFFFFFFFFFFFFF) {
+    //                 RAISE_STATUS_ERROR(builder.AppendValues(ar->raw_values() + offset, 64));
+    //             } else {
+    //                 auto u8_buf = bitmap_data + (i-u64_bitmap)*8;
+    //                 for(int64_t j = 0; j < 64; ++j) {
+    //                     if(GetBit(u8_buf, j)) {
+    //                         builder.UnsafeAppend(ar->Value(offset+j));
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     for (int64_t i = p.trailing_bit_offset; i < ar->length(); ++i) {
+    //         if (GetBit(bitmap_data, i)) {
+    //             builder.UnsafeAppend(ar->Value(i));
+    //         }
+    //     }
+
+    //     std::shared_ptr<Array> out;
+    //     RAISE_STATUS_ERROR(builder.Finish(&out));
+        
+    //     return out;
+    // }
+
+
+// #define CASE_DOWNCAST_COPY(TypeID, Data_Type)                                                                \
+// case Type::TypeID:                                                                                           \
+//         return copy_array<Data_Type>(std::static_pointer_cast<arrow::NumericArray<Data_Type>>(ar),           \
+//                                                 bitmap,                                                      \
+//                                                 n_rows);                                                     \
+
+//     std::shared_ptr<Array> copy_array_with_bitmap(std::shared_ptr<Array> ar,
+//                                 std::shared_ptr<Buffer> bitmap,
+//                                 std::shared_ptr<DataType> dt,
+//                                 uint64_t n_rows) {
+//         switch (dt->id()) {
+//             CASE_DOWNCAST_COPY(DOUBLE, arrow::DoubleType);
+//             CASE_DOWNCAST_COPY(FLOAT, arrow::FloatType);
+//             default:
+//                 return nullptr;
+//         }
+//     }
+// #undef CASE_DOWNCAST_COPY
 
     DataFrame::DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) { }
 

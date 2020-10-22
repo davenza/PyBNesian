@@ -220,9 +220,7 @@ namespace learning::independences::continuous {
     template<typename VarType, typename Iter>
     double LinearCorrelation::pvalue_cached(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const {
         std::vector<int> cached_indices;
-
-
-    
+   
         for (auto it = evidence_begin; it != evidence_end; ++it) {
             cached_indices.push_back(cached_index(*it));
         }

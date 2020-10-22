@@ -23,7 +23,7 @@ from numpy.distutils.conv_template import process_file as process_c_file
 __version__ = '0.0.1'
 
 # os.environ['CC'] = "ccache gcc-10"
-os.environ['CC'] = "ccache clang-10"
+os.environ['CC'] = "ccache clang-11"
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -88,6 +88,8 @@ ext_modules = [
          'src/learning/algorithms/hillclimbing.cpp',
          'src/learning/algorithms/pc.cpp',
          'src/learning/independences/continuous/linearcorrelation.cpp',
+         'src/learning/independences/continuous/kdtree.cpp',
+        #  'src/learning/independences/continuous/mutual_information.cpp',
          'src/graph/dag.cpp',
          'src/graph/undirected.cpp',
          'src/graph/pdag.cpp',
@@ -177,6 +179,7 @@ class BuildExt(build_ext):
         link_opts = self.l_opts.get(ct, [])
         # Include this because the name mangling affects to find the pyarrow functions.
         opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")
+        # opts.append("-libstd=libc++")
         # opts.append("-ferror-limit=1")
 
         opts.append("-Wall")

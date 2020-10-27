@@ -33,19 +33,17 @@ namespace learning::independences {
 
         switch (m_datatype) {
                 case Type::DOUBLE: {
-                    for (size_t j = 0; j < df->num_columns(); ++j) {
-                        auto eigen_vec = df.to_eigen<false, arrow::DoubleType>(j);
-                        m_mines(j) = eigen_vec->minCoeff();
-                        m_maxes(j) = eigen_vec->maxCoeff();
+                    for (int j = 0; j < df->num_columns(); ++j) {
+                        m_mines(j) = df.min<arrow::DoubleType>(j);
+                        m_maxes(j) = df.max<arrow::DoubleType>(j);
                     }
 
                     break;
                 }
                 case Type::FLOAT: {
-                    for (size_t j = 0; j < df->num_columns(); ++j) {
-                        auto eigen_vec = df.to_eigen<false, arrow::FloatType>(j);
-                        m_mines(j) = static_cast<double>(eigen_vec->minCoeff());
-                        m_maxes(j) = static_cast<double>(eigen_vec->maxCoeff());
+                    for (int j = 0; j < df->num_columns(); ++j) {
+                        m_mines(j) = df.min<arrow::FloatType>(j);
+                        m_maxes(j) = df.max<arrow::FloatType>(j);
                     }
                     break;
                 }
@@ -77,25 +75,25 @@ namespace learning::independences {
 
                 if (p == 1) {
                     ManhattanDistance<arrow::DoubleType> dist(train_downcast, test_downcast);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::DoubleType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
                 } else if (p == 2) {
                     EuclideanDistance<arrow::DoubleType> dist(train_downcast, test_downcast);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::DoubleType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
                 } else if (std::isinf(p)) {
                     ChebyshevDistance<arrow::DoubleType> dist(train_downcast, test_downcast);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::DoubleType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
                 } else {
                     MinkowskiP<arrow::DoubleType> dist(train_downcast, test_downcast, p);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::DoubleType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
@@ -108,25 +106,25 @@ namespace learning::independences {
 
                 if (p == 1) {
                     ManhattanDistance<arrow::FloatType> dist(train_downcast, test_downcast);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::FloatType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
                 } else if (p == 2) {
                     EuclideanDistance<arrow::FloatType> dist(train_downcast, test_downcast);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::FloatType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
                 } else if (std::isinf(p)) {
                     ChebyshevDistance<arrow::FloatType> dist(train_downcast, test_downcast);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::FloatType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
                 } else {
                     MinkowskiP<arrow::FloatType> dist(train_downcast, test_downcast, p);
-                    for (size_t i = 0; i < test_df->num_rows(); ++i) {
+                    for (int i = 0; i < test_df->num_rows(); ++i) {
                         auto t = query_instance<arrow::FloatType>(test_downcast, i, k, dist);
                         res.push_back(t);
                     }
@@ -148,7 +146,7 @@ namespace learning::independences {
                 auto train_downcast = m_df.downcast<arrow::DoubleType>(subspace_index);
                 auto test_downcast = test_df.downcast<arrow::DoubleType>(subspace_index);
 
-                for(size_t i = 0; i < test_df->num_rows(); ++i) {
+                for(int i = 0; i < test_df->num_rows(); ++i) {
                     res(i) = count_instance_subspace_eps<arrow::DoubleType>(train_downcast,
                                                                             subspace_index, 
                                                                             test_downcast->Value(i),
@@ -160,7 +158,7 @@ namespace learning::independences {
                 auto train_downcast = m_df.downcast<arrow::FloatType>(subspace_index);
                 auto test_downcast = test_df.downcast<arrow::FloatType>(subspace_index);
 
-                for(size_t i = 0; i < test_df->num_rows(); ++i) {
+                for(int i = 0; i < test_df->num_rows(); ++i) {
                     res(i) = count_instance_subspace_eps<arrow::FloatType>(train_downcast,
                                                                            subspace_index, 
                                                                            test_downcast->Value(i),
@@ -169,6 +167,9 @@ namespace learning::independences {
 
                 break;
             }
+            default:
+                throw std::invalid_argument("Wrong data type to apply KDTree.");
+
         }
 
         return res;
@@ -193,7 +194,7 @@ namespace learning::independences {
                 auto test_y = test_df.downcast<arrow::DoubleType>(y);
 
 
-                for(size_t i = 0; i < test_df->num_rows(); ++i) {
+                for(int i = 0; i < test_df->num_rows(); ++i) {
                     auto c = count_instance_conditional_subspaces<arrow::DoubleType>(test_x,
                                                                                      test_y,
                                                                                      test_z,
@@ -218,7 +219,7 @@ namespace learning::independences {
                 auto test_y = test_df.downcast<arrow::FloatType>(y);
 
 
-                for(size_t i = 0; i < test_df->num_rows(); ++i) {
+                for(int i = 0; i < test_df->num_rows(); ++i) {
                     auto c = count_instance_conditional_subspaces<arrow::FloatType>(test_x,
                                                                                      test_y,
                                                                                      test_z,
@@ -235,6 +236,9 @@ namespace learning::independences {
                 }
                 break;
             }
+            default:
+                throw std::invalid_argument("Wrong data type to apply KDTree.");
+
         }
 
         return std::make_tuple(count_xz, count_yz, count_z);

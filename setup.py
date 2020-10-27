@@ -89,7 +89,7 @@ ext_modules = [
          'src/learning/algorithms/pc.cpp',
          'src/learning/independences/continuous/linearcorrelation.cpp',
          'src/learning/independences/continuous/kdtree.cpp',
-        #  'src/learning/independences/continuous/mutual_information.cpp',
+         'src/learning/independences/continuous/mutual_information.cpp',
          'src/graph/dag.cpp',
          'src/graph/undirected.cpp',
          'src/graph/pdag.cpp',

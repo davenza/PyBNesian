@@ -66,8 +66,12 @@ void pybindings_independence_tests(py::module& root) {
                                     py::arg("eps"));
 
     py::class_<KMutualInformation>(independence_tests, "KMutualInformation")
-        .def(py::init<DataFrame, int>(),
-            py::arg("df"), py::arg("k"))
+        .def(py::init<DataFrame, int, long unsigned int, int, int>(),
+            py::arg("df"), py::arg("k"), py::arg("seed"), py::arg("shuffle_neighbors") = 5, py::arg("samples") = 1000)
+        .def(py::init<DataFrame, int,  int, int>(),
+            py::arg("df"), py::arg("k"), py::arg("shuffle_neighbors") = 5, py::arg("samples") = 1000)
+        .def_property("samples", &KMutualInformation::samples, &KMutualInformation::set_samples)
+        .def_property("seed", &KMutualInformation::seed, &KMutualInformation::set_seed)
         .def("mi", [](KMutualInformation& self, int v1, int v2) {
             return self.mi(v1, v2);
         })
@@ -86,10 +90,19 @@ void pybindings_independence_tests(py::module& root) {
         .def("mi", [](KMutualInformation& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
             return self.mi(v1, v2, cond.begin(), cond.end());
         })
-        .def("pvalue", [](KMutualInformation& self, int v1, int v2, int samples) {
-            return self.pvalue(v1, v2, samples);
-        }, py::arg("v1"), py::arg("v2"), py::arg("samples") = 1000)
-        .def("pvalue", [](KMutualInformation& self, const std::string& v1, const std::string& v2, int samples) {
-            return self.pvalue(v1, v2, samples);
-        }, py::arg("v1"), py::arg("v2"), py::arg("samples") = 1000);
+        .def("pvalue", [](KMutualInformation& self, int v1, int v2) {
+            return self.pvalue(v1, v2);
+        }, py::arg("v1"), py::arg("v2"))
+        .def("pvalue", [](KMutualInformation& self, const std::string& v1, const std::string& v2) {
+            return self.pvalue(v1, v2);
+        }, py::arg("v1"), py::arg("v2"))
+        .def("pvalue", [](KMutualInformation& self, int v1, int v2, int cond) {
+            return self.pvalue(v1, v2, cond);
+        }, py::arg("v1"), py::arg("v2"), py::arg("cond_var"))
+        .def("pvalue", [](KMutualInformation& self, 
+                            const std::string& v1, 
+                            const std::string& v2, 
+                            const std::string& cond) {
+            return self.pvalue(v1, v2, cond);
+        }, py::arg("v1"), py::arg("v2"), py::arg("cond_var"));
 }

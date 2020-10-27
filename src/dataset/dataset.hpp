@@ -105,6 +105,51 @@ namespace dataset {
         return ptr + k;
     }
 
+    template<typename ArrowType>
+    typename ArrowType::c_type min(Array_ptr a) {
+        using CType = typename ArrowType::c_type;
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        using MapType = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
+        auto dwn = std::static_pointer_cast<ArrayType>(a);
+
+        auto raw = dwn->raw_values();
+        if (a->null_count() == 0) {
+            MapType map(raw, a->length());
+            return map.minCoeff();
+        } else {
+            auto bitmap = a->null_bitmap_data();
+            auto res = std::numeric_limits<CType>::infinity();
+            for (auto i = 0; i < a->length(); ++i) {
+                if (arrow::BitUtil::GetBit(bitmap, i) && raw[i] < res)
+                    res = raw[i];
+            }
+            return res;
+        }
+    }
+
+    template<typename ArrowType>
+    typename ArrowType::c_type max(Array_ptr a) {
+        using CType = typename ArrowType::c_type;
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        using MapType = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
+        auto dwn = std::static_pointer_cast<ArrayType>(a);
+
+        auto raw = dwn->raw_values();
+        if (a->null_count() == 0) {
+            MapType map(raw, a->length());
+            return map.maxCoeff();
+        } else {
+            auto bitmap = a->null_bitmap_data();
+            auto res = -std::numeric_limits<CType>::infinity();
+            for (auto i = 0; i < a->length(); ++i) {
+                if (arrow::BitUtil::GetBit(bitmap, i) && raw[i] > res)
+                    res = raw[i];
+            }
+            return res;
+        }
+
+    }
+
     template<bool append_ones, typename ArrowType>
     EigenMatrix<ArrowType> to_eigen(Buffer_ptr bitmap, Array_iterator begin, Array_iterator end) {
         auto ncols = std::distance(begin, end);
@@ -313,6 +358,10 @@ namespace dataset {
     CopyLOC<Args...> Copy(Args... args) { 
         return CopyLOC<Args...>(args...);
     }
+    template<typename... Args>
+    MoveLOC<Args...> Move(Args... args) { 
+        return MoveLOC<Args...>(args...);
+    }
 
     class DataFrame {
     public:
@@ -406,6 +455,26 @@ namespace dataset {
                 res.push_back(name(*it));
             }
             return res;
+        }
+
+        template<typename ArrowType>
+        const typename ArrowType::c_type* data(int i) const {
+            return m_batch->column_data(i)->template GetValues<typename ArrowType::c_type>(1);
+        }
+
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        const typename ArrowType::c_type* data(const StringType& name) const {
+            return m_batch->GetColumnByName(name)->data()->template GetValues<typename ArrowType::c_type>(1);
+        }
+
+        template<typename ArrowType>
+        typename ArrowType::c_type* mutable_data(int i) const {
+            return m_batch->column_data(i)->template GetMutableValues<typename ArrowType::c_type>(1);
+        }
+
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        typename ArrowType::c_type* mutable_data(const StringType& name) const {
+            return m_batch->GetColumnByName(name)->data()->template GetMutableValues<typename ArrowType::c_type>(1);
         }
 
         template<typename ArrowType>
@@ -596,6 +665,27 @@ namespace dataset {
             auto v = indices_to_columns(args...);
             return dataset::valid_rows(v.begin(), v.end());
         }
+
+        template<typename ArrowType>
+        typename ArrowType::c_type min(int i) const {
+            return dataset::min<ArrowType>(m_batch->column(i));
+        }
+
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        typename ArrowType::c_type min(const StringType& name) const {
+            return dataset::min<ArrowType>(m_batch->GetColumnByName(name));
+        }
+
+        template<typename ArrowType>
+        typename ArrowType::c_type max(int i) const {
+            return dataset::max<ArrowType>(m_batch->column(i));
+        }
+
+        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        typename ArrowType::c_type max(const StringType& name) const {
+            return dataset::max<ArrowType>(m_batch->GetColumnByName(name));
+        }
+
 
         template<bool append_ones, typename ArrowType>
         EigenMatrix<ArrowType> to_eigen() const {
@@ -826,21 +916,27 @@ namespace dataset {
     };
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    inline int size_argument(const T& arg) { return arg.size(); }
+    inline int size_argument(const RecordBatch_ptr&, const T& arg) { return arg.size(); }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline int size_argument(const std::pair<IndexIter, IndexIter>& it) { return std::distance(it.first, it.second); }
+    inline int size_argument(const RecordBatch_ptr&, const std::pair<IndexIter, IndexIter>& it) { 
+        return std::distance(it.first, it.second); 
+    }
 
-    inline int size_argument(int) { return 1; }
+    inline int size_argument(const RecordBatch_ptr&, int) { return 1; }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    inline int size_argument(const StringType&) { return 1; }
+    inline int size_argument(const RecordBatch_ptr&, const StringType&) { return 1; }
 
     template<bool copy, typename... Args>
-    inline int size_argument(const IndexLOC<copy, Args...>& loc) { 
-        return std::apply([](const auto&... args) {
-            return (size_argument(args) + ...);
-        }, loc.columns());
+    inline int size_argument(const RecordBatch_ptr& rb, const IndexLOC<copy, Args...>& cols) {
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            return rb->num_columns();
+        } else {
+            return std::apply([&rb](const auto&... args) {
+                return (size_argument(rb, args) + ...);
+            }, cols.columns());
+        }
     }
 
     inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
@@ -868,12 +964,12 @@ namespace dataset {
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
     inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const std::pair<IndexIter, IndexIter>& it) {
-        return append_copy_columns(rb, it.first, it.second);
+        return append_copy_columns(rb, arrays, it.first, it.second);
     }
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const T& arg) { 
-        return append_copy_columns(rb, arg.begin(), arg.end()); 
+        return append_copy_columns(rb, arrays, arg.begin(), arg.end()); 
     }
 
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
@@ -911,16 +1007,28 @@ namespace dataset {
 
     template<typename ...Args>
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const CopyLOC<Args...>& cols) {
-        std::apply([&rb, &arrays](const auto&...args) {
-            return (append_copy_columns(rb, arrays, args),...);
-        }, cols.columns());
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            for (int i = 0; i < rb->num_columns(); ++i) {
+                append_copy_columns(rb, arrays, i);
+            }
+        } else {
+            std::apply([&rb, &arrays](const auto&...args) {
+                (append_copy_columns(rb, arrays, args),...);
+            }, cols.columns());
+        }
     }
 
     template<typename ...Args>
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, const MoveLOC<Args...>& cols) {
-        std::apply([&rb, &arrays](const auto&... args) {
-            (append_columns(rb, arrays, args),...);
-        }, cols.columns());
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            for (int i = 0; i < rb->num_columns(); ++i) {
+                append_columns(rb, arrays, i);
+            }
+        } else {
+            std::apply([&rb, &arrays](const auto&...args) {
+                (append_columns(rb, arrays, args),...);
+            }, cols.columns());
+        }
     }
 
     inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, int i) {
@@ -950,10 +1058,16 @@ namespace dataset {
     }
 
     template<bool copy, typename ...Args>
-    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const IndexLOC<copy, Args...>& cols) { 
-        std::apply([&rb, &b](const auto&... args) {
-            (append_schema(rb, b, args),...);
-        }, cols.columns());
+    inline void append_schema(const RecordBatch_ptr& rb, arrow::SchemaBuilder& b, const IndexLOC<copy, Args...>& cols) {
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            for (int i = 0; i < rb->num_columns(); ++i) {
+                append_schema(rb, b, i);
+            }
+        } else {
+            std::apply([&rb, &b](const auto&...args) {
+                (append_schema(rb, b, args),...);
+            }, cols.columns());
+        }
     }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
@@ -968,7 +1082,7 @@ namespace dataset {
     Array_vector DataFrame::indices_to_columns(const Args&... args) const {
         Array_vector cols;
 
-        int total_size = (size_argument(args) + ...);
+        int total_size = (size_argument(m_batch, args) + ...);
         cols.reserve(total_size);
 
         (append_columns(m_batch, cols, args), ...);
@@ -1022,7 +1136,7 @@ namespace dataset {
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int>>
     DataFrame DataFrame::loc(const IndexIter& begin, const IndexIter& end) const {
-        arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
+        arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_APPEND);
         Array_vector new_cols;
         new_cols.reserve(std::distance(begin, end));
 
@@ -1038,10 +1152,10 @@ namespace dataset {
 
     template<typename ...Args>
     DataFrame DataFrame::loc(const Args&... args) const {
-        arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_ERROR);
+        arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_APPEND);
         Array_vector new_cols;
 
-        int total_size = (size_argument(args) + ...);
+        int total_size = (size_argument(m_batch, args) + ...);
         new_cols.reserve(total_size);
 
         (append_columns(m_batch, new_cols, args),...);

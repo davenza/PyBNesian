@@ -73,6 +73,7 @@ namespace learning::independences {
 
     double mi_pair(const DataFrame& df, int k);
     double mi_triple(const DataFrame& df, int k);
+    double mi_general(const DataFrame& df, int k);
     
 
     class KMutualInformation {
@@ -97,6 +98,8 @@ namespace learning::independences {
         double pvalue(const VarType& x, const VarType& y) const;
         template<typename VarType>
         double pvalue(const VarType& x, const VarType& y, const VarType& z) const;
+        template<typename VarType, typename Iter>
+        double pvalue(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
 
         template<typename VarType>
         double mi(const VarType& x, const VarType& y) const;
@@ -128,28 +131,7 @@ namespace learning::independences {
     template<typename VarType, typename Iter>
     double KMutualInformation::mi(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const {
         auto subset_df = m_ranked_df.loc(x, y, std::make_pair(z_begin, z_end));
-
-        KDTree kdtree(subset_df);
-        auto knn_results = kdtree.query(subset_df, m_k+1, std::numeric_limits<double>::infinity());
-        
-        VectorXd eps(subset_df->num_rows());
-        for (auto i = 0; i < subset_df->num_rows(); ++i) {
-            eps(i) = knn_results[i].first(m_k);
-        }
-
-        std::vector<size_t> indices(std::distance(z_begin, z_end));
-        std::iota(indices.begin(), indices.end(), 2);
-        auto [n_xz, n_yz, n_z] = kdtree.count_conditional_subspaces(subset_df, 0, 1, indices, eps);
-
-        double res = 0;
-        for (int i = 0; i < m_df->num_rows(); ++i) {
-            res += boost::math::digamma(n_z(i)) - boost::math::digamma(n_xz(i)) - boost::math::digamma(n_yz(i));
-        }
-        
-        res /= m_df->num_rows();
-        res += boost::math::digamma(m_k);
-
-        return res;
+        return mi_general(subset_df, m_k);
     }
 
     template<typename VarType>
@@ -226,7 +208,6 @@ namespace learning::independences {
         auto shuffled_df = m_ranked_df.loc(Copy(x), y, z);
 
         std::mt19937 rng {m_seed};
-        int count_greater = 0;
 
         MatrixXi neighbors(m_shuffle_neighbors, m_df->num_rows());
 
@@ -236,7 +217,7 @@ namespace learning::independences {
 
         for (size_t i = 0; i < zknn.size(); ++i) {
             auto indices = zknn[i].second;
-            for (size_t k = 0; k < m_shuffle_neighbors; ++k) {
+            for (int k = 0; k < m_shuffle_neighbors; ++k) {
                 neighbors(k, i) = indices[k];
             }
         }
@@ -249,6 +230,7 @@ namespace learning::independences {
         auto original_x = m_ranked_df.template data<arrow::FloatType>(x);
         auto shuffled_x = shuffled_df.template mutable_data<arrow::FloatType>(x);
 
+        int count_greater = 0;
         for (int i = 0; i < m_samples; ++i) {
             std::shuffle(order.begin(), order.end(), rng);
             shuffle_dataframe(original_x, shuffled_x, order, used, neighbors, rng);
@@ -259,6 +241,53 @@ namespace learning::independences {
                 ++count_greater;
             
             std::fill(used.begin(), used.end(), false);
+        }
+
+        return static_cast<double>(count_greater) / m_samples;
+    }
+
+    template<typename VarType, typename Iter>
+    double KMutualInformation::pvalue(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const {
+        auto value = mi(x, y, z_begin, z_end);
+
+        auto shuffled_df = m_ranked_df.loc(Copy(x), y, std::make_pair(z_begin, z_end));
+
+        std::mt19937 rng {m_seed};
+
+        MatrixXi neighbors(m_shuffle_neighbors, m_df->num_rows());
+        auto z_df = m_df.loc(z_begin, z_end);
+        KDTree z_tree(z_df);
+        auto zknn = z_tree.query(z_df, m_shuffle_neighbors, std::numeric_limits<double>::infinity());
+
+        for (size_t i = 0; i < zknn.size(); ++i) {
+            auto indices = zknn[i].second;
+            for (int k = 0; k < m_shuffle_neighbors; ++k) {
+                neighbors(k, i) = indices[k];
+            }
+        }
+
+        std::vector<size_t> order(m_df->num_rows());
+        std::iota(order.begin(), order.end(), 0);
+
+        std::vector<bool> used(m_df->num_rows());
+
+        auto original_x = m_ranked_df.template data<arrow::FloatType>(x);
+        auto shuffled_x = shuffled_df.template mutable_data<arrow::FloatType>(x);
+
+        int count_greater = 0;
+
+        for (int i = 0; i < m_samples; ++i) {
+            std::shuffle(order.begin(), order.end(), rng);
+            shuffle_dataframe(original_x, shuffled_x, order, used, neighbors, rng);
+
+            auto shuffled_value = mi_general(shuffled_df, m_k);
+
+            if (shuffled_value >= value)
+                ++count_greater;
+            
+            std::fill(used.begin(), used.end(), false);
+
+            mi_values(i) = shuffled_value;
         }
 
         return static_cast<double>(count_greater) / m_samples;

@@ -138,70 +138,43 @@ namespace learning::independences {
         return res;
     }
 
-    VectorXi KDTree::count_subspace_eps(const DataFrame& test_df, size_t subspace_index, const VectorXd& eps) const {
-        VectorXi res(test_df->num_rows());
-
-        switch(m_datatype) {
-            case Type::DOUBLE: {
-                auto train_downcast = m_df.downcast<arrow::DoubleType>(subspace_index);
-                auto test_downcast = test_df.downcast<arrow::DoubleType>(subspace_index);
-
-                for(int i = 0; i < test_df->num_rows(); ++i) {
-                    res(i) = count_instance_subspace_eps<arrow::DoubleType>(train_downcast,
-                                                                            subspace_index, 
-                                                                            test_downcast->Value(i),
-                                                                            eps(i));
-                }
-                break;
-            }
-            case Type::FLOAT: {
-                auto train_downcast = m_df.downcast<arrow::FloatType>(subspace_index);
-                auto test_downcast = test_df.downcast<arrow::FloatType>(subspace_index);
-
-                for(int i = 0; i < test_df->num_rows(); ++i) {
-                    res(i) = count_instance_subspace_eps<arrow::FloatType>(train_downcast,
-                                                                           subspace_index, 
-                                                                           test_downcast->Value(i),
-                                                                           static_cast<float>(eps(i)));
-                }
-
-                break;
-            }
-            default:
-                throw std::invalid_argument("Wrong data type to apply KDTree.");
-
-        }
-
-        return res;
-    }
-
     std::tuple<VectorXi, VectorXi, VectorXi> KDTree::count_conditional_subspaces(
                                 const DataFrame& test_df,
                                 size_t x,
                                 size_t y,
-                                const std::vector<size_t>& z,
+                                const std::vector<size_t>::iterator z_begin,
+                                const std::vector<size_t>::iterator z_end,
                                 const VectorXd& eps) const {
         VectorXi count_xz(test_df->num_rows());
         VectorXi count_yz(test_df->num_rows());
         VectorXi count_z(test_df->num_rows());
 
+        // std::vector<bool> in_z(m_df->num_columns());
+        std::vector<int> z_order(m_df->num_columns());
+        std::fill(z_order.begin(), z_order.end(), -1);
+            
+        auto i = 0;
+        for (auto it = z_begin; it != z_end; ++it, ++i) {
+            z_order[*it] = i;
+        }
+
         switch(m_datatype) {
             case Type::DOUBLE: {
-                auto train_z = m_df.downcast_vector<arrow::DoubleType>(z);
-                auto test_z = test_df.downcast_vector<arrow::DoubleType>(z);
+                auto train_z = m_df.downcast_vector<arrow::DoubleType>(z_begin, z_end);
+                auto test_z = test_df.downcast_vector<arrow::DoubleType>(z_begin, z_end);
                 ChebyshevDistance<arrow::DoubleType> dist(train_z, test_z);
-                auto test_x = test_df.downcast<arrow::DoubleType>(x);
-                auto test_y = test_df.downcast<arrow::DoubleType>(y);
+
+                auto test_data = test_df.downcast_vector<arrow::DoubleType>();
 
 
                 for(int i = 0; i < test_df->num_rows(); ++i) {
-                    auto c = count_instance_conditional_subspaces<arrow::DoubleType>(test_x,
-                                                                                     test_y,
-                                                                                     test_z,
+                    auto c = count_instance_conditional_subspaces<arrow::DoubleType>(test_data,
                                                                                      i,
                                                                                      x,
                                                                                      y,
-                                                                                     z,
+                                                                                     z_begin,
+                                                                                     z_end,
+                                                                                     z_order,
                                                                                      dist,
                                                                                      eps(i));
                     
@@ -212,23 +185,22 @@ namespace learning::independences {
                 break;
             }
             case Type::FLOAT: {
-                auto train_z = m_df.downcast_vector<arrow::FloatType>(z);
-                auto test_z = test_df.downcast_vector<arrow::FloatType>(z);
+                auto train_z = m_df.downcast_vector<arrow::FloatType>(z_begin, z_end);
+                auto test_z = test_df.downcast_vector<arrow::FloatType>(z_begin, z_end);
                 ChebyshevDistance<arrow::FloatType> dist(train_z, test_z);
-                auto test_x = test_df.downcast<arrow::FloatType>(x);
-                auto test_y = test_df.downcast<arrow::FloatType>(y);
 
+                auto test_data = test_df.downcast_vector<arrow::FloatType>();
 
                 for(int i = 0; i < test_df->num_rows(); ++i) {
-                    auto c = count_instance_conditional_subspaces<arrow::FloatType>(test_x,
-                                                                                     test_y,
-                                                                                     test_z,
-                                                                                     i,
-                                                                                     x,
-                                                                                     y,
-                                                                                     z,
-                                                                                     dist,
-                                                                                     eps(i));
+                    auto c = count_instance_conditional_subspaces<arrow::FloatType>(test_data,
+                                                                                    i,
+                                                                                    x,
+                                                                                    y,
+                                                                                    z_begin,
+                                                                                    z_end,
+                                                                                    z_order,
+                                                                                    dist,
+                                                                                    eps(i));
                     
                     count_xz(i) = std::get<0>(c);
                     count_yz(i) = std::get<1>(c);

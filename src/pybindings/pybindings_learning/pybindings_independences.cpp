@@ -59,11 +59,7 @@ void pybindings_independence_tests(py::module& root) {
 
     py::class_<KDTree>(independence_tests, "KDTree")
         .def(py::init<DataFrame, int>())
-        .def("query", &KDTree::query, py::arg("test_df"), py::arg("k") = 1, py::arg("p") = 2.)
-        .def("count_subspace_eps", &KDTree::count_subspace_eps, 
-                                    py::arg("test_df"), 
-                                    py::arg("subspace_index"), 
-                                    py::arg("eps"));
+        .def("query", &KDTree::query, py::arg("test_df"), py::arg("k") = 1, py::arg("p") = 2.);
 
     py::class_<KMutualInformation>(independence_tests, "KMutualInformation")
         .def(py::init<DataFrame, int, long unsigned int, int, int>(),
@@ -72,37 +68,43 @@ void pybindings_independence_tests(py::module& root) {
             py::arg("df"), py::arg("k"), py::arg("shuffle_neighbors") = 5, py::arg("samples") = 1000)
         .def_property("samples", &KMutualInformation::samples, &KMutualInformation::set_samples)
         .def_property("seed", &KMutualInformation::seed, &KMutualInformation::set_seed)
-        .def("mi", [](KMutualInformation& self, int v1, int v2) {
-            return self.mi(v1, v2);
+        .def("mi", [](KMutualInformation& self, int x, int y) {
+            return self.mi(x, y);
         })
-        .def("mi", [](KMutualInformation& self, const std::string& v1, const std::string& v2) {
-            return self.mi(v1, v2);
+        .def("mi", [](KMutualInformation& self, const std::string& x, const std::string& y) {
+            return self.mi(x, y);
         })
-        .def("mi", [](KMutualInformation& self, int v1, int v2, int cond) {
-            return self.mi(v1, v2, cond);
+        .def("mi", [](KMutualInformation& self, int x, int y, int z) {
+            return self.mi(x, y, z);
         })
-        .def("mi", [](KMutualInformation& self, const std::string& v1, const std::string& v2, const std::string& cond) {
-            return self.mi(v1, v2, cond);
+        .def("mi", [](KMutualInformation& self, const std::string& x, const std::string& y, const std::string& z) {
+            return self.mi(x, y, z);
         })
-        .def("mi", [](KMutualInformation& self, int v1, int v2, std::vector<int>& cond) {
-            return self.mi(v1, v2, cond.begin(), cond.end());
+        .def("mi", [](KMutualInformation& self, int x, int y, const std::vector<int>& z) {
+            return self.mi(x, y, z.begin(), z.end());
         })
-        .def("mi", [](KMutualInformation& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
-            return self.mi(v1, v2, cond.begin(), cond.end());
+        .def("mi", [](KMutualInformation& self, const std::string& x, const std::string& y, const std::vector<std::string>& z) {
+            return self.mi(x, y, z.begin(), z.end());
         })
-        .def("pvalue", [](KMutualInformation& self, int v1, int v2) {
-            return self.pvalue(v1, v2);
-        }, py::arg("v1"), py::arg("v2"))
-        .def("pvalue", [](KMutualInformation& self, const std::string& v1, const std::string& v2) {
-            return self.pvalue(v1, v2);
-        }, py::arg("v1"), py::arg("v2"))
-        .def("pvalue", [](KMutualInformation& self, int v1, int v2, int cond) {
-            return self.pvalue(v1, v2, cond);
-        }, py::arg("v1"), py::arg("v2"), py::arg("cond_var"))
+        .def("pvalue", [](KMutualInformation& self, int x, int y) {
+            return self.pvalue(x, y);
+        }, py::arg("x"), py::arg("y"))
+        .def("pvalue", [](KMutualInformation& self, const std::string& x, const std::string& y) {
+            return self.pvalue(x, y);
+        }, py::arg("x"), py::arg("y"))
+        .def("pvalue", [](KMutualInformation& self, int x, int y, int z) {
+            return self.pvalue(x, y, z);
+        }, py::arg("x"), py::arg("y"), py::arg("z"))
         .def("pvalue", [](KMutualInformation& self, 
-                            const std::string& v1, 
-                            const std::string& v2, 
-                            const std::string& cond) {
-            return self.pvalue(v1, v2, cond);
-        }, py::arg("v1"), py::arg("v2"), py::arg("cond_var"));
+                            const std::string& x, 
+                            const std::string& y, 
+                            const std::string& z) {
+            return self.pvalue(x, y, z);
+        }, py::arg("x"), py::arg("y"), py::arg("z"))
+        .def("pvalue", [](KMutualInformation& self, int x, int y, const std::vector<int>& z) {
+            return self.pvalue(x, y, z.begin(), z.end());
+        }, py::arg("x"), py::arg("y"), py::arg("z"))
+        .def("pvalue", [](KMutualInformation& self, const std::string& x, const std::string& y, const std::vector<std::string>& z) {
+            return self.pvalue(x, y, z.begin(), z.end());
+        }, py::arg("x"), py::arg("y"), py::arg("z"));
 }

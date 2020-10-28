@@ -447,32 +447,27 @@ namespace learning::independences {
                                                              size_t i, 
                                                              int k, 
                                                              const DistanceType& distance) const;
-        
-        VectorXi count_subspace_eps(const DataFrame& test_df, size_t subspace_index, const VectorXd& eps) const;
-        template<typename ArrowType>
-        int count_instance_subspace_eps(const DowncastArray_ptr<ArrowType>& downcast_train_subspace,
-                                        size_t subspace_index,
-                                        typename ArrowType::c_type subspace_value, 
-                                        typename ArrowType::c_type eps_value) const;
+    
 
         std::tuple<VectorXi, VectorXi, VectorXi> count_conditional_subspaces(
-                                        const DataFrame& test_df,
-                                        size_t x,
-                                        size_t y,
-                                        const std::vector<size_t>& z,
-                                        const VectorXd& eps) const;
+                                                        const DataFrame& test_df,
+                                                        size_t x,
+                                                        size_t y,
+                                                        const std::vector<size_t>::iterator z_begin,
+                                                        const std::vector<size_t>::iterator z_end,
+                                                        const VectorXd& eps) const;
         
         template<typename ArrowType, typename DistanceType>
         std::tuple<int, int, int> count_instance_conditional_subspaces(
-                                    const DowncastArray_ptr<ArrowType>& x_data,
-                                    const DowncastArray_ptr<ArrowType>& y_data,
-                                    const DowncastArray_vector<ArrowType>& z_data,
-                                    size_t i,
-                                    size_t x,
-                                    size_t y,
-                                    const std::vector<size_t>& z,
-                                    const DistanceType& distance_z,
-                                    typename ArrowType::c_type eps_value) const;
+                                                        const DowncastArray_vector<ArrowType>& test_data,
+                                                        size_t i,
+                                                        size_t x,
+                                                        size_t y,
+                                                        const std::vector<size_t>::iterator z_begin,
+                                                        const std::vector<size_t>::iterator z_end,
+                                                        const std::vector<int>& z_order,
+                                                        const DistanceType& distance_z,
+                                                        typename ArrowType::c_type eps_value) const;
 
         const DataFrame& ranked_data() const {
             return m_df;
@@ -597,139 +592,47 @@ namespace learning::independences {
         return std::make_pair(distances, indices);
     }
 
-    template<typename ArrowType>
-    int KDTree::count_instance_subspace_eps(const DowncastArray_ptr<ArrowType>& downcast_train_subspace,
-                                            size_t subspace_index,
-                                            typename ArrowType::c_type subspace_value, 
-                                            typename ArrowType::c_type eps_value) const {
-        using CType = typename ArrowType::c_type;
-        using VectorType = Matrix<CType, Dynamic, 1>;
-
-        QueryQueue<ArrowType> query_nodes;
-        
-        int count = 0;
-
-        query_nodes.push(QueryNode<ArrowType> {
-            .node = m_root.get(),
-            .min_distance = std::max(static_cast<CType>(0.), 
-                                        std::max(subspace_value - static_cast<CType>(m_maxes(subspace_index)), 
-                                                static_cast<CType>(m_mines(subspace_index)) - subspace_value)),
-            .side_distance = VectorType()
-        });
-
-        while (!query_nodes.empty()) {
-            auto& query = query_nodes.top();
-            auto node = query.node;
-
-            if (node->is_leaf) {
-                for (auto it = node->indices_begin; it != node->indices_end; ++it) {
-                    auto d = std::abs(subspace_value - downcast_train_subspace->Value(*it));
-                    if (d < eps_value) {
-                        ++count;
-                    }
-                }
-                query_nodes.pop();
-            } else {
-                if (node->split_id == subspace_index) {
-                    KDTreeNode* near_node;
-                    KDTreeNode* far_node;
-                    CType far_node_distance;
-
-                    if (subspace_value < node->split_value) {
-                        near_node = node->left.get();
-                        far_node = node->right.get();
-                        far_node_distance = node->split_value - subspace_value;
-                    } else {
-                        near_node = node->right.get();
-                        far_node = node->left.get();
-                        far_node_distance = subspace_value - node->split_value;
-                    }
-
-                    QueryNode<ArrowType> near_query {
-                        .node = near_node,
-                        .min_distance = query.min_distance,
-                        .side_distance = VectorType()
-                    };
-
-                    query_nodes.pop();
-                    query_nodes.push(near_query);
-
-                    if (far_node_distance < eps_value) {
-                        query_nodes.push(QueryNode<ArrowType> {
-                            .node = far_node,
-                            .min_distance = far_node_distance,
-                            .side_distance = VectorType()
-                        });
-                    }
-                } else {
-                    QueryNode<ArrowType> left_query {
-                        .node = node->left.get(),
-                        .min_distance = query.min_distance,
-                        .side_distance = VectorType()
-                    };
-
-                    QueryNode<ArrowType> right_query {
-                        .node = node->right.get(),
-                        .min_distance = query.min_distance,
-                        .side_distance = VectorType()
-                    };
-
-                    query_nodes.pop();
-                    query_nodes.push(left_query);
-                    query_nodes.push(right_query);
-                }
-            }
-        }
-
-        return count;
-   }
-
 
     template<typename ArrowType, typename DistanceType>
     std::tuple<int, int, int> KDTree::count_instance_conditional_subspaces(
-                                const DowncastArray_ptr<ArrowType>& x_data,
-                                const DowncastArray_ptr<ArrowType>& y_data,
-                                const DowncastArray_vector<ArrowType>& z_data,
+                                const DowncastArray_vector<ArrowType>& test_data,
                                 size_t i,
                                 size_t x,
                                 size_t y,
-                                const std::vector<size_t>& z,
+                                const std::vector<size_t>::iterator z_begin,
+                                const std::vector<size_t>::iterator z_end,
+                                const std::vector<int>& z_order,
                                 const DistanceType& distance_z,
                                 typename ArrowType::c_type eps_value) const {
         
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<typename ArrowType::c_type, Dynamic, 1>;
 
-        std::vector<bool> in_z(m_df->num_columns());
-        std::unordered_map<size_t, size_t> map_indices;
-        for (size_t i = 0; i < z.size(); ++i) {
-            in_z[z[i]] = true;
-            map_indices.insert(std::make_pair(z[i], i));
-        }
-
-        VectorType side_distance(z.size());
+        VectorType side_distance(std::distance(z_begin, z_end));
         CType min_distance = 0;
 
-        for (size_t j = 0; j < z.size(); ++j) {
-            auto x_value = z_data[j]->Value(i);
-            side_distance(j) = std::max(0., std::max(x_value - m_maxes(z[j]), m_mines(z[j]) - x_value));
-            side_distance(j) = distance_z.distance_p(side_distance(j));
-            min_distance = distance_z.update_component_distance(min_distance, 0, side_distance(j));
+        for (auto it = z_begin; it != z_end; ++it) {
+            auto x_value = test_data[*it]->Value(i);
+            auto zidx = z_order[*it];
+            side_distance(zidx) = std::max(0., std::max(x_value - m_maxes(*it), m_mines(*it) - x_value));
+            side_distance(zidx) = distance_z.distance_p(side_distance(zidx));
+            min_distance = distance_z.update_component_distance(min_distance, 0, side_distance(zidx));
         }
 
         int count_xz = 0, count_yz = 0, count_z = 0;
 
         QueryQueue<ArrowType> query_nodes;
 
-        query_nodes.push(QueryNode<ArrowType> {
-            .node = m_root.get(),
-            .min_distance = min_distance,
-            .side_distance = side_distance
-        });
+        if (min_distance < eps_value) {
+            query_nodes.push(QueryNode<ArrowType> {
+                .node = m_root.get(),
+                .min_distance = min_distance,
+                .side_distance = side_distance
+            });
+        }
 
         auto train_x = m_df.downcast<ArrowType>(x);
         auto train_y = m_df.downcast<ArrowType>(y);
-        auto train_z = m_df.downcast_vector<ArrowType>(z);        
 
         while (!query_nodes.empty()) {
             auto& query = query_nodes.top();
@@ -737,29 +640,25 @@ namespace learning::independences {
 
             if (node->is_leaf) {
                 for (auto it = node->indices_begin; it != node->indices_end; ++it) {
-
-
                     auto d = distance_z.distance(*it, i);
 
                     if (d < eps_value) {
                         ++count_z;
-                        if(std::abs(train_x->Value(*it) - x_data->Value(i)) < eps_value) {
+                        if(std::abs(train_x->Value(*it) - test_data[x]->Value(i)) < eps_value)
                             ++count_xz;
-                        }
-                        if(std::abs(train_y->Value(*it) - y_data->Value(i)) < eps_value) {
+                        if(std::abs(train_y->Value(*it) - test_data[y]->Value(i)) < eps_value)
                             ++count_yz;
-                        }
                     }
                 }
 
                 query_nodes.pop();
             } else {
-                if (in_z[node->split_id]) {
+                if (z_order[node->split_id] != -1) {
                     KDTreeNode* near_node;
                     KDTreeNode* far_node;
 
-                    auto z_index = map_indices[node->split_id];
-                    auto x_split = z_data[z_index]->Value(i);
+                    auto z_index = z_order[node->split_id];
+                    auto x_split = test_data[node->split_id]->Value(i);
                     if (x_split < node->split_value) {
                         near_node = node->left.get();
                         far_node = node->right.get();

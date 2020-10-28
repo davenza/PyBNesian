@@ -109,34 +109,31 @@ namespace learning::independences {
 
         return res;
     }
-
-    std::tuple<VectorXi, VectorXi, VectorXi> bruteforce_eps_neighbors(const DataFrame& df, const VectorXd& eps) { 
-        auto dwn_df = df.downcast_vector<arrow::FloatType>();
-
-        VectorXi count_xz = VectorXi::Zero(df->num_rows());
-        VectorXi count_yz = VectorXi::Zero(df->num_rows());
-        VectorXi count_z = VectorXi::Zero(df->num_rows());
-        for (int i = 0; i < df->num_rows(); ++i) {
-            for(int j = 0; j < df->num_rows(); ++j) {
-                
-                float max_z = 0;
-                for(size_t k = 2; k < dwn_df.size(); ++k) {
-                    max_z = std::max(max_z, std::abs(dwn_df[k]->Value(i) - dwn_df[k]->Value(j)));
-                }
-
-                if (max_z < eps(i)) {
-                    ++count_z(i);
-
-                    if (std::abs(dwn_df[0]->Value(i) - dwn_df[0]->Value(j)) < eps(i)) ++count_xz(i);
-                    if (std::abs(dwn_df[1]->Value(i) - dwn_df[1]->Value(j)) < eps(i)) ++count_yz(i);
-                }
-            }
+    
+    double mi_general(const DataFrame& df, int k) {
+        KDTree kdtree(df);
+        auto knn_results = kdtree.query(df, k+1, std::numeric_limits<double>::infinity());
+        
+        VectorXd eps(df->num_rows());
+        for (auto i = 0; i < df->num_rows(); ++i) {
+            eps(i) = knn_results[i].first(k);
         }
 
-        return std::make_tuple(count_xz, count_yz, count_z);
+        std::vector<size_t> indices(df->num_columns() - 2);
+        std::iota(indices.begin(), indices.end(), 2);
+        auto [n_xz, n_yz, n_z] = kdtree.count_conditional_subspaces(df, 0, 1, indices.begin(), indices.end(), eps);
+
+        double res = 0;
+        for (int i = 0; i < df->num_rows(); ++i) {
+            res += boost::math::digamma(n_z(i)) - boost::math::digamma(n_xz(i)) - boost::math::digamma(n_yz(i));
+        }
+        
+        res /= df->num_rows();
+        res += boost::math::digamma(k);
+
+        return res;
     }
-
-
+    
     // double KMutualInformation::mi(int v1, int v2) const {
     //     auto [nv1, nv2] = [this, v1, v2]() {
     //         if (m_rebuild_tree) {

@@ -1,4 +1,4 @@
-#include <learning/independences/continuous/kdtree.hpp>
+#include <kdtree/kdtree.hpp>
 
 
 namespace learning::independences {
@@ -138,45 +138,26 @@ namespace learning::independences {
         return res;
     }
 
-    std::tuple<VectorXi, VectorXi, VectorXi> KDTree::count_conditional_subspaces(
-                                const DataFrame& test_df,
-                                size_t x,
-                                size_t y,
-                                const std::vector<size_t>::iterator z_begin,
-                                const std::vector<size_t>::iterator z_end,
-                                const VectorXd& eps) const {
+    std::tuple<VectorXi, VectorXi, VectorXi> KDTree::count_ball_subspaces(const DataFrame& test_df, 
+                                                                          const Array_ptr& x_data,
+                                                                          const Array_ptr& y_data,
+                                                                          const VectorXd& eps) const {
+
         VectorXi count_xz(test_df->num_rows());
         VectorXi count_yz(test_df->num_rows());
         VectorXi count_z(test_df->num_rows());
-
-        // std::vector<bool> in_z(m_df->num_columns());
-        std::vector<int> z_order(m_df->num_columns());
-        std::fill(z_order.begin(), z_order.end(), -1);
-            
-        auto i = 0;
-        for (auto it = z_begin; it != z_end; ++it, ++i) {
-            z_order[*it] = i;
-        }
-
+        
         switch(m_datatype) {
             case Type::DOUBLE: {
-                auto train_z = m_df.downcast_vector<arrow::DoubleType>(z_begin, z_end);
-                auto test_z = test_df.downcast_vector<arrow::DoubleType>(z_begin, z_end);
-                ChebyshevDistance<arrow::DoubleType> dist(train_z, test_z);
+                auto train = m_df.downcast_vector<arrow::DoubleType>();
+                auto test = test_df.downcast_vector<arrow::DoubleType>();
+                ChebyshevDistance<arrow::DoubleType> dist(train, test);
 
-                auto test_data = test_df.downcast_vector<arrow::DoubleType>();
-
+                auto x = std::static_pointer_cast<arrow::DoubleArray>(x_data)->raw_values();
+                auto y = std::static_pointer_cast<arrow::DoubleArray>(y_data)->raw_values();
 
                 for(int i = 0; i < test_df->num_rows(); ++i) {
-                    auto c = count_instance_conditional_subspaces<arrow::DoubleType>(test_data,
-                                                                                     i,
-                                                                                     x,
-                                                                                     y,
-                                                                                     z_begin,
-                                                                                     z_end,
-                                                                                     z_order,
-                                                                                     dist,
-                                                                                     eps(i));
+                    auto c = count_ball_subspaces_instance<arrow::DoubleType>(test, x, y, i, dist, eps(i));
                     
                     count_xz(i) = std::get<0>(c);
                     count_yz(i) = std::get<1>(c);
@@ -185,22 +166,15 @@ namespace learning::independences {
                 break;
             }
             case Type::FLOAT: {
-                auto train_z = m_df.downcast_vector<arrow::FloatType>(z_begin, z_end);
-                auto test_z = test_df.downcast_vector<arrow::FloatType>(z_begin, z_end);
-                ChebyshevDistance<arrow::FloatType> dist(train_z, test_z);
+                auto train = m_df.downcast_vector<arrow::FloatType>();
+                auto test = test_df.downcast_vector<arrow::FloatType>();
+                ChebyshevDistance<arrow::FloatType> dist(train, test);
 
-                auto test_data = test_df.downcast_vector<arrow::FloatType>();
+                auto x = std::static_pointer_cast<arrow::FloatArray>(x_data)->raw_values();
+                auto y = std::static_pointer_cast<arrow::FloatArray>(y_data)->raw_values();
 
                 for(int i = 0; i < test_df->num_rows(); ++i) {
-                    auto c = count_instance_conditional_subspaces<arrow::FloatType>(test_data,
-                                                                                    i,
-                                                                                    x,
-                                                                                    y,
-                                                                                    z_begin,
-                                                                                    z_end,
-                                                                                    z_order,
-                                                                                    dist,
-                                                                                    eps(i));
+                    auto c = count_ball_subspaces_instance<arrow::FloatType>(test, x, y, i, dist, eps(i));
                     
                     count_xz(i) = std::get<0>(c);
                     count_yz(i) = std::get<1>(c);
@@ -210,9 +184,7 @@ namespace learning::independences {
             }
             default:
                 throw std::invalid_argument("Wrong data type to apply KDTree.");
-
         }
-
         return std::make_tuple(count_xz, count_yz, count_z);
     }
 }

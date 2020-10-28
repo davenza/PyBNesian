@@ -121,7 +121,9 @@ namespace learning::independences {
 
         std::vector<size_t> indices(df->num_columns() - 2);
         std::iota(indices.begin(), indices.end(), 2);
-        auto [n_xz, n_yz, n_z] = kdtree.count_conditional_subspaces(df, 0, 1, indices.begin(), indices.end(), eps);
+        auto z_df = df.loc(indices);
+        KDTree ztree(z_df);
+        auto [n_xz, n_yz, n_z] = ztree.count_ball_subspaces(z_df, df.col(0), df.col(1), eps);
 
         double res = 0;
         for (int i = 0; i < df->num_rows(); ++i) {
@@ -133,95 +135,4 @@ namespace learning::independences {
 
         return res;
     }
-    
-    // double KMutualInformation::mi(int v1, int v2) const {
-    //     auto [nv1, nv2] = [this, v1, v2]() {
-    //         if (m_rebuild_tree) {
-    //             auto subset_df = m_df.loc(v1, v2);
-
-    //             KDTree kdtree(subset_df);
-    //             auto knn_results = kdtree.query(subset_df, m_k+1, std::numeric_limits<float>::infinity());
-                
-    //             VectorXd eps(subset_df->num_rows());
-    //             for (auto i = 0; i < subset_df->num_rows(); ++i) {
-    //                 eps(i) = knn_results[i].first(m_k);
-    //             }
-
-    //             auto nv1 = kdtree.count_subspace_eps(subset_df, 0, eps);
-    //             auto nv2 = kdtree.count_subspace_eps(subset_df, 1, eps);
-
-    //             return std::make_pair(nv1, nv2);
-    //         } else {
-    //             std::vector<size_t> subset_indices = {static_cast<size_t>(v1), static_cast<size_t>(v2)};
-    //             auto knn_results = m_tree.query_subset(m_df, subset_indices, m_k+1, std::numeric_limits<float>::infinity());
-                
-    //             VectorXd eps(m_df->num_rows());
-    //             for (auto i = 0; i < m_df->num_rows(); ++i) {
-    //                 eps(i) = knn_results[i].first(m_k);
-    //             }
-    //             auto nv1 = m_tree.count_subspace_eps(m_df, v1, eps);
-    //             auto nv2 = m_tree.count_subspace_eps(m_df, v2, eps);
-
-    //             return std::make_pair(nv1, nv2);
-    //         }
-    //     }();
-
-    //     double res = 0;
-    //     for (int i = 0; i < m_df->num_rows(); ++i) {
-    //         res -= boost::math::digamma(nv1(i)) + boost::math::digamma(nv2(i));
-    //     }
-        
-    //     res /= m_df->num_rows();
-    //     res += boost::math::digamma(m_k) + boost::math::digamma(m_df->num_rows());
-
-    //     return res;
-    // }
-
-    // double KMutualInformation::mi(int v1, int v2, int cond) const {
-        // auto [nv1, nv2, ncond] = [this, v1, v2, cond]() {
-        //     if (m_rebuild_tree) {
-        //         auto subset_df = m_df.loc(v1, v2, cond);
-
-        //         KDTree kdtree(subset_df);
-        //         auto knn_results = kdtree.query(subset_df, m_k+1, std::numeric_limits<float>::infinity());
-                
-        //         VectorXd eps(subset_df->num_rows());
-        //         for (auto i = 0; i < subset_df->num_rows(); ++i) {
-        //             eps(i) = knn_results[i].first(m_k);
-        //         }
-
-
-        //         auto nv1 = kdtree.count_subspace_eps(subset_df, 0, eps);
-        //         auto nv2 = kdtree.count_subspace_eps(subset_df, 1, eps);
-
-        //         return std::make_pair(nv1, nv2);
-        //     } else {
-        //         std::vector<size_t> subset_indices = {static_cast<size_t>(v1), 
-        //                                               static_cast<size_t>(v2),
-        //                                               static_cast<size_t>(cond)};
-
-        //         auto knn_results = m_tree.query_subset(m_df, m_k+1, std::numeric_limits<float>::infinity(), subset_indices);
-                
-        //         VectorXd eps(m_df->num_rows());
-        //         for (auto i = 0; i < m_df->num_rows(); ++i) {
-        //             eps(i) = knn_results[i].first(m_k);
-        //         }
-
-        //         auto nv1 = m_tree.count_subspace_eps(m_df, v1, eps);
-        //         auto nv2 = m_tree.count_subspace_eps(m_df, v2, eps);
-
-        //         return std::make_pair(nv1, nv2);
-        //     }
-        // }();
-
-        // double res = 0;
-        // for (int i = 0; i < m_df->num_rows(); ++i) {
-        //     res += boost::math::digamma(ncond(i)) - boost::math::digamma(nv1(i)) - boost::math::digamma(nv2(i));
-        // }
-        
-        // res /= m_df->num_rows();
-        // res += boost::math::digamma(m_k);
-
-        // return res;
-    // }
 }

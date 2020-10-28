@@ -4,11 +4,9 @@
 #include <random>
 #include <Eigen/Dense>
 #include <dataset/dataset.hpp>
-#include <learning/independences/continuous/kdtree.hpp>
+#include <kdtree/kdtree.hpp>
 #include <util/validate_dtype.hpp>
 #include <boost/math/special_functions/digamma.hpp>
-
-#include <chrono>
 
 using dataset::DataFrame, dataset::CopyLOC, dataset::IndexLOC, dataset::Copy;
 using Eigen::MatrixXi;
@@ -101,6 +99,13 @@ namespace learning::independences {
         template<typename VarType, typename Iter>
         double pvalue(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
 
+        template<typename MICalculator>
+        double shuffled_pvalue(double original_mi,
+                               const float* original_rank_x,
+                               const DataFrame& z_df,
+                               DataFrame& shuffled_df, 
+                               const MICalculator mi_calculator) const;
+
         template<typename VarType>
         double mi(const VarType& x, const VarType& y) const;
         template<typename VarType>
@@ -180,8 +185,6 @@ namespace learning::independences {
                     break;
                 }
             }
-
-
             if (used[neighbor_index]) {
                 shuffled_x[index] = original_x[neighbor_index] + tiebreaker(rng);
             } else {
@@ -201,17 +204,28 @@ namespace learning::independences {
         }
     }
 
-    template<typename VarType>
-    double KMutualInformation::pvalue(const VarType& x, const VarType& y, const VarType& z) const {
-        auto value = mi(x, y, z);
+    struct MITriple {
+        inline double operator()(const DataFrame& df, int k) const {
+            return mi_triple(df, k);
+        }
+    };
 
-        auto shuffled_df = m_ranked_df.loc(Copy(x), y, z);
+    struct MIGeneral {
+        inline double operator()(const DataFrame& df, int k) const {
+            return mi_general(df, k);
+        }
+    };
+
+    template<typename MICalculator>
+    double KMutualInformation::shuffled_pvalue(double original_mi,
+                                               const float* original_rank_x,
+                                               const DataFrame& z_df, 
+                                               DataFrame& shuffled_df, 
+                                               const MICalculator mi_calculator) const {
 
         std::mt19937 rng {m_seed};
-
         MatrixXi neighbors(m_shuffle_neighbors, m_df->num_rows());
-
-        auto z_df = m_df.loc(z);
+        
         KDTree z_tree(z_df);
         auto zknn = z_tree.query(z_df, m_shuffle_neighbors, std::numeric_limits<double>::infinity());
 
@@ -227,72 +241,45 @@ namespace learning::independences {
 
         std::vector<bool> used(m_df->num_rows());
 
-        auto original_x = m_ranked_df.template data<arrow::FloatType>(x);
-        auto shuffled_x = shuffled_df.template mutable_data<arrow::FloatType>(x);
+        auto shuffled_x = shuffled_df.template mutable_data<arrow::FloatType>(0);
 
         int count_greater = 0;
+
         for (int i = 0; i < m_samples; ++i) {
             std::shuffle(order.begin(), order.end(), rng);
-            shuffle_dataframe(original_x, shuffled_x, order, used, neighbors, rng);
+            shuffle_dataframe(original_rank_x, shuffled_x, order, used, neighbors, rng);
 
-            auto shuffled_value = mi_triple(shuffled_df, m_k);
+            auto shuffled_value = mi_calculator(shuffled_df, m_k);
 
-            if (shuffled_value >= value)
+            if (shuffled_value >= original_mi)
                 ++count_greater;
             
             std::fill(used.begin(), used.end(), false);
         }
 
         return static_cast<double>(count_greater) / m_samples;
+    }
+
+
+    template<typename VarType>
+    double KMutualInformation::pvalue(const VarType& x, const VarType& y, const VarType& z) const {
+        auto original_mi = mi(x, y, z);
+        auto z_df = m_df.loc(z);
+        auto shuffled_df = m_ranked_df.loc(Copy(x), y, z);
+        auto original_rank_x = m_ranked_df.template data<arrow::FloatType>(x);
+
+        return shuffled_pvalue(original_mi, original_rank_x, z_df, shuffled_df, MITriple{});
     }
 
     template<typename VarType, typename Iter>
     double KMutualInformation::pvalue(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const {
-        auto value = mi(x, y, z_begin, z_end);
-
-        auto shuffled_df = m_ranked_df.loc(Copy(x), y, std::make_pair(z_begin, z_end));
-
-        std::mt19937 rng {m_seed};
-
-        MatrixXi neighbors(m_shuffle_neighbors, m_df->num_rows());
+        auto original_mi = mi(x, y, z_begin, z_end);
         auto z_df = m_df.loc(z_begin, z_end);
-        KDTree z_tree(z_df);
-        auto zknn = z_tree.query(z_df, m_shuffle_neighbors, std::numeric_limits<double>::infinity());
-
-        for (size_t i = 0; i < zknn.size(); ++i) {
-            auto indices = zknn[i].second;
-            for (int k = 0; k < m_shuffle_neighbors; ++k) {
-                neighbors(k, i) = indices[k];
-            }
-        }
-
-        std::vector<size_t> order(m_df->num_rows());
-        std::iota(order.begin(), order.end(), 0);
-
-        std::vector<bool> used(m_df->num_rows());
-
-        auto original_x = m_ranked_df.template data<arrow::FloatType>(x);
-        auto shuffled_x = shuffled_df.template mutable_data<arrow::FloatType>(x);
-
-        int count_greater = 0;
-
-        for (int i = 0; i < m_samples; ++i) {
-            std::shuffle(order.begin(), order.end(), rng);
-            shuffle_dataframe(original_x, shuffled_x, order, used, neighbors, rng);
-
-            auto shuffled_value = mi_general(shuffled_df, m_k);
-
-            if (shuffled_value >= value)
-                ++count_greater;
-            
-            std::fill(used.begin(), used.end(), false);
-
-            mi_values(i) = shuffled_value;
-        }
-
-        return static_cast<double>(count_greater) / m_samples;
+        auto shuffled_df = m_ranked_df.loc(Copy(x), y, std::make_pair(z_begin, z_end));
+        auto original_rank_x = m_ranked_df.template data<arrow::FloatType>(x);
+        
+        return shuffled_pvalue(original_mi, original_rank_x, z_df, shuffled_df, MIGeneral{});
     }
-
 }
 
 #endif //PGM_DATASET_MUTUAL_INFORMATION_HPP

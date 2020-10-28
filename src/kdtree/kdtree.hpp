@@ -3,10 +3,8 @@
 
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
-#include <iostream>
 #include <queue>
 #include <algorithm>
-#include <chrono>
 
 using dataset::DataFrame;
 using Eigen::Matrix, Eigen::Dynamic, Eigen::VectorXd, Eigen::VectorXi;
@@ -207,25 +205,6 @@ namespace learning::independences {
     template<typename ArrowType>
     using NeighborQueue = std::priority_queue<Neighbor<ArrowType>, std::vector<Neighbor<ArrowType>>, NeighborComparator<ArrowType>>;
 
-    template<typename Queue>
-    void print_neighbor_queue(const Queue& queue) {
-        Queue copy(queue);
-
-        std::cout << "Neighbor queue: ";
-        auto& neigh = copy.top();
-
-        std::cout << "(" << neigh.first << ", " << neigh.second << ")";
-        copy.pop();
-        while(!copy.empty()) {
-            auto& neigh = copy.top();
-            std::cout << ", (" << neigh.first << ", " << neigh.second << ")";
-            copy.pop();
-        }
-
-        std::cout << std::endl;
-        
-    }
-
     struct KDTreeNode {
         size_t split_id;
         double split_value;
@@ -242,42 +221,6 @@ namespace learning::independences {
         KDTreeNode* node;
         typename ArrowType::c_type min_distance;
         Matrix<typename ArrowType::c_type, Dynamic, 1> side_distance;
-
-        void print(const std::vector<std::string>& column_names) const {
-            std::cout << "----------------------" << std::endl;
-            std::cout << "Query node ";
-
-            KDTreeNode* up = node;
-            std::vector<std::string> splits;
-            while (up->parent) {
-                KDTreeNode* parent = up->parent;
-
-                if (up == parent->left.get()) {
-                    splits.push_back(column_names[parent->split_id] + " < " + std::to_string(parent->split_value));
-                } else {
-                    splits.push_back(column_names[parent->split_id] + " >= " + std::to_string(parent->split_value));
-                }
-
-                up = parent;
-            }
-
-            if (splits.empty()) {
-                std::cout << "Root" << std::endl;
-            } else {
-                std::cout << splits.back();
-                for(int i = static_cast<int>(splits.size())-2; i >= 0; --i) {
-                    std::cout << " || " << splits[i];
-                }
-            }
-            
-            std::cout << std::endl;
-
-            std::cout << "Min distance: " << min_distance << std::endl;
-            std::cout << "Side distance: " << side_distance.transpose() << std::endl;
-            std::cout << "Leaf: " << node->is_leaf << std::endl;
-            std::cout << "----------------------" << std::endl;
-
-        }
     };
 
     template<typename ArrowType>
@@ -294,24 +237,6 @@ namespace learning::independences {
 
     template<typename ArrowType>
     using QueryQueue = std::priority_queue<QueryNode<ArrowType>, std::vector<QueryNode<ArrowType>>, QueryNodeComparator<ArrowType>>;
-
-    template<typename ArrowType>
-    void print_stack_nodes(QueryQueue<ArrowType>& neighbors, const std::vector<std::string>& column_names) {
-        
-        QueryQueue<ArrowType> copy(neighbors);
-
-        std::cout << "Query Stack trace:" << std::endl;
-        std::cout << "============================" << std::endl;
-
-        while (!copy.empty()) {
-            auto& query = copy.top();
-            query.print(column_names);
-            copy.pop();
-        }
-
-        std::cout << "============================" << std::endl;
-    }
-
 
     template<typename ArrowType>
     std::unique_ptr<KDTreeNode> build_kdtree(const DataFrame& df, 
@@ -447,27 +372,19 @@ namespace learning::independences {
                                                              size_t i, 
                                                              int k, 
                                                              const DistanceType& distance) const;
-    
 
-        std::tuple<VectorXi, VectorXi, VectorXi> count_conditional_subspaces(
-                                                        const DataFrame& test_df,
-                                                        size_t x,
-                                                        size_t y,
-                                                        const std::vector<size_t>::iterator z_begin,
-                                                        const std::vector<size_t>::iterator z_end,
-                                                        const VectorXd& eps) const;
-        
+        std::tuple<VectorXi, VectorXi, VectorXi> count_ball_subspaces(const DataFrame& test_df, 
+                                                                      const Array_ptr& x_data,
+                                                                      const Array_ptr& y_data, 
+                                                                      const VectorXd& eps) const;
+
         template<typename ArrowType, typename DistanceType>
-        std::tuple<int, int, int> count_instance_conditional_subspaces(
-                                                        const DowncastArray_vector<ArrowType>& test_data,
-                                                        size_t i,
-                                                        size_t x,
-                                                        size_t y,
-                                                        const std::vector<size_t>::iterator z_begin,
-                                                        const std::vector<size_t>::iterator z_end,
-                                                        const std::vector<int>& z_order,
-                                                        const DistanceType& distance_z,
-                                                        typename ArrowType::c_type eps_value) const;
+        std::tuple<int, int, int> count_ball_subspaces_instance(const DowncastArray_vector<ArrowType>& test_df,
+                                                                const typename ArrowType::c_type* x_data,
+                                                                const typename ArrowType::c_type* y_data,
+                                                                size_t i,
+                                                                const DistanceType& distance,
+                                                                const typename ArrowType::c_type eps_value) const;
 
         const DataFrame& ranked_data() const {
             return m_df;
@@ -540,9 +457,9 @@ namespace learning::independences {
                 KDTreeNode* near_node;
                 KDTreeNode* far_node;
 
-                auto x_split = test_downcast[node->split_id]->Value(i);
+                auto p = test_downcast[node->split_id]->Value(i);
 
-                if (x_split < node->split_value) {
+                if (p < node->split_value) {
                     near_node = node->left.get();
                     far_node = node->right.get();
                 } else {
@@ -558,7 +475,7 @@ namespace learning::independences {
                 
                 VectorType far_side_distance = query.side_distance;
                 
-                auto dis = node->split_value - x_split;
+                auto dis = node->split_value - p;
                 far_side_distance(node->split_id) = distance.distance_p(dis);
                 CType far_min_distance = distance.update_component_distance(query.min_distance, 
                                                                             query.side_distance(node->split_id),
@@ -592,31 +509,24 @@ namespace learning::independences {
         return std::make_pair(distances, indices);
     }
 
-
     template<typename ArrowType, typename DistanceType>
-    std::tuple<int, int, int> KDTree::count_instance_conditional_subspaces(
-                                const DowncastArray_vector<ArrowType>& test_data,
-                                size_t i,
-                                size_t x,
-                                size_t y,
-                                const std::vector<size_t>::iterator z_begin,
-                                const std::vector<size_t>::iterator z_end,
-                                const std::vector<int>& z_order,
-                                const DistanceType& distance_z,
-                                typename ArrowType::c_type eps_value) const {
-        
+    std::tuple<int, int, int> KDTree::count_ball_subspaces_instance(const DowncastArray_vector<ArrowType>& test_downcast, 
+                                                                    const typename ArrowType::c_type* x_data,
+                                                                    const typename ArrowType::c_type* y_data,
+                                                                    size_t i,
+                                                                    const DistanceType& distance,
+                                                                    const typename ArrowType::c_type eps_value) const {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<typename ArrowType::c_type, Dynamic, 1>;
 
-        VectorType side_distance(std::distance(z_begin, z_end));
+        VectorType side_distance(test_downcast.size());
         CType min_distance = 0;
 
-        for (auto it = z_begin; it != z_end; ++it) {
-            auto x_value = test_data[*it]->Value(i);
-            auto zidx = z_order[*it];
-            side_distance(zidx) = std::max(0., std::max(x_value - m_maxes(*it), m_mines(*it) - x_value));
-            side_distance(zidx) = distance_z.distance_p(side_distance(zidx));
-            min_distance = distance_z.update_component_distance(min_distance, 0, side_distance(zidx));
+        for (size_t j = 0; j < test_downcast.size(); ++j) {
+            auto p = test_downcast[j]->Value(i);
+            side_distance(j) = std::max(0., std::max(p - m_maxes(j), m_mines(j) - p));
+            side_distance(j) = distance.distance_p(side_distance(j));
+            min_distance = distance.update_component_distance(min_distance, 0, side_distance(j));
         }
 
         int count_xz = 0, count_yz = 0, count_z = 0;
@@ -631,82 +541,59 @@ namespace learning::independences {
             });
         }
 
-        auto train_x = m_df.downcast<ArrowType>(x);
-        auto train_y = m_df.downcast<ArrowType>(y);
-
         while (!query_nodes.empty()) {
             auto& query = query_nodes.top();
             auto node = query.node;
 
             if (node->is_leaf) {
                 for (auto it = node->indices_begin; it != node->indices_end; ++it) {
-                    auto d = distance_z.distance(*it, i);
+                    auto d = distance.distance(*it, i);
 
                     if (d < eps_value) {
                         ++count_z;
-                        if(std::abs(train_x->Value(*it) - test_data[x]->Value(i)) < eps_value)
+                        if(std::abs(x_data[*it] - x_data[i]) < eps_value)
                             ++count_xz;
-                        if(std::abs(train_y->Value(*it) - test_data[y]->Value(i)) < eps_value)
+                        if(std::abs(y_data[*it] - y_data[i]) < eps_value)
                             ++count_yz;
                     }
                 }
 
                 query_nodes.pop();
             } else {
-                if (z_order[node->split_id] != -1) {
-                    KDTreeNode* near_node;
-                    KDTreeNode* far_node;
+                KDTreeNode* near_node;
+                KDTreeNode* far_node;
 
-                    auto z_index = z_order[node->split_id];
-                    auto x_split = test_data[node->split_id]->Value(i);
-                    if (x_split < node->split_value) {
-                        near_node = node->left.get();
-                        far_node = node->right.get();
-                    } else {
-                        near_node = node->right.get();
-                        far_node = node->left.get();
-                    }
-
-                    QueryNode<ArrowType> near_query {
-                        .node = near_node,
-                        .min_distance = query.min_distance,
-                        .side_distance = query.side_distance
-                    };
-
-                    CType far_dimension_distance = distance_z.distance_p(node->split_value - x_split);
-                    CType far_node_distance = distance_z.update_component_distance(query.min_distance, 
-                                                                            query.side_distance(z_index), 
-                                                                            far_dimension_distance);
-
-                    query_nodes.pop();
-                    query_nodes.push(near_query);
-
-                    if (far_node_distance < eps_value) {
-                        VectorType far_side_distance = near_query.side_distance;
-                        far_side_distance(z_index) = far_dimension_distance;
-                        query_nodes.push(QueryNode<ArrowType> {
-                            .node = far_node,
-                            .min_distance = far_node_distance,
-                            .side_distance = far_side_distance
-                        });
-                    }
-
+                auto p = test_downcast[node->split_id]->Value(i);
+                if (p < node->split_value) {
+                    near_node = node->left.get();
+                    far_node = node->right.get();
                 } else {
-                    QueryNode<ArrowType> left_query {
-                        .node = node->left.get(),
-                        .min_distance = query.min_distance,
-                        .side_distance = query.side_distance
-                    };
+                    near_node = node->right.get();
+                    far_node = node->left.get();
+                }
 
-                    QueryNode<ArrowType> right_query {
-                        .node = node->right.get(),
-                        .min_distance = query.min_distance,
-                        .side_distance = query.side_distance
-                    };
+                QueryNode<ArrowType> near_query {
+                    .node = near_node,
+                    .min_distance = query.min_distance,
+                    .side_distance = query.side_distance
+                };
 
-                    query_nodes.pop();
-                    query_nodes.push(left_query);
-                    query_nodes.push(right_query);
+                CType far_dimension_distance = distance.distance_p(node->split_value - p);
+                CType far_node_distance = distance.update_component_distance(query.min_distance, 
+                                                                        query.side_distance(node->split_id), 
+                                                                        far_dimension_distance);
+
+                query_nodes.pop();
+                query_nodes.push(near_query);
+
+                if (far_node_distance < eps_value) {
+                    VectorType far_side_distance = near_query.side_distance;
+                    far_side_distance(node->split_id) = far_dimension_distance;
+                    query_nodes.push(QueryNode<ArrowType> {
+                        .node = far_node,
+                        .min_distance = far_node_distance,
+                        .side_distance = far_side_distance
+                    });
                 }
             }
         }

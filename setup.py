@@ -93,6 +93,7 @@ ext_modules = [
          'src/graph/dag.cpp',
          'src/graph/undirected.cpp',
          'src/graph/pdag.cpp',
+         'src/graph/generic_graph.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/opencl/opencl_config.cpp',
          ],

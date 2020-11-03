@@ -15,6 +15,8 @@ using graph::DNode, graph::Arc, graph::PartiallyDirectedGraph;
 
 namespace graph {
 
+    class PartiallyDirectedGraph;
+
     class DirectedGraph {
     public:
         DirectedGraph() : m_nodes(), m_arcs(), m_indices(), m_roots(), m_leaves(), free_indices() {}

@@ -23,6 +23,8 @@ namespace models {
         GaussianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
                                             BayesianNetwork<GaussianNetwork>(nodes, arcs) {}
 
+        GaussianNetwork(const Dag& graph) : BayesianNetwork<GaussianNetwork>(graph) {}
+        GaussianNetwork(Dag&& graph) : BayesianNetwork<GaussianNetwork>(std::move(graph)) {}
         
         static void requires(const DataFrame& df) {
             requires_continuous_data(df);

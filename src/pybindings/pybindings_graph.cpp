@@ -1,12 +1,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <graph/dag.hpp>
-#include <graph/undirected.hpp>
-#include <graph/pdag.hpp>
+#include <graph/generic_graph.hpp>
 
 namespace py = pybind11;
 
-using graph::DirectedGraph, graph::UndirectedGraph, graph::PartiallyDirectedGraph;
+using graph::DirectedGraph, graph::Dag, graph::UndirectedGraph, graph::PartiallyDirectedGraph;
 
 
 void pybindings_graph(py::module& root) {
@@ -59,11 +57,13 @@ void pybindings_graph(py::module& root) {
         .def("flip_arc", py::overload_cast<int, int>(&DirectedGraph::flip_arc))
         .def("has_path", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::has_path, py::const_))
         .def("has_path", py::overload_cast<int, int>(&DirectedGraph::has_path, py::const_))
-        .def("is_valid", &DirectedGraph::is_valid)
-        .def("can_add_arc", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::can_add_arc, py::const_))
-        .def("can_add_arc", py::overload_cast<int, int>(&DirectedGraph::can_add_arc, py::const_))
-        .def("can_flip_arc", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::can_flip_arc))
-        .def("can_flip_arc", py::overload_cast<int, int>(&DirectedGraph::can_flip_arc));
+        .def("is_valid", &DirectedGraph::is_valid);
+
+    py::class_<Dag, DirectedGraph>(graph, "Dag")
+        .def("can_add_arc", py::overload_cast<const std::string&, const std::string&>(&Dag::can_add_arc, py::const_))
+        .def("can_add_arc", py::overload_cast<int, int>(&Dag::can_add_arc, py::const_))
+        .def("can_flip_arc", py::overload_cast<const std::string&, const std::string&>(&Dag::can_flip_arc))
+        .def("can_flip_arc", py::overload_cast<int, int>(&Dag::can_flip_arc));
 
     py::class_<UndirectedGraph>(graph, "UndirectedGraph")
         .def(py::init<>())

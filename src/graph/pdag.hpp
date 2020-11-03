@@ -235,7 +235,6 @@ namespace graph {
             return m_nodes[f->second].parents();
         }
 
-
         void add_node(const std::string& node);
 
         void remove_node(int idx) {
@@ -382,6 +381,9 @@ namespace graph {
         bool is_valid(int idx) const {
             return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
         }
+        
+        DirectedGraph random_direct(long unsigned int seed) const;
+    private:
 
         void check_valid_indices(int idx) const {
             if (!is_valid(idx)) {
@@ -424,7 +426,6 @@ namespace graph {
             return std::make_pair(f, f2);
         }
 
-    private:
         std::vector<std::string> neighbors(const PDNode& n) const;
         std::vector<std::string> parents(const PDNode& n) const;
 

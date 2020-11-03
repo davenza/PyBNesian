@@ -56,7 +56,7 @@ void pybindings_independence_tests(py::module& root) {
             return self.pvalue(v1, v2, cond.begin(), cond.end());
         });
 
-    py::class_<KMutualInformation>(independence_tests, "KMutualInformation")
+    py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(independence_tests, "KMutualInformation")
         .def(py::init<DataFrame, int, long unsigned int, int, int>(),
             py::arg("df"), py::arg("k"), py::arg("seed"), py::arg("shuffle_neighbors") = 5, py::arg("samples") = 1000)
         .def(py::init<DataFrame, int,  int, int>(),

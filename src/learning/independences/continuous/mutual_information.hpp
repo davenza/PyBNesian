@@ -3,6 +3,7 @@
 
 #include <random>
 #include <Eigen/Dense>
+#include <learning/independences/independence.hpp>
 #include <dataset/dataset.hpp>
 #include <kdtree/kdtree.hpp>
 #include <util/validate_dtype.hpp>
@@ -74,7 +75,7 @@ namespace learning::independences {
     double mi_general(const DataFrame& df, int k);
     
 
-    class KMutualInformation {
+    class KMutualInformation : public IndependenceTest {
     public:
         KMutualInformation(DataFrame df, int k, int shuffle_neighbors = 5, int samples = 1000) : 
                     KMutualInformation(df, k, std::random_device{}(), shuffle_neighbors, samples) {}
@@ -97,7 +98,34 @@ namespace learning::independences {
         template<typename VarType>
         double pvalue(const VarType& x, const VarType& y, const VarType& z) const;
         template<typename VarType, typename Iter>
-        double pvalue(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
+        double pvalue(const VarType& x, const VarType& y, const Iter z_begin, const Iter z_end) const;
+
+        double pvalue(int x, int y) const override {
+            return pvalue<int>(x, y);
+        }
+        double pvalue(const std::string& x, const std::string& y) const override {
+            return pvalue<std::string>(x, y);
+        }
+
+        double pvalue(int x, int y, int z) const override {
+            return pvalue<int>(x, y, z);
+        }
+        double pvalue(const std::string& x, const std::string& y, const std::string& z) const override {
+            return pvalue<std::string>(x, y, z);
+        }
+
+        double pvalue(int x, int y, 
+                        const typename std::vector<int>::const_iterator z_begin, 
+                        const typename std::vector<int>::const_iterator z_end) const override {
+            return pvalue<int, std::vector<int>::const_iterator>(x, y, z_begin, z_end);
+        }
+
+        double pvalue(const std::string& x, const std::string& y, 
+                        const typename std::vector<std::string>::const_iterator z_begin, 
+                        const typename std::vector<std::string>::const_iterator z_end) const override {
+            return pvalue<std::string, std::vector<std::string>::const_iterator>(x, y, z_begin, z_end);
+        }
+
 
         template<typename MICalculator>
         double shuffled_pvalue(double original_mi,
@@ -145,7 +173,7 @@ namespace learning::independences {
 
         auto shuffled_df = m_ranked_df.loc(Copy(x), y);
 
-        auto x_begin = shuffled_df.template mutable_data<arrow::FloatType>(x);
+        auto x_begin = shuffled_df.template mutable_data<arrow::FloatType>(0);
         auto x_end = x_begin + shuffled_df->num_rows();
         std::mt19937 rng {m_seed};
 

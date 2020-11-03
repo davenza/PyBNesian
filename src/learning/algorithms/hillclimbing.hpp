@@ -4,7 +4,7 @@
 #include <pybind11/pybind11.h>
 
 #include <dataset/dataset.hpp>
-#include <graph/dag.hpp>
+#include <graph/generic_graph.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <util/validate_dtype.hpp>

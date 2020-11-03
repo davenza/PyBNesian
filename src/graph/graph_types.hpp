@@ -1,6 +1,8 @@
 #ifndef PGM_DATASET_GRAPH_TYPES_HPP
 #define PGM_DATASET_GRAPH_TYPES_HPP
 
+#include <string>
+#include <unordered_set>
 #include <util/hash_utils.hpp>
 
 namespace graph {

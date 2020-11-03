@@ -1,7 +1,6 @@
 #include <optional>
 
 #include <learning/algorithms/pc.hpp>
-#include <graph/undirected.hpp>
 #include <util/combinations.hpp>
 
 using graph::PartiallyDirectedGraph, graph::UndirectedGraph, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo;
@@ -41,7 +40,8 @@ namespace learning::algorithms {
 
         for (auto cond : nbr) {
             double pvalue = test.pvalue(edge.first, edge.second, cond);
-
+            std::cout << "\t\tTesting " << g.name(edge.first) << "_|_" << g.name(edge.second) << " | " << g.name(cond)
+                                        << " pvalue: " << pvalue << std::endl;
             if (pvalue > alpha) {
                 return std::optional<std::pair<int, double>>(std::make_pair(cond, pvalue));
             }
@@ -58,6 +58,13 @@ namespace learning::algorithms {
         for (auto& sepset : comb) {
             double pvalue = test.pvalue(edge.first, edge.second, sepset.begin(), sepset.end());
 
+            std::cout << "\t\tTesting " << edge.first << "_|_" << edge.second << " | " << sepset[0];
+
+            for (auto j = 1; j < sepset.size(); ++j) {
+                std::cout << ", " << sepset[j];
+            }
+            std::cout << " pvalue: " << pvalue << std::endl;
+            
             if (pvalue > alpha) {
                 return std::optional<std::pair<std::unordered_set<int>, double>>(
                     std::make_pair<std::unordered_set<int>, double>({sepset.begin(), sepset.end()}, std::move(pvalue))
@@ -136,13 +143,16 @@ namespace learning::algorithms {
                                                    const IndependenceTest& test, 
                                                    double alpha) {
         SepSet sepset;
-
+        std::cout << "\tZero sepset" << std::endl;
         auto g = UndirectedGraph::Complete(df.column_names());
         int nnodes = g.num_nodes();
         for (int i = 0; i < nnodes-1; ++i) {
             for (int j = i+1; j < nnodes; ++j) {
+                std::cout << "\t\tTesting " << df->column_name(i) << "_|_" << df->column_name(j);
+                
                 double pvalue = test.pvalue(i, j);
-
+                std::cout << " pvalue: " << pvalue << std::endl;
+                
                 if (pvalue > alpha) {
                     g.remove_edge(i, j);
                     sepset.insert({i,j}, {}, pvalue);
@@ -156,6 +166,7 @@ namespace learning::algorithms {
 
         std::vector<Edge> edges_to_remove;
 
+        std::cout << "\tUnivariate sepset" << std::endl;
         for (auto& edge : g.edge_indices()) {
             auto indep = find_univariate_sepset(g, edge, alpha, test);
             if (indep) {
@@ -169,6 +180,7 @@ namespace learning::algorithms {
         auto limit = 2;
         while(!max_cardinality(g, limit)) {
             edges_to_remove.clear();
+            std::cout << "\tSepset " << limit << std::endl;
             
             for (auto& edge : g.edge_indices()) {
                 auto indep = find_multivariate_sepset(g, edge, limit, test, alpha);
@@ -221,7 +233,11 @@ namespace learning::algorithms {
         possible_sepset.erase(vs.children);
 
         for (auto sp : possible_sepset) {
-            if (test.pvalue(vs.p1, vs.p2, sp) > alpha) {
+            auto pvalue = test.pvalue(vs.p1, vs.p2, sp);
+            std::cout << "\t\tEvaluate " << g.name(vs.p1) << " _|_ " << g.name(vs.p2) << " | " << g.name(sp)
+                                         << " pvalue: " << pvalue << std::endl;
+            if (pvalue > alpha) {
+            // if (test.pvalue(vs.p1, vs.p2, sp) > alpha) {
                 ++indep_sepsets;
             }
         }
@@ -240,6 +256,13 @@ namespace learning::algorithms {
 
         for (auto& sepset : comb) {
             double pvalue = test.pvalue(vs.p1, vs.p2, sepset.begin(), sepset.end());
+            std::cout << "\t\tEvaluate " << vs.p1 << " _|_ " << vs.p2 << " | " << sepset[0];
+            for (auto j = 1; j < sepset.size(); ++j) {
+                std::cout << ", " << sepset[j];
+            }
+            std::cout << " pvalue: " << pvalue << std::endl;
+
+
             if (pvalue > alpha) {
                 ++indep_sepsets;
                 if(std::find(sepset.begin(), sepset.end(), vs.children) != sepset.end()) {
@@ -260,10 +283,10 @@ namespace learning::algorithms {
                                    double ambiguous_slack) {
 
         if (is_unshielded_triple(g, vs)) {
-
+            std::cout << "\tEvaluate vstructure " << g.name(vs.p1) << " -> " << g.name(vs.children) << " <- " << g.name(vs.p2) << std::endl;
             size_t max_sepset = std::max(g.num_neighbors(vs.p1), g.num_neighbors(vs.p2));
-
             double marg_pvalue = test.pvalue(vs.p1, vs.p2);
+            std::cout << "\t\tEvaluate " << g.name(vs.p1) << " _|_ " << g.name(vs.p2) << " pvalue: " << marg_pvalue << std::endl;
 
             int indep_sepsets = 0;
             int children_in_sepsets = 0;
@@ -360,6 +383,7 @@ namespace learning::algorithms {
         std::vector<vstructure> vs;
         for (const auto& node : pdag.node_indices()) {
             if (node.neighbors().size() >= 2) {
+                std::cout << "\tEvaluate vstructure at node " << node.name() << std::endl;
                 auto tmp = evaluate_vstructures_at_node(pdag, node, test, alpha, ambiguous_threshold, ambiguous_slack);
 
                 vs.insert(vs.end(), tmp.begin(), tmp.end());
@@ -496,13 +520,15 @@ namespace learning::algorithms {
                         double ambiguous_slack) {
 
         GaussianNetwork::requires(df);
-
+        std::cout << "Start skeleton" << std::endl;
         auto [skeleton, sepset] = find_skeleton(df, test, alpha);
 
         PartiallyDirectedGraph pdag(std::move(skeleton));
 
+        std::cout << "Unshielded triples" << std::endl;
         direct_unshielded_triples(pdag, test, alpha, ambiguous_threshold, ambiguous_slack);
 
+        std::cout << "Meek rules" << std::endl;
         bool changed = true;
         while(changed) {
             changed = false;

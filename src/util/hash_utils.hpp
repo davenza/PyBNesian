@@ -1,6 +1,8 @@
 #ifndef PGM_DATASET_HASH_UTILS_HPP
 #define PGM_DATASET_HASH_UTILS_HPP
 
+#include <functional>
+
 namespace util {
 
     template<typename T>

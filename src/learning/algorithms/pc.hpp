@@ -2,7 +2,7 @@
 #define PGM_DATASET_PC_HPP
 
 #include <util/util_types.hpp>
-#include <graph/pdag.hpp>
+#include <graph/generic_graph.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <learning/independences/independence.hpp>
 

@@ -72,7 +72,6 @@ namespace graph {
 
                 add_edge(edge.first, edge.second);
             }
-
         }
 
         static UndirectedGraph Complete(const std::vector<std::string>& nodes);

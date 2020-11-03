@@ -184,4 +184,8 @@ namespace graph {
         }
     }
 
+    // DirectedGraph PartiallyDirectedGraph::random_direct(long unsigned int seed) const {
+
+    // }
+
 }

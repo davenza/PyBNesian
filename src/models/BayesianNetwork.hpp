@@ -3,13 +3,13 @@
 
 #include <iterator>
 #include <dataset/dataset.hpp>
-#include <graph/dag.hpp>
+#include <graph/generic_graph.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/SemiparametricCPD.hpp>
 #include <util/util_types.hpp>
 
 using dataset::DataFrame;
-using graph::DirectedGraph;
+using graph::Dag;
 
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::SemiparametricCPD;
@@ -126,9 +126,12 @@ namespace models {
         // using DagType = typename BN_traits<Derived>::DagType;
         using CPD = typename BN_traits<Derived>::CPD;
 
-        BayesianNetwork(const std::vector<std::string>& nodes);
-        BayesianNetwork(const ArcVector& arcs);
-        BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs);
+        BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {}
+        BayesianNetwork(const ArcVector& arcs) : g(arcs), m_cpds() {}
+        BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs) :
+                                                 g(nodes, arcs), m_cpds() {}
+        BayesianNetwork(const Dag& graph) : g(graph), m_cpds() {}
+        BayesianNetwork(Dag&& graph) : g(std::move(graph)), m_cpds() {}
 
         int num_nodes() const override {
             return g.num_nodes();
@@ -309,7 +312,7 @@ namespace models {
     protected:
         void check_fitted() const;
     private:
-        DirectedGraph g;
+        Dag g;
         std::vector<CPD> m_cpds;
     };
 
@@ -321,16 +324,6 @@ namespace models {
         return os;
     }
 
-    template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {};
-
-    template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const ArcVector& arcs) : g(arcs), m_cpds() {};
-
-    template<typename Derived>
-    BayesianNetwork<Derived>::BayesianNetwork(const std::vector<std::string>& nodes, 
-                                              const ArcVector& arcs) 
-                                                 : g(nodes, arcs), m_cpds() {};
     template<typename Derived>
     void BayesianNetwork<Derived>::compatible_cpd(const CPD& cpd) const {
         if (!contains_node(cpd.variable())) {

@@ -46,6 +46,20 @@ namespace models {
                 m_factor_types[this->index(p.first)] = p.second;
             }
         }
+        SemiparametricBN(const Dag& graph, FactorTypeVector& node_types) : 
+                                                    BayesianNetwork<SemiparametricBN>(graph),
+                                                    m_factor_types(graph.num_nodes()) {
+            for(auto& p : node_types) {
+                m_factor_types[this->index(p.first)] = p.second;
+            }
+        }
+        SemiparametricBN(Dag&& graph, FactorTypeVector& node_types) :
+                                                    BayesianNetwork<SemiparametricBN>(std::move(graph)),
+                                                    m_factor_types(this->num_nodes()) {
+            for(auto& p : node_types) {
+                m_factor_types[this->index(p.first)] = p.second;
+            }
+        }
 
         SemiparametricBN(const std::vector<std::string>& nodes) : 
                                                     BayesianNetwork<SemiparametricBN>(nodes),
@@ -56,6 +70,10 @@ namespace models {
         SemiparametricBN(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
                                                     BayesianNetwork<SemiparametricBN>(nodes, arcs),
                                                     m_factor_types(nodes.size()) {}
+        SemiparametricBN(const Dag& graph) : BayesianNetwork<SemiparametricBN>(graph),
+                                                    m_factor_types(this->num_nodes()) {}
+        SemiparametricBN(Dag&& graph) : BayesianNetwork<SemiparametricBN>(std::move(graph)),
+                                                    m_factor_types(this->num_nodes()) {}
 
         static void requires(const DataFrame& df) {
             requires_continuous_data(df);

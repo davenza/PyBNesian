@@ -229,6 +229,14 @@ namespace graph {
             m_children.erase(ch);
         }
 
+        bool is_root() const {
+            return m_parents.empty();
+        }
+
+        bool is_leaf() const {
+            return m_children.empty();
+        }
+
         void invalidate() {
             m_idx = -1;
             m_name.clear();

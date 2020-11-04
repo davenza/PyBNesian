@@ -81,8 +81,8 @@ namespace learning::algorithms {
                                                                    const IndependenceTest& test,
                                                                    double alpha) {
 
-        auto nbr = g.neighbor_indices(edge.first);
-        auto nbr2 = g.neighbor_indices(edge.second);
+        auto nbr = g.neighbor_set(edge.first);
+        auto nbr2 = g.neighbor_set(edge.second);
         
         bool set1_valid = static_cast<int>(nbr.size()) > sep_size;
         bool set2_valid = static_cast<int>(nbr2.size()) > sep_size;
@@ -482,7 +482,7 @@ namespace learning::algorithms {
 
         bool changed = false;
         for (const auto& neigh : nbr) {
-            const auto& nbr_of_neigh = pdag.neighbor_indices(neigh);
+            const auto& nbr_of_neigh = pdag.neighbor_set(neigh);
             auto intersection = intersect(nbr_of_neigh, parents);
 
             if (intersection.size() >= 2) {

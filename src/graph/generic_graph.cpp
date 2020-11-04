@@ -83,6 +83,16 @@ namespace graph {
         }
 
         m_edges = std::move(g.m_edges);
+        m_roots = std::unordered_set<int>();
+        m_leaves = std::unordered_set<int>();
+
+        for (size_t i = 0; i < g.m_nodes.size(); ++i) {
+            if (g.is_valid(i)) {
+                m_roots.insert(i);
+                m_leaves.insert(i);
+            }
+        }
+
         m_indices = std::move(g.m_indices);
         free_indices = std::move(g.free_indices);
     }
@@ -97,6 +107,8 @@ namespace graph {
         }
 
         m_arcs = std::move(g.m_arcs);
+        m_roots = std::move(g.m_roots);
+        m_leaves = std::move(g.m_leaves);
         m_indices = std::move(g.m_indices);
         free_indices = std::move(g.free_indices);
     }
@@ -119,19 +131,28 @@ namespace graph {
         }
     }
 
-    bool is_new_vstructure(const PartiallyDirectedGraph& g, int source, int target) {
-        const auto& parents_target = g.node(target).parents();
+    bool pdag2dag_adjacent_node(const PartiallyDirectedGraph& g,
+                                const std::vector<int>& x_neighbors, 
+                                const std::vector<int>& x_parents) {
+                               
+        for (auto y : x_neighbors) {
+            for (auto x_adj : x_neighbors) {
+                if (y != x_adj && !g.has_connection_unsafe(y, x_adj))
+                    return false;
+            }
 
-        for (auto p : parents_target) {
-            if (!g.has_connection(source, target))
-                return true;
+            for (auto x_adj : x_parents) {
+                if (y != x_adj && !g.has_connection_unsafe(y, x_adj))
+                    return false;
+            }
         }
 
-        return false;
+        return true;
     }
 
-    DirectedGraph PartiallyDirectedGraph::random_direct() const {
-        DirectedGraph directed(nodes());
+    Dag PartiallyDirectedGraph::to_dag() const {
+        // PDAG-TO-DAG by D.Dor, M.Tarsi (1992). A simple algorithm to construct a consistent extension of a partially oriented graph.
+        Dag directed(nodes());
 
         for (const auto& arc : arc_indices()) {
             directed.add_arc_unsafe(arc.first, arc.second);
@@ -140,13 +161,53 @@ namespace graph {
         if (num_edges() > 0) {
             PartiallyDirectedGraph copy(*this);
 
-            while (copy.num_nodes() > 0) {
+            while (copy.num_edges() > 0) {
+                bool ok = false;
+                for (auto x : copy.leaves()) {
+                    auto x_neighbors = copy.neighbor_indices(x);
+                    auto x_parents = copy.parent_indices(x);
 
+                    if (pdag2dag_adjacent_node(copy, x_neighbors, x_parents)) {
+                        for (auto neighbor : x_neighbors) {
+                            directed.add_arc(neighbor, x);
+                        }
+
+                        copy.remove_node(x);
+                        ok = true;
+                        break;
+                    }
+                }
+
+                if (!ok) {
+                    throw std::invalid_argument("PDAG do not allow a valid DAG extension.");
+                }
             }
-
         }
 
         return directed;
+    }
+
+    bool DirectedGraph::has_path_unsafe(int source, int target) const {
+        if (has_arc_unsafe(source, target))
+            return true;
+        else {
+            const auto& children = m_nodes[source].children();
+            std::vector<int> stack {children.begin(), children.end()};
+
+            while (!stack.empty()) {
+                auto v = stack.back();
+                stack.pop_back();
+
+                const auto& children = m_nodes[v].children();
+        
+                if (children.find(target) != children.end())
+                    return true;
+                
+                stack.insert(stack.end(), children.begin(), children.end());
+            }
+
+            return false;
+        }
     }
 
     std::vector<std::string> Dag::topological_sort() const {
@@ -189,29 +250,6 @@ namespace graph {
         return top_sort;
     }
 
-    bool DirectedGraph::has_path_unsafe(int source, int target) const {
-        if (has_arc_unsafe(source, target))
-            return true;
-        else {
-            const auto& children = m_nodes[source].children();
-            std::vector<int> stack {children.begin(), children.end()};
-
-            while (!stack.empty()) {
-                auto v = stack.back();
-                stack.pop_back();
-
-                const auto& children = m_nodes[v].children();
-        
-                if (children.find(target) != children.end())
-                    return true;
-                
-                stack.insert(stack.end(), children.begin(), children.end());
-            }
-
-            return false;
-        }
-    }
-
     bool Dag::can_add_arc_unsafe(int source, int target) const {
         if (num_parents_unsafe(source) == 0 || 
             num_children_unsafe(target) == 0 || 
@@ -245,5 +283,83 @@ namespace graph {
                 return true;
             }
         }
+    }
+
+    std::vector<Arc> sort_arcs(const Dag& g) {
+        auto top_sort = g.topological_sort();
+        std::vector<int> top_rank(top_sort.size());
+
+        for (auto i = 0; i < top_sort.size(); ++i) {
+            top_rank[g.index(top_sort[i])] = i;
+        }
+
+        std::vector<Arc> res;
+        res.reserve(g.num_arcs());
+
+        int included_arcs = 0;
+        for (auto i = 0; i < top_sort.size() && included_arcs < g.num_arcs(); ++i) {
+            auto p = g.parent_indices(top_sort[i]);
+
+            std::sort(p.begin(), p.end(), [&top_rank](int a, int b) {
+                return top_rank[a] < top_rank[b];
+            });
+
+            auto x_name = g.index(top_sort[i]);
+            for(auto j = 0; j < p.size(); ++j) {
+                res.push_back({p[j], x_name});
+            }
+        }
+
+        return res;
+    }
+
+
+    PartiallyDirectedGraph Dag::to_pdag() const {
+        // DAG-to-PDAG by Chickering (2002). Learning Equivalence Classes of Bayesian-Network Structures.
+        std::vector<Arc> sorted_arcs = sort_arcs(*this);
+        PartiallyDirectedGraph pdag(nodes());
+
+        for (auto i = 0; i < sorted_arcs.size() && (pdag.num_arcs() + pdag.num_edges()) < num_arcs(); ++i) {
+            auto x = sorted_arcs[i].first;
+            auto y = sorted_arcs[i].second;
+            if (!pdag.has_arc(x, y) && !pdag.has_edge(x, y)) {
+                bool done = false;
+                for (auto w : pdag.parent_set(x)) {
+                    if (!has_arc(w, y)) {
+                        for (auto z : parent_set(y)) {
+                            pdag.add_arc(z, y);
+                        }
+
+                        done = true;
+                        break;
+                    } else {
+                        pdag.add_arc(w, y);
+                    }
+                }
+
+                if (!done) {
+                    bool compelled = false;
+
+                    for (auto z : parent_set(y)) {
+                        if (z != x && !has_arc(z, x)) {
+                            compelled = true;
+                            break;
+                        }
+                    }
+
+                    if (compelled) {
+                        for (auto z : parent_set(y)) {
+                            pdag.add_arc(z, y);
+                        }
+                    } else {
+                        for (auto z : parent_set(y)) {
+                            pdag.add_edge(z, y);
+                        }
+                    }
+                }
+            }
+        }
+
+        return pdag;
     }
 }

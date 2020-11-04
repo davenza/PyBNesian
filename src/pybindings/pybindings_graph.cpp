@@ -31,39 +31,86 @@ void pybindings_graph(py::module& root) {
         })
         .def("num_nodes", &DirectedGraph::num_nodes)
         .def("num_arcs", &DirectedGraph::num_arcs)
-        .def("num_parents", py::overload_cast<const std::string&>(&DirectedGraph::num_parents, py::const_))
-        .def("num_parents", py::overload_cast<int>(&DirectedGraph::num_parents, py::const_))
-        .def("num_children", py::overload_cast<const std::string&>(&DirectedGraph::num_children, py::const_))
-        .def("num_children", py::overload_cast<int>(&DirectedGraph::num_children, py::const_))
+        .def("num_parents", [](DirectedGraph& self, int n) {
+            return self.num_parents(n);
+        })
+        .def("num_parents", [](DirectedGraph& self, const std::string& n) {
+            return self.num_parents(n);
+        })
+        .def("num_children", [](DirectedGraph& self, int n) {
+            return self.num_children(n);
+        })
+        .def("num_children", [](DirectedGraph& self, const std::string& n) {
+            return self.num_children(n);
+        })
         .def("nodes", &DirectedGraph::nodes)
         .def("index", &DirectedGraph::index)
-        .def("name", [](DirectedGraph& self, int idx) -> std::string {
-            return self.name(idx);
-        })
+        .def("name", &DirectedGraph::name)
         .def("contains_node", &DirectedGraph::contains_node)
         .def("arcs", &DirectedGraph::arcs)
-        .def("parents", py::overload_cast<const std::string&>(&DirectedGraph::parents, py::const_))
-        .def("parents", py::overload_cast<int>(&DirectedGraph::parents, py::const_))
+        .def("parents", [](DirectedGraph& self, int n) {
+            return self.parents(n);
+        })
+        .def("parents", [](DirectedGraph& self, const std::string& n) {
+            return self.parents(n);
+        })
         .def("add_node", &DirectedGraph::add_node)
-        .def("remove_node", py::overload_cast<const std::string&>(&DirectedGraph::remove_node))
-        .def("remove_node", py::overload_cast<int>(&DirectedGraph::remove_node))
-        .def("add_arc", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::add_arc))
-        .def("add_arc", py::overload_cast<int, int>(&DirectedGraph::add_arc))
-        .def("has_arc", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::has_arc, py::const_))
-        .def("has_arc", py::overload_cast<int, int>(&DirectedGraph::has_arc, py::const_))
-        .def("remove_arc", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::remove_arc))
-        .def("remove_arc", py::overload_cast<int, int>(&DirectedGraph::remove_arc))
-        .def("flip_arc", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::flip_arc))
-        .def("flip_arc", py::overload_cast<int, int>(&DirectedGraph::flip_arc))
-        .def("has_path", py::overload_cast<const std::string&, const std::string&>(&DirectedGraph::has_path, py::const_))
-        .def("has_path", py::overload_cast<int, int>(&DirectedGraph::has_path, py::const_))
+        .def("remove_node", [](DirectedGraph& self, int n) {
+            self.remove_node(n);
+        })
+        .def("remove_node", [](DirectedGraph& self, const std::string& n) {
+            self.remove_node(n);
+        })
+        .def("add_arc", [](DirectedGraph& self, int source, int target) {
+            self.add_arc(source, target);
+        })
+        .def("add_arc", [](DirectedGraph& self, const std::string& source, const std::string& target) {
+            self.add_arc(source, target);
+        })
+        .def("has_arc", [](DirectedGraph& self, int source, int target) {
+            return self.has_arc(source, target);
+        })
+        .def("has_arc", [](DirectedGraph& self, const std::string& source, const std::string& target) {
+            return self.has_arc(source, target);
+        })
+        .def("remove_arc", [](DirectedGraph& self, int source, int target) {
+            self.remove_arc(source, target);
+        })
+        .def("remove_arc", [](DirectedGraph& self, const std::string& source, const std::string& target) {
+            self.remove_arc(source, target);
+        })
+        .def("flip_arc", [](DirectedGraph& self, int source, int target) {
+            self.flip_arc(source, target);
+        })
+        .def("flip_arc", [](DirectedGraph& self, const std::string& source, const std::string& target) {
+            self.flip_arc(source, target);
+        })
+        .def("has_path", [](DirectedGraph& self, int source, int target) {
+            return self.has_path(source, target);
+        })
+        .def("has_path", [](DirectedGraph& self, const std::string& source, const std::string& target) {
+            return self.has_path(source, target);
+        })
         .def("is_valid", &DirectedGraph::is_valid);
 
     py::class_<Dag, DirectedGraph>(graph, "Dag")
-        .def("can_add_arc", py::overload_cast<const std::string&, const std::string&>(&Dag::can_add_arc, py::const_))
-        .def("can_add_arc", py::overload_cast<int, int>(&Dag::can_add_arc, py::const_))
-        .def("can_flip_arc", py::overload_cast<const std::string&, const std::string&>(&Dag::can_flip_arc))
-        .def("can_flip_arc", py::overload_cast<int, int>(&Dag::can_flip_arc));
+        .def(py::init<>())
+        .def(py::init<const std::vector<std::string>&>())
+        .def(py::init<const ArcVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcVector&>())
+        .def("can_add_arc", [](Dag& self, int source, int target) {
+            return self.can_add_arc(source, target);
+        })
+        .def("can_add_arc", [](Dag& self, const std::string& source, const std::string& target) {
+            return self.can_add_arc(source, target);
+        })
+        .def("can_flip_arc", [](Dag& self, int source, int target) {
+            return self.can_flip_arc(source, target);
+        })
+        .def("can_flip_arc", [](Dag& self, const std::string& source, const std::string& target) {
+            return self.can_flip_arc(source, target);
+        })
+        .def("to_pdag", &Dag::to_pdag);
 
     py::class_<UndirectedGraph>(graph, "UndirectedGraph")
         .def(py::init<>())
@@ -73,8 +120,12 @@ void pybindings_graph(py::module& root) {
         .def_static("Complete", &UndirectedGraph::Complete)
         .def("num_nodes", &UndirectedGraph::num_nodes)
         .def("num_edges", &UndirectedGraph::num_edges)
-        .def("num_neighbors", py::overload_cast<const std::string&>(&UndirectedGraph::num_neighbors, py::const_))
-        .def("num_neighbors", py::overload_cast<int>(&UndirectedGraph::num_neighbors, py::const_))
+        .def("num_neighbors", [](UndirectedGraph& self, int n) {
+            return self.num_neighbors(n);
+        })
+        .def("num_neighbors", [](UndirectedGraph& self, const std::string& n) {
+            return self.num_neighbors(n);
+        })
         .def("nodes", &UndirectedGraph::nodes)
         .def("index", &UndirectedGraph::index)
         .def("name", [](UndirectedGraph& self, int idx) -> std::string {
@@ -82,19 +133,43 @@ void pybindings_graph(py::module& root) {
         })
         .def("contains_node", &UndirectedGraph::contains_node)
         .def("edges", &UndirectedGraph::edges)
-        .def("neighbors", py::overload_cast<const std::string&>(&UndirectedGraph::neighbors, py::const_))
-        .def("neighbors", py::overload_cast<int>(&UndirectedGraph::neighbors, py::const_))
+        .def("neighbors", [](UndirectedGraph& self, int n) {
+            return self.neighbors(n);
+        })
+        .def("neighbors", [](UndirectedGraph& self, const std::string& n) {
+            return self.neighbors(n);
+        })
         .def("add_node", &UndirectedGraph::add_node)
-        .def("remove_node", py::overload_cast<const std::string&>(&UndirectedGraph::remove_node))
-        .def("remove_node", py::overload_cast<int>(&UndirectedGraph::remove_node))
-        .def("add_edge", py::overload_cast<const std::string&, const std::string&>(&UndirectedGraph::add_edge))
-        .def("add_edge", py::overload_cast<int, int>(&UndirectedGraph::add_edge))
-        .def("has_edge", py::overload_cast<const std::string&, const std::string&>(&UndirectedGraph::has_edge, py::const_))
-        .def("has_edge", py::overload_cast<int, int>(&UndirectedGraph::has_edge, py::const_))
-        .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&UndirectedGraph::remove_edge))
-        .def("remove_edge", py::overload_cast<int, int>(&UndirectedGraph::remove_edge))
-        .def("has_path", py::overload_cast<const std::string&, const std::string&>(&UndirectedGraph::has_path, py::const_))
-        .def("has_path", py::overload_cast<int, int>(&UndirectedGraph::has_path, py::const_))
+        .def("remove_node", [](UndirectedGraph& self, int n) {
+            self.remove_node(n);
+        })
+        .def("remove_node", [](UndirectedGraph& self, const std::string& n) {
+            self.remove_node(n);
+        })
+        .def("add_edge", [](UndirectedGraph& self, int source, int target) {
+            self.add_edge(source, target);
+        })
+        .def("add_edge", [](UndirectedGraph& self, const std::string& source, const std::string& target) {
+            self.add_edge(source, target);
+        })
+        .def("has_edge", [](UndirectedGraph& self, int source, int target) {
+            return self.has_edge(source, target);
+        })
+        .def("has_edge", [](UndirectedGraph& self, const std::string& source, const std::string& target) {
+            return self.has_edge(source, target);
+        })
+        .def("remove_edge", [](UndirectedGraph& self, int source, int target) {
+            self.remove_edge(source, target);
+        })
+        .def("remove_edge", [](UndirectedGraph& self, const std::string& source, const std::string& target) {
+            self.remove_edge(source, target);
+        })
+        .def("has_path", [](UndirectedGraph& self, int source, int target) {
+            return self.has_path(source, target);
+        })
+        .def("has_path", [](UndirectedGraph& self, const std::string& source, const std::string& target) {
+            return self.has_path(source, target);
+        })
         .def("is_valid", &UndirectedGraph::is_valid);
 
     py::class_<PartiallyDirectedGraph>(graph, "PartiallyDirectedGraph")
@@ -105,12 +180,24 @@ void pybindings_graph(py::module& root) {
         .def("num_nodes", &PartiallyDirectedGraph::num_nodes)
         .def("num_edges", &PartiallyDirectedGraph::num_edges)
         .def("num_arcs", &PartiallyDirectedGraph::num_arcs)
-        .def("num_neighbors", py::overload_cast<const std::string&>(&PartiallyDirectedGraph::num_neighbors, py::const_))
-        .def("num_neighbors", py::overload_cast<int>(&PartiallyDirectedGraph::num_neighbors, py::const_))
-        .def("num_parents", py::overload_cast<const std::string&>(&PartiallyDirectedGraph::num_parents, py::const_))
-        .def("num_parents", py::overload_cast<int>(&PartiallyDirectedGraph::num_parents, py::const_))
-        .def("num_children", py::overload_cast<const std::string&>(&PartiallyDirectedGraph::num_children, py::const_))
-        .def("num_children", py::overload_cast<int>(&PartiallyDirectedGraph::num_children, py::const_))
+        .def("num_neighbors", [](PartiallyDirectedGraph& self, int n) {
+            return self.num_neighbors(n);
+        })
+        .def("num_neighbors", [](PartiallyDirectedGraph& self, const std::string& n) {
+            return self.num_neighbors(n);
+        })
+        .def("num_parents", [](PartiallyDirectedGraph& self, int n) {
+            return self.num_parents(n);
+        })
+        .def("num_parents", [](PartiallyDirectedGraph& self, const std::string& n) {
+            return self.num_parents(n);
+        })
+        .def("num_children", [](PartiallyDirectedGraph& self, int n) {
+            return self.num_children(n);
+        })
+        .def("num_children", [](PartiallyDirectedGraph& self, const std::string& n) {
+            return self.num_children(n);
+        })
         .def("nodes", &PartiallyDirectedGraph::nodes)
         .def("index", &PartiallyDirectedGraph::index)
         .def("name", [](PartiallyDirectedGraph& self, int idx) -> std::string {
@@ -119,30 +206,79 @@ void pybindings_graph(py::module& root) {
         .def("contains_node", &PartiallyDirectedGraph::contains_node)
         .def("edges", &PartiallyDirectedGraph::edges)
         .def("arcs", &PartiallyDirectedGraph::arcs)
-        .def("neighbors", py::overload_cast<const std::string&>(&PartiallyDirectedGraph::neighbors, py::const_))
-        .def("neighbors", py::overload_cast<int>(&PartiallyDirectedGraph::neighbors, py::const_))
-        .def("parents", py::overload_cast<const std::string&>(&PartiallyDirectedGraph::parents, py::const_))
-        .def("parents", py::overload_cast<int>(&PartiallyDirectedGraph::parents, py::const_))
+        .def("neighbors", [](PartiallyDirectedGraph& self, int n) {
+            return self.neighbors(n);
+        })
+        .def("neighbors", [](PartiallyDirectedGraph& self, const std::string& n) {
+            return self.neighbors(n);
+        })
+        .def("parents", [](PartiallyDirectedGraph& self, int n) {
+            return self.parents(n);
+        })
+        .def("parents", [](PartiallyDirectedGraph& self, const std::string& n) {
+            return self.parents(n);
+        })
         .def("add_node", &PartiallyDirectedGraph::add_node)
-        .def("remove_node", py::overload_cast<const std::string&>(&PartiallyDirectedGraph::remove_node))
-        .def("remove_node", py::overload_cast<int>(&PartiallyDirectedGraph::remove_node))
-        .def("add_edge", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::add_edge))
-        .def("add_edge", py::overload_cast<int, int>(&PartiallyDirectedGraph::add_edge))
-        .def("add_arc", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::add_arc))
-        .def("add_arc", py::overload_cast<int, int>(&PartiallyDirectedGraph::add_arc))
-        .def("has_edge", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::has_edge, py::const_))
-        .def("has_edge", py::overload_cast<int, int>(&PartiallyDirectedGraph::has_edge, py::const_))
-        .def("has_arc", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::has_arc, py::const_))
-        .def("has_arc", py::overload_cast<int, int>(&PartiallyDirectedGraph::has_arc, py::const_))
-        .def("remove_edge", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::remove_edge))
-        .def("remove_edge", py::overload_cast<int, int>(&PartiallyDirectedGraph::remove_edge))
-        .def("remove_arc", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::remove_arc))
-        .def("remove_arc", py::overload_cast<int, int>(&PartiallyDirectedGraph::remove_arc))
-        .def("flip_arc", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::flip_arc))
-        .def("flip_arc", py::overload_cast<int, int>(&PartiallyDirectedGraph::flip_arc))
-        .def("direct", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::direct))
-        .def("direct", py::overload_cast<int, int>(&PartiallyDirectedGraph::direct))
-        .def("undirect", py::overload_cast<const std::string&, const std::string&>(&PartiallyDirectedGraph::undirect))
-        .def("undirect", py::overload_cast<int, int>(&PartiallyDirectedGraph::undirect))
-        .def("is_valid", &PartiallyDirectedGraph::is_valid);
+        .def("remove_node", [](PartiallyDirectedGraph& self, int n) {
+            self.remove_node(n);
+        })
+        .def("remove_node", [](PartiallyDirectedGraph& self, const std::string& n) {
+            self.remove_node(n);
+        })
+        .def("add_edge", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.add_edge(source, target);
+        })
+        .def("add_edge", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.add_edge(source, target);
+        })
+        .def("add_arc", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.add_arc(source, target);
+        })
+        .def("add_arc", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.add_arc(source, target);
+        })
+        .def("has_edge", [](PartiallyDirectedGraph& self, int source, int target) {
+            return self.has_edge(source, target);
+        })
+        .def("has_edge", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            return self.has_edge(source, target);
+        })
+        .def("has_arc", [](PartiallyDirectedGraph& self, int source, int target) {
+            return self.has_arc(source, target);
+        })
+        .def("has_arc", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            return self.has_arc(source, target);
+        })
+        .def("remove_edge", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.remove_edge(source, target);
+        })
+        .def("remove_edge", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.remove_edge(source, target);
+        })
+        .def("remove_arc", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.remove_arc(source, target);
+        })
+        .def("remove_arc", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.remove_arc(source, target);
+        })
+        .def("flip_arc", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.flip_arc(source, target);
+        })
+        .def("flip_arc", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.flip_arc(source, target);
+        })
+        .def("direct", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.direct(source, target);
+        })
+        .def("direct", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.direct(source, target);
+        })
+        .def("undirect", [](PartiallyDirectedGraph& self, int source, int target) {
+            self.undirect(source, target);
+        })
+        .def("undirect", [](PartiallyDirectedGraph& self, const std::string& source, const std::string& target) {
+            self.undirect(source, target);
+        })
+        .def("is_valid", &PartiallyDirectedGraph::is_valid)
+        .def("to_dag", &PartiallyDirectedGraph::to_dag);
 }

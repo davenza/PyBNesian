@@ -48,11 +48,21 @@ namespace graph {
         inline static constexpr bool has_edges = true;
     };
 
+    template<typename Derived>
+    class ArcGraph;
 
     template<typename Derived>
     class GraphBase {
     public:
         using NodeType = typename GraphTraits<Derived>::NodeType;
+
+        template<typename G>
+        friend class ArcGraph;
+        template<typename G>
+        friend class EdgeGraph;
+        template<typename GraphType>
+        friend class Graph;
+        friend class Dag;
         
         GraphBase() : m_nodes(), m_indices(), free_indices() {}
         GraphBase(const std::vector<std::string>& nodes) : m_nodes(), m_indices(), free_indices() {
@@ -69,13 +79,9 @@ namespace graph {
             return m_nodes.size() - free_indices.size();
         }
 
-        const NodeType& node(int idx) const {
-            check_valid_indices(idx);
-            return m_nodes[idx]; 
-        }
-        const NodeType& node(const std::string& name) const {
-            auto idx = check_names(name);
-            return m_nodes[idx]; 
+        template<typename V>
+        const NodeType& node(const V& idx) const {
+            return m_nodes[check_index(idx)]; 
         }
 
         std::vector<std::string> nodes() const;
@@ -87,26 +93,19 @@ namespace graph {
         
         int add_node(const std::string& node);
 
-        void remove_node(int idx) {
-            check_valid_indices(idx);
-            remove_node_unsafe(idx);
-        }
-
-        void remove_node(const std::string& node) {
-            auto idx = check_names(node);
-            remove_node_unsafe(idx);
+        template<typename V>
+        void remove_node(const V& idx) {
+            remove_node_unsafe(check_index(idx));
         }
 
         void remove_node_unsafe(int index);
 
         const std::string& name(int idx) const {
-            check_valid_indices(idx);
-            return m_nodes[idx].name();
+            return m_nodes[check_index(idx)].name();
         }
 
-
         int index(const std::string& node) const {
-            return check_names(node);
+            return check_index(node);
         }
 
         const std::unordered_map<std::string, int>& indices() const {
@@ -118,51 +117,21 @@ namespace graph {
         }
 
     private:
-        template<typename G>
-        friend class ArcGraph;
-        template<typename G>
-        friend class EdgeGraph;
-        template<typename GraphType>
-        friend class Graph;
-        friend class Dag;
-
-        void check_valid_indices(int idx) const {
+        int check_index(int idx) const {
             if (!is_valid(idx)) {
                 throw std::invalid_argument("Node index " + std::to_string(idx) + " invalid.");
             }
+
+            return idx;
         }
 
-        void check_valid_indices(int idx1, int idx2) const {
-            if (!is_valid(idx1)) {
-                throw std::invalid_argument("Node index " + std::to_string(idx1) + " invalid.");
-            }
-
-            if (!is_valid(idx2)) {
-                throw std::invalid_argument("Node index " + std::to_string(idx2) + " invalid.");
-            }
-        }
-
-        int check_names(const std::string& name) const {
+        int check_index(const std::string& name) const {
             auto f = m_indices.find(name);
             if (f == m_indices.end()) {
                 throw std::invalid_argument("Node " + name + " not present in the graph.");
             }
 
             return f->second;
-        }
-
-        std::pair<int, int> check_names(const std::string& v1, const std::string& v2) const {
-            auto f = m_indices.find(v1);
-            if (f == m_indices.end()) {
-                throw std::invalid_argument("Node " + v1 + " not present in the graph.");
-            }
-
-            auto f2 = m_indices.find(v2);
-            if (f2 == m_indices.end()) {
-                throw std::invalid_argument("Node " + v2 + " not present in the graph.");
-            }
-
-            return std::make_pair(f->second, f2->second);
         }
 
         std::vector<NodeType> m_nodes;
@@ -204,25 +173,43 @@ namespace graph {
         }();
 
         m_indices.insert(std::make_pair(node, idx));
+
+        if constexpr (GraphTraits<Derived>::has_arcs) {
+            auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+            arcg.add_root(idx);
+            arcg.add_leaf(idx);
+        }
+
         return idx;
     }
 
     template<typename Derived>
     void GraphBase<Derived>::remove_node_unsafe(int index) {
+        
         if constexpr (GraphTraits<Derived>::has_edges) {
             auto& derived = static_cast<Derived&>(*this);
-            for (auto neighbor : m_nodes[index].neighbors()) {
+            for (auto neighbor : derived.neighbor_indices(index)) {
                 derived.remove_edge_unsafe(index, neighbor);
             }
         }
 
         if constexpr (GraphTraits<Derived>::has_arcs) {
+            if (m_nodes[index].is_root()) {
+                auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+                arcg.remove_root(index);
+            }
+
+            if (m_nodes[index].is_leaf()) {
+                auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+                arcg.remove_leaf(index);
+            }
+
             auto& derived = static_cast<Derived&>(*this);
-            for (auto p : m_nodes[index].parents()) {
+            for (auto p : derived.parent_indices(index)) {
                 derived.remove_arc_unsafe(p, index);
             }
 
-            for (auto ch : m_nodes[index].children()) {
+            for (auto ch : derived.children_indices(index)) {
                 derived.remove_arc_unsafe(index, ch);
             }
         }
@@ -242,6 +229,16 @@ namespace graph {
         inline Derived& derived() { return static_cast<Derived&>(*this); }
         inline const Derived& derived() const { return static_cast<const Derived&>(*this); }
 
+        ArcGraph() = default;
+        ArcGraph(const std::vector<std::string>& nodes) : m_arcs(),
+                                                           m_roots(),
+                                                           m_leaves() {
+            for (size_t i = 0; i < nodes.size(); ++i) {
+                m_roots.insert(i);
+                m_leaves.insert(i);
+            }
+        }
+
         friend class Graph<Directed>;
         friend class Graph<PartiallyDirected>;
         friend class Dag;
@@ -250,28 +247,18 @@ namespace graph {
             return m_arcs.size();
         }
 
-        int num_parents(int idx) const {
-            base().check_valid_indices(idx);
-            return num_parents_unsafe(idx);
-        }
-
-        int num_parents(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return num_parents_unsafe(idx);
+        template<typename V>
+        int num_parents(const V& idx) const {
+            return num_parents_unsafe(base().check_index(idx));
         }
 
         int num_parents_unsafe(int idx) const {
             return base().m_nodes[idx].parents().size();
         }
 
-        int num_children(int idx) const {
-            base().check_valid_indices(idx);
-            return num_children_unsafe(idx);
-        }
-
-        int num_children(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return num_children_unsafe(idx);
+        template<typename V>
+        int num_children(const V& idx) const {
+            return num_children_unsafe(base().check_index(idx));
         }
 
         int num_children_unsafe(int idx) const {
@@ -281,80 +268,57 @@ namespace graph {
         ArcVector arcs() const;
         const auto& arc_indices() const { return m_arcs; }
 
-        std::vector<std::string> parents(int idx) const {
-            base().check_valid_indices(idx);
-            return parents(base().m_nodes[idx]);
+        template<typename V>
+        std::vector<std::string> parents(const V& idx) const {
+            return parents(base().m_nodes[base().check_index(idx)]);
         }
 
-        std::vector<std::string> parents(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return parents(base().m_nodes[idx]);
-        }
-
-        std::vector<int> parent_indices(int idx) const {
-            base().check_valid_indices(idx);
-            auto& p = base().m_nodes[idx].parents();
+        template<typename V>
+        std::vector<int> parent_indices(const V& idx) const {
+            auto& p = base().m_nodes[base().check_index(idx)].parents();
             return { p.begin(), p.end() };
         }
 
-        std::vector<int> parent_indices(const std::string& node) const {
-            auto idx = base().check_names(node);
-            auto& p = base().m_nodes[idx].parents();
+        template<typename V>
+        const std::unordered_set<int>& parent_set(const V& idx) const {
+            return base().m_nodes[base().check_index(idx)].parents();
+        }
+
+        template<typename V>
+        std::string parents_to_string(const V& idx) const {
+            return parents_to_string(base().m_nodes[base().check_index(idx)]);
+        }
+
+        template<typename V>
+        std::vector<std::string> children(const V& idx) const {
+            return children(base().m_nodes[base().check_index(idx)]);
+        }
+
+        template<typename V>
+        std::vector<int> children_indices(const V& idx) const {
+            auto& p = base().m_nodes[base().check_index(idx)].children();
             return { p.begin(), p.end() };
         }
 
-        std::string parents_to_string(int idx) const {
-            base().check_valid_indices(idx);
-            return parents_to_string(base().m_nodes[idx]);
+        template<typename V>
+        const std::unordered_set<int>& children_set(const V& idx) const {
+            return base().m_nodes[base().check_index(idx)].children();
         }
 
-        std::string parents_to_string(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return parents_to_string(base().m_nodes[idx]);
-        }
-
-        std::vector<std::string> children(int idx) const {
-            base().check_valid_indices(idx);
-            return children(base().m_nodes[idx]);
-        }
-
-        std::vector<std::string> children(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return children(base().m_nodes[idx]);
-        }
-
-        std::vector<int> children_indices(int idx) const {
-            base().check_valid_indices(idx);
-            auto& p = base().m_nodes[idx].children();
-            return { p.begin(), p.end() };
-        }
-
-        std::vector<int> children_indices(const std::string& node) const {
-            auto idx = base().check_names(node);
-            auto& p = base().m_nodes[idx].children();
-            return { p.begin(), p.end() };
-        }
-
-        void add_arc(int source, int target) {
-            if (!has_arc(source, target))
-                derived().add_arc_unsafe(source, target);
-        }
-
-        void add_arc(const std::string& source, const std::string& target) {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        void add_arc(const V& source, const V& target) {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             if (!has_arc_unsafe(s, t))
                 derived().add_arc_unsafe(s, t);
         }
 
         void add_arc_unsafe(int source, int target);
 
-        bool has_arc(int source, int target) const {
-            base().check_valid_indices(source, target);
-            return has_arc_unsafe(source, target);
-        }
-
-        bool has_arc(const std::string& source, const std::string& target) const {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        bool has_arc(const V& source, const V& target) const {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             return has_arc_unsafe(s, t);
         }
 
@@ -363,54 +327,84 @@ namespace graph {
             return p.find(source) != p.end();
         }
 
-        void remove_arc(int source, int target) {
-            if (has_arc(source, target))
-                derived().remove_arc_unsafe(source, target);
-        }
-
-        void remove_arc(const std::string& source, const std::string& target) {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        void remove_arc(const V& source, const V& target) {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             if (has_arc_unsafe(s, t))
                 derived().remove_arc_unsafe(s, t);
         }
 
         void remove_arc_unsafe(int source, int target);
 
-        void flip_arc(int source, int target) {
-            if (has_arc(source, target))
-                derived().flip_arc_unsafe(source, target);
-        }
-
-        void flip_arc(const std::string& source, const std::string& target) {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        void flip_arc(const V& source, const V& target) {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             if (has_arc_unsafe(s, t))
                 derived().flip_arc_unsafe(s, t);
         }
 
         void flip_arc_unsafe(int source, int target);
+
+        const std::unordered_set<int>& roots() const {
+            return m_roots;
+        }
+
+        const std::unordered_set<int>& leaves() const {
+            return m_leaves;
+        }
     private:
+        friend int GraphBase<Derived>::add_node(const std::string& node);
+        friend void GraphBase<Derived>::remove_node_unsafe(int index);
+
+        void add_root(int idx) {
+            m_roots.insert(idx);
+        }
+
+        void remove_root(int idx) {
+            m_roots.erase(idx);
+        }
+
+        void add_leaf(int idx) {
+            m_leaves.insert(idx);
+        }
+
+        void remove_leaf(int idx) {
+            m_leaves.erase(idx);
+        }
+
         std::vector<std::string> parents(const NodeType& n) const;
         std::vector<std::string> children(const NodeType& n) const;
         std::string parents_to_string(const NodeType& n) const;
 
         std::unordered_set<Arc, ArcHash> m_arcs;
+        std::unordered_set<int> m_roots;
+        std::unordered_set<int> m_leaves;
     };
 
     template<typename GraphType>
     ArcVector ArcGraph<GraphType>::arcs() const {
         ArcVector res;
         res.reserve(m_arcs.size());
-
+        
         for (auto& arc : m_arcs) {
             res.push_back({base().m_nodes[arc.first].name(), 
                            base().m_nodes[arc.second].name()});
         }
-
         return res;
     }
 
     template<typename GraphType>
     void ArcGraph<GraphType>::add_arc_unsafe(int source, int target) {
+        if (base().m_nodes[target].is_root()) {
+            m_roots.erase(target);
+        }
+
+        if (base().m_nodes[source].is_leaf()) {
+            m_leaves.erase(source);
+        }
+
         m_arcs.insert({source, target});
         base().m_nodes[target].add_parent(source);
         base().m_nodes[source].add_children(target);
@@ -421,6 +415,14 @@ namespace graph {
         m_arcs.erase({source, target});
         base().m_nodes[target].remove_parent(source);
         base().m_nodes[source].remove_children(target);
+
+        if (base().m_nodes[target].is_root()) {
+            m_roots.insert(target);
+        }
+
+        if (base().m_nodes[source].is_leaf()) {
+            m_leaves.insert(source);
+        }
     }
 
     template<typename GraphType>
@@ -498,14 +500,9 @@ namespace graph {
             return m_edges.size();
         }
 
-        int num_neighbors(int idx) const {
-            base().check_valid_indices(idx);
-            return num_neighbors_unsafe(idx);
-        }
-
-        int num_neighbors(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return num_neighbors_unsafe(idx);
+        template<typename V>
+        int num_neighbors(const V& idx) const {
+            return num_neighbors_unsafe(base().check_index(idx));
         }
 
         int num_neighbors_unsafe(int idx) const {
@@ -515,46 +512,36 @@ namespace graph {
         EdgeVector edges() const;
         const auto& edge_indices() const { return m_edges; }
 
-        std::vector<std::string> neighbors(int idx) const {
-            base().check_valid_indices(idx);
-            return neighbors(base().m_nodes[idx]);
+        template<typename V>
+        std::vector<std::string> neighbors(const V& idx) const {
+            return neighbors(base().m_nodes[base().check_index(idx)]);
         }
 
-        std::vector<std::string> neighbors(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return neighbors(idx);
+        template<typename V>
+        std::vector<int> neighbor_indices(const V& idx) const {
+            const auto& n = base().m_nodes[base().check_index(idx)].neighbors();
+            return { n.begin(), n.end() };
         }
 
-        const std::unordered_set<int>& neighbor_indices(int idx) const {
-            base().check_valid_indices(idx);
-            return base().m_nodes[idx].neighbors();
+        template<typename V>
+        const std::unordered_set<int>& neighbor_set(const V& idx) const {
+            return base().m_nodes[base().check_index(idx)].neighbors();
         }
 
-        const std::unordered_set<int>& neighbor_indices(const std::string& node) const {
-            auto idx = base().check_names(node);
-            return base().m_nodes[idx].neighbors();
-        }
-
-        void add_edge(int source, int target) {
-            if (!has_edge(source, target))
-                add_edge_unsafe(source, target);
-        }
-
-        void add_edge(const std::string& source, const std::string& target) {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        void add_edge(const V& source, const V& target) {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             if (!has_edge_unsafe(s, t))
                 add_edge_unsafe(s, t);
         }
 
         void add_edge_unsafe(int source, int target);
 
-        bool has_edge(int source, int target) const {
-            base().check_valid_indices(source, target);
-            return has_edge_unsafe(source, target);
-        }
-
-        bool has_edge(const std::string& source, const std::string& target) const {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        bool has_edge(const V& source, const V& target) const {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             return has_edge_unsafe(s, t);
         }
 
@@ -563,18 +550,16 @@ namespace graph {
             return p.find(source) != p.end();
         }
 
-        void remove_edge(int source, int target) {
-            if (has_edge(source, target))
-                remove_edge_unsafe(source, target);
-        }
-
-        void remove_edge(const std::string& source, const std::string& target) {
-            auto [s, t] = base().check_names(source, target);
+        template<typename V>
+        void remove_edge(const V& source, const V& target) {
+            auto s = base().check_index(source);
+            auto t = base().check_index(target);
             if (has_edge_unsafe(s, t))
                 remove_edge_unsafe(s, t);
         }
 
         void remove_edge_unsafe(int source, int target);
+    
     private:
         std::vector<std::string> neighbors(const NodeType& n) const;
 
@@ -622,6 +607,8 @@ namespace graph {
         return res;
     }
 
+    class Dag;
+
     template<>
     class Graph<PartiallyDirected> : public GraphBase<PartiallyDirectedGraph>,
                                      public ArcGraph<PartiallyDirectedGraph>,
@@ -632,7 +619,7 @@ namespace graph {
                   ArcGraph<PartiallyDirectedGraph>(),
                   EdgeGraph<PartiallyDirectedGraph>() {}
         Graph(const std::vector<std::string>& nodes) : GraphBase<PartiallyDirectedGraph>(nodes),
-                                                       ArcGraph<PartiallyDirectedGraph>(),
+                                                       ArcGraph<PartiallyDirectedGraph>(nodes),
                                                        EdgeGraph<PartiallyDirectedGraph>() {}
         Graph(const EdgeVector& edges, const ArcVector& arcs) : GraphBase<PartiallyDirectedGraph>(),
                                                                 ArcGraph<PartiallyDirectedGraph>(),
@@ -666,7 +653,7 @@ namespace graph {
         Graph(const std::vector<std::string>& nodes,
               const EdgeVector& edges, 
               const ArcVector& arcs) : GraphBase<PartiallyDirectedGraph>(nodes),
-                                       ArcGraph<PartiallyDirectedGraph>(),
+                                       ArcGraph<PartiallyDirectedGraph>(nodes),
                                        EdgeGraph<PartiallyDirectedGraph>() {
                               
             for (auto& edge : edges) {
@@ -693,37 +680,28 @@ namespace graph {
         Graph(Graph<Undirected>&& g);
         Graph(Graph<Directed>&& g);
 
-        void direct(int source, int target) {
-            check_valid_indices(source, target);
-            direct_unsafe(source, target);
-        }
-
-        void direct(const std::string& source, const std::string& target) {
-            auto [s, t] = check_names(source, target);
+        template<typename V>
+        void direct(const V& source, const V& target) {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             direct_unsafe(s, t);
         }
 
         void direct_unsafe(int source, int target);
 
-        void undirect(int source, int target) {
-            check_valid_indices(source, target);
-            undirect_unsafe(source, target);
-        }
-
-        void undirect(const std::string& source, const std::string& target) {
-            auto [s, t] = check_names(source, target);
+        template<typename V>
+        void undirect(const V& source, const V& target) {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             undirect_unsafe(s, t);
         }
 
         void undirect_unsafe(int source, int target);
 
-        bool has_connection(int source, int target) const {
-            check_valid_indices(source, target);
-            return has_connection_unsafe(source, target);
-        }
-
-        bool has_connection(const std::string& source, const std::string& target) const {
-            auto [s, t] = check_names(source, target);
+        template<typename V>
+        bool has_connection(const V& source, const V& target) const {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             return has_connection_unsafe(s, t);
         }
 
@@ -731,8 +709,7 @@ namespace graph {
             return has_edge_unsafe(source, target) || has_arc_unsafe(source, target) || has_arc_unsafe(target, source);
         }
 
-        DirectedGraph random_direct() const;
-    private:
+        Dag to_dag() const;
     };
 
     template<>
@@ -774,13 +751,10 @@ namespace graph {
 
         static UndirectedGraph Complete(const std::vector<std::string>& nodes);
 
-        bool has_path(int source, int target) const {
-            check_valid_indices(source, target);
-            return has_path_unsafe(source, target);
-        }
-
-        bool has_path(const std::string& source, const std::string& target) const {
-            auto [s, t] = check_names(source, target);
+        template<typename V>
+        bool has_path(const V& source, const V& target) const {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             return has_path_unsafe(s, t);
         }
 
@@ -791,26 +765,12 @@ namespace graph {
     class Graph<Directed> : public GraphBase<DirectedGraph>,
                             public ArcGraph<DirectedGraph> {
     public:
-        Graph() : GraphBase<DirectedGraph>(), 
-                  ArcGraph<DirectedGraph>(), 
-                  m_roots(), 
-                  m_leaves() {}
+        Graph() : GraphBase<DirectedGraph>(), ArcGraph<DirectedGraph>() {}
         Graph(const std::vector<std::string>& nodes) : GraphBase<DirectedGraph>(nodes), 
-                                                       ArcGraph<DirectedGraph>(), 
-                                                       m_roots(),
-                                                       m_leaves() {
-            m_roots.reserve(nodes.size());
-            m_leaves.reserve(nodes.size());
-            for (size_t i = 0; i < nodes.size(); ++i) {
-                m_roots.insert(i);
-                m_leaves.insert(i);
-            }
-        }
+                                                       ArcGraph<DirectedGraph>(nodes) {}
 
         Graph(const ArcVector& arcs) : GraphBase<DirectedGraph>(),
-                                       ArcGraph<DirectedGraph>(),
-                                       m_roots(),
-                                       m_leaves() {
+                                       ArcGraph<DirectedGraph>() {
             for (auto& arc : arcs) {
                 if (m_indices.count(arc.first) == 0) {
                     add_node(arc.first);
@@ -826,15 +786,7 @@ namespace graph {
 
         Graph(const std::vector<std::string>& nodes, 
               const ArcVector& arcs) : GraphBase<DirectedGraph>(nodes),
-                                       ArcGraph<DirectedGraph>() {
-            
-            m_roots.reserve(nodes.size());
-            m_leaves.reserve(nodes.size());
-            for (size_t i = 0; i < nodes.size(); ++i) {
-                m_roots.insert(i);
-                m_leaves.insert(i);
-            }
-
+                                       ArcGraph<DirectedGraph>(nodes) {
             for (auto& arc : arcs) {
                 if (m_indices.count(arc.first) == 0) throw pybind11::index_error(
                     "Node \"" + arc.first + "\" in arc (" + arc.first + ", " + arc.second + ") not present in the graph.");
@@ -846,76 +798,18 @@ namespace graph {
             }
         }
 
-        void add_node(const std::string& node) {
-            auto idx = GraphBase<DirectedGraph>::add_node(node);
-            m_roots.insert(idx);
-            m_leaves.insert(idx);
-        }
-
-        void remove_node_unsafe(int index) {
-            if (m_nodes[index].is_root()) {
-                m_roots.erase(index);
-            }
-
-            if (m_nodes[index].is_leaf()) {
-                m_leaves.erase(index);
-            }
-
-            GraphBase<DirectedGraph>::remove_node_unsafe(index);
-        }
-
-        void add_arc_unsafe(int source, int target) {
-            if (m_nodes[target].is_root()) {
-                m_roots.erase(target);
-            }
-
-            if (m_nodes[source].is_leaf()) {
-                m_leaves.erase(source);
-            }
-
-            ArcGraph<DirectedGraph>::add_arc_unsafe(source, target);
-        }
-
-        void remove_arc_unsafe(int source, int target) {
-            ArcGraph<DirectedGraph>::remove_arc_unsafe(source, target);
-            
-            if (m_nodes[target].is_root()) {
-                m_roots.insert(target);
-            }
-
-            if (m_nodes[source].is_leaf()) {
-                m_leaves.insert(source);
-            }
-        }
-
-        bool has_path(int source, int target) const {
-            check_valid_indices(source, target);
-            return has_path_unsafe(source, target);
-        }
-
-        bool has_path(const std::string& source, const std::string& target) const {
-            auto [s, t] = check_names(source, target);
+        template<typename V>
+        bool has_path(const V& source, const V& target) const {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             return has_path_unsafe(s, t);
         }
 
         bool has_path_unsafe(int source, int target) const;
-
-        const std::unordered_set<int>& roots() const {
-            return m_roots;
-        }
-
-        const std::unordered_set<int>& leaves() const {
-            return m_leaves;
-        }
-
-    private:
-        std::unordered_set<int> m_roots;
-        std::unordered_set<int> m_leaves;
     };
 
     class Dag : public DirectedGraph {
     public:
-
         Dag() : DirectedGraph() {}
         Dag(const std::vector<std::string>& nodes) : DirectedGraph(nodes) {}
         Dag(const ArcVector& arcs) : DirectedGraph(arcs) {
@@ -927,29 +821,25 @@ namespace graph {
 
         std::vector<std::string> topological_sort() const;
 
-        bool can_add_arc(int source, int target) const {
-            this->check_valid_indices(source, target);
-            return can_add_arc_unsafe(source, target);
-        }
-
-        bool can_add_arc(const std::string& source, const std::string& target) const {
-            auto [s, t] = this->check_names(source, target);
+        template<typename V>
+        bool can_add_arc(const V& source, const V& target) const {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             return can_add_arc_unsafe(s, t);
         }
 
         bool can_add_arc_unsafe(int source, int target) const;
 
-        bool can_flip_arc(int source, int target) {
-            check_valid_indices(source, target);
-            return can_flip_arc_unsafe(source, target);
-        }
-
-        bool can_flip_arc(const std::string& source, const std::string& target) {
-            auto [s, t] = check_names(source, target);
+        template<typename V>
+        bool can_flip_arc(const V& source, const V& target) {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
             return can_flip_arc_unsafe(s, t);
         }
 
         bool can_flip_arc_unsafe(int source, int target);
+
+        PartiallyDirectedGraph to_pdag() const;
     };
 
 

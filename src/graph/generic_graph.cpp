@@ -157,7 +157,7 @@ namespace graph {
         for (const auto& arc : arc_indices()) {
             directed.add_arc_unsafe(arc.first, arc.second);
         }
-
+        
         if (num_edges() > 0) {
             PartiallyDirectedGraph copy(*this);
 

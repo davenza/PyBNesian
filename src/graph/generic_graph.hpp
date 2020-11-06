@@ -2,8 +2,11 @@
 #define PGM_DATASET_GENERIC_GRAPH_HPP
 
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
+
+namespace py = pybind11;
 
 #include <iostream>
 
@@ -12,19 +15,21 @@ using util::ArcVector, util::EdgeVector;
 
 namespace graph {
 
+    enum GraphType {
+        Directed,
+        Undirected,
+        PartiallyDirected,
+        DirectedAcyclic
+    };
 
-    template<typename Type>
+    template<GraphType Type>
     class Graph;
-
-    struct Directed;
-    struct Undirected;
-    struct PartiallyDirected;
 
     using DirectedGraph = Graph<Directed>;
     using UndirectedGraph = Graph<Undirected>;
     using PartiallyDirectedGraph = Graph<PartiallyDirected>;
 
-    template<typename GraphType>
+    template<typename G>
     struct GraphTraits;
 
     template<>
@@ -60,7 +65,7 @@ namespace graph {
         friend class ArcGraph;
         template<typename G>
         friend class EdgeGraph;
-        template<typename GraphType>
+        template<GraphType Type>
         friend class Graph;
         friend class Dag;
         
@@ -383,8 +388,8 @@ namespace graph {
         std::unordered_set<int> m_leaves;
     };
 
-    template<typename GraphType>
-    ArcVector ArcGraph<GraphType>::arcs() const {
+    template<typename Derived>
+    ArcVector ArcGraph<Derived>::arcs() const {
         ArcVector res;
         res.reserve(m_arcs.size());
         
@@ -395,8 +400,8 @@ namespace graph {
         return res;
     }
 
-    template<typename GraphType>
-    void ArcGraph<GraphType>::add_arc_unsafe(int source, int target) {
+    template<typename Derived>
+    void ArcGraph<Derived>::add_arc_unsafe(int source, int target) {
         if (base().m_nodes[target].is_root()) {
             m_roots.erase(target);
         }
@@ -410,8 +415,8 @@ namespace graph {
         base().m_nodes[source].add_children(target);
     }
 
-    template<typename GraphType>
-    void ArcGraph<GraphType>::remove_arc_unsafe(int source, int target) {
+    template<typename Derived>
+    void ArcGraph<Derived>::remove_arc_unsafe(int source, int target) {
         m_arcs.erase({source, target});
         base().m_nodes[target].remove_parent(source);
         base().m_nodes[source].remove_children(target);
@@ -425,8 +430,8 @@ namespace graph {
         }
     }
 
-    template<typename GraphType>
-    void ArcGraph<GraphType>::flip_arc_unsafe(int source, int target) {
+    template<typename Derived>
+    void ArcGraph<Derived>::flip_arc_unsafe(int source, int target) {
         m_arcs.erase({source, target});
         m_arcs.insert({target, source});
 
@@ -437,8 +442,8 @@ namespace graph {
         base().m_nodes[source].add_parent(target);
     }
 
-    template<typename GraphType>
-    std::vector<std::string> ArcGraph<GraphType>::parents(const NodeType& n) const {
+    template<typename Derived>
+    std::vector<std::string> ArcGraph<Derived>::parents(const NodeType& n) const {
         std::vector<std::string> res;
 
         const auto& parent_indices = n.parents();
@@ -451,8 +456,8 @@ namespace graph {
         return res;
     }
 
-    template<typename GraphType>
-    std::vector<std::string> ArcGraph<GraphType>::children(const NodeType& n) const {
+    template<typename Derived>
+    std::vector<std::string> ArcGraph<Derived>::children(const NodeType& n) const {
         std::vector<std::string> res;
 
         const auto& parent_indices = n.children();
@@ -465,8 +470,8 @@ namespace graph {
         return res;
     }
 
-    template<typename GraphType>
-    std::string ArcGraph<GraphType>::parents_to_string(const NodeType& n) const {
+    template<typename Derived>
+    std::string ArcGraph<Derived>::parents_to_string(const NodeType& n) const {
         const auto& pa = n.parents();
         if (!pa.empty()) {
             std::string str = "[" + base().m_nodes[*pa.begin()].name();
@@ -480,20 +485,20 @@ namespace graph {
         }
     }
 
-    template<typename GraphType>
+    template<typename Derived>
     class EdgeGraph {
     public:
-        using Base = GraphBase<GraphType>;
-        using NodeType = typename GraphTraits<GraphType>::NodeType;
+        using Base = GraphBase<Derived>;
+        using NodeType = typename GraphTraits<Derived>::NodeType;
 
         friend class Graph<Undirected>;
         friend class Graph<PartiallyDirected>;
 
         inline Base& base() { 
-            return static_cast<Base&>(static_cast<GraphType&>(*this)); 
+            return static_cast<Base&>(static_cast<Derived&>(*this)); 
         }
         inline const Base& base() const { 
-            return static_cast<const Base&>(static_cast<const GraphType&>(*this)); 
+            return static_cast<const Base&>(static_cast<const Derived&>(*this)); 
         }
 
         int num_edges() const {
@@ -566,8 +571,8 @@ namespace graph {
         std::unordered_set<Edge, EdgeHash, EdgeEqualTo> m_edges;
     };
 
-    template<typename GraphType>
-    EdgeVector EdgeGraph<GraphType>::edges() const {
+    template<typename Derived>
+    EdgeVector EdgeGraph<Derived>::edges() const {
         EdgeVector res;
         res.reserve(m_edges.size());
 
@@ -579,22 +584,22 @@ namespace graph {
         return res;
     }
 
-    template<typename GraphType>
-    void EdgeGraph<GraphType>::add_edge_unsafe(int source, int target) {
+    template<typename Derived>
+    void EdgeGraph<Derived>::add_edge_unsafe(int source, int target) {
         m_edges.insert({source, target});
         base().m_nodes[source].add_neighbor(target);
         base().m_nodes[target].add_neighbor(source);
     }
 
-    template<typename GraphType>
-    void EdgeGraph<GraphType>::remove_edge_unsafe(int source, int target) {
+    template<typename Derived>
+    void EdgeGraph<Derived>::remove_edge_unsafe(int source, int target) {
         m_edges.erase({source, target});
         base().m_nodes[source].remove_neighbor(target);
         base().m_nodes[target].remove_neighbor(source);
     }
 
-    template<typename GraphType>
-    std::vector<std::string> EdgeGraph<GraphType>::neighbors(const NodeType& n) const {
+    template<typename Derived>
+    std::vector<std::string> EdgeGraph<Derived>::neighbors(const NodeType& n) const {
         std::vector<std::string> res;
 
         const auto& neighbors_indices = n.neighbors();
@@ -710,6 +715,9 @@ namespace graph {
         }
 
         Dag to_dag() const;
+
+        py::tuple __getstate__() const;
+        static PartiallyDirectedGraph __setstate__(py::tuple& t);
     };
 
     template<>
@@ -759,6 +767,9 @@ namespace graph {
         }
 
         bool has_path_unsafe(int source, int target) const;
+
+        py::tuple __getstate__() const;
+        static UndirectedGraph __setstate__(py::tuple& t);
     };
 
     template<>
@@ -806,6 +817,9 @@ namespace graph {
         }
 
         bool has_path_unsafe(int source, int target) const;
+
+        py::tuple __getstate__() const;
+        static DirectedGraph __setstate__(py::tuple& t);
     };
 
     class Dag : public DirectedGraph {
@@ -840,9 +854,10 @@ namespace graph {
         bool can_flip_arc_unsafe(int source, int target);
 
         PartiallyDirectedGraph to_pdag() const;
+
+        py::tuple __getstate__() const;
+        static Dag __setstate__(py::tuple& t);
     };
-
-
 
 }
 

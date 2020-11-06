@@ -91,7 +91,15 @@ void pybindings_graph(py::module& root) {
         .def("has_path", [](DirectedGraph& self, const std::string& source, const std::string& target) {
             return self.has_path(source, target);
         })
-        .def("is_valid", &DirectedGraph::is_valid);
+        .def("is_valid", &DirectedGraph::is_valid)
+        .def(py::pickle(
+            [](const DirectedGraph& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return DirectedGraph::__setstate__(t);
+            }
+        ));
 
     py::class_<Dag, DirectedGraph>(graph, "Dag")
         .def(py::init<>())
@@ -110,7 +118,15 @@ void pybindings_graph(py::module& root) {
         .def("can_flip_arc", [](Dag& self, const std::string& source, const std::string& target) {
             return self.can_flip_arc(source, target);
         })
-        .def("to_pdag", &Dag::to_pdag);
+        .def("to_pdag", &Dag::to_pdag)
+        .def(py::pickle(
+            [](const Dag& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return Dag::__setstate__(t);
+            }
+        ));
 
     py::class_<UndirectedGraph>(graph, "UndirectedGraph")
         .def(py::init<>())
@@ -170,7 +186,15 @@ void pybindings_graph(py::module& root) {
         .def("has_path", [](UndirectedGraph& self, const std::string& source, const std::string& target) {
             return self.has_path(source, target);
         })
-        .def("is_valid", &UndirectedGraph::is_valid);
+        .def("is_valid", &UndirectedGraph::is_valid)
+        .def(py::pickle(
+            [](const UndirectedGraph& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return UndirectedGraph::__setstate__(t);
+            }
+        ));
 
     py::class_<PartiallyDirectedGraph>(graph, "PartiallyDirectedGraph")
         .def(py::init<>())
@@ -280,5 +304,13 @@ void pybindings_graph(py::module& root) {
             self.undirect(source, target);
         })
         .def("is_valid", &PartiallyDirectedGraph::is_valid)
-        .def("to_dag", &PartiallyDirectedGraph::to_dag);
+        .def("to_dag", &PartiallyDirectedGraph::to_dag)
+        .def(py::pickle(
+            [](const PartiallyDirectedGraph& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return PartiallyDirectedGraph::__setstate__(t);
+            }
+        ));
 }

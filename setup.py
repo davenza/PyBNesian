@@ -13,7 +13,6 @@
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from distutils.command import build as build_module
 import sys
 import setuptools
 import os
@@ -101,7 +100,7 @@ ext_modules = [
             "src",
             "lib/libfort",
         ],
-        libraries=pa.get_libraries() + ["OpenCL"] + ["fort"],
+        libraries=pa.get_libraries() + ["OpenCL"],
         library_dirs=pa.get_library_dirs(),
         language='c++',
         # Included as isystem to avoid errors in arrow headers.
@@ -148,7 +147,33 @@ def expand_sources():
         with open(base, 'w') as fid:
             fid.write(outstr)
 
+def copy_opencl_code():
+    sources = ['src/factors/continuous/opencl/CKDE.cl']
+
+    code_str = ""
+    for source in sources:
+        code_str += '\n'
+        with open(source) as f:
+            source_code = f.read()
+            code_str += source_code
+
+    cpp_code = \
+    """
+#ifndef PGM_DATASET_OPENCL_CODE_HPP
+#define PGM_DATASET_OPENCL_CODE_HPP
+
+namespace opencl {{
+    const std::string OPENCL_CODE = R"foo({})foo";
+}}
+#endif //PGM_DATASET_OPENCL_CODE_HPP
+    """.format(code_str)
+    
+    with open('src/opencl/opencl_code.hpp', 'w') as f:
+        f.write(cpp_code)
+    
+
 def create_symlinks():
+    print("Pyarrow version: " + str(pa.__version__))
     pa.create_library_symlinks()
 
 
@@ -170,6 +195,7 @@ class BuildExt(build_ext):
 
     def build_extensions(self):
         expand_sources()
+        copy_opencl_code()
         create_symlinks()
 
         ct = self.compiler.compiler_type

@@ -1,37 +1,29 @@
 import pyarrow as pa
-from pgm_dataset.graph import PartiallyDirectedGraph, Dag
-
-g = PartiallyDirectedGraph([('a', 'b'), ('b', 'c'), ('a', 'c'), ('d', 'c')], [('d', 'a')])
-print("Nodes: " + str(g.nodes()))
-print("Edges: " + str(g.edges()))
-print("Arcs: " + str(g.arcs()))
-dag = g.to_dag()
-print("Nodes: " + str(dag.nodes()))
-print("Arcs: " + str(dag.arcs()))
-
-# g = PartiallyDirectedGraph(['a', 'b', 'c', 'd', 'e', 'f'], 
-#                             [('a', 'b'), ('b', 'c'), ('c', 'd'), ('d', 'a')], 
-#                             [])
-# # g = PartiallyDirectedGraph(['a', 'b', 'c', 'd'], 
-# #                             [('a', 'b'), ('b', 'c'), ('c', 'd'), ('d', 'a')], 
-# #                             [])
-# print("Nodes: " + str(g.nodes()))
-# print("Edges: " + str(g.edges()))
-# print("Arcs: " + str(g.arcs()))
-# dag = g.to_dag()
-# print("Nodes: " + str(dag.nodes()))
-# print("Arcs: " + str(dag.arcs()))
+from pgm_dataset.graph import PartiallyDirectedGraph, DirectedGraph, UndirectedGraph, Dag
+import pickle
 
 
+dig = DirectedGraph(['a', 'b', 'c'], [('a', 'c'), ('b', 'c')])
 
-# dag = Dag([('a', 'c'), ('b', 'c'), ('c', 'd'), ('b', 'e'), ('e', 'f')])
-# print("DAG:")
-# print("Nodes: " + str(dag.nodes()))
-# print("Arcs: " + str(dag.arcs()))
+with open('digraph.pkl', 'wb') as f:
+    pickle.dump(dig, f, 2)
+
+with open('digraph.pkl', 'rb') as f:
+    same_g = pickle.load(f)
+
+print(same_g.nodes())
+print(same_g.arcs())
 
 
-pdag = dag.to_pdag()
-print("PDAG:")
-print("Nodes: " + str(pdag.nodes()))
-print("Edges: " + str(pdag.edges()))
-print("Arcs: " + str(pdag.arcs()))
+ung = UndirectedGraph(['a', 'b', 'c'], [('a', 'c'), ('b', 'c')])
+
+with open('ungraph.pkl', 'wb') as f:
+    pickle.dump(ung, f, 2)
+
+with open('ungraph.pkl', 'rb') as f:
+    same_g = pickle.load(f)
+
+print(same_g.nodes())
+print(same_g.edges())
+
+

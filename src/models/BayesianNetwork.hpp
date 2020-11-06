@@ -430,7 +430,7 @@ namespace models {
     template<typename Derived>
     void BayesianNetwork<Derived>::check_fitted() const {
         if (m_cpds.empty()) {
-            py::value_error("Model not fitted.");
+            throw py::value_error("Model not fitted.");
         } else {
             bool all_fitted = true;
             std::string err;

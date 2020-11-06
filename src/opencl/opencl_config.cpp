@@ -1,8 +1,8 @@
 #include <iostream>
 #include <opencl/opencl_config.hpp>
+#include <opencl/opencl_code.hpp>
 
 namespace opencl {
-
 
     const char* opencl_error(cl_int error) {
         switch(error){
@@ -112,12 +112,9 @@ namespace opencl {
         cl::CommandQueue queue(context, dev);
 
         // Read the program source
-        std::ifstream sourceFile("src/factors/continuous/opencl/CKDE.cl");
-        std::string sourceCode( std::istreambuf_iterator<char>(sourceFile), (std::istreambuf_iterator<char>()));
-        cl::Program::Sources source({sourceCode});
+        cl::Program::Sources source({opencl::OPENCL_CODE});
 
         cl::Program program (context, source);
-
 
         cl_int err_code = CL_SUCCESS;
         err_code = program.build();

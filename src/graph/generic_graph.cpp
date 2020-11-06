@@ -362,4 +362,214 @@ namespace graph {
 
         return pdag;
     }
+
+    py::tuple PartiallyDirectedGraph::__getstate__() const {
+        std::vector<std::string> nodes;
+        nodes.reserve(num_nodes());
+        std::vector<Arc> arcs;
+        arcs.reserve(num_arcs());
+        std::vector<Edge> edges;
+        edges.reserve(num_edges());
+
+
+        if (free_indices.empty()) {
+            for (auto& n : m_nodes) {
+                nodes.push_back(n.name());
+            }
+
+            for (auto& arc : m_arcs) {
+                arcs.push_back(arc);
+            }
+
+            for (auto& edge : m_edges) {
+                edges.push_back(edge);
+            }
+        } else {
+            std::unordered_map<int, int> new_indices;
+
+            for (int i = 0, j = 0; i < m_nodes.size(); ++i) {
+                if (m_nodes[i].is_valid()) {
+                    nodes.push_back(m_nodes[i].name());
+                    new_indices.insert({i, j++});
+                }
+            }
+
+            for (auto& arc : m_arcs) {
+                arcs.push_back({new_indices[arc.first], new_indices[arc.second]});
+            }
+
+            for (auto& edge : m_edges) {
+                edges.push_back({new_indices[edge.first], new_indices[edge.second]});
+            }
+        }
+
+        return py::make_tuple(nodes, arcs, edges);
+    }
+
+    PartiallyDirectedGraph PartiallyDirectedGraph::__setstate__(py::tuple& t) {
+        if (t.size() != 3)
+            throw std::runtime_error("Not valid PartiallyDirectedGraph.");
+
+        auto nodes = t[0].cast<std::vector<std::string>>();
+        PartiallyDirectedGraph g(nodes);
+
+        auto arcs = t[1].cast<std::vector<Arc>>();
+
+        for (auto& arc : arcs) {
+            g.add_arc(arc.first, arc.second);
+        }
+        
+        auto edges = t[2].cast<std::vector<Edge>>();
+
+        for (auto& edge : edges) {
+            g.add_edge(edge.first, edge.second);
+        }
+
+        return g;
+    }
+
+
+    py::tuple UndirectedGraph::__getstate__() const {
+        std::vector<std::string> nodes;
+        nodes.reserve(num_nodes());
+        std::vector<Edge> edges;
+        edges.reserve(num_edges());
+
+        if (free_indices.empty()) {
+            for (auto& n : m_nodes) {
+                nodes.push_back(n.name());
+            }
+
+            for (auto& edge : m_edges) {
+                edges.push_back(edge);
+            }
+        } else {
+            std::unordered_map<int, int> new_indices;
+
+            for (int i = 0, j = 0; i < m_nodes.size(); ++i) {
+                if (m_nodes[i].is_valid()) {
+                    nodes.push_back(m_nodes[i].name());
+                    new_indices.insert({i, j++});
+                }
+            }
+
+            for (auto& edge : m_edges) {
+                edges.push_back({new_indices[edge.first], new_indices[edge.second]});
+            }
+        }
+
+        return py::make_tuple(nodes, edges);
+    }
+
+    UndirectedGraph UndirectedGraph::__setstate__(py::tuple& t) {
+        if (t.size() != 2)
+            throw std::runtime_error("Not valid UndirectedGraph.");
+
+        auto nodes = t[0].cast<std::vector<std::string>>();
+        UndirectedGraph g(nodes);
+
+        auto edges = t[1].cast<std::vector<Edge>>();
+
+        for (auto& edge : edges) {
+            g.add_edge(edge.first, edge.second);
+        }
+        
+        return g;
+    }
+
+    py::tuple DirectedGraph::__getstate__() const {
+        std::vector<std::string> nodes;
+        nodes.reserve(num_nodes());
+        std::vector<Arc> arcs;
+        arcs.reserve(num_arcs());
+
+        if (free_indices.empty()) {
+            for (auto& n : m_nodes) {
+                nodes.push_back(n.name());
+            }
+
+            for (auto& arc : m_arcs) {
+                arcs.push_back(arc);
+            }
+        } else {
+            std::unordered_map<int, int> new_indices;
+
+            for (int i = 0, j = 0; i < m_nodes.size(); ++i) {
+                if (m_nodes[i].is_valid()) {
+                    nodes.push_back(m_nodes[i].name());
+                    new_indices.insert({i, j++});
+                }
+            }
+
+            for (auto& arc : m_arcs) {
+                arcs.push_back({new_indices[arc.first], new_indices[arc.second]});
+            }
+        }
+
+        return py::make_tuple(nodes, arcs);
+    }
+
+    DirectedGraph DirectedGraph::__setstate__(py::tuple& t) {
+        if (t.size() != 2)
+            throw std::runtime_error("Not valid DirectedGraph.");
+
+        auto nodes = t[0].cast<std::vector<std::string>>();
+        DirectedGraph g(nodes);
+
+        auto arcs = t[1].cast<std::vector<Arc>>();
+
+        for (auto& arc : arcs) {
+            g.add_arc(arc.first, arc.second);
+        }
+        
+        return g;
+    }
+
+    py::tuple Dag::__getstate__() const {
+        std::vector<std::string> nodes;
+        nodes.reserve(num_nodes());
+        std::vector<Arc> arcs;
+        arcs.reserve(num_arcs());
+
+        if (free_indices.empty()) {
+            for (auto& n : m_nodes) {
+                nodes.push_back(n.name());
+            }
+
+            for (auto& arc : m_arcs) {
+                arcs.push_back(arc);
+            }
+        } else {
+            std::unordered_map<int, int> new_indices;
+
+            for (int i = 0, j = 0; i < m_nodes.size(); ++i) {
+                if (m_nodes[i].is_valid()) {
+                    nodes.push_back(m_nodes[i].name());
+                    new_indices.insert({i, j++});
+                }
+            }
+
+            for (auto& arc : m_arcs) {
+                arcs.push_back({new_indices[arc.first], new_indices[arc.second]});
+            }
+        }
+
+        return py::make_tuple(nodes, arcs);
+    }
+
+    Dag Dag::__setstate__(py::tuple& t) {
+        if (t.size() != 2)
+            throw std::runtime_error("Not valid DirectedGraph.");
+
+        auto nodes = t[0].cast<std::vector<std::string>>();
+        Dag g(nodes);
+
+        auto arcs = t[1].cast<std::vector<Arc>>();
+
+        for (auto& arc : arcs) {
+            g.add_arc(arc.first, arc.second);
+        }
+        
+        return g;
+    }
 }

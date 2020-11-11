@@ -107,8 +107,64 @@ namespace factors::continuous {
         }
     }
 
-    void CKDE::fit(const DataFrame& df) {
+    py::tuple KDE::__getstate__() const {
+        switch (m_training_type) {
+            case Type::DOUBLE:
+                return __getstate__<arrow::DoubleType>();
+            case Type::FLOAT:
+                return __getstate__<arrow::FloatType>();
+        }
+    }
 
+    KDE KDE::__setstate__(py::tuple& t) {
+        if (t.size() != 8)
+            throw std::runtime_error("Not valid KDE.");
+
+        KDE kde(t[0].cast<std::vector<std::string>>());
+
+        kde.m_fitted = t[1].cast<bool>();
+
+        if (kde.m_fitted) {
+            kde.m_bselector = static_cast<KDEBandwidth>(t[2].cast<int>());
+            kde.m_bandwidth = t[3].cast<MatrixXd>();
+            kde.m_lognorm_const = t[5].cast<double>();
+            kde.N = t[6].cast<size_t>();
+            kde.m_training_type = static_cast<arrow::Type::type>(t[7].cast<int>());
+
+            auto llt_cov = kde.m_bandwidth.llt();
+            auto llt_matrix = llt_cov.matrixLLT();
+
+            auto& opencl = OpenCLConfig::get();
+
+            switch (kde.m_training_type) {
+                case Type::DOUBLE: {
+                    kde.m_H_cholesky = opencl.copy_to_buffer(llt_matrix.data(), 
+                                                             kde.m_variables.size()*kde.m_variables.size());
+                    
+                    auto training_data = t[4].cast<VectorXd>();
+                    kde.m_training = opencl.copy_to_buffer(training_data.data(), 
+                                                            kde.N*kde.m_variables.size());
+                    break;
+                }
+                case Type::FLOAT: {
+                    MatrixXf casted_cholesky = llt_matrix.template cast<float>();
+                    kde.m_H_cholesky = opencl.copy_to_buffer(casted_cholesky.data(), 
+                                                             kde.m_variables.size()*kde.m_variables.size());
+
+                    auto training_data = t[4].cast<VectorXf>();
+                    kde.m_training = opencl.copy_to_buffer(training_data.data(), 
+                                                            kde.N*kde.m_variables.size());
+                    break;
+                }
+                default:
+                    throw std::runtime_error("Not valid data type in KDE.");
+            }
+        }
+
+        return kde;
+    }
+
+    void CKDE::fit(const DataFrame& df) {
         auto type = df.same_type(m_variables);
 
         m_training_type = type;
@@ -217,5 +273,59 @@ namespace factors::continuous {
                 stream << "[CKDE] P(" << m_variable << ") not fitted";
             return stream.str();
         }
+    }
+
+    py::tuple CKDE::__getstate__() const {
+        switch (m_training_type) {
+            case Type::DOUBLE:
+                return __getstate__<arrow::DoubleType>();
+            case Type::FLOAT:
+                return __getstate__<arrow::FloatType>();
+        }
+    }
+
+    CKDE CKDE::__setstate__(py::tuple& t) {
+        if (t.size() != 4)
+            throw std::runtime_error("Not valid CKDE.");
+
+        CKDE ckde(t[0].cast<std::string>(), t[1].cast<std::vector<std::string>>());
+
+        ckde.m_fitted = t[2].cast<bool>();
+
+        if (ckde.m_fitted) {
+            auto joint_tuple = t[3].cast<py::tuple>();
+            auto kde_joint = KDE::__setstate__(joint_tuple);
+            ckde.m_bselector = kde_joint.bandwidth_type();
+            ckde.m_training_type = kde_joint.data_type();
+            ckde.N = kde_joint.num_instances();
+            ckde.m_joint = std::move(kde_joint);
+
+            if (!ckde.m_evidence.empty()) {
+                auto& joint_bandwidth = ckde.m_joint.bandwidth();
+                auto d = ckde.m_variables.size();
+                auto marg_bandwidth = joint_bandwidth.bottomRightCorner(d-1, d-1);
+
+                cl::Buffer& training_buffer = ckde.m_joint.training_buffer();
+
+                auto& opencl = OpenCLConfig::get();
+
+                switch(ckde.m_training_type) {
+                    case Type::DOUBLE: {
+                        auto marg_buffer = opencl.copy_buffer<double>(training_buffer, ckde.N, ckde.N*(d-1));
+                        ckde.m_marg.fit<arrow::DoubleType>(marg_bandwidth, marg_buffer, ckde.m_joint.data_type(), ckde.N);
+                        break;
+                    }
+                    case Type::FLOAT: {
+                        auto marg_buffer = opencl.copy_buffer<float>(training_buffer, ckde.N, ckde.N*(d-1));
+                        ckde.m_marg.fit<arrow::FloatType>(marg_bandwidth, marg_buffer, ckde.m_joint.data_type(), ckde.N);
+                        break;
+                    }
+                    default:
+                        throw std::invalid_argument("Wrong data type in CKDE.");
+                }
+            }
+        }
+
+        return ckde;
     }
 }

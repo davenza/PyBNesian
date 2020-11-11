@@ -39,9 +39,16 @@ namespace factors::continuous {
     m_variable(variable),
     m_evidence(evidence),
     m_fitted(true),
-    m_variance(variance)
-//    TODO: Error checking: Length of vectors
-    {
+    m_variance(variance) {
+        if (beta.size() != (evidence.size() + 1)) {
+            throw py::value_error("Wrong number of beta parameters. Beta vector size: " + std::to_string(beta.size()) + 
+                                    ". Expected beta vector size: " + std::to_string(evidence.size() + 1) + ".");
+        }
+        
+        if (variance <= 0) {
+            throw py::value_error("Variance must be a positive value.");
+        }
+
         m_beta = VectorXd(beta.size());
         auto m_ptr = m_beta.data();
         auto vec_ptr = beta.data();
@@ -356,5 +363,23 @@ namespace factors::continuous {
                 stream << "[LinearGaussianCPD] P(" << m_variable << ") not fitted";
         }
         return stream.str();
+    }
+
+    py::tuple LinearGaussianCPD::__getstate__() const {
+        return py::make_tuple(m_variable, m_evidence, m_fitted, m_beta, m_variance);
+    }
+
+    LinearGaussianCPD LinearGaussianCPD::__setstate__(py::tuple& t) {
+        if (t.size() != 5)
+            throw std::runtime_error("Not valid DirectedGraph.");
+
+        LinearGaussianCPD cpd(t[0].cast<std::string>(),
+                              t[1].cast<std::vector<std::string>>());
+
+        cpd.m_fitted = t[2].cast<bool>();
+        cpd.m_beta = t[3].cast<VectorXd>();
+        cpd.m_variance = t[4].cast<double>();
+
+        return cpd;
     }
 }

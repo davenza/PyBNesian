@@ -65,7 +65,7 @@ def test_kde_fit():
         npdata = _df.loc[:, variables].to_numpy()
         scipy_kde = gaussian_kde(npdata[:instances, :].T)
 
-        assert scipy_kde.n == cpd.n, "Wrong number of training instances."
+        assert scipy_kde.n == cpd.N, "Wrong number of training instances."
         assert scipy_kde.d == cpd.d, "Wrong number of training variables."
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
@@ -87,7 +87,7 @@ def test_kde_fit_null():
         npdata_no_null = npdata_instances[~nan_rows,:]
         scipy_kde = gaussian_kde(npdata_no_null.T)
 
-        assert scipy_kde.n == cpd.n, "Wrong number of training instances with null values."
+        assert scipy_kde.n == cpd.N, "Wrong number of training instances with null values."
         assert scipy_kde.d == cpd.d, "Wrong number of training variables with null values."
         assert np.all(np.isclose(scipy_kde.covariance, cpd.bandwidth)), "Wrong bandwidth with null values."
 

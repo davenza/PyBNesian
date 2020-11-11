@@ -44,8 +44,14 @@ def test_ckde_kde_marg():
         cpd = CKDE(variable, evidence)
         cpd.fit(_df)
         kde_marg = cpd.kde_marg
-        kde_marg.bandwidth = np.eye(len(evidence))
-        assert np.all(cpd.kde_marg.bandwidth == np.eye(len(evidence))), "kde_marg do not return a reference to the KDE joint, but a copy."
+
+        if evidence:
+            assert kde_marg.fitted
+            kde_marg.bandwidth = np.eye(len(evidence))
+            assert np.all(cpd.kde_marg.bandwidth == np.eye(len(evidence))), "kde_marg do not return a reference to the KDE joint, but a copy."
+        else:
+            # kde_marg contains garbage if there is no evidence
+            pass
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         _test_ckde_kde_marg_iter(variable, evidence, df)
@@ -66,7 +72,7 @@ def test_ckde_fit():
 
         assert np.all(np.isclose(kde_joint.bandwidth, scipy_kde.covariance))
         assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
-        assert cpd.n == instances
+        assert cpd.N == instances
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         variables = [variable] + evidence
@@ -92,7 +98,7 @@ def test_ckde_fit_null():
 
         assert np.all(np.isclose(kde_joint.bandwidth, scipy_kde.covariance))
         assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
-        assert cpd.n == scipy_kde.n
+        assert cpd.N == scipy_kde.n
 
     np.random.seed(0)
     a_null = np.random.randint(0, SIZE, size=100)

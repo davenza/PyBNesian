@@ -1,3 +1,4 @@
+#include <pybind11/stl.h>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <learning/parameters/mle.hpp>
 #include <util/math_constants.hpp>
@@ -232,60 +233,122 @@ namespace factors::discrete {
         stream << std::setprecision(3);
         if (!m_evidence.empty()) {
             stream << "[DiscreteFactor] P(" << m_variable << " | " << m_evidence[0];
+
             for (size_t i = 1; i < m_evidence.size(); ++i) {
                 stream << ", " << m_evidence[i];
             }
-        
-            stream << ")" << std::endl;
+            stream << ")";
 
-            fort::char_table table;                                                
-            table.set_cell_text_align(fort::text_align::center);
+            if (m_fitted) {
+                stream << std::endl;
 
-            table << std::setprecision(3) << fort::header;
-            table[0][0].set_cell_span(m_evidence.size());
-            table[0][2] = m_variable;
-            table[0][2].set_cell_span(m_cardinality(0));
-            table << fort::endr << fort::header;
-            table.range_write(m_evidence.begin(), m_evidence.end());
-            table.range_write_ln(m_variable_values.begin(), m_variable_values.end());
+                fort::char_table table;                                                
+                table.set_cell_text_align(fort::text_align::center);
 
-            auto parent_configurations = m_cardinality.bottomRows(m_evidence.size()).prod();
+                table << std::setprecision(3) << fort::header;
+                table[0][0].set_cell_span(m_evidence.size());
+                table[0][m_evidence.size()] = m_variable;
+                table[0][m_evidence.size()].set_cell_span(m_cardinality(0));
+                table << fort::endr << fort::header;
+                table.range_write(m_evidence.begin(), m_evidence.end());
+                table.range_write_ln(m_variable_values.begin(), m_variable_values.end());
 
-            for (auto k = 0; k < parent_configurations; ++k) {
-                double index = k*m_cardinality(0);
-                for (size_t j = 0; j < m_evidence.size(); ++j) {
-                    auto assignment_index = static_cast<int>(std::floor(index / m_strides(j+1))) 
-                                                                % m_cardinality(j+1);
-                    table << m_evidence_values[j][assignment_index];
+                auto parent_configurations = m_cardinality.bottomRows(m_evidence.size()).prod();
+
+                for (auto k = 0; k < parent_configurations; ++k) {
+                    double index = k*m_cardinality(0);
+                    for (size_t j = 0; j < m_evidence.size(); ++j) {
+                        auto assignment_index = static_cast<int>(std::floor(index / m_strides(j+1))) 
+                                                                    % m_cardinality(j+1);
+                        table << m_evidence_values[j][assignment_index];
+                    }
+
+                    for (auto i = 0; i < m_cardinality(0); ++i) {
+                        table << std::exp(m_logprob(index + i));
+                    }
+                    table << fort::endr;
                 }
+
+                stream << table.to_string();
+            } else {
+                stream << " not fitted.";
+            }
+        } else {
+            stream << "[DiscreteFactor] P(" << m_variable << ")";
+
+            if (m_fitted) {
+                stream << std::endl;
+                fort::char_table table;                                                
+                table << std::setprecision(3) << fort::header                                             
+                    << m_variable << fort::endr
+                    << fort::header;
+                table[0][0].set_cell_span(m_cardinality(0));
+                table[0][0].set_cell_text_align(fort::text_align::center);
+                table.range_write_ln(m_variable_values.begin(), m_variable_values.end());
+                table.row(1).set_cell_text_align(fort::text_align::center);
 
                 for (auto i = 0; i < m_cardinality(0); ++i) {
-                    table << std::exp(m_logprob(index + i));
+                    table << std::exp(m_logprob(i));
                 }
                 table << fort::endr;
+                stream << table.to_string();
+            } else {
+                stream << " not fitted.";
             }
 
-            stream << table.to_string();
-        } else {
-            stream << "[DiscreteFactor] P(" << m_variable << ")" << std::endl;
-
-            fort::char_table table;                                                
-            table << std::setprecision(3) << fort::header                                             
-                << m_variable << fort::endr
-                << fort::header;
-            table[0][0].set_cell_span(m_cardinality(0));
-            table[0][0].set_cell_text_align(fort::text_align::center);
-            table.range_write_ln(m_variable_values.begin(), m_variable_values.end());
-            table.row(1).set_cell_text_align(fort::text_align::center);
-
-            for (auto i = 0; i < m_cardinality(0); ++i) {
-                table << std::exp(m_logprob(i));
-            }
-            table << fort::endr;
-
-            stream << table.to_string();
         }
 
         return stream.str();
+    }
+
+    py::tuple DiscreteFactor::__getstate__() const {
+        std::vector<std::string> variable_values;
+        std::vector<std::vector<std::string>> evidence_values;
+        VectorXd logprob;
+
+        if (m_fitted) {
+            variable_values = m_variable_values;
+            evidence_values = m_evidence_values;
+            logprob = m_logprob;
+        }
+
+        return py::make_tuple(m_variable,
+                              m_evidence,
+                              m_fitted,
+                              variable_values,
+                              evidence_values,
+                              logprob);
+    }
+
+    DiscreteFactor DiscreteFactor::__setstate__(py::tuple& t) {
+        if (t.size() != 6)
+            throw std::runtime_error("Not valid CKDE.");
+
+        DiscreteFactor dist(t[0].cast<std::string>(), t[1].cast<std::vector<std::string>>());
+
+        dist.m_fitted = t[2].cast<bool>();
+
+        if (dist.m_fitted) {
+            dist.m_variable_values = t[3].cast<std::vector<std::string>>();
+            dist.m_evidence_values = t[4].cast<std::vector<std::vector<std::string>>>();
+            dist.m_logprob = t[5].cast<VectorXd>();
+
+            VectorXi cardinality(dist.m_evidence.size() + 1);
+            VectorXi strides(dist.m_evidence.size() + 1);
+
+            cardinality(0) = dist.m_variable_values.size();
+            strides(0) = 1;
+
+            int i = 1;
+            for (auto it = dist.m_evidence_values.begin(), end = dist.m_evidence_values.end(); it != end; ++it, ++i) {
+                cardinality(i) = it->size();
+                strides(i) = strides(i-1)*cardinality(i-1);
+            }
+
+            dist.m_cardinality = std::move(cardinality);
+            dist.m_strides = std::move(strides);
+        }
+
+        return dist;
     }
 }

@@ -56,6 +56,8 @@ namespace factors::continuous {
                          long unsigned int seed = std::random_device{}()) const;
 
         std::string ToString() const;
+
+        py::tuple __getstate__() const;
     private:
         std::variant<LinearGaussianCPD, CKDE> m_cpd;
     };

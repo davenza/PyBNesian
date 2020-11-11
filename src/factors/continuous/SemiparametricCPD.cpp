@@ -59,4 +59,10 @@ namespace factors::continuous {
             return cpd.sample(n, evidence_values, seed);
         }, m_cpd);
     }
+
+    py::tuple SemiparametricCPD::__getstate__() const {
+        return std::visit([](auto& cpd) {
+            return cpd.__getstate__();
+        }, m_cpd);  
+    }
 }

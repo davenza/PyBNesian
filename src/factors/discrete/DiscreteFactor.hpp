@@ -147,6 +147,8 @@ namespace factors::discrete {
         Array_ptr sample(int n, const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
 
+        py::tuple __getstate__() const;
+        static DiscreteFactor __setstate__(py::tuple& t);
     private:
         void check_equal_domain(const DataFrame& df) const;
         VectorXd _logl(const DataFrame& df) const;

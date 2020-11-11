@@ -4,6 +4,7 @@
 #include <random>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <Eigen/Dense>
 #include <dataset/dataset.hpp>
 
@@ -55,6 +56,9 @@ namespace factors::continuous {
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 
                          long unsigned int seed = std::random_device{}()) const;
+
+        py::tuple __getstate__() const;
+        static LinearGaussianCPD __setstate__(py::tuple& t);
     private:
         std::string m_variable;
         std::vector<std::string> m_evidence;

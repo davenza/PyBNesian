@@ -5,6 +5,8 @@
 #include <CL/cl2.hpp>
 #include <opencl/opencl_config.hpp>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <Eigen/Dense>
 #include <pybind11/eigen.h>
 #include <dataset/dataset.hpp>
@@ -370,6 +372,9 @@ namespace factors::continuous {
         cl::Buffer logl_buffer(const DataFrame& df, Buffer_ptr& bitmap) const;
 
         double slogl(const DataFrame& df) const;
+
+        py::tuple __getstate__() const;
+        static KDE __setstate__(py::tuple& t);
     private:
         template<typename ArrowType>
         DataFrame _training_data() const;
@@ -389,6 +394,9 @@ namespace factors::continuous {
         void compute_bandwidth(const DataFrame& df, std::vector<std::string>& variables);
 
         void copy_bandwidth_opencl();
+
+        template<typename ArrowType>
+        py::tuple __getstate__() const;
 
         std::vector<std::string> m_variables;
         bool m_fitted;
@@ -505,6 +513,7 @@ namespace factors::continuous {
         m_lognorm_const = -cholesky.diagonal().array().log().sum() 
                           - 0.5 * d * std::log(2*util::pi<double>)
                           - std::log(N);
+        m_fitted = true;
     }
 
     template<typename ArrowType>
@@ -621,6 +630,40 @@ namespace factors::continuous {
         return res;
     }
 
+    template<typename ArrowType>
+    py::tuple KDE::__getstate__() const {
+        using CType = typename ArrowType::c_type;
+        using VectorType = Matrix<CType, Dynamic, 1>;
+        
+
+        int bandwidth_selector = -1;
+        MatrixXd bw;
+        VectorType training_data;
+        double lognorm_const = -1;
+        int N_export = -1;
+        int training_type = -1;
+
+        if (m_fitted) {
+            auto& opencl = OpenCLConfig::get();
+            training_data = VectorType(N * m_variables.size());
+            opencl.read_from_buffer(training_data.data(), m_training, N * m_variables.size());
+
+            lognorm_const = m_lognorm_const;
+            training_type = static_cast<int>(m_training_type);
+            N_export = N;
+            bandwidth_selector = static_cast<int>(m_bselector);
+            bw = m_bandwidth;
+        }
+
+        return py::make_tuple(m_variables,
+                              m_fitted, 
+                              bandwidth_selector, 
+                              bw, 
+                              training_data, 
+                              lognorm_const, 
+                              N_export, 
+                              training_type);
+    }
 
     class CKDE {
     public:
@@ -670,6 +713,9 @@ namespace factors::continuous {
         VectorXd cdf(const DataFrame& df) const;
 
         std::string ToString() const;
+
+        py::tuple __getstate__() const;
+        static CKDE __setstate__(py::tuple& t);
     private:
         template<typename ArrowType>
         void _fit(const DataFrame& df);
@@ -702,6 +748,9 @@ namespace factors::continuous {
 
         template<typename ArrowType, typename KDEType>
         cl::Buffer _cdf_multivariate(cl::Buffer& variable_test_buffer, cl::Buffer& evidence_test_buffer, int m) const;
+
+        template<typename ArrowType>
+        py::tuple __getstate__() const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -1228,6 +1277,19 @@ namespace factors::continuous {
         opencl.queue().enqueueNDRangeKernel(k_divide, cl::NullRange, cl::NDRange(remaining_m), cl::NullRange);
 
         return res;
+    }
+
+    template<typename ArrowType>
+    py::tuple CKDE::__getstate__() const {
+        py::tuple joint_tuple;
+        if (m_fitted) {
+            joint_tuple = m_joint.__getstate__();
+        }
+
+        return py::make_tuple(m_variable,
+                              m_evidence,
+                              m_fitted,
+                              joint_tuple);        
     }
 }
 

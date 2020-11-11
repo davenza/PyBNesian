@@ -34,49 +34,106 @@ void pybindings_factors(py::module& root) {
         .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
         .def_property_readonly("variable", &LinearGaussianCPD::variable)
         .def_property_readonly("evidence", &LinearGaussianCPD::evidence)
-        .def_property("beta", &LinearGaussianCPD::beta, &LinearGaussianCPD::set_beta)
-        .def_property("variance", &LinearGaussianCPD::variance, &LinearGaussianCPD::set_variance)
+        .def_property("beta", [](const LinearGaussianCPD& self) {
+            if (self.fitted())
+                return self.beta();
+            else
+                throw py::value_error("LinearGaussianCPD not fitted.");
+        }, &LinearGaussianCPD::set_beta)
+        .def_property("variance", [](const LinearGaussianCPD& self) {
+            if (self.fitted())
+                return self.variance();
+            else
+                throw py::value_error("LinearGaussianCPD not fitted.");
+        }, &LinearGaussianCPD::set_variance)
         .def_property_readonly("fitted", &LinearGaussianCPD::fitted)
         .def("fit", &LinearGaussianCPD::fit)
         .def("logl", &LinearGaussianCPD::logl, py::return_value_policy::take_ownership)
         .def("slogl", &LinearGaussianCPD::slogl)
         .def("cdf", &LinearGaussianCPD::cdf, py::return_value_policy::take_ownership)
         .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values) {
-            if (evidence_values) {
+            if (evidence_values)
                 return self.sample(n, *evidence_values, std::random_device{}());
-            }
-            else {
+            else
                 return self.sample(n, DataFrame(), std::random_device{}());
-            }
         }, py::arg("n"), py::arg("evidence_values"))
         .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, long unsigned int seed) {
-            if (evidence_values) {
+            if (evidence_values)
                 return self.sample(n, *evidence_values, seed);
-            }
-            else {
+            else
                 return self.sample(n, DataFrame(), seed);
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        .def(py::pickle(
+            [](const LinearGaussianCPD& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return LinearGaussianCPD::__setstate__(t);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"));
+        ));
 
     py::class_<KDE>(continuous, "KDE")
         .def(py::init<std::vector<std::string>>())
         .def_property_readonly("variables", &KDE::variables)
-        .def_property_readonly("n", &KDE::num_instances)
-        .def_property_readonly("d", &KDE::num_variables)
-        .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth)
-        .def_property_readonly("dataset", &KDE::training_data)
+        .def_property_readonly("N", [](const KDE& self) {
+            if (self.fitted())
+                return self.num_instances();
+            else
+                throw py::value_error("KDE not fitted.");
+        })
+        .def_property_readonly("d", [](const KDE& self) {
+            if (self.fitted())
+                return self.num_variables();
+            else
+                throw py::value_error("KDE not fitted.");
+        })
+        .def_property("bandwidth", [](const KDE& self) {
+            if (self.fitted())
+                return self.bandwidth();
+            else
+                throw py::value_error("KDE not fitted.");
+        }, &KDE::setBandwidth)
+        .def_property_readonly("dataset", [](const KDE& self) {
+            if (self.fitted())
+                return self.training_data();
+            else
+                throw py::value_error("KDE not fitted.");
+        })
         .def_property_readonly("fitted", &KDE::fitted)
         .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
         .def("logl", &KDE::logl, py::return_value_policy::take_ownership)
-        .def("slogl", &KDE::slogl);
+        .def("slogl", &KDE::slogl)
+        .def(py::pickle(
+            [](const KDE& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return KDE::__setstate__(t);
+            }
+        ));
 
     py::class_<CKDE>(continuous, "CKDE")
         .def(py::init<const std::string, const std::vector<std::string>>())
         .def_property_readonly("variable", &CKDE::variable)
         .def_property_readonly("evidence", &CKDE::evidence)
-        .def_property_readonly("n", &CKDE::num_instances)
-        .def_property_readonly("kde_joint", &CKDE::kde_joint)
-        .def_property_readonly("kde_marg", &CKDE::kde_marg)
+        .def_property_readonly("N", [](const CKDE& self) {
+            if (self.fitted())
+                return self.num_instances();
+            else
+                throw py::value_error("CKDE not fitted.");
+        })
+        .def_property_readonly("kde_joint", [](CKDE& self) -> KDE& {
+            if (self.fitted())
+                return self.kde_joint();
+            else
+                throw py::value_error("CKDE not fitted.");
+        }, py::return_value_policy::reference_internal)
+        .def_property_readonly("kde_marg", [](CKDE& self) -> KDE& {
+            if (self.fitted())
+                return self.kde_marg();
+            else
+                throw py::value_error("CKDE not fitted.");
+        }, py::return_value_policy::reference_internal)
         .def_property_readonly("fitted", &CKDE::fitted)
         .def("fit", &CKDE::fit)
         .def("logl", &CKDE::logl, py::return_value_policy::take_ownership)
@@ -97,7 +154,15 @@ void pybindings_factors(py::module& root) {
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"));
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        .def(py::pickle(
+            [](const CKDE& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return CKDE::__setstate__(t);
+            }
+        ));
 
     py::class_<SemiparametricCPD>(continuous, "SemiparametricCPD")
         .def(py::init<LinearGaussianCPD>())
@@ -146,6 +211,14 @@ void pybindings_factors(py::module& root) {
         .def("fit", &DiscreteFactor::fit)
         .def("logl", &DiscreteFactor::logl, py::arg("df"), py::arg("check_domain") = true)
         .def("slogl", &DiscreteFactor::slogl, py::arg("df"), py::arg("check_domain") = true)
-        .def("ToString", &DiscreteFactor::ToString);
+        .def("ToString", &DiscreteFactor::ToString)
+        .def(py::pickle(
+            [](const DiscreteFactor& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return DiscreteFactor::__setstate__(t);
+            }
+        ));
 
 }

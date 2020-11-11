@@ -18,12 +18,12 @@ namespace graph {
     enum GraphType {
         Directed,
         Undirected,
-        PartiallyDirected,
-        DirectedAcyclic
+        PartiallyDirected
     };
 
     template<GraphType Type>
     class Graph;
+    class Dag;
 
     using DirectedGraph = Graph<Directed>;
     using UndirectedGraph = Graph<Undirected>;
@@ -34,6 +34,13 @@ namespace graph {
 
     template<>
     struct GraphTraits<DirectedGraph> {
+        using NodeType = DNode;
+        inline static constexpr bool has_arcs = true;
+        inline static constexpr bool has_edges = false;
+    };
+
+    template<>
+    struct GraphTraits<Dag> {
         using NodeType = DNode;
         inline static constexpr bool has_arcs = true;
         inline static constexpr bool has_edges = false;
@@ -69,8 +76,8 @@ namespace graph {
         friend class Graph;
         friend class Dag;
         
-        GraphBase() : m_nodes(), m_indices(), free_indices() {}
-        GraphBase(const std::vector<std::string>& nodes) : m_nodes(), m_indices(), free_indices() {
+        GraphBase() : m_nodes(), m_indices(), m_free_indices() {}
+        GraphBase(const std::vector<std::string>& nodes) : m_nodes(), m_indices(), m_free_indices() {
             m_nodes.reserve(nodes.size());
 
             for (size_t i = 0; i < nodes.size(); ++i) {
@@ -81,7 +88,7 @@ namespace graph {
         }
 
         int num_nodes() const {
-            return m_nodes.size() - free_indices.size();
+            return m_nodes.size() - m_free_indices.size();
         }
 
         template<typename V>
@@ -117,9 +124,14 @@ namespace graph {
             return m_indices;
         }
 
+        const std::vector<int>& free_indices() const {
+            return m_free_indices;
+        }
+
         bool is_valid(int idx) const {
             return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
         }
+
 
     private:
         int check_index(int idx) const {
@@ -141,7 +153,7 @@ namespace graph {
 
         std::vector<NodeType> m_nodes;
         std::unordered_map<std::string, int> m_indices;
-        std::vector<int> free_indices;
+        std::vector<int> m_free_indices;
     };
 
     template<typename Derived>
@@ -162,9 +174,9 @@ namespace graph {
     template<typename Derived>
     int GraphBase<Derived>::add_node(const std::string& node) {
         int idx = [this, &node]() {
-            if (!free_indices.empty()) {
-                int idx = free_indices.back();
-                free_indices.pop_back();
+            if (!m_free_indices.empty()) {
+                int idx = m_free_indices.back();
+                m_free_indices.pop_back();
                 NodeType n(idx, node);
                 m_nodes[idx] = n;
                 return idx;
@@ -221,7 +233,7 @@ namespace graph {
 
         m_indices.erase(m_nodes[index].name());
         m_nodes[index].invalidate();
-        free_indices.push_back(index);
+        m_free_indices.push_back(index);
     }
 
     template<typename Derived>
@@ -612,7 +624,107 @@ namespace graph {
         return res;
     }
 
-    class Dag;
+    template<typename G>
+    py::tuple __getstate__(const G& g) {
+        std::vector<std::string> nodes;
+        nodes.reserve(g.num_nodes());
+        std::vector<Arc> arcs;
+        if constexpr (GraphTraits<G>::has_arcs) arcs.reserve(g.num_arcs());
+        std::vector<Edge> edges;
+        if constexpr (GraphTraits<G>::has_edges) edges.reserve(g.num_edges());
+
+
+        if (g.free_indices().empty()) {
+            for (auto& n : g.node_indices()) {
+                nodes.push_back(n.name());
+            }
+
+            if constexpr (GraphTraits<G>::has_arcs) {
+                for (auto& arc : g.arc_indices()) {
+                    arcs.push_back(arc);
+                }
+            }
+
+            if constexpr (GraphTraits<G>::has_edges) {
+                for (auto& edge : g.edge_indices()) {
+                    edges.push_back(edge);
+                }
+            }
+        } else {
+            std::unordered_map<int, int> new_indices;
+
+            for (int i = 0, j = 0; i < g.num_nodes(); ++i) {
+                if (g.node(i).is_valid()) {
+                    nodes.push_back(g.name(i));
+                    new_indices.insert({i, j++});
+                }
+            }
+
+            if constexpr (GraphTraits<G>::has_arcs) {
+                for (auto& arc : g.arc_indices()) {
+                    arcs.push_back({new_indices[arc.first], new_indices[arc.second]});
+                }
+            }
+
+            if constexpr (GraphTraits<G>::has_edges) {
+                for (auto& edge : g.edge_indices()) {
+                    edges.push_back({new_indices[edge.first], new_indices[edge.second]});
+                }
+            }
+        }
+
+        if constexpr (GraphTraits<G>::has_arcs) {
+            if constexpr (GraphTraits<G>::has_edges) {
+                return py::make_tuple(nodes, arcs, edges);
+            } else {
+                return py::make_tuple(nodes, arcs);
+            }
+        } else {
+            return py::make_tuple(nodes, edges);
+        }
+    }
+
+    template<typename G>
+    G __setstate__(py::tuple& t) {
+        if (t.size() != (1 + GraphTraits<G>::has_arcs + GraphTraits<G>::has_edges))
+            throw std::runtime_error("Not valid Graph.");
+
+        G g(t[0].cast<std::vector<std::string>>());
+
+        if constexpr (GraphTraits<G>::has_arcs) {
+            auto arcs = t[1].cast<std::vector<Arc>>();
+
+            for (auto& arc : arcs) {
+                g.add_arc(arc.first, arc.second);
+            }
+
+            if constexpr (GraphTraits<G>::has_edges) {
+                auto edges = t[2].cast<std::vector<Edge>>();
+
+                for (auto& edge : edges) {
+                    g.add_edge(edge.first, edge.second);
+                }
+            }
+        } else {
+            auto edges = t[1].cast<std::vector<Edge>>();
+
+            for (auto& edge : edges) {
+                g.add_edge(edge.first, edge.second);
+            }
+        }
+        
+        return g;
+    }
+
+    template<typename G>
+    void save_graph(G& graph, const std::string& name) {
+        auto open = py::module::import("io").attr("open");
+        auto file = open(name, "wb");
+        py::module::import("pickle").attr("dump")(py::cast(&graph), file, 2);
+        file.attr("close")();
+    }
+
+    py::object load_graph(const std::string& name);
 
     template<>
     class Graph<PartiallyDirected> : public GraphBase<PartiallyDirectedGraph>,
@@ -626,9 +738,21 @@ namespace graph {
         Graph(const std::vector<std::string>& nodes) : GraphBase<PartiallyDirectedGraph>(nodes),
                                                        ArcGraph<PartiallyDirectedGraph>(nodes),
                                                        EdgeGraph<PartiallyDirectedGraph>() {}
-        Graph(const EdgeVector& edges, const ArcVector& arcs) : GraphBase<PartiallyDirectedGraph>(),
+        Graph(const ArcVector& arcs, const EdgeVector& edges) : GraphBase<PartiallyDirectedGraph>(),
                                                                 ArcGraph<PartiallyDirectedGraph>(),
                                                                 EdgeGraph<PartiallyDirectedGraph>() {
+
+            for (auto& arc : arcs) {
+                if (m_indices.count(arc.first) == 0) {
+                    add_node(arc.first);
+                }
+
+                if (m_indices.count(arc.second) == 0) {
+                    add_node(arc.second);
+                }
+
+                add_arc(arc.first, arc.second);
+            }
 
             for (auto& edge : edges) {
                 if (m_indices.count(edge.first) == 0) {
@@ -642,25 +766,24 @@ namespace graph {
                 add_edge(edge.first, edge.second);
             }
 
-            for (auto& arc : arcs) {
-                if (m_indices.count(arc.first) == 0) {
-                    add_node(arc.first);
-                }
-
-                if (m_indices.count(arc.second) == 0) {
-                    add_node(arc.second);
-                }
-
-                add_arc(arc.first, arc.second);
-            }
         }
 
         Graph(const std::vector<std::string>& nodes,
-              const EdgeVector& edges, 
-              const ArcVector& arcs) : GraphBase<PartiallyDirectedGraph>(nodes),
-                                       ArcGraph<PartiallyDirectedGraph>(nodes),
-                                       EdgeGraph<PartiallyDirectedGraph>() {
+              const ArcVector& arcs,
+              const EdgeVector& edges) : GraphBase<PartiallyDirectedGraph>(nodes),
+                                         ArcGraph<PartiallyDirectedGraph>(nodes),
+                                         EdgeGraph<PartiallyDirectedGraph>() {
                               
+            for (auto& arc : arcs) {
+                if (m_indices.count(arc.first) == 0) throw pybind11::index_error(
+                    "Node \"" + arc.first + "\" in arc (" + arc.first + ", " + arc.second + ") not present in the graph.");
+            
+                if (m_indices.count(arc.second) == 0) throw pybind11::index_error(
+                    "Node \"" + arc.second + "\" in arc (" + arc.first + ", " + arc.second + ") not present in the graph.");
+
+                add_arc(arc.first, arc.second);
+            }
+
             for (auto& edge : edges) {
                 if (m_indices.count(edge.first) == 0) throw pybind11::index_error(
                     "Node \"" + edge.first + "\" in edge (" + edge.first + ", " + edge.second + ") not present in the graph.");
@@ -670,16 +793,6 @@ namespace graph {
 
                 add_edge(edge.first, edge.second);
             }
-
-            for (auto& arc : arcs) {
-                if (m_indices.count(arc.first) == 0) throw pybind11::index_error(
-                    "Node \"" + arc.first + "\" in arc (" + arc.first + ", " + arc.second + ") not present in the graph.");
-            
-                if (m_indices.count(arc.second) == 0) throw pybind11::index_error(
-                    "Node \"" + arc.second + "\" in arc (" + arc.first + ", " + arc.second + ") not present in the graph.");
-
-                add_arc(arc.first, arc.second);
-            }          
         }
 
         Graph(Graph<Undirected>&& g);
@@ -716,8 +829,17 @@ namespace graph {
 
         Dag to_dag() const;
 
-        py::tuple __getstate__() const;
-        static PartiallyDirectedGraph __setstate__(py::tuple& t);
+        py::tuple __getstate__() const {
+            return graph::__getstate__(*this);
+        }
+
+        static PartiallyDirectedGraph __setstate__(py::tuple& t) {
+            return graph::__setstate__<PartiallyDirectedGraph>(t);
+        }
+
+        void save(const std::string& name) const {
+            save_graph(*this, name);
+        }
     };
 
     template<>
@@ -768,8 +890,17 @@ namespace graph {
 
         bool has_path_unsafe(int source, int target) const;
 
-        py::tuple __getstate__() const;
-        static UndirectedGraph __setstate__(py::tuple& t);
+        py::tuple __getstate__() const {
+            return graph::__getstate__(*this);
+        }
+
+        static UndirectedGraph __setstate__(py::tuple& t) {
+            return graph::__setstate__<UndirectedGraph>(t);
+        }
+
+        void save(const std::string& name) const {
+            save_graph(*this, name);
+        }
     };
 
     template<>
@@ -818,8 +949,17 @@ namespace graph {
 
         bool has_path_unsafe(int source, int target) const;
 
-        py::tuple __getstate__() const;
-        static DirectedGraph __setstate__(py::tuple& t);
+        py::tuple __getstate__() const {
+            return graph::__getstate__(*this);
+        }
+
+        static DirectedGraph __setstate__(py::tuple& t) {
+            return graph::__setstate__<DirectedGraph>(t);
+        }
+
+        void save(const std::string& name) const {
+            save_graph(*this, name);
+        }
     };
 
     class Dag : public DirectedGraph {
@@ -855,8 +995,17 @@ namespace graph {
 
         PartiallyDirectedGraph to_pdag() const;
 
-        py::tuple __getstate__() const;
-        static Dag __setstate__(py::tuple& t);
+        py::tuple __getstate__() const {
+            return graph::__getstate__(*this);
+        }
+
+        static Dag __setstate__(py::tuple& t) {
+            return graph::__setstate__<Dag>(t);
+        }
+
+        void save(const std::string& name) const {
+            save_graph(*this, name);
+        }
     };
 
 }

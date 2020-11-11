@@ -10,6 +10,8 @@ using graph::DirectedGraph, graph::Dag, graph::UndirectedGraph, graph::Partially
 void pybindings_graph(py::module& root) {
     auto graph = root.def_submodule("graph","Graph submodule");
 
+    graph.def("load_graph", &graph::load_graph);
+
     py::class_<DirectedGraph>(graph, "DirectedGraph")
         .def(py::init<>())
         .def(py::init<const std::vector<std::string>&>())
@@ -92,6 +94,7 @@ void pybindings_graph(py::module& root) {
             return self.has_path(source, target);
         })
         .def("is_valid", &DirectedGraph::is_valid)
+        .def("save", &DirectedGraph::save)
         .def(py::pickle(
             [](const DirectedGraph& self) {
                 return self.__getstate__();
@@ -119,6 +122,7 @@ void pybindings_graph(py::module& root) {
             return self.can_flip_arc(source, target);
         })
         .def("to_pdag", &Dag::to_pdag)
+        .def("save", &Dag::save)
         .def(py::pickle(
             [](const Dag& self) {
                 return self.__getstate__();
@@ -187,6 +191,7 @@ void pybindings_graph(py::module& root) {
             return self.has_path(source, target);
         })
         .def("is_valid", &UndirectedGraph::is_valid)
+        .def("save", &UndirectedGraph::save)
         .def(py::pickle(
             [](const UndirectedGraph& self) {
                 return self.__getstate__();
@@ -199,8 +204,8 @@ void pybindings_graph(py::module& root) {
     py::class_<PartiallyDirectedGraph>(graph, "PartiallyDirectedGraph")
         .def(py::init<>())
         .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const EdgeVector&, const ArcVector&>())
-        .def(py::init<const std::vector<std::string>&, const EdgeVector&, const ArcVector&>())
+        .def(py::init<const ArcVector&, const EdgeVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcVector&, const EdgeVector&>())
         .def("num_nodes", &PartiallyDirectedGraph::num_nodes)
         .def("num_edges", &PartiallyDirectedGraph::num_edges)
         .def("num_arcs", &PartiallyDirectedGraph::num_arcs)
@@ -305,6 +310,7 @@ void pybindings_graph(py::module& root) {
         })
         .def("is_valid", &PartiallyDirectedGraph::is_valid)
         .def("to_dag", &PartiallyDirectedGraph::to_dag)
+        .def("save", &PartiallyDirectedGraph::save)
         .def(py::pickle(
             [](const PartiallyDirectedGraph& self) {
                 return self.__getstate__();

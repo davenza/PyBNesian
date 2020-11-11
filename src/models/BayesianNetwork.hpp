@@ -414,9 +414,13 @@ namespace models {
 
     template<typename Derived>
     bool BayesianNetwork<Derived>::must_refit_cpd(const CPD& cpd) const {
+        if (!cpd.fitted())
+            return true;
+
         auto& node = cpd.variable();
         auto& cpd_evidence = cpd.evidence();
         auto parents = this->parents(node);
+        
         if (cpd_evidence.size() != parents.size())
             return true;
 

@@ -375,6 +375,9 @@ namespace factors::continuous {
 
         py::tuple __getstate__() const;
         static KDE __setstate__(py::tuple& t);
+        static KDE __setstate__(py::tuple&& t) {
+            return __setstate__(t);
+        }
     private:
         template<typename ArrowType>
         DataFrame _training_data() const;
@@ -667,6 +670,7 @@ namespace factors::continuous {
 
     class CKDE {
     public:
+        CKDE() = default;
         CKDE(const std::string variable, const std::vector<std::string> evidence) : CKDE(variable, evidence, KDEBandwidth::SCOTT) {}
         CKDE(const std::string variable, const std::vector<std::string> evidence, KDEBandwidth b_selector) 
                                                                                   : m_variable(variable), 
@@ -716,6 +720,9 @@ namespace factors::continuous {
 
         py::tuple __getstate__() const;
         static CKDE __setstate__(py::tuple& t);
+        static CKDE __setstate__(py::tuple&& t) {
+            return __setstate__(t);
+        }
     private:
         template<typename ArrowType>
         void _fit(const DataFrame& df);

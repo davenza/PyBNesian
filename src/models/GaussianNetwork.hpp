@@ -37,6 +37,18 @@ namespace models {
         BayesianNetworkType type() const override {
             return BayesianNetworkType::GBN;
         }
+
+        py::tuple __getstate__() const {
+            return BayesianNetwork<GaussianNetwork>::__getstate__();
+        }
+
+        static GaussianNetwork __setstate__(py::tuple& t) {
+            return BayesianNetwork<GaussianNetwork>::__setstate__(t);
+        }
+
+        static GaussianNetwork __setstate__(py::tuple&& t) {
+            return BayesianNetwork<GaussianNetwork>::__setstate__(t);
+        }
     };
 }
 

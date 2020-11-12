@@ -113,6 +113,8 @@ namespace factors::continuous {
                 return __getstate__<arrow::DoubleType>();
             case Type::FLOAT:
                 return __getstate__<arrow::FloatType>();
+            default:
+                throw std::runtime_error("Unreachable code.");
         }
     }
 
@@ -281,6 +283,8 @@ namespace factors::continuous {
                 return __getstate__<arrow::DoubleType>();
             case Type::FLOAT:
                 return __getstate__<arrow::FloatType>();
+            default:
+                throw std::runtime_error("Unreachable code.");
         }
     }
 

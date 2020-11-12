@@ -25,6 +25,7 @@ namespace factors {
 
         FactorType() = default;
         constexpr FactorType(Value node_type) : value(node_type) { }
+        constexpr FactorType(uint8_t node_type) : value(static_cast<Value>(node_type)) { }
 
         operator Value() const { return value; }  
         explicit operator bool() = delete;

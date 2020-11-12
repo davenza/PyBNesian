@@ -14,6 +14,9 @@ namespace factors::continuous {
 
     class SemiparametricCPD {
     public:
+
+        SemiparametricCPD() = default;
+
         template<typename T>
         SemiparametricCPD(T factor) : m_cpd(factor) {
             static_assert(std::is_same_v<LinearGaussianCPD, T> ||
@@ -58,6 +61,10 @@ namespace factors::continuous {
         std::string ToString() const;
 
         py::tuple __getstate__() const;
+        static SemiparametricCPD __setstate__(py::tuple& t);
+        static SemiparametricCPD __setstate__(py::tuple&& t) {
+            return __setstate__(t);
+        }
     private:
         std::variant<LinearGaussianCPD, CKDE> m_cpd;
     };

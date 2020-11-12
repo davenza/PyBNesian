@@ -289,7 +289,7 @@ namespace graph {
         auto top_sort = g.topological_sort();
         std::vector<int> top_rank(top_sort.size());
 
-        for (auto i = 0; i < top_sort.size(); ++i) {
+        for (size_t i = 0; i < top_sort.size(); ++i) {
             top_rank[g.index(top_sort[i])] = i;
         }
 
@@ -297,7 +297,7 @@ namespace graph {
         res.reserve(g.num_arcs());
 
         int included_arcs = 0;
-        for (auto i = 0; i < top_sort.size() && included_arcs < g.num_arcs(); ++i) {
+        for (size_t i = 0; i < top_sort.size() && included_arcs < g.num_arcs(); ++i) {
             auto p = g.parent_indices(top_sort[i]);
 
             std::sort(p.begin(), p.end(), [&top_rank](int a, int b) {
@@ -305,7 +305,7 @@ namespace graph {
             });
 
             auto x_name = g.index(top_sort[i]);
-            for(auto j = 0; j < p.size(); ++j) {
+            for(size_t j = 0; j < p.size(); ++j) {
                 res.push_back({p[j], x_name});
             }
         }
@@ -319,7 +319,7 @@ namespace graph {
         std::vector<Arc> sorted_arcs = sort_arcs(*this);
         PartiallyDirectedGraph pdag(nodes());
 
-        for (auto i = 0; i < sorted_arcs.size() && (pdag.num_arcs() + pdag.num_edges()) < num_arcs(); ++i) {
+        for (size_t i = 0; i < sorted_arcs.size() && (pdag.num_arcs() + pdag.num_edges()) < num_arcs(); ++i) {
             auto x = sorted_arcs[i].first;
             auto y = sorted_arcs[i].second;
             if (!pdag.has_arc(x, y) && !pdag.has_edge(x, y)) {

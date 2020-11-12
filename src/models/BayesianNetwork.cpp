@@ -40,4 +40,14 @@ namespace models {
                                         "Column \"" + schema->field(i)->name() + "\" (DataType: " + schema->field(i)->type()->ToString() + ").");
         }
     }
+
+
+
+    py::object load_model(const std::string& name) {
+        auto open = py::module::import("io").attr("open");
+        auto file = open(name, "rb");
+        auto bn = py::module::import("pickle").attr("load")(file);
+        file.attr("close")();
+        return bn;
+    }
 }

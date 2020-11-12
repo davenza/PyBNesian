@@ -40,6 +40,18 @@ namespace models {
         BayesianNetworkType type() const override {
             return BayesianNetworkType::DISCRETEBN;
         }
+
+        py::tuple __getstate__() const {
+            return BayesianNetwork<DiscreteBN>::__getstate__();
+        }
+
+        static DiscreteBN __setstate__(py::tuple& t) {
+            return BayesianNetwork<DiscreteBN>::__setstate__(t);
+        }
+
+        static DiscreteBN __setstate__(py::tuple&& t) {
+            return BayesianNetwork<DiscreteBN>::__setstate__(t);
+        }
     };
 
 

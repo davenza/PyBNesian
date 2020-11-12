@@ -25,6 +25,7 @@ namespace factors::continuous {
     public:
         using ParamsClass = LinearGaussianCPD_Params;
         
+        LinearGaussianCPD() = default;
         LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence);
         LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence,
                             const std::vector<double> beta, const double variance);
@@ -59,6 +60,9 @@ namespace factors::continuous {
 
         py::tuple __getstate__() const;
         static LinearGaussianCPD __setstate__(py::tuple& t);
+        static LinearGaussianCPD __setstate__(py::tuple&& t) {
+            return __setstate__(t);
+        }
     private:
         std::string m_variable;
         std::vector<std::string> m_evidence;

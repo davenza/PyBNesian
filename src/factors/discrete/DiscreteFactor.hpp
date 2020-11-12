@@ -112,6 +112,7 @@ namespace factors::discrete {
     public:
         using ParamsClass = DiscreteFactor_Params;
 
+        DiscreteFactor() = default;
         DiscreteFactor(std::string variable, std::vector<std::string> evidence) : m_variable(variable),
                                                                                   m_evidence(evidence),
                                                                                   m_variable_values(),
@@ -149,6 +150,9 @@ namespace factors::discrete {
 
         py::tuple __getstate__() const;
         static DiscreteFactor __setstate__(py::tuple& t);
+        static DiscreteFactor __setstate__(py::tuple&& t) {
+            return __setstate__(t);
+        }
     private:
         void check_equal_domain(const DataFrame& df) const;
         VectorXd _logl(const DataFrame& df) const;

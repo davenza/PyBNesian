@@ -113,10 +113,10 @@ namespace models {
             }
         }
     
-        bool must_refit_cpd(const CPD& cpd) const {
-            bool must_refit = BayesianNetwork<SemiparametricBN>::must_refit_cpd(cpd);
+        bool must_construct_cpd(const CPD& cpd) const {
+            bool must_construct = BayesianNetwork<SemiparametricBN>::must_construct_cpd(cpd);
             
-            return must_refit || (cpd.node_type() != m_factor_types[this->index(cpd.variable())]);
+            return must_construct || (cpd.node_type() != m_factor_types[this->index(cpd.variable())]);
         }
         
         void compatible_cpd(const CPD& cpd) const {
@@ -138,6 +138,21 @@ namespace models {
             return BayesianNetworkType::SPBN;
         }
 
+        py::tuple __getstate__() const {
+            return BayesianNetwork<SemiparametricBN>::__getstate__();
+        }
+
+        static SemiparametricBN __setstate__(py::tuple& t) {
+            return BayesianNetwork<SemiparametricBN>::__setstate__(t);
+        }
+
+        static SemiparametricBN __setstate__(py::tuple&& t) {
+            return BayesianNetwork<SemiparametricBN>::__setstate__(t);
+        }
+
+        py::tuple __getstate_extra__() const;
+        void __setstate_extra__(py::tuple& t);
+        void __setstate_extra__(py::tuple&& t);
     private:
         std::vector<FactorType> m_factor_types;
     };

@@ -2,6 +2,7 @@
 #define PGM_DATASET_BAYESIANNETWORK_HPP
 
 #include <iterator>
+#include <pybind11/stl.h>
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
@@ -78,37 +79,49 @@ namespace models {
         virtual std::vector<std::string> nodes() const = 0;
         virtual ArcVector arcs() const = 0;
         virtual const std::unordered_map<std::string, int>& indices() const = 0;
+        virtual int index(const std::string& node) const = 0;
+        virtual bool is_valid(int idx) const = 0;
         virtual bool contains_node(const std::string& name) const = 0;
+        virtual size_t add_node(const std::string& node) = 0;
+        virtual void remove_node(int node_index) = 0;
+        virtual void remove_node(const std::string& node) = 0;
         virtual const std::string& name(int node_index) const = 0;
         virtual int num_parents(int node_index) const = 0;
         virtual int num_parents(const std::string& node) const = 0;
         virtual int num_children(int node_index) const = 0;
         virtual int num_children(const std::string& node) const = 0;
-        virtual int index(const std::string& node) const = 0;
         virtual std::vector<std::string> parents(int node_index) const = 0;
         virtual std::vector<std::string> parents(const std::string& node) const = 0;
         virtual std::vector<int> parent_indices(int node_index) const = 0;
         virtual std::vector<int> parent_indices(const std::string& node) const = 0;
         virtual std::string parents_to_string(int node_index) const = 0;
         virtual std::string parents_to_string(const std::string& node) const = 0;
+        virtual std::vector<std::string> children(int node_index) const = 0;
+        virtual std::vector<std::string> children(const std::string& node) const = 0;
+        virtual std::vector<int> children_indices(int node_index) const = 0;
+        virtual std::vector<int> children_indices(const std::string& node) const = 0;
         virtual bool has_arc(int source, int dest) const = 0;
         virtual bool has_arc(const std::string& source, const std::string& dest) const = 0;
         virtual bool has_path(int source_index, int dest_index) const = 0;
         virtual bool has_path(const std::string& source, const std::string& dest) const = 0;
         virtual void add_arc(int source, int dest) = 0;
         virtual void add_arc(const std::string& source, const std::string& dest) = 0;
+        virtual void remove_arc(int source, int dest) = 0;
+        virtual void remove_arc(const std::string& source, const std::string& dest) = 0;
+        virtual void flip_arc(int source, int dest) = 0;
+        virtual void flip_arc(const std::string& source, const std::string& dest) = 0;
         virtual bool can_add_arc(int source_index, int dest_index) const = 0;
         virtual bool can_add_arc(const std::string& source, const std::string& dest) const = 0;
         virtual bool can_flip_arc(int source_index, int dest_index) = 0;
         virtual bool can_flip_arc(const std::string& source, const std::string& dest) = 0;
-        virtual void remove_arc(int source, int dest) = 0;
-        virtual void remove_arc(const std::string& source, const std::string& dest) = 0;
+        virtual bool fitted() const = 0;
         virtual void fit(const DataFrame& df) = 0;
         virtual VectorXd logl(const DataFrame& df) const = 0;
         virtual double slogl(const DataFrame& df) const = 0;
         virtual std::string ToString() const = 0;
         virtual BayesianNetworkType type() const = 0;
         virtual DataFrame sample(int n, long unsigned int seed, bool ordered) const = 0;
+        virtual void save(std::string name, bool include_cpd = false) const = 0;
     };
 
     class SemiparametricBNBase {
@@ -118,7 +131,6 @@ namespace models {
         virtual void set_node_type(int node_index, FactorType new_type) = 0;
         virtual void set_node_type(const std::string& node, FactorType new_type) = 0;
     };
-
 
     template<typename Derived>
     class BayesianNetwork : public BayesianNetworkBase {
@@ -153,8 +165,34 @@ namespace models {
             return g.indices();
         }
 
+        int index(const std::string& node) const override {
+            return g.index(node);
+        }
+
+        bool is_valid(int idx) const override {
+            return g.is_valid(idx);
+        }
+
         bool contains_node(const std::string& name) const override {
             return g.contains_node(name);
+        }
+
+        size_t add_node(const std::string& node) override {
+            size_t idx = g.add_node(node);
+
+            if (idx >= m_cpds.size())
+                m_cpds.resize(idx);
+            return idx;
+        }
+
+        void remove_node(int node_index) override {
+            g.remove_node(node_index);
+            m_cpds[node_index] = CPD();
+        }
+
+        void remove_node(const std::string& node) override {
+            auto idx = g.index(node);
+            remove_node(idx);
         }
 
         const std::string& name(int node_index) const override {
@@ -175,10 +213,6 @@ namespace models {
 
         int num_children(const std::string& node) const override {
             return g.num_children(node);
-        }
-
-        int index(const std::string& node) const override {
-            return g.index(node);
         }
 
         std::vector<std::string> parents(int node_index) const override {
@@ -205,6 +239,22 @@ namespace models {
             return g.parents_to_string(node);
         }
 
+        std::vector<std::string> children(int node_index) const override {
+            return g.children(node_index);
+        }
+
+        std::vector<std::string> children(const std::string& node) const override {
+            return g.children(node);
+        }
+
+        std::vector<int> children_indices(int node_index) const override {
+            return g.children_indices(node_index);
+        }
+
+        std::vector<int> children_indices(const std::string& node) const override {
+            return g.children_indices(node);
+        }
+
         bool has_arc(int source, int target) const override {
             return g.has_arc(source, target);
         }
@@ -229,6 +279,22 @@ namespace models {
             g.add_arc(source, target);
         }
 
+        void remove_arc(int source, int target) override {
+            g.remove_arc(source, target);
+        }
+
+        void remove_arc(const std::string& source, const std::string& target) override {
+            g.remove_arc(source, target);
+        }
+
+        void flip_arc(int source, int target) override {
+            g.flip_arc(source, target);
+        }
+
+        void flip_arc(const std::string& source, const std::string& target) override {
+            g.flip_arc(source, target);
+        }
+
         bool can_add_arc(int source_index, int target_index) const override {
             return g.can_add_arc(source_index, target_index);
         }
@@ -243,14 +309,6 @@ namespace models {
 
         bool can_flip_arc(const std::string& source, const std::string& target) override {
             return g.can_flip_arc(source, target);
-        }
-
-        void remove_arc(int source, int target) override {
-            g.remove_arc(source, target);
-        }
-
-        void remove_arc(const std::string& source, const std::string& target) override {
-            g.remove_arc(source, target);
         }
 
         void check_blacklist(const ArcVector& arc_blacklist) const {
@@ -274,16 +332,18 @@ namespace models {
                     }
                 }
             }
+
+            g.topological_sort();
         }
 
-        void force_type_whitelist(const FactorTypeVector&) {}
+        bool fitted() const override;
 
         void add_cpds(const std::vector<CPD>& cpds);
 
         void compatible_cpd(const CPD& cpd) const;
         
         void fit(const DataFrame& df) override;
-        bool must_refit_cpd(const CPD& node) const;
+        bool must_construct_cpd(const CPD& node) const;
 
         CPD create_cpd(const std::string& node) {
             auto pa = parents(node);
@@ -291,7 +351,7 @@ namespace models {
         }
 
         CPD& cpd(int index) {
-            if (!m_cpds.empty())
+            if (!m_cpds.empty() && is_valid(index))
                 return m_cpds[index];
             else
                 throw py::value_error("CPD of variable \"" + name(index) + "\" not added. Call add_cpds() or fit() to add the CPD.");
@@ -306,14 +366,26 @@ namespace models {
 
         DataFrame sample(int n, long unsigned int seed = std::random_device{}(), bool ordered = false) const override;
 
+        void save(std::string name, bool include_cpd = false) const override;
+        py::tuple __getstate__() const;
+        static Derived __setstate__(py::tuple& t);
+
         template<typename Derived_>
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
-
     protected:
         void check_fitted() const;
     private:
+        py::tuple __getstate_extra__() const {
+            return py::make_tuple();
+        }
+
+        void __setstate_extra__(py::tuple&) const { }
+        void __setstate_extra__(py::tuple&&) const { }
+
         Dag g;
         std::vector<CPD> m_cpds;
+        // This is necessary because __getstate__() do not admit parameters.
+        mutable bool m_include_cpd;
     };
 
     template<typename Derived_>
@@ -358,7 +430,6 @@ namespace models {
 
     template<typename Derived>
     void BayesianNetwork<Derived>::add_cpds(const std::vector<CPD>& cpds) {
-        
         for (auto& cpd : cpds) {
             static_cast<Derived*>(this)->compatible_cpd(cpd);
         }
@@ -371,15 +442,22 @@ namespace models {
                 }
                 map_index[it->variable()] = it;
             }
-            m_cpds.reserve(num_nodes());
-            for(auto& node : nodes()) {
-                auto cpd_idx = map_index.find(node);
 
-                if (cpd_idx != map_index.end()) {
-                    auto cpd = *(cpd_idx->second);
-                    m_cpds.push_back(cpd);
+            int physical_size = g.node_indices().size();
+            m_cpds.reserve(physical_size);
+
+            for (int i = 0; i < physical_size; ++i) {
+                if (is_valid(i)) {
+                    auto cpd_idx = map_index.find(name(i));
+
+                    if (cpd_idx != map_index.end()) {
+                        auto cpd = *(cpd_idx->second);
+                        m_cpds.push_back(cpd);
+                    } else {
+                        m_cpds.push_back(static_cast<Derived*>(this)->create_cpd(name(i)));
+                    }
                 } else {
-                    m_cpds.push_back(static_cast<Derived*>(this)->create_cpd(node));
+                    m_cpds.push_back(CPD());
                 }
             }
         } else {
@@ -392,31 +470,36 @@ namespace models {
 
     template<typename Derived>
     void BayesianNetwork<Derived>::fit(const DataFrame& df) {
-        if (m_cpds.empty()) {
-            m_cpds.reserve(g.num_nodes());
+        int physical_size = g.node_indices().size();
 
-            for (auto& node : g.nodes()) {
-                auto cpd = static_cast<Derived*>(this)->create_cpd(node);
-                m_cpds.push_back(cpd);
-                m_cpds.back().fit(df);
+        if (m_cpds.empty()) {
+            m_cpds.reserve(physical_size);
+
+            for (auto i = 0; i < physical_size; ++i) {
+                if (is_valid(i)) {
+                    auto cpd = static_cast<Derived*>(this)->create_cpd(name(i));
+                    m_cpds.push_back(cpd);
+                    m_cpds.back().fit(df);
+                } else {
+                    m_cpds.push_back(CPD());
+                }
             }
         } else {
-            for (auto& cpd : m_cpds) {
-                if (static_cast<Derived*>(this)->must_refit_cpd(cpd)) {
-                    cpd = static_cast<Derived*>(this)->create_cpd(cpd.variable());
-                    cpd.fit(df);
-                } else if (!cpd.fitted()) {
-                    cpd.fit(df);
+            for (auto i = 0; i < physical_size; ++i) {
+                if (is_valid(i)) {
+                    if (static_cast<Derived*>(this)->must_construct_cpd(m_cpds[i])) {
+                        m_cpds[i] = static_cast<Derived*>(this)->create_cpd(name(i));
+                        m_cpds[i].fit(df);
+                    } else if (!m_cpds[i].fitted()) {
+                        m_cpds[i].fit(df);
+                    }
                 }
             }
         }
     }
 
     template<typename Derived>
-    bool BayesianNetwork<Derived>::must_refit_cpd(const CPD& cpd) const {
-        if (!cpd.fitted())
-            return true;
-
+    bool BayesianNetwork<Derived>::must_construct_cpd(const CPD& cpd) const {
         auto& node = cpd.variable();
         auto& cpd_evidence = cpd.evidence();
         auto parents = this->parents(node);
@@ -432,21 +515,37 @@ namespace models {
     }
 
     template<typename Derived>
+    bool BayesianNetwork<Derived>::fitted() const {
+        if (m_cpds.empty()) {
+            return false;
+        } else {
+            for (size_t i = 0; i < m_cpds.size(); ++i) {
+                if (is_valid(i) && !m_cpds[i].fitted()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }    
+    }
+
+    template<typename Derived>
     void BayesianNetwork<Derived>::check_fitted() const {
         if (m_cpds.empty()) {
             throw py::value_error("Model not fitted.");
         } else {
             bool all_fitted = true;
             std::string err;
-            for (auto& cpd : m_cpds) {
-                if (!cpd.fitted()) {
+            for (size_t i = 0; i < m_cpds.size(); ++i) {
+                if (is_valid(i) && !m_cpds[i].fitted()) {
                     if (all_fitted) {
                         err += "Some CPDs are not fitted:\n";
                         all_fitted = false;
                     }
-                    err += cpd.ToString() + "\n";
+                    err += m_cpds[i].ToString() + "\n";
                 }
             }
+
             if (!all_fitted)
                 throw py::value_error(err);
         }
@@ -457,8 +556,9 @@ namespace models {
         check_fitted();
 
         VectorXd accum = m_cpds[0].logl(df);
-        for (auto it = ++m_cpds.begin(); it != m_cpds.end(); ++it) {
-            accum += it->logl(df);
+        for (size_t i = 0; i < m_cpds.size(); ++i) {
+            if (is_valid(i))
+                accum += m_cpds[i].logl(df);
         }
         return accum;
     }
@@ -468,8 +568,9 @@ namespace models {
         check_fitted();
         
         double accum = m_cpds[0].slogl(df);
-        for (auto it = ++m_cpds.begin(); it != m_cpds.end(); ++it) {
-            accum += it->slogl(df);
+        for (size_t i = 0; i < m_cpds.size(); ++i) {
+            if (is_valid(i))
+                accum += m_cpds[i].slogl(df);
         }
         return accum;
     }
@@ -508,6 +609,61 @@ namespace models {
             return parents;
         }
     }
+
+    template<typename Derived>
+    void BayesianNetwork<Derived>::save(std::string name, bool include_cpd) const {
+        m_include_cpd = include_cpd;
+        auto open = py::module::import("io").attr("open");
+        auto file = open(name, "wb");
+        py::module::import("pickle").attr("dump")(py::cast(static_cast<const Derived*>(this)), file, 2);
+        file.attr("close")();
+    }
+
+    template<typename Derived>
+    py::tuple BayesianNetwork<Derived>::__getstate__() const {
+        auto g_tuple = g.__getstate__();
+
+        auto extra_info = static_cast<const Derived&>(*this).__getstate_extra__();
+
+        if (m_include_cpd && !m_cpds.empty()) {
+            std::vector<py::tuple> cpds;
+            cpds.reserve(g.num_nodes());
+
+            for (size_t i = 0; i < m_cpds.size(); ++i) {
+                if (g.is_valid(i))
+                    cpds.push_back(m_cpds[i].__getstate__());
+            }
+
+            return py::make_tuple(g_tuple, true, cpds, extra_info);
+        } {
+            return py::make_tuple(g_tuple, false, py::make_tuple(), extra_info);
+        }
+    }
+
+    template<typename Derived>
+    Derived BayesianNetwork<Derived>::__setstate__(py::tuple& t) {
+        if (t.size() != 4)
+            throw std::runtime_error("Not valid BayesianNetwork.");
+        
+        auto bn = Derived(Dag::__setstate__(t[0].cast<py::tuple>()));
+
+        bn.__setstate_extra__(t[3].cast<py::tuple>());
+
+        if (t[1].cast<bool>()) {
+            auto py_cpds = t[2].cast<std::vector<py::tuple>>();
+            std::vector<CPD> cpds;
+
+            for (auto& py_cpd : py_cpds) {
+                cpds.push_back(CPD::__setstate__(py_cpd));
+            }
+
+            bn.add_cpds(cpds);
+        }
+
+        return bn;
+    }
+
+    py::object load_model(const std::string& name);
 
     void requires_continuous_data(const DataFrame& df);
     void requires_discrete_data(const DataFrame& df);

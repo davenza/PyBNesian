@@ -60,7 +60,7 @@ namespace learning::algorithms {
 
             std::cout << "\t\tTesting " << edge.first << "_|_" << edge.second << " | " << sepset[0];
 
-            for (auto j = 1; j < sepset.size(); ++j) {
+            for (size_t j = 1; j < sepset.size(); ++j) {
                 std::cout << ", " << sepset[j];
             }
             std::cout << " pvalue: " << pvalue << std::endl;
@@ -257,7 +257,7 @@ namespace learning::algorithms {
         for (auto& sepset : comb) {
             double pvalue = test.pvalue(vs.p1, vs.p2, sepset.begin(), sepset.end());
             std::cout << "\t\tEvaluate " << vs.p1 << " _|_ " << vs.p2 << " | " << sepset[0];
-            for (auto j = 1; j < sepset.size(); ++j) {
+            for (size_t j = 1; j < sepset.size(); ++j) {
                 std::cout << ", " << sepset[j];
             }
             std::cout << " pvalue: " << pvalue << std::endl;

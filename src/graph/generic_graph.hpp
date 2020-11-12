@@ -8,8 +8,6 @@
 
 namespace py = pybind11;
 
-#include <iostream>
-
 using graph::DNode, graph::UNode, graph::PDNode;
 using util::ArcVector, util::EdgeVector;
 
@@ -103,7 +101,7 @@ namespace graph {
             return m_indices.count(name) > 0;
         }
         
-        int add_node(const std::string& node);
+        size_t add_node(const std::string& node);
 
         template<typename V>
         void remove_node(const V& idx) {
@@ -124,15 +122,13 @@ namespace graph {
             return m_indices;
         }
 
-        const std::vector<int>& free_indices() const {
+        const std::vector<size_t>& free_indices() const {
             return m_free_indices;
         }
 
         bool is_valid(int idx) const {
             return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
         }
-
-
     private:
         int check_index(int idx) const {
             if (!is_valid(idx)) {
@@ -153,7 +149,7 @@ namespace graph {
 
         std::vector<NodeType> m_nodes;
         std::unordered_map<std::string, int> m_indices;
-        std::vector<int> m_free_indices;
+        std::vector<size_t> m_free_indices;
     };
 
     template<typename Derived>
@@ -172,17 +168,17 @@ namespace graph {
     }
 
     template<typename Derived>
-    int GraphBase<Derived>::add_node(const std::string& node) {
-        int idx = [this, &node]() {
+    size_t GraphBase<Derived>::add_node(const std::string& node) {
+        size_t idx = [this, &node]() {
             if (!m_free_indices.empty()) {
-                int idx = m_free_indices.back();
+                size_t idx = m_free_indices.back();
                 m_free_indices.pop_back();
                 NodeType n(idx, node);
                 m_nodes[idx] = n;
                 return idx;
             }
             else {
-                int idx = m_nodes.size();
+                size_t idx = m_nodes.size();
                 NodeType n(idx, node);
                 m_nodes.push_back(n);
                 return idx;
@@ -372,7 +368,7 @@ namespace graph {
             return m_leaves;
         }
     private:
-        friend int GraphBase<Derived>::add_node(const std::string& node);
+        friend size_t GraphBase<Derived>::add_node(const std::string& node);
         friend void GraphBase<Derived>::remove_node_unsafe(int index);
 
         void add_root(int idx) {
@@ -685,6 +681,11 @@ namespace graph {
     }
 
     template<typename G>
+    py::tuple __getstate__(const G&& g) {
+        graph::__getstate__(g);
+    }
+
+    template<typename G>
     G __setstate__(py::tuple& t) {
         if (t.size() != (1 + GraphTraits<G>::has_arcs + GraphTraits<G>::has_edges))
             throw std::runtime_error("Not valid Graph.");
@@ -714,6 +715,11 @@ namespace graph {
         }
         
         return g;
+    }
+
+    template<typename G>
+    G __setstate__(py::tuple&& t) {
+        return graph::__setstate__<G>(t);
     }
 
     template<typename G>
@@ -837,6 +843,10 @@ namespace graph {
             return graph::__setstate__<PartiallyDirectedGraph>(t);
         }
 
+        static PartiallyDirectedGraph __setstate__(py::tuple&& t) {
+            return graph::__setstate__<PartiallyDirectedGraph>(t);
+        }
+
         void save(const std::string& name) const {
             save_graph(*this, name);
         }
@@ -895,6 +905,10 @@ namespace graph {
         }
 
         static UndirectedGraph __setstate__(py::tuple& t) {
+            return graph::__setstate__<UndirectedGraph>(t);
+        }
+
+        static UndirectedGraph __setstate__(py::tuple&& t) {
             return graph::__setstate__<UndirectedGraph>(t);
         }
 
@@ -957,6 +971,10 @@ namespace graph {
             return graph::__setstate__<DirectedGraph>(t);
         }
 
+        static DirectedGraph __setstate__(py::tuple&& t) {
+            return graph::__setstate__<DirectedGraph>(t);
+        }
+
         void save(const std::string& name) const {
             save_graph(*this, name);
         }
@@ -1000,6 +1018,10 @@ namespace graph {
         }
 
         static Dag __setstate__(py::tuple& t) {
+            return graph::__setstate__<Dag>(t);
+        }
+
+        static Dag __setstate__(py::tuple&& t) {
             return graph::__setstate__<Dag>(t);
         }
 

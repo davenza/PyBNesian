@@ -10,8 +10,6 @@
 #include <util/bit_util.hpp>
 #include <util/arrow_macros.hpp>
 
-#include <iostream>
-
 namespace pyarrow = arrow::py;
 namespace py = pybind11;
 

@@ -61,8 +61,22 @@ namespace factors::continuous {
     }
 
     py::tuple SemiparametricCPD::__getstate__() const {
-        return std::visit([](auto& cpd) {
-            return cpd.__getstate__();
-        }, m_cpd);  
+        return py::make_tuple(m_cpd.index(),
+                                std::visit([](auto& cpd) {
+                                    return cpd.__getstate__();
+                                }, m_cpd)
+                             );  
+    }
+
+    SemiparametricCPD SemiparametricCPD::__setstate__(py::tuple& t) {
+        if (t.size() != 2)
+            throw std::runtime_error("Not valid SemiparametricCPD.");
+
+        auto index = t[0].cast<size_t>();
+
+        if (index == 0)
+            return LinearGaussianCPD::__setstate__(t[1].cast<py::tuple>());
+        else
+            return CKDE::__setstate__(t[1].cast<py::tuple>());
     }
 }

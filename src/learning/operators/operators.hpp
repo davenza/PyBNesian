@@ -121,7 +121,7 @@ namespace learning::operators {
             return std::make_shared<AddArc>(this->source(), this->target(), this->delta());
         }
         std::string ToString() const override {
-            return "AddArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
+            return "AddArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) + ")";
         }   
     };
 
@@ -141,7 +141,7 @@ namespace learning::operators {
             return std::make_shared<RemoveArc>(this->source(), this->target(), this->delta());
         }
         std::string ToString() const override {
-            return "RemoveArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
+            return "RemoveArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) + ")";
         }      
     };
 
@@ -162,7 +162,7 @@ namespace learning::operators {
             return std::make_shared<FlipArc>(this->source(), this->target(), this->delta());
         }
         std::string ToString() const override {
-            return "FlipArc(" + this->source() + " -> " + this->target() + "; " + std::to_string(this->delta()) + ")";
+            return "FlipArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) + ")";
         }  
     };
 
@@ -193,7 +193,8 @@ namespace learning::operators {
             return std::make_shared<ChangeNodeType>(m_node, m_new_node_type, this->delta());
         }
         std::string ToString() const override {
-            return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; " + std::to_string(this->delta()) + ")";
+            return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; Delta: " + std::to_string(this->delta()) + ")";
+            // return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + ")";
         } 
     private:
         std::string m_node;

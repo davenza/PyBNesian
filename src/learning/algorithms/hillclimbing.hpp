@@ -2,13 +2,12 @@
 #define PGM_DATASET_HILLCLIMBING_HPP
 
 #include <pybind11/pybind11.h>
-
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <util/validate_dtype.hpp>
-
+#include <util/progress.hpp>
 
 namespace py = pybind11; 
 
@@ -32,7 +31,7 @@ namespace learning::algorithms {
     // TODO: Include start graph.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
-                  int max_indegree, int max_iters, double epsilon, int patience);
+                  int max_indegree, int max_iters, double epsilon, int patience, int verbose = 0);
 
     class GreedyHillClimbing {
 
@@ -45,7 +44,8 @@ namespace learning::algorithms {
                        ArcVector& arc_whitelist,
                        int max_indegree,
                        int max_iters, 
-                       double epsilon);
+                       double epsilon,
+                       int verbose = 0);
 
         template<typename Model>
         Model estimate_validation(const DataFrame& df, 
@@ -58,7 +58,8 @@ namespace learning::algorithms {
                                  int max_indegree,
                                  int max_iters,
                                  double epsilon, 
-                                 int patience);
+                                 int patience,
+                                 int verbose = 0);
     };
 
     template<typename Model>
@@ -69,7 +70,12 @@ namespace learning::algorithms {
                                        ArcVector& arc_whitelist,
                                        int max_indegree,
                                        int max_iters,
-                                       double epsilon) {
+                                       double epsilon,
+                                       int verbose) {
+        
+        auto spinner = util::indeterminate_spinner(verbose);
+        spinner->update_status("Checking dataset...");
+
         Model::requires(df);
 
         auto current_model = start;
@@ -80,8 +86,10 @@ namespace learning::algorithms {
         op.set_arc_whitelist(arc_whitelist);
         op.set_max_indegree(max_indegree);
 
+        spinner->update_status("Caching scores...");
+
         op.cache_scores(current_model);
-        
+
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op.find_max(current_model);
@@ -94,8 +102,11 @@ namespace learning::algorithms {
 
             op.update_scores(current_model, *best_op);
             ++iter;
+            
+            spinner->update_status(best_op->ToString());
         }
 
+        spinner->mark_as_completed("Finished Hill-climbing!");
         return current_model;
     }
 
@@ -174,21 +185,30 @@ namespace learning::algorithms {
                              int max_indegree,
                              int max_iters,
                              double epsilon, 
-                             int patience) {
+                             int patience,
+                             int verbose) {
+
+        auto spinner = util::indeterminate_spinner(verbose);
+        spinner->update_status("Checking dataset...");
+
         Model::requires(df);
 
         auto current_model = start;
         current_model.check_blacklist(arc_blacklist);
         current_model.force_whitelist(arc_whitelist);
-        current_model.force_type_whitelist(type_whitelist);
+
+        if constexpr(std::is_same_v<Model, SemiparametricBN>)
+            current_model.force_type_whitelist(type_whitelist);
 
         op_pool.set_arc_blacklist(arc_blacklist);
         op_pool.set_arc_whitelist(arc_whitelist);
         op_pool.set_type_whitelist(type_whitelist);
         op_pool.set_max_indegree(max_indegree);
 
+        
         auto best_model = start;
 
+        spinner->update_status("Caching scores...");
         VectorXd local_validation(current_model.num_nodes());
         for (auto n = 0; n < current_model.num_nodes(); ++n) {
             local_validation(n) = validation_score.local_score(current_model, n);
@@ -222,10 +242,14 @@ namespace learning::algorithms {
                 tabu_set.insert(best_op->opposite());
             }
 
+
             op_pool.update_scores(current_model, *best_op);
+
+            spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
             ++iter;
         }
 
+        spinner->mark_as_completed("Finished Hill-climbing!");
         return best_model;
     }
 }

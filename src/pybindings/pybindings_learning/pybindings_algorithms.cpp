@@ -28,8 +28,9 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
                             ArcVector& arc_whitelist,
                             int max_indegree,
                             int max_iters, 
-                            double epsilon) {
-            return self.estimate(df, pool, start, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon);
+                            double epsilon,
+                            int verbose) {
+            return self.estimate(df, pool, start, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, verbose);
         },  py::arg("df"),
             py::arg("pool"),
             py::arg("start"),
@@ -37,8 +38,10 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
             py::arg("arc_whitelist") = ArcVector(),
             py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
-            py::arg("epsilon") = 0
+            py::arg("epsilon") = 0,
+            py::arg("verbose") = 0
     );
+
     hc.def("estimate_validation", [](GreedyHillClimbing& self, 
                                      const DataFrame& df, 
                                      OperatorPool& pool, 
@@ -50,9 +53,10 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
                                      int max_indegree,
                                      int max_iters,
                                      double epsilon,
-                                     int patience) {
+                                     int patience,
+                                     int verbose) {
             return self.estimate_validation(df, pool, validation_score, start, arc_blacklist, arc_whitelist, 
-                                            type_whitelist, max_indegree, max_iters, epsilon, patience);
+                                            type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
         },  py::arg("df"),
             py::arg("pool"),
             py::arg("validation_score"),
@@ -63,7 +67,8 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
             py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
             py::arg("epsilon") = 0,
-            py::arg("patience") = 0
+            py::arg("patience") = 0,
+            py::arg("verbose") = 0
     );
 
     return hc;
@@ -85,7 +90,8 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("max_indegree") = 0,
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,
-                py::arg("patience") = 0);
+                py::arg("patience") = 0,
+                py::arg("verbose") = 0);
 
     register_GreedyHillClimbing<GaussianNetwork, SemiparametricBN>(algorithms);
 

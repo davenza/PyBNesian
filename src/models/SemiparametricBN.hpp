@@ -101,6 +101,18 @@ namespace models {
             }
         }
 
+        std::unordered_map<std::string, FactorType> node_types() const {
+            std::unordered_map<std::string, FactorType> res;
+
+            for (size_t i = 0; i < physical_num_nodes(); ++i) {
+                if (is_valid(i)) {
+                    res.insert({name(i), m_factor_types[i]});
+                }
+            }
+
+            return res; 
+        }
+
         CPD create_cpd(const std::string& node) {
             auto pa = this->parents(node);
             switch(node_type(node)) {

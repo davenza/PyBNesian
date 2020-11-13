@@ -175,7 +175,8 @@ void pybindings_models(py::module& root) {
         .def("node_type", py::overload_cast<const std::string&>(&SemiparametricBN::node_type, py::const_))
         .def("node_type", py::overload_cast<int>(&SemiparametricBN::node_type, py::const_))
         .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN::set_node_type))
-        .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN::set_node_type));
+        .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN::set_node_type))
+        .def("node_types", &SemiparametricBN::node_types);
 
     register_BayesianNetwork<DiscreteBN>(models, "DiscreteBN");
 }

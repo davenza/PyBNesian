@@ -55,7 +55,8 @@ ext_libraries = [['fort', {
 system_headers = ['-isystem' + d for d in [pa.get_include()]] +\
                  ['-isystemlib/eigen-3.3.7'] +\
                  ['-isystemlib/OpenCL'] +\
-                 ['-isystemlib/boost']
+                 ['-isystemlib/boost'] +\
+                 ['-isystemlib/indicators']
 
 ext_modules = [
     Extension(

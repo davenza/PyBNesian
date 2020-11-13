@@ -25,6 +25,7 @@ void pybindings_factors(py::module& root) {
         })
         .def("opposite", &FactorType::opposite)
         .def("__str__", &FactorType::ToString)
+        .def("__repr__", &FactorType::ToString)
         .def(py::self == py::self)
         .def(py::self != py::self);
 

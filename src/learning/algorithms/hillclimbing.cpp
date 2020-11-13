@@ -94,7 +94,8 @@ namespace learning::algorithms {
                                int max_indegree,
                                int max_iters,
                                double epsilon,
-                               int patience) 
+                               int patience,
+                               int verbose) 
     {
         using Model = SemiparametricBN;
         auto nodes = df.column_names();
@@ -111,11 +112,11 @@ namespace learning::algorithms {
         OperatorPool pool(m, training_score, std::move(v));        
         GreedyHillClimbing hc;
         return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist,
-                                                type_whitelist, max_indegree, max_iters, epsilon, patience));
+                                                type_whitelist, max_indegree, max_iters, epsilon, patience, verbose));
     }
 
     py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
-                               double epsilon, int patience) 
+                               double epsilon, int patience, int verbose) 
     {
         using Model = GaussianNetwork;
         auto nodes = df.column_names();
@@ -133,11 +134,11 @@ namespace learning::algorithms {
         GreedyHillClimbing hc;
         FactorTypeVector type_whitelist;
         return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist, 
-                                                type_whitelist, max_indegree, max_iters, epsilon, patience));
+                                                type_whitelist, max_indegree, max_iters, epsilon, patience, verbose));
     }
 
     py::object call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
-                 double epsilon, ScoreType score_type) 
+                 double epsilon, ScoreType score_type, int verbose) 
     {
         using Model = GaussianNetwork;
         auto nodes = df.column_names();
@@ -152,7 +153,7 @@ namespace learning::algorithms {
                 auto arc_set = std::make_shared<ArcOperatorSet>(score);
                 std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
                 OperatorPool pool(m, score, std::move(v));
-                return py::cast(hc.estimate(df, pool, m, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon));
+                return py::cast(hc.estimate(df, pool, m, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, verbose));
             }
                 break;
             case ScoreType::PREDICTIVE_LIKELIHOOD:
@@ -166,7 +167,7 @@ namespace learning::algorithms {
     // TODO: Include test ratio of holdout / number k-folds.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
             ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
-                  int max_indegree, int max_iters, double epsilon, int patience) {
+                  int max_indegree, int max_iters, double epsilon, int patience, int verbose) {
         
         auto bn_type = learning::algorithms::check_valid_bn_string(bn_str);
         auto score_type = learning::algorithms::check_valid_score_string(score_str);
@@ -186,18 +187,18 @@ namespace learning::algorithms {
             switch(bn_type) {
                 case BayesianNetworkType::GBN: {
                     return call_hc_validated_gbn(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
-                                            epsilon, patience);
+                                            epsilon, patience, verbose);
                 }
                 case BayesianNetworkType::SPBN: {
                     return call_hc_validated_spbn(df, arc_blacklist, arc_whitelist, type_whitelist, 
-                                            max_indegree, max_iters, epsilon, patience);
+                                            max_indegree, max_iters, epsilon, patience, verbose);
                 }
                 default:
                     throw std::invalid_argument("Wrong BayesianNetwork type!");
             }
         } else {
             return call_hc(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
-                        epsilon, score_type);
+                        epsilon, score_type, verbose);
         }
     }
 }

@@ -374,6 +374,7 @@ namespace models {
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
     protected:
         void check_fitted() const;
+        int physical_num_nodes() const { return g.node_indices().size(); }
     private:
         py::tuple __getstate_extra__() const {
             return py::make_tuple();
@@ -443,10 +444,9 @@ namespace models {
                 map_index[it->variable()] = it;
             }
 
-            int physical_size = g.node_indices().size();
-            m_cpds.reserve(physical_size);
+            m_cpds.reserve(physical_num_nodes());
 
-            for (int i = 0; i < physical_size; ++i) {
+            for (int i = 0; i < physical_num_nodes(); ++i) {
                 if (is_valid(i)) {
                     auto cpd_idx = map_index.find(name(i));
 
@@ -470,12 +470,10 @@ namespace models {
 
     template<typename Derived>
     void BayesianNetwork<Derived>::fit(const DataFrame& df) {
-        int physical_size = g.node_indices().size();
-
         if (m_cpds.empty()) {
-            m_cpds.reserve(physical_size);
+            m_cpds.reserve(physical_num_nodes());
 
-            for (auto i = 0; i < physical_size; ++i) {
+            for (auto i = 0; i < physical_num_nodes(); ++i) {
                 if (is_valid(i)) {
                     auto cpd = static_cast<Derived*>(this)->create_cpd(name(i));
                     m_cpds.push_back(cpd);
@@ -485,7 +483,7 @@ namespace models {
                 }
             }
         } else {
-            for (auto i = 0; i < physical_size; ++i) {
+            for (auto i = 0; i < physical_num_nodes(); ++i) {
                 if (is_valid(i)) {
                     if (static_cast<Derived*>(this)->must_construct_cpd(m_cpds[i])) {
                         m_cpds[i] = static_cast<Derived*>(this)->create_cpd(name(i));

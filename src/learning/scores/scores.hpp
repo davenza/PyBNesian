@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_SCORES_HPP
-#define PGM_DATASET_SCORES_HPP
+#ifndef PYBNESIAN_SCORES_HPP
+#define PYBNESIAN_SCORES_HPP
 
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
@@ -189,4 +189,4 @@ namespace learning::scores {
 }
 
 
-#endif //PGM_DATASET_SCORES_HPP
+#endif //PYBNESIAN_SCORES_HPP

@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_ASSIGNMENT_HPP
-#define PGM_DATASET_ASSIGNMENT_HPP
+#ifndef PYBNESIAN_ASSIGNMENT_HPP
+#define PYBNESIAN_ASSIGNMENT_HPP
 
 namespace util {
 
@@ -21,4 +21,4 @@ namespace util {
     };
 }
 
-#endif //PGM_DATASET_ASSIGNMENT_HPP
+#endif //PYBNESIAN_ASSIGNMENT_HPP

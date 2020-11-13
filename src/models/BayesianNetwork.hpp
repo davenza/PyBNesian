@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_BAYESIANNETWORK_HPP
-#define PGM_DATASET_BAYESIANNETWORK_HPP
+#ifndef PYBNESIAN_BAYESIANNETWORK_HPP
+#define PYBNESIAN_BAYESIANNETWORK_HPP
 
 #include <iterator>
 #include <pybind11/stl.h>
@@ -562,7 +562,7 @@ namespace models {
             if (is_valid(i))
                 accum += m_cpds[i].logl(df);
         }
-        
+
         return accum;
     }
 
@@ -672,4 +672,4 @@ namespace models {
     void requires_discrete_data(const DataFrame& df);
 }
 
-#endif //PGM_DATASET_BAYESIANNETWORK_HPP
+#endif //PYBNESIAN_BAYESIANNETWORK_HPP

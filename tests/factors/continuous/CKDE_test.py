@@ -1,7 +1,7 @@
 import numpy as np
 import pyarrow as pa
 import pandas as pd
-from pgm_dataset.factors.continuous import CKDE
+from pybnesian.factors.continuous import CKDE
 from scipy.stats import gaussian_kde
 from scipy.stats import norm
 from scipy.stats import multivariate_normal as mvn

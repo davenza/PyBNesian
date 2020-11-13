@@ -1,8 +1,8 @@
 import pyarrow as pa
-from pgm_dataset.learning.algorithms import GreedyHillClimbing, hc
-from pgm_dataset.learning.operators import ArcOperatorSet, OperatorPool
-from pgm_dataset.learning.scores import BIC, HoldoutLikelihood, CVLikelihood
-from pgm_dataset.models import GaussianNetwork
+from pybnesian.learning.algorithms import GreedyHillClimbing, hc
+from pybnesian.learning.operators import ArcOperatorSet, OperatorPool
+from pybnesian.learning.scores import BIC, HoldoutLikelihood, CVLikelihood
+from pybnesian.models import GaussianNetwork
 import util_test
 
 df = util_test.generate_normal_data(1000)

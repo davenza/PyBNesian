@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
-#define PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
+#ifndef PYBNESIAN_MLE_LINEARGAUSSIAN_CPD_HPP
+#define PYBNESIAN_MLE_LINEARGAUSSIAN_CPD_HPP
 
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <learning/parameters/mle_base.hpp>
@@ -206,4 +206,4 @@ namespace learning::parameters {
 
 }
 
-#endif //PGM_DATASET_MLE_LINEARGAUSSIAN_CPD_HPP
+#endif //PYBNESIAN_MLE_LINEARGAUSSIAN_CPD_HPP

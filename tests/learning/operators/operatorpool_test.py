@@ -1,8 +1,8 @@
 import pytest
 import pyarrow as pa
-from pgm_dataset.learning.operators import OperatorPool, ArcOperatorSet, ChangeNodeTypeSet
-from pgm_dataset.learning.scores import CVLikelihood
-from pgm_dataset.models import SemiparametricBN
+from pybnesian.learning.operators import OperatorPool, ArcOperatorSet, ChangeNodeTypeSet
+from pybnesian.learning.scores import CVLikelihood
+from pybnesian.models import SemiparametricBN
 import util_test
 
 SIZE = 10000

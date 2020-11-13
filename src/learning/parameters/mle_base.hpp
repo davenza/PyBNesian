@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_MLE_BASE_HPP
-#define PGM_DATASET_MLE_BASE_HPP
+#ifndef PYBNESIAN_MLE_BASE_HPP
+#define PYBNESIAN_MLE_BASE_HPP
 
 #include <dataset/dataset.hpp>
 
@@ -15,4 +15,4 @@ namespace learning::parameters {
     };
 }
 
-#endif //PGM_DATASET_MLE_BASE_HPP
+#endif //PYBNESIAN_MLE_BASE_HPP

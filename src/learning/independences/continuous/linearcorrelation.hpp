@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_LINEARCORRELATION_HPP
-#define PGM_DATASET_LINEARCORRELATION_HPP
+#ifndef PYBNESIAN_LINEARCORRELATION_HPP
+#define PYBNESIAN_LINEARCORRELATION_HPP
 
 #include <dataset/dataset.hpp>
 #include <learning/independences/independence.hpp>
@@ -275,4 +275,4 @@ namespace learning::independences::continuous {
 
 }
 
-#endif //PGM_DATASET_LINEARCORRELATION_HPP
+#endif //PYBNESIAN_LINEARCORRELATION_HPP

@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_VALIDATE_DTYPE_HPP
-#define PGM_DATASET_VALIDATE_DTYPE_HPP
+#ifndef PYBNESIAN_VALIDATE_DTYPE_HPP
+#define PYBNESIAN_VALIDATE_DTYPE_HPP
 
 #include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
@@ -22,4 +22,4 @@ namespace util {
 
 }
 
-#endif //PGM_DATASET_VALIDATE_DTYPE_HPP
+#endif //PYBNESIAN_VALIDATE_DTYPE_HPP

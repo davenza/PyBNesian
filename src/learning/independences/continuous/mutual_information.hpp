@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_MUTUAL_INFORMATION_HPP
-#define PGM_DATASET_MUTUAL_INFORMATION_HPP
+#ifndef PYBNESIAN_MUTUAL_INFORMATION_HPP
+#define PYBNESIAN_MUTUAL_INFORMATION_HPP
 
 #include <random>
 #include <Eigen/Dense>
@@ -310,4 +310,4 @@ namespace learning::independences {
     }
 }
 
-#endif //PGM_DATASET_MUTUAL_INFORMATION_HPP
+#endif //PYBNESIAN_MUTUAL_INFORMATION_HPP

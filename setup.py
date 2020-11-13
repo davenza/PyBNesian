@@ -1,16 +1,3 @@
-# Compile manually
-# c++ -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -shared -std=c++11 -fPIC
-# `python3 -m pybind11 --includes`
-# -I/home/david/cpp/pgm_dataset/venv/lib/python3.6/site-packages/pyarrow/include cpp/data.cpp
-# -I/home/david/cpp/pgm_dataset/venv/lib/python3.6/site-packages/numpy/core/include
-# -L/home/david/cpp/pgm_dataset/venv/lib/python3.6/site-packages/pyarrow/
-# -larrow
-# -larrow_python
-# -Wl,-rpath,$RPATH -o data`python3-config --extension-suffix`
-# Set LD flag
-# LD_LIBRARY_PATH=/home/david/cpp/pgm_dataset/venv/lib/python3.6/site-packages/pyarrow
-# export LD_LIBRARY_PATH
-
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
@@ -60,7 +47,7 @@ system_headers = ['-isystem' + d for d in [pa.get_include()]] +\
 
 ext_modules = [
     Extension(
-        'pgm_dataset',
+        'pybnesian',
         [
          'src/lib.cpp',
          'src/pybindings/pybindings_dataset.cpp',
@@ -127,7 +114,7 @@ def has_flag(compiler, flagname):
 
 
 def cpp_flag(compiler):
-    """Return the -std=c++[11/14/17] compiler flag.
+    """Return the -std=c++17 compiler flag.
 
     The newer version is prefered over c++11 (when it is available).
     """
@@ -161,13 +148,13 @@ def copy_opencl_code():
 
     cpp_code = \
     """
-#ifndef PGM_DATASET_OPENCL_CODE_HPP
-#define PGM_DATASET_OPENCL_CODE_HPP
+#ifndef PYBNESIAN_OPENCL_CODE_HPP
+#define PYBNESIAN_OPENCL_CODE_HPP
 
 namespace opencl {{
     const std::string OPENCL_CODE = R"foo({})foo";
 }}
-#endif //PGM_DATASET_OPENCL_CODE_HPP
+#endif //PYBNESIAN_OPENCL_CODE_HPP
     """.format(code_str)
     
     with open('src/opencl/opencl_code.hpp', 'w') as f:
@@ -229,12 +216,12 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 setup(
-    name='pgm_dataset',
+    name='pybnesian',
     version=__version__,
     author='David Atienza',
     author_email='datienza@fi.upm.es',
     # url='https://github.com/pybind/python_example',
-    description='A test project using pybind11',
+    description='A library for Bayesian Networks.',
     long_description='',
     ext_modules=ext_modules,
     libraries=ext_libraries,

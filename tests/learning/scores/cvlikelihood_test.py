@@ -2,10 +2,10 @@ import pytest
 import numpy as np
 from scipy.stats import norm, gaussian_kde
 import pyarrow as pa
-from pgm_dataset.dataset import CrossValidation
-from pgm_dataset.factors import FactorType
-from pgm_dataset.models import GaussianNetwork, SemiparametricBN
-from pgm_dataset.learning.scores import CVLikelihood
+from pybnesian.dataset import CrossValidation
+from pybnesian.factors import FactorType
+from pybnesian.models import GaussianNetwork, SemiparametricBN
+from pybnesian.learning.scores import CVLikelihood
 import util_test
 
 SIZE = 1000

@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_DATASET_HPP
-#define PGM_DATASET_DATASET_HPP
+#ifndef PYBNESIAN_DATASET_HPP
+#define PYBNESIAN_DATASET_HPP
 
 #include <tuple>
 #include <arrow/api.h>
@@ -1279,4 +1279,4 @@ namespace pybind11::detail {
     };
 } // namespace pybind11::detail
 
-#endif //PGM_DATASET_DATASET_HPP
+#endif //PYBNESIAN_DATASET_HPP

@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_PC_HPP
-#define PGM_DATASET_PC_HPP
+#ifndef PYBNESIAN_PC_HPP
+#define PYBNESIAN_PC_HPP
 
 #include <util/util_types.hpp>
 #include <graph/generic_graph.hpp>
@@ -34,4 +34,4 @@ namespace learning::algorithms {
     };
 }
 
-#endif //PGM_DATASET_PC_HPP
+#endif //PYBNESIAN_PC_HPP

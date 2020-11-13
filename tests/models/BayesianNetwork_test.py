@@ -1,8 +1,8 @@
 import pytest
 import pyarrow as pa
 import numpy as np
-from pgm_dataset.models import GaussianNetwork
-from pgm_dataset.factors.continuous import LinearGaussianCPD
+from pybnesian.models import GaussianNetwork
+from pybnesian.factors.continuous import LinearGaussianCPD
 import util_test
 
 df = util_test.generate_normal_data(10000)

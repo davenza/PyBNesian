@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_DISCRETEBN_HPP
-#define PGM_DATASET_DISCRETEBN_HPP
+#ifndef PYBNESIAN_DISCRETEBN_HPP
+#define PYBNESIAN_DISCRETEBN_HPP
 
 #include <models/BayesianNetwork.hpp>
 #include <factors/discrete/DiscreteFactor.hpp>
@@ -57,4 +57,4 @@ namespace models {
 
 }
 
-#endif //PGM_DATASET_DISCRETEBN_HPP
+#endif //PYBNESIAN_DISCRETEBN_HPP

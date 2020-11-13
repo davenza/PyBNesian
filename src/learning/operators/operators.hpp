@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_OPERATORS_HPP
-#define PGM_DATASET_OPERATORS_HPP
+#ifndef PYBNESIAN_OPERATORS_HPP
+#define PYBNESIAN_OPERATORS_HPP
 
 #include <queue>
 #include <Eigen/Dense>
@@ -1086,4 +1086,4 @@ namespace learning::operators {
 
 }
 
-#endif //PGM_DATASET_OPERATORS_HPP
+#endif //PYBNESIAN_OPERATORS_HPP

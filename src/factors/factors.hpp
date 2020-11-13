@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_FACTORS_HPP
-#define PGM_DATASET_FACTORS_HPP
+#ifndef PYBNESIAN_FACTORS_HPP
+#define PYBNESIAN_FACTORS_HPP
 
 #include <string>
 #include <stdint.h>
@@ -60,4 +60,4 @@ namespace factors {
 }
 
 
-#endif //PGM_DATASET_BAYESIANNETWORK_HPP
+#endif //PYBNESIAN_BAYESIANNETWORK_HPP

@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_BIC_HPP
-#define PGM_DATASET_BIC_HPP
+#ifndef PYBNESIAN_BIC_HPP
+#define PYBNESIAN_BIC_HPP
 
 #include <learning/scores/scores.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
@@ -77,4 +77,4 @@ namespace learning::scores {
     }
 }
 
-#endif //PGM_DATASET_BIC_HPP
+#endif //PYBNESIAN_BIC_HPP

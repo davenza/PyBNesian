@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_HOLDOUT_ADAPTATOR_HPP
-#define PGM_DATASET_HOLDOUT_ADAPTATOR_HPP
+#ifndef PYBNESIAN_HOLDOUT_ADAPTATOR_HPP
+#define PYBNESIAN_HOLDOUT_ADAPTATOR_HPP
 
 #include <random>
 #include <dataset/dataset.hpp>
@@ -149,4 +149,4 @@ namespace dataset {
     };
 }
 
-#endif //PGM_DATASET_HOLDOUT_ADAPTATOR_HPP
+#endif //PYBNESIAN_HOLDOUT_ADAPTATOR_HPP

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from pgm_dataset.dataset import HoldOut
+from pybnesian.dataset import HoldOut
 
 import util_test
 

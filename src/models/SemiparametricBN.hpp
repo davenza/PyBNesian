@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_SEMIPARAMETRICBN_HPP
-#define PGM_DATASET_SEMIPARAMETRICBN_HPP
+#ifndef PYBNESIAN_SEMIPARAMETRICBN_HPP
+#define PYBNESIAN_SEMIPARAMETRICBN_HPP
 
 #include <models/BayesianNetwork.hpp>
 #include <util/util_types.hpp>
@@ -169,4 +169,4 @@ namespace models {
         std::vector<FactorType> m_factor_types;
     };
 }
-#endif //PGM_DATASET_GAUSSIANNETWORK_HPP
+#endif //PYBNESIAN_GAUSSIANNETWORK_HPP

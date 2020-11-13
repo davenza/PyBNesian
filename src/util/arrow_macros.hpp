@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_ARROW_MACROS_HPP
-#define PGM_DATASET_ARROW_MACROS_HPP
+#ifndef PYBNESIAN_ARROW_MACROS_HPP
+#define PYBNESIAN_ARROW_MACROS_HPP
 
 #define RAISE_STATUS_ERROR(expr)                                                        \
     {                                                                                   \
@@ -15,4 +15,4 @@
     res = std::move(__result).ValueOrDie();                                                
 
 
-#endif //PGM_DATASET_ARROW_MACROS_HPP
+#endif //PYBNESIAN_ARROW_MACROS_HPP

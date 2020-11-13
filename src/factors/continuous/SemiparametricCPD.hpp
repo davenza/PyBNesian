@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_SEMIPARAMETRICCPD_HPP
-#define PGM_DATASET_SEMIPARAMETRICCPD_HPP
+#ifndef PYBNESIAN_SEMIPARAMETRICCPD_HPP
+#define PYBNESIAN_SEMIPARAMETRICCPD_HPP
 
 #include <random>
 #include <factors/factors.hpp>
@@ -70,4 +70,4 @@ namespace factors::continuous {
     };
 }
 
-#endif //PGM_DATASET_SEMIPARAMETRICCPD_HPP
+#endif //PYBNESIAN_SEMIPARAMETRICCPD_HPP

@@ -1,7 +1,7 @@
 import pytest
 import pyarrow as pa
-from pgm_dataset.models import BayesianNetworkType
-from pgm_dataset.learning.operators import OperatorTabuSet, AddArc, RemoveArc, FlipArc, RemoveArc
+from pybnesian.models import BayesianNetworkType
+from pybnesian.learning.operators import OperatorTabuSet, AddArc, RemoveArc, FlipArc, RemoveArc
 
 
 def test_OperatorTabuSet():

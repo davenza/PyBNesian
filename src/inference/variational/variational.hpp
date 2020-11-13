@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_VARIATIONAL_HPP
-#define PGM_DATASET_VARIATIONAL_HPP
+#ifndef PYBNESIAN_VARIATIONAL_HPP
+#define PYBNESIAN_VARIATIONAL_HPP
 
 #include <models/BayesianNetwork.hpp>
 
@@ -27,4 +27,4 @@ namespace inference {
 }
 
 
-#endif //PGM_DATASET_VARIATIONAL_HPP
+#endif //PYBNESIAN_VARIATIONAL_HPP

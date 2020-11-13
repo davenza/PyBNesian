@@ -1,9 +1,9 @@
 import pytest
 import pyarrow as pa
-from pgm_dataset.learning.operators import ArcOperatorSet, ChangeNodeTypeSet, OperatorTabuSet, AddArc, OperatorType
-from pgm_dataset.learning.scores import BIC, CVLikelihood
-from pgm_dataset.models import GaussianNetwork, SemiparametricBN
-from pgm_dataset.factors import FactorType
+from pybnesian.learning.operators import ArcOperatorSet, ChangeNodeTypeSet, OperatorTabuSet, AddArc, OperatorType
+from pybnesian.learning.scores import BIC, CVLikelihood
+from pybnesian.models import GaussianNetwork, SemiparametricBN
+from pybnesian.factors import FactorType
 import util_test
 
 SIZE = 10000

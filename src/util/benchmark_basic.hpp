@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_BENCHMARK_BASIC_HPP
-#define PGM_DATASET_BENCHMARK_BASIC_HPP
+#ifndef PYBNESIAN_BENCHMARK_BASIC_HPP
+#define PYBNESIAN_BENCHMARK_BASIC_HPP
 
 
 #include <chrono>
@@ -27,4 +27,4 @@
                 std::cout << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count() / N) << " ms" << std::endl;\
 
 
-#endif //PGM_DATASET_BENCHMARK_BASIC_HPP
+#endif //PYBNESIAN_BENCHMARK_BASIC_HPP

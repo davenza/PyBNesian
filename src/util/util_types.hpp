@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_UTIL_TYPES_HPP
-#define PGM_DATASET_UTIL_TYPES_HPP
+#ifndef PYBNESIAN_UTIL_TYPES_HPP
+#define PYBNESIAN_UTIL_TYPES_HPP
 
 #include <vector>
 #include <factors/factors.hpp>
@@ -12,4 +12,4 @@ namespace util {
     using FactorTypeVector = std::vector<std::pair<std::string, FactorType>>;
 }
 
-#endif //PGM_DATASET_UTIL_TYPES_HPP
+#endif //PYBNESIAN_UTIL_TYPES_HPP

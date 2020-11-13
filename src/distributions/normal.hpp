@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_NORMAL_HPP
-#define PGM_DATASET_NORMAL_HPP
+#ifndef PYBNESIAN_NORMAL_HPP
+#define PYBNESIAN_NORMAL_HPP
 
 #include <cmath>
 #include <util/math_constants.hpp>
@@ -121,4 +121,4 @@ namespace distributions {
 
 }
 
-#endif //PGM_DATASET_NORMAL_HPP
+#endif //PYBNESIAN_NORMAL_HPP

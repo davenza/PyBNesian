@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_BIT_UTIL_HPP
-#define PGM_DATASET_BIT_UTIL_HPP
+#ifndef PYBNESIAN_BIT_UTIL_HPP
+#define PYBNESIAN_BIT_UTIL_HPP
 
 #include <cstdint>
 #include <arrow/api.h>
@@ -39,4 +39,4 @@ namespace util::bit_util {
     int round_to_power2(int value);
 }
 
-#endif //PGM_DATASET_BIT_UTIL_HPP
+#endif //PYBNESIAN_BIT_UTIL_HPP

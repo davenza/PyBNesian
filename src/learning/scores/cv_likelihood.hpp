@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_CV_LIKELIHOOD_HPP
-#define PGM_DATASET_CV_LIKELIHOOD_HPP
+#ifndef PYBNESIAN_CV_LIKELIHOOD_HPP
+#define PYBNESIAN_CV_LIKELIHOOD_HPP
 
 #include <dataset/dataset.hpp>
 #include <dataset/crossvalidation_adaptator.hpp>
@@ -144,4 +144,4 @@ namespace learning::scores {
     }
 }
 
-#endif //PGM_DATASET_CV_LIKELIHOOD_HPP
+#endif //PYBNESIAN_CV_LIKELIHOOD_HPP

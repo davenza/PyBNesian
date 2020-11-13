@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import pyarrow as pa
-from pgm_dataset.factors.continuous import KDE
+from pybnesian.factors.continuous import KDE
 from scipy.stats import gaussian_kde
 
 import util_test

@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from scipy.stats import gaussian_kde, norm
 import pyarrow as pa
-from pgm_dataset.factors import FactorType
-from pgm_dataset.models import GaussianNetwork, SemiparametricBN
-from pgm_dataset.learning.scores import HoldoutLikelihood
+from pybnesian.factors import FactorType
+from pybnesian.models import GaussianNetwork, SemiparametricBN
+from pybnesian.learning.scores import HoldoutLikelihood
 import util_test
 
 SIZE = 1000

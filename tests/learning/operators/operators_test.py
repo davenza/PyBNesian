@@ -1,8 +1,8 @@
 import pytest
 import pyarrow as pa
-from pgm_dataset.factors import FactorType
-from pgm_dataset.models import BayesianNetworkType, GaussianNetwork, SemiparametricBN
-from pgm_dataset.learning.operators import OperatorType, AddArc, RemoveArc, FlipArc, ChangeNodeType
+from pybnesian.factors import FactorType
+from pybnesian.models import BayesianNetworkType, GaussianNetwork, SemiparametricBN
+from pybnesian.learning.operators import OperatorType, AddArc, RemoveArc, FlipArc, ChangeNodeType
 
 
 def test_create():

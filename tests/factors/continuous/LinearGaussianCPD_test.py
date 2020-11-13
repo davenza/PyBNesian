@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from pgm_dataset.factors.continuous import LinearGaussianCPD
+from pybnesian.factors.continuous import LinearGaussianCPD
 
 import pytest
 from scipy.stats import norm

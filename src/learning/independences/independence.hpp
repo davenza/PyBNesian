@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_INDEPENDENCE_HPP
-#define PGM_DATASET_INDEPENDENCE_HPP
+#ifndef PYBNESIAN_INDEPENDENCE_HPP
+#define PYBNESIAN_INDEPENDENCE_HPP
 
 namespace learning::independences {
 
@@ -23,4 +23,4 @@ namespace learning::independences {
     };
 }
 
-#endif //PGM_DATASET_LINEARCORRELATION_HPP
+#endif //PYBNESIAN_LINEARCORRELATION_HPP

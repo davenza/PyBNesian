@@ -1,9 +1,9 @@
 import numpy as np
 from scipy.stats import norm
 import pyarrow as pa
-from pgm_dataset.models import GaussianNetwork
-from pgm_dataset.learning.scores import BIC
-from pgm_dataset.factors.continuous import LinearGaussianCPD
+from pybnesian.models import GaussianNetwork
+from pybnesian.learning.scores import BIC
+from pybnesian.factors.continuous import LinearGaussianCPD
 
 import util_test
 

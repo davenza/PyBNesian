@@ -12,7 +12,7 @@ void pybindings_learning(py::module& root);
 void pybindings_distributions(py::module& root);
 
 
-PYBIND11_MODULE(pgm_dataset, m) {
+PYBIND11_MODULE(pybnesian, m) {
     pyarrow::import_pyarrow();
 
     m.doc() = "pybind11 data plugin"; // optional module docstring

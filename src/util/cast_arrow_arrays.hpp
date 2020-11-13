@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_CAST_ARROW_ARRAYS_HPP
-#define PGM_DATASET_CAST_ARROW_ARRAYS_HPP
+#ifndef PYBNESIAN_CAST_ARROW_ARRAYS_HPP
+#define PYBNESIAN_CAST_ARROW_ARRAYS_HPP
 
 //        auto column_array = df->GetColumnByName(this->variable);
 //
@@ -18,4 +18,4 @@
 //        } else {
 //}
 
-#endif //PGM_DATASET_CAST_ARROW_ARRAYS_HPP
+#endif //PYBNESIAN_CAST_ARROW_ARRAYS_HPP

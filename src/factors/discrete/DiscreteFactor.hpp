@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_DISCRETE_FACTOR_HPP
-#define PGM_DATASET_DISCRETE_FACTOR_HPP
+#ifndef PYBNESIAN_DISCRETE_FACTOR_HPP
+#define PYBNESIAN_DISCRETE_FACTOR_HPP
 
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
@@ -249,4 +249,4 @@ namespace factors::discrete {
 
 }
 
-#endif //PGM_DATASET_DISCRETE_FACTOR_HPP
+#endif //PYBNESIAN_DISCRETE_FACTOR_HPP

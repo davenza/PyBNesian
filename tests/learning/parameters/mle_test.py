@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 import pyarrow as pa
-from pgm_dataset.learning.parameters import MLE
-from pgm_dataset.factors import FactorType
+from pybnesian.learning.parameters import MLE
+from pybnesian.factors import FactorType
 import util_test
 
 SIZE = 10000

@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_VARIANT_UTIL_HPP
-#define PGM_DATASET_VARIANT_UTIL_HPP
+#ifndef PYBNESIAN_VARIANT_UTIL_HPP
+#define PYBNESIAN_VARIANT_UTIL_HPP
 
 #include <variant>
 
@@ -76,4 +76,4 @@ namespace util {
 
 }
 
-#endif //PGM_DATASET_VARIANT_UTIL_HPP
+#endif //PYBNESIAN_VARIANT_UTIL_HPP

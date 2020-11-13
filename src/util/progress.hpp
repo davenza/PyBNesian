@@ -1,5 +1,5 @@
-#ifndef PGM_DATASET_UTIL_PROGRESS_HPP
-#define PGM_DATASET_UTIL_PROGRESS_HPP
+#ifndef PYBNESIAN_UTIL_PROGRESS_HPP
+#define PYBNESIAN_UTIL_PROGRESS_HPP
 
 #include <indicators/progress_spinner.hpp>
 
@@ -93,4 +93,4 @@ namespace util {
     }
 }
 
-#endif //PGM_DATASET_UTIL_PROGRESS_HPP
+#endif //PYBNESIAN_UTIL_PROGRESS_HPP

@@ -65,6 +65,8 @@ void pybindings_factors(py::module& root) {
             else
                 return self.sample(n, DataFrame(), seed);
         }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        .def("__str__", &LinearGaussianCPD::ToString)
+        .def("__repr__", &LinearGaussianCPD::ToString)
         .def(py::pickle(
             [](const LinearGaussianCPD& self) {
                 return self.__getstate__();
@@ -157,6 +159,8 @@ void pybindings_factors(py::module& root) {
                 return self.sample(n, DataFrame(), seed);
             }
         }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        .def("__str__", &CKDE::ToString)
+        .def("__repr__", &CKDE::ToString)
         .def(py::pickle(
             [](const CKDE& self) {
                 return self.__getstate__();

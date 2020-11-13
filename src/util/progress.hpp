@@ -23,8 +23,8 @@ namespace util {
         void update_status(const std::string&) override {}
         void update_status(std::string&&) override {}
         void update_status() override {}
-        void mark_as_completed(const std::string& s) override {}
-        void mark_as_completed(std::string&& s) override {}
+        void mark_as_completed(const std::string&) override {}
+        void mark_as_completed(std::string&&) override {}
         void mark_as_completed() override {}
     };
 
@@ -33,7 +33,6 @@ namespace util {
 
         IndeterminateSpinner() : m_spinner(indicators::option::PostfixText{"Checking dataset..."},
                                            indicators::option::MaxPostfixTextLen{0},
-                                        //    indicators::option::ForegroundColor{indicators::Color::green},
                                            indicators::option::ShowPercentage{false},
                                            indicators::option::ShowElapsedTime{true},
                                            indicators::option::SpinnerStates{

@@ -374,7 +374,7 @@ namespace models {
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
     protected:
         void check_fitted() const;
-        int physical_num_nodes() const { return g.node_indices().size(); }
+        size_t physical_num_nodes() const { return g.node_indices().size(); }
     private:
         py::tuple __getstate_extra__() const {
             return py::make_tuple();
@@ -446,7 +446,7 @@ namespace models {
 
             m_cpds.reserve(physical_num_nodes());
 
-            for (int i = 0; i < physical_num_nodes(); ++i) {
+            for (size_t i = 0; i < physical_num_nodes(); ++i) {
                 if (is_valid(i)) {
                     auto cpd_idx = map_index.find(name(i));
 
@@ -473,7 +473,7 @@ namespace models {
         if (m_cpds.empty()) {
             m_cpds.reserve(physical_num_nodes());
 
-            for (auto i = 0; i < physical_num_nodes(); ++i) {
+            for (size_t i = 0; i < physical_num_nodes(); ++i) {
                 if (is_valid(i)) {
                     auto cpd = static_cast<Derived*>(this)->create_cpd(name(i));
                     m_cpds.push_back(cpd);
@@ -483,7 +483,7 @@ namespace models {
                 }
             }
         } else {
-            for (auto i = 0; i < physical_num_nodes(); ++i) {
+            for (size_t i = 0; i < physical_num_nodes(); ++i) {
                 if (is_valid(i)) {
                     if (static_cast<Derived*>(this)->must_construct_cpd(m_cpds[i])) {
                         m_cpds[i] = static_cast<Derived*>(this)->create_cpd(name(i));
@@ -553,11 +553,16 @@ namespace models {
     VectorXd BayesianNetwork<Derived>::logl(const DataFrame& df) const {
         check_fitted();
 
-        VectorXd accum = m_cpds[0].logl(df);
-        for (size_t i = 0; i < m_cpds.size(); ++i) {
+        size_t i = 0;
+        for (size_t i = 0; i < m_cpds.size() && !is_valid(i); ++i);
+
+        VectorXd accum = m_cpds[i].logl(df);
+
+        for (++i; i < m_cpds.size(); ++i) {
             if (is_valid(i))
                 accum += m_cpds[i].logl(df);
         }
+        
         return accum;
     }
 
@@ -565,7 +570,7 @@ namespace models {
     double BayesianNetwork<Derived>::slogl(const DataFrame& df) const {
         check_fitted();
         
-        double accum = m_cpds[0].slogl(df);
+        double accum = 0;
         for (size_t i = 0; i < m_cpds.size(); ++i) {
             if (is_valid(i))
                 accum += m_cpds[i].slogl(df);

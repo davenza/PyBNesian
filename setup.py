@@ -225,8 +225,8 @@ setup(
     long_description='',
     ext_modules=ext_modules,
     libraries=ext_libraries,
-    setup_requires=['pybind11>=2.4', 'pyarrow'],
-    install_requires=['pybind11>=2.4', 'pyarrow'],
+    setup_requires=['pybind11>=2.4', 'pyarrow>=1.0'],
+    install_requires=['pybind11>=2.4', 'pyarrow>=1.0'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
 )

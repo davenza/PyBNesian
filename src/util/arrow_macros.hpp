@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_ARROW_MACROS_HPP
-#define PYBNESIAN_ARROW_MACROS_HPP
+#ifndef PYBNESIAN_UTIL_ARROW_MACROS_HPP
+#define PYBNESIAN_UTIL_ARROW_MACROS_HPP
 
 #define RAISE_STATUS_ERROR(expr)                                                        \
     {                                                                                   \
@@ -15,4 +15,4 @@
     res = std::move(__result).ValueOrDie();                                                
 
 
-#endif //PYBNESIAN_ARROW_MACROS_HPP
+#endif //PYBNESIAN_UTIL_ARROW_MACROS_HPP

@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_GRAPH_TYPES_HPP
-#define PYBNESIAN_GRAPH_TYPES_HPP
+#ifndef PYBNESIAN_GRAPH_GRAPH_TYPES_HPP
+#define PYBNESIAN_GRAPH_GRAPH_TYPES_HPP
 
 #include <string>
 #include <unordered_set>
@@ -257,4 +257,4 @@ namespace graph {
     };
 }
 
-#endif //PYBNESIAN_GRAPH_TYPES_HPP
+#endif //PYBNESIAN_GRAPH_GRAPH_TYPES_HPP

@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_MATH_CONSTANTS_HPP
-#define PYBNESIAN_MATH_CONSTANTS_HPP
+#ifndef PYBNESIAN_UTIL_MATH_CONSTANTS_HPP
+#define PYBNESIAN_UTIL_MATH_CONSTANTS_HPP
 
 #include <boost/math/constants/constants.hpp>
 
@@ -17,4 +17,4 @@ namespace util {
     inline auto constexpr nan = std::numeric_limits<T>::quiet_NaN();
 }
 
-#endif //PYBNESIAN_MATH_CONSTANTS_HPP
+#endif //PYBNESIAN_UTIL_MATH_CONSTANTS_HPP

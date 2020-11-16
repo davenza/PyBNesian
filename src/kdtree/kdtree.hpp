@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_KDTREE_HPP
-#define PYBNESIAN_KDTREE_HPP
+#ifndef PYBNESIAN_KDTREE_KDTREE_HPP
+#define PYBNESIAN_KDTREE_KDTREE_HPP
 
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
@@ -602,4 +602,4 @@ namespace learning::independences {
     }
 }
 
-#endif //PYBNESIAN_KDTREE_HPP
+#endif //PYBNESIAN_KDTREE_KDTREE_HPP

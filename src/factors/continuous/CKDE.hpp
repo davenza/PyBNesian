@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_CKDE_HPP
-#define PYBNESIAN_CKDE_HPP
+#ifndef PYBNESIAN_FACTORS_CONTINUOUS_CKDE_HPP
+#define PYBNESIAN_FACTORS_CONTINUOUS_CKDE_HPP
 
 #include <random>
 #include <CL/cl2.hpp>
@@ -1300,4 +1300,4 @@ namespace factors::continuous {
     }
 }
 
-#endif //PYBNESIAN_CKDE_HPP
+#endif //PYBNESIAN_FACTORS_CONTINUOUS_CKDE_HPP

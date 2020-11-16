@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_BAYESIANNETWORK_HPP
-#define PYBNESIAN_BAYESIANNETWORK_HPP
+#ifndef PYBNESIAN_MODELS_BAYESIANNETWORK_HPP
+#define PYBNESIAN_MODELS_BAYESIANNETWORK_HPP
 
 #include <iterator>
 #include <pybind11/stl.h>
@@ -672,4 +672,4 @@ namespace models {
     void requires_discrete_data(const DataFrame& df);
 }
 
-#endif //PYBNESIAN_BAYESIANNETWORK_HPP
+#endif //PYBNESIAN_MODELS_BAYESIANNETWORK_HPP

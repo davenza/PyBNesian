@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_HILLCLIMBING_HPP
-#define PYBNESIAN_HILLCLIMBING_HPP
+#ifndef PYBNESIAN_LEARNING_ALGORITHMS_HILLCLIMBING_HPP
+#define PYBNESIAN_LEARNING_ALGORITHMS_HILLCLIMBING_HPP
 
 #include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
@@ -254,7 +254,4 @@ namespace learning::algorithms {
     }
 }
 
-
-
-
-#endif //PYBNESIAN_HILLCLIMBING_HPP
+#endif //PYBNESIAN_LEARNING_ALGORITHMS_HILLCLIMBING_HPP

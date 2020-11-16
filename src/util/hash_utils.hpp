@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_HASH_UTILS_HPP
-#define PYBNESIAN_HASH_UTILS_HPP
+#ifndef PYBNESIAN_UTIL_HASH_UTILS_HPP
+#define PYBNESIAN_UTIL_HASH_UTILS_HPP
 
 #include <functional>
 
@@ -13,4 +13,4 @@ namespace util {
 }
 
 
-#endif //PYBNESIAN_HASH_UTILS_HPP
+#endif //PYBNESIAN_UTIL_HASH_UTILS_HPP

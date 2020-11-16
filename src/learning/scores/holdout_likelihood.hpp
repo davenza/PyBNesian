@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_HOLDOUT_LIKELIHOOD_HPP
-#define PYBNESIAN_HOLDOUT_LIKELIHOOD_HPP
+#ifndef PYBNESIAN_LEARNING_SCORES_HOLDOUT_LIKELIHOOD_HPP
+#define PYBNESIAN_LEARNING_SCORES_HOLDOUT_LIKELIHOOD_HPP
 
 #include <dataset/dataset.hpp>
 #include <dataset/holdout_adaptator.hpp>
@@ -130,7 +130,4 @@ namespace learning::scores {
 
 }
 
-
-
-
-#endif //PYBNESIAN_HOLDOUT_LIKELIHOOD_HPP
+#endif //PYBNESIAN_LEARNING_SCORES_HOLDOUT_LIKELIHOOD_HPP

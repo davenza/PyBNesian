@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_COMBINATIONS_HPP
-#define PYBNESIAN_COMBINATIONS_HPP
+#ifndef PYBNESIAN_UTIL_COMBINATIONS_HPP
+#define PYBNESIAN_UTIL_COMBINATIONS_HPP
 
 #include <iterator>
 #include <util/math_constants.hpp>
@@ -258,4 +258,4 @@ template<typename Iter, typename Iter2> Combinations2Sets(Iter, Iter, Iter2, Ite
 
 }
 
-#endif //PYBNESIAN_COMBINATIONS_HPP
+#endif //PYBNESIAN_UTIL_COMBINATIONS_HPP

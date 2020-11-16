@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_BN_TRAITS_HPP
-#define PYBNESIAN_BN_TRAITS_HPP
+#ifndef PYBNESIAN_UTIL_BN_TRAITS_HPP
+#define PYBNESIAN_UTIL_BN_TRAITS_HPP
 
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
@@ -65,4 +65,4 @@ namespace util {
 }
 
 
-#endif //PYBNESIAN_BN_TRAITS_HPP
+#endif //PYBNESIAN_UTIL_BN_TRAITS_HPP

@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_CV_LIKELIHOOD_HPP
-#define PYBNESIAN_CV_LIKELIHOOD_HPP
+#ifndef PYBNESIAN_LEARNING_SCORES_CV_LIKELIHOOD_HPP
+#define PYBNESIAN_LEARNING_SCORES_CV_LIKELIHOOD_HPP
 
 #include <dataset/dataset.hpp>
 #include <dataset/crossvalidation_adaptator.hpp>

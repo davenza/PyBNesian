@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_VALIDATE_DTYPE_HPP
-#define PYBNESIAN_VALIDATE_DTYPE_HPP
+#ifndef PYBNESIAN_UTIL_VALIDATE_DTYPE_HPP
+#define PYBNESIAN_UTIL_VALIDATE_DTYPE_HPP
 
 #include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
@@ -22,4 +22,4 @@ namespace util {
 
 }
 
-#endif //PYBNESIAN_VALIDATE_DTYPE_HPP
+#endif //PYBNESIAN_UTIL_VALIDATE_DTYPE_HPP

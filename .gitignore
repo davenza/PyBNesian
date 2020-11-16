@@ -143,3 +143,5 @@ cython_debug/
 # Ignore generated OpenCL
 src/factors/continuous/opencl/CKDE.cl
 src/factors/continuous/opencl/cumsum.cl
+# Automatically generated code.
+src/opencl/opencl_code.hpp

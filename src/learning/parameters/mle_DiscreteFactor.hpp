@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_MLE_DISCRETEFACTOR_HPP
-#define PYBNESIAN_MLE_DISCRETEFACTOR_HPP
+#ifndef PYBNESIAN_LEARNING_PARAMETERS_MLE_DISCRETEFACTOR_HPP
+#define PYBNESIAN_LEARNING_PARAMETERS_MLE_DISCRETEFACTOR_HPP
 
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <learning/parameters/mle_base.hpp>
@@ -114,4 +114,4 @@ namespace learning::parameters {
     }
 }
 
-#endif //PYBNESIAN_MLE_DISCRETEFACTOR_HPP
+#endif //PYBNESIAN_LEARNING_PARAMETERS_MLE_DISCRETEFACTOR_HPP

@@ -147,14 +147,13 @@ def copy_opencl_code():
             code_str += source_code
 
     cpp_code = \
-    """
-#ifndef PYBNESIAN_OPENCL_CODE_HPP
-#define PYBNESIAN_OPENCL_CODE_HPP
+    """#ifndef PYBNESIAN_OPENCL_OPENCL_CODE_HPP
+#define PYBNESIAN_OPENCL_OPENCL_CODE_HPP
 
 namespace opencl {{
     const std::string OPENCL_CODE = R"foo({})foo";
 }}
-#endif //PYBNESIAN_OPENCL_CODE_HPP
+#endif //PYBNESIAN_OPENCL_OPENCL_CODE_HPP
     """.format(code_str)
     
     with open('src/opencl/opencl_code.hpp', 'w') as f:

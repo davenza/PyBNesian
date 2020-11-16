@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_GENERIC_GRAPH_HPP
-#define PYBNESIAN_GENERIC_GRAPH_HPP
+#ifndef PYBNESIAN_GRAPH_GENERIC_GRAPH_HPP
+#define PYBNESIAN_GRAPH_GENERIC_GRAPH_HPP
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -1032,4 +1032,4 @@ namespace graph {
 
 }
 
-#endif //PYBNESIAN_GENERIC_GRAPH_HPP
+#endif //PYBNESIAN_GRAPH_GENERIC_GRAPH_HPP

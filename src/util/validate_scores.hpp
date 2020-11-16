@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_VALIDATE_SCORES_HPP
-#define PYBNESIAN_VALIDATE_SCORES_HPP
+#ifndef PYBNESIAN_UTIL_VALIDATE_SCORES_HPP
+#define PYBNESIAN_UTIL_VALIDATE_SCORES_HPP
 
 #include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
@@ -25,4 +25,4 @@ namespace util {
 }
 
 
-#endif //PYBNESIAN_VALIDATE_SCORES_HPP
+#endif //PYBNESIAN_UTIL_VALIDATE_SCORES_HPP

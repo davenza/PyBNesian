@@ -33,7 +33,8 @@ void pybindings_independence_tests(py::module& root) {
         })
         .def("pvalue", [](IndependenceTest& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
             return self.pvalue(v1, v2, cond.begin(), cond.end());
-        });
+        })
+        .def("column_names", &IndependenceTest::column_names);
 
     py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(independence_tests, "LinearCorrelation")
         .def(py::init<const DataFrame>())
@@ -54,7 +55,8 @@ void pybindings_independence_tests(py::module& root) {
         })
         .def("pvalue", [](LinearCorrelation& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
             return self.pvalue(v1, v2, cond.begin(), cond.end());
-        });
+        })
+        .def("column_names", &LinearCorrelation::column_names);
 
     py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(independence_tests, "KMutualInformation")
         .def(py::init<DataFrame, int, long unsigned int, int, int>(),
@@ -101,5 +103,6 @@ void pybindings_independence_tests(py::module& root) {
         }, py::arg("x"), py::arg("y"), py::arg("z"))
         .def("pvalue", [](KMutualInformation& self, const std::string& x, const std::string& y, const std::vector<std::string>& z) {
             return self.pvalue(x, y, z.begin(), z.end());
-        }, py::arg("x"), py::arg("y"), py::arg("z"));
+        }, py::arg("x"), py::arg("y"), py::arg("z"))
+        .def("column_names", &KMutualInformation::column_names);
 }

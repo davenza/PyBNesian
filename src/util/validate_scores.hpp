@@ -24,5 +24,4 @@ namespace util {
 
 }
 
-
 #endif //PYBNESIAN_UTIL_VALIDATE_SCORES_HPP

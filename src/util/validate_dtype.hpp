@@ -10,12 +10,12 @@ namespace py = pybind11;
 
 using namespace dataset;
 using factors::FactorType;
-using util::ArcVector, util::FactorTypeVector;
+using util::ArcStringVector, util::FactorStringTypeVector;
 
 namespace util {
     
-    void check_edge_list(const DataFrame& df, const ArcVector& list);
-    void check_node_type_list(const DataFrame& df, const FactorTypeVector& list);
+    void check_edge_list(const DataFrame& df, const ArcStringVector& list);
+    void check_node_type_list(const DataFrame& df, const FactorStringTypeVector& list);
 
     std::shared_ptr<arrow::DataType> to_type(arrow::Type::type t); 
 

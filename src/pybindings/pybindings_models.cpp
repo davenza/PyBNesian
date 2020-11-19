@@ -74,8 +74,8 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
 
     return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
         .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const ArcVector&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&>())
+        .def(py::init<const ArcStringVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcStringVector&>())
         .def(py::init<const Dag&>())
         .def(py::pickle(
             [](const DerivedBN& self) {
@@ -168,10 +168,10 @@ void pybindings_models(py::module& root) {
     
     auto spbn = register_BayesianNetwork<SemiparametricBN>(models, "SemiparametricBN");
 
-    spbn.def(py::init<const std::vector<std::string>&, FactorTypeVector&>())
-        .def(py::init<const ArcVector&, FactorTypeVector&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&, FactorTypeVector&>())
-        .def(py::init<const Dag&, FactorTypeVector&>())
+    spbn.def(py::init<const std::vector<std::string>&, FactorStringTypeVector&>())
+        .def(py::init<const ArcStringVector&, FactorStringTypeVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcStringVector&, FactorStringTypeVector&>())
+        .def(py::init<const Dag&, FactorStringTypeVector&>())
         .def("node_type", py::overload_cast<const std::string&>(&SemiparametricBN::node_type, py::const_))
         .def("node_type", py::overload_cast<int>(&SemiparametricBN::node_type, py::const_))
         .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN::set_node_type))

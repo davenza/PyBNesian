@@ -5,11 +5,11 @@
 namespace py = pybind11;
 
 using namespace dataset;
-using util::ArcVector, util::FactorTypeVector;
+using util::ArcStringVector, util::FactorStringTypeVector;
 
 namespace util {
 
-    void check_edge_list(const DataFrame& df, const ArcVector& list) {
+    void check_edge_list(const DataFrame& df, const ArcStringVector& list) {
         auto schema = df->schema();
 
         for (auto pair : list) {
@@ -21,7 +21,7 @@ namespace util {
         }
     }
 
-    void check_node_type_list(const DataFrame& df, const FactorTypeVector& list) {
+    void check_node_type_list(const DataFrame& df, const FactorStringTypeVector& list) {
         auto schema = df->schema();
 
         for (auto pair : list) {

@@ -6,7 +6,7 @@
 #include <models/GaussianNetwork.hpp>
 #include <learning/independences/independence.hpp>
 
-using util::ArcVector;
+using util::ArcStringVector;
 using graph::PartiallyDirectedGraph;
 using models::GaussianNetwork;
 using learning::independences::IndependenceTest;
@@ -16,13 +16,15 @@ namespace learning::algorithms {
 
     class PC {
     public:
-        PartiallyDirectedGraph estimate(const DataFrame& df, 
-                        ArcVector& arc_blacklist, 
-                        ArcVector& arc_whitelist, 
-                        const IndependenceTest& test,
+        PartiallyDirectedGraph estimate(const IndependenceTest& test,
+                        const ArcStringVector& arc_blacklist, 
+                        const ArcStringVector& arc_whitelist,
+                        const EdgeStringVector& edge_blacklist,
+                        const EdgeStringVector& edge_whitelist,
                         double alpha,
+                        bool use_sepsets,
                         double ambiguous_threshold,
-                        double ambiguous_slack);
+                        bool allow_bidirected);
 
     };
 

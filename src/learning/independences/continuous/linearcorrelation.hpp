@@ -129,7 +129,9 @@ namespace learning::independences::continuous {
                 return pvalue_impl(v1, v2, evidence_begin, evidence_end);
         }
 
-
+        std::vector<std::string> column_names() const override {
+            return m_df.column_names();
+        }
     private:
         int cached_index(int v) const {
             return m_indices.at(m_df->column_name(v)); 

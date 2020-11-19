@@ -9,7 +9,7 @@
 namespace py = pybind11;
 
 using graph::DNode, graph::UNode, graph::PDNode;
-using util::ArcVector, util::EdgeVector;
+using util::ArcStringVector, util::EdgeStringVector, util::ArcSet, util::EdgeSet;
 
 namespace graph {
 
@@ -278,8 +278,8 @@ namespace graph {
             return base().m_nodes[idx].children().size();
         }
 
-        ArcVector arcs() const;
-        const auto& arc_indices() const { return m_arcs; }
+        ArcStringVector arcs() const;
+        const ArcSet& arc_indices() const { return m_arcs; }
 
         template<typename V>
         std::vector<std::string> parents(const V& idx) const {
@@ -391,14 +391,14 @@ namespace graph {
         std::vector<std::string> children(const NodeType& n) const;
         std::string parents_to_string(const NodeType& n) const;
 
-        std::unordered_set<Arc, ArcHash> m_arcs;
+        ArcSet m_arcs;
         std::unordered_set<int> m_roots;
         std::unordered_set<int> m_leaves;
     };
 
     template<typename Derived>
-    ArcVector ArcGraph<Derived>::arcs() const {
-        ArcVector res;
+    ArcStringVector ArcGraph<Derived>::arcs() const {
+        ArcStringVector res;
         res.reserve(m_arcs.size());
         
         for (auto& arc : m_arcs) {
@@ -522,8 +522,8 @@ namespace graph {
             return base().m_nodes[idx].neighbors().size();
         }
 
-        EdgeVector edges() const;
-        const auto& edge_indices() const { return m_edges; }
+        EdgeStringVector edges() const;
+        const EdgeSet& edge_indices() const { return m_edges; }
 
         template<typename V>
         std::vector<std::string> neighbors(const V& idx) const {
@@ -576,12 +576,12 @@ namespace graph {
     private:
         std::vector<std::string> neighbors(const NodeType& n) const;
 
-        std::unordered_set<Edge, EdgeHash, EdgeEqualTo> m_edges;
+        EdgeSet m_edges;
     };
 
     template<typename Derived>
-    EdgeVector EdgeGraph<Derived>::edges() const {
-        EdgeVector res;
+    EdgeStringVector EdgeGraph<Derived>::edges() const {
+        EdgeStringVector res;
         res.reserve(m_edges.size());
 
         for (auto& edge : m_edges) {
@@ -744,7 +744,7 @@ namespace graph {
         Graph(const std::vector<std::string>& nodes) : GraphBase<PartiallyDirectedGraph>(nodes),
                                                        ArcGraph<PartiallyDirectedGraph>(nodes),
                                                        EdgeGraph<PartiallyDirectedGraph>() {}
-        Graph(const ArcVector& arcs, const EdgeVector& edges) : GraphBase<PartiallyDirectedGraph>(),
+        Graph(const ArcStringVector& arcs, const EdgeStringVector& edges) : GraphBase<PartiallyDirectedGraph>(),
                                                                 ArcGraph<PartiallyDirectedGraph>(),
                                                                 EdgeGraph<PartiallyDirectedGraph>() {
 
@@ -775,8 +775,8 @@ namespace graph {
         }
 
         Graph(const std::vector<std::string>& nodes,
-              const ArcVector& arcs,
-              const EdgeVector& edges) : GraphBase<PartiallyDirectedGraph>(nodes),
+              const ArcStringVector& arcs,
+              const EdgeStringVector& edges) : GraphBase<PartiallyDirectedGraph>(nodes),
                                          ArcGraph<PartiallyDirectedGraph>(nodes),
                                          EdgeGraph<PartiallyDirectedGraph>() {
                               
@@ -803,6 +803,8 @@ namespace graph {
 
         Graph(Graph<Undirected>&& g);
         Graph(Graph<Directed>&& g);
+
+        static PartiallyDirectedGraph CompleteUndirected(const std::vector<std::string>& nodes);
 
         template<typename V>
         void direct(const V& source, const V& target) {
@@ -860,7 +862,7 @@ namespace graph {
         Graph() : GraphBase<UndirectedGraph>(), EdgeGraph<UndirectedGraph>() {}
         Graph(const std::vector<std::string>& nodes) : GraphBase<UndirectedGraph>(nodes),
                                                        EdgeGraph<UndirectedGraph>() {}
-        Graph(const EdgeVector& edges) : GraphBase<UndirectedGraph>(), 
+        Graph(const EdgeStringVector& edges) : GraphBase<UndirectedGraph>(), 
                                          EdgeGraph<UndirectedGraph>() {
             for (auto& edge : edges) {
                 if (m_indices.count(edge.first) == 0) {
@@ -875,7 +877,7 @@ namespace graph {
             }
         }
 
-        Graph(const std::vector<std::string>& nodes, const EdgeVector& edges) 
+        Graph(const std::vector<std::string>& nodes, const EdgeStringVector& edges) 
                     : GraphBase<UndirectedGraph>(nodes), EdgeGraph<UndirectedGraph>() {
 
             for (auto& edge : edges) {
@@ -925,7 +927,7 @@ namespace graph {
         Graph(const std::vector<std::string>& nodes) : GraphBase<DirectedGraph>(nodes), 
                                                        ArcGraph<DirectedGraph>(nodes) {}
 
-        Graph(const ArcVector& arcs) : GraphBase<DirectedGraph>(),
+        Graph(const ArcStringVector& arcs) : GraphBase<DirectedGraph>(),
                                        ArcGraph<DirectedGraph>() {
             for (auto& arc : arcs) {
                 if (m_indices.count(arc.first) == 0) {
@@ -941,7 +943,7 @@ namespace graph {
         }
 
         Graph(const std::vector<std::string>& nodes, 
-              const ArcVector& arcs) : GraphBase<DirectedGraph>(nodes),
+              const ArcStringVector& arcs) : GraphBase<DirectedGraph>(nodes),
                                        ArcGraph<DirectedGraph>(nodes) {
             for (auto& arc : arcs) {
                 if (m_indices.count(arc.first) == 0) throw pybind11::index_error(
@@ -984,10 +986,10 @@ namespace graph {
     public:
         Dag() : DirectedGraph() {}
         Dag(const std::vector<std::string>& nodes) : DirectedGraph(nodes) {}
-        Dag(const ArcVector& arcs) : DirectedGraph(arcs) {
+        Dag(const ArcStringVector& arcs) : DirectedGraph(arcs) {
             topological_sort();
         }
-        Dag(const std::vector<std::string>& nodes, const ArcVector& arcs) : DirectedGraph(nodes, arcs) {
+        Dag(const std::vector<std::string>& nodes, const ArcStringVector& arcs) : DirectedGraph(nodes, arcs) {
             topological_sort();
         }
 
@@ -1011,7 +1013,40 @@ namespace graph {
 
         bool can_flip_arc_unsafe(int source, int target);
 
+        template<typename V>
+        void add_arc(const V& source, const V& target) {
+            auto s = check_index(source);
+            auto t = check_index(target);
+
+            if (!can_add_arc_unsafe(s, t)) {
+                throw std::runtime_error("Arc " + name(s) + " -> " + name(t) + " addition would break acyclity.");
+            }
+
+            ArcGraph<DirectedGraph>::add_arc_unsafe(s, t);
+        }
+
+        template<typename V>
+        void flip_arc(const V& source, const V& target) {
+            auto s = check_index(source);
+            auto t = check_index(target);
+
+            if (!can_flip_arc_unsafe(s, t)) {
+                throw std::runtime_error("Arc " + name(s) + " -> " + name(t) + " flip would break acyclity.");
+            }
+
+            ArcGraph<DirectedGraph>::flip_arc_unsafe(s, t);
+        }
+
         PartiallyDirectedGraph to_pdag() const;
+
+        bool is_dag() const { 
+            try {
+                topological_sort();
+                return true;
+            } catch (std::invalid_argument) {
+                return false;
+            }
+        }
 
         py::tuple __getstate__() const {
             return graph::__getstate__(*this);

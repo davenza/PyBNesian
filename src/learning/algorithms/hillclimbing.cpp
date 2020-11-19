@@ -16,7 +16,7 @@ using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLi
 using learning::operators::OperatorSet, learning::operators::OperatorSetType, 
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
 
-using util::ArcVector;
+using util::ArcStringVector;
 
 
 namespace learning::algorithms {
@@ -88,9 +88,9 @@ namespace learning::algorithms {
     }
 
     py::object call_hc_validated_spbn(const DataFrame& df, 
-                               ArcVector arc_blacklist, 
-                               ArcVector arc_whitelist, 
-                               FactorTypeVector type_whitelist, 
+                               ArcStringVector arc_blacklist, 
+                               ArcStringVector arc_whitelist, 
+                               FactorStringTypeVector type_whitelist, 
                                int max_indegree,
                                int max_iters,
                                double epsilon,
@@ -115,7 +115,7 @@ namespace learning::algorithms {
                                                 type_whitelist, max_indegree, max_iters, epsilon, patience, verbose));
     }
 
-    py::object call_hc_validated_gbn(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
+    py::object call_hc_validated_gbn(const DataFrame& df, ArcStringVector arc_blacklist, ArcStringVector arc_whitelist, int max_indegree, int max_iters,
                                double epsilon, int patience, int verbose) 
     {
         using Model = GaussianNetwork;
@@ -132,12 +132,12 @@ namespace learning::algorithms {
         OperatorPool pool(m, training_score, std::move(v));
         
         GreedyHillClimbing hc;
-        FactorTypeVector type_whitelist;
+        FactorStringTypeVector type_whitelist;
         return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist, 
                                                 type_whitelist, max_indegree, max_iters, epsilon, patience, verbose));
     }
 
-    py::object call_hc(const DataFrame& df, ArcVector arc_blacklist, ArcVector arc_whitelist, int max_indegree, int max_iters,
+    py::object call_hc(const DataFrame& df, ArcStringVector arc_blacklist, ArcStringVector arc_whitelist, int max_indegree, int max_iters,
                  double epsilon, ScoreType score_type, int verbose) 
     {
         using Model = GaussianNetwork;
@@ -166,7 +166,7 @@ namespace learning::algorithms {
     // TODO: Include start model.
     // TODO: Include test ratio of holdout / number k-folds.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
-            ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
+            ArcStringVector& arc_blacklist, ArcStringVector& arc_whitelist, FactorStringTypeVector& type_whitelist,
                   int max_indegree, int max_iters, double epsilon, int patience, int verbose) {
         
         auto bn_type = learning::algorithms::check_valid_bn_string(bn_str);

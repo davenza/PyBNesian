@@ -15,7 +15,7 @@ using graph::Dag;
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::SemiparametricCPD;
 
-using util::ArcVector, util::FactorTypeVector;
+using util::ArcStringVector, util::FactorStringTypeVector;
 
 using Field_ptr = std::shared_ptr<arrow::Field>;
 using Array_ptr = std::shared_ptr<arrow::Array>;
@@ -77,7 +77,7 @@ namespace models {
         virtual int num_nodes() const = 0;
         virtual int num_arcs() const = 0;
         virtual std::vector<std::string> nodes() const = 0;
-        virtual ArcVector arcs() const = 0;
+        virtual ArcStringVector arcs() const = 0;
         virtual const std::unordered_map<std::string, int>& indices() const = 0;
         virtual int index(const std::string& node) const = 0;
         virtual bool is_valid(int idx) const = 0;
@@ -139,8 +139,8 @@ namespace models {
         using CPD = typename BN_traits<Derived>::CPD;
 
         BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {}
-        BayesianNetwork(const ArcVector& arcs) : g(arcs), m_cpds() {}
-        BayesianNetwork(const std::vector<std::string>& nodes, const ArcVector& arcs) :
+        BayesianNetwork(const ArcStringVector& arcs) : g(arcs), m_cpds() {}
+        BayesianNetwork(const std::vector<std::string>& nodes, const ArcStringVector& arcs) :
                                                  g(nodes, arcs), m_cpds() {}
         BayesianNetwork(const Dag& graph) : g(graph), m_cpds() {}
         BayesianNetwork(Dag&& graph) : g(std::move(graph)), m_cpds() {}
@@ -157,7 +157,7 @@ namespace models {
             return g.nodes();
         }
 
-        ArcVector arcs() const override {
+        ArcStringVector arcs() const override {
             return g.arcs();
         }
 
@@ -311,7 +311,7 @@ namespace models {
             return g.can_flip_arc(source, target);
         }
 
-        void check_blacklist(const ArcVector& arc_blacklist) const {
+        void check_blacklist(const ArcStringVector& arc_blacklist) const {
             for(auto& arc : arc_blacklist) {
                 if (has_arc(arc.first, arc.second)) {
                     throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in blacklist,"
@@ -320,7 +320,7 @@ namespace models {
             }
         }
 
-        void force_whitelist(const ArcVector& arc_whitelist) {
+        void force_whitelist(const ArcStringVector& arc_whitelist) {
             for(auto& arc : arc_whitelist) {
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {

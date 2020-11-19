@@ -15,8 +15,8 @@ void pybindings_graph(py::module& root) {
     py::class_<DirectedGraph>(graph, "DirectedGraph")
         .def(py::init<>())
         .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const ArcVector&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&>())
+        .def(py::init<const ArcStringVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcStringVector&>())
         .def("roots", [](DirectedGraph& self) {
             std::unordered_set<std::string> roots;
             for (const auto& r : self.roots()) {
@@ -107,8 +107,8 @@ void pybindings_graph(py::module& root) {
     py::class_<Dag, DirectedGraph>(graph, "Dag")
         .def(py::init<>())
         .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const ArcVector&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&>())
+        .def(py::init<const ArcStringVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcStringVector&>())
         .def("can_add_arc", [](Dag& self, int source, int target) {
             return self.can_add_arc(source, target);
         })
@@ -120,6 +120,18 @@ void pybindings_graph(py::module& root) {
         })
         .def("can_flip_arc", [](Dag& self, const std::string& source, const std::string& target) {
             return self.can_flip_arc(source, target);
+        })
+        .def("add_arc", [](Dag& self, int source, int target) {
+            self.add_arc(source, target);
+        })
+        .def("add_arc", [](Dag& self, const std::string& source, const std::string& target) {
+            self.add_arc(source, target);
+        })
+        .def("flip_arc", [](Dag& self, int source, int target) {
+            self.flip_arc(source, target);
+        })
+        .def("flip_arc", [](Dag& self, const std::string& source, const std::string& target) {
+            self.flip_arc(source, target);
         })
         .def("to_pdag", &Dag::to_pdag)
         .def("save", &Dag::save)
@@ -135,8 +147,8 @@ void pybindings_graph(py::module& root) {
     py::class_<UndirectedGraph>(graph, "UndirectedGraph")
         .def(py::init<>())
         .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const EdgeVector&>())
-        .def(py::init<const std::vector<std::string>&, const EdgeVector&>())
+        .def(py::init<const EdgeStringVector&>())
+        .def(py::init<const std::vector<std::string>&, const EdgeStringVector&>())
         .def_static("Complete", &UndirectedGraph::Complete)
         .def("num_nodes", &UndirectedGraph::num_nodes)
         .def("num_edges", &UndirectedGraph::num_edges)
@@ -204,8 +216,8 @@ void pybindings_graph(py::module& root) {
     py::class_<PartiallyDirectedGraph>(graph, "PartiallyDirectedGraph")
         .def(py::init<>())
         .def(py::init<const std::vector<std::string>&>())
-        .def(py::init<const ArcVector&, const EdgeVector&>())
-        .def(py::init<const std::vector<std::string>&, const ArcVector&, const EdgeVector&>())
+        .def(py::init<const ArcStringVector&, const EdgeStringVector&>())
+        .def(py::init<const std::vector<std::string>&, const ArcStringVector&, const EdgeStringVector&>())
         .def("num_nodes", &PartiallyDirectedGraph::num_nodes)
         .def("num_edges", &PartiallyDirectedGraph::num_edges)
         .def("num_arcs", &PartiallyDirectedGraph::num_arcs)

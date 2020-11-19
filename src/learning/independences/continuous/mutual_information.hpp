@@ -140,6 +140,10 @@ namespace learning::independences {
         double mi(const VarType& x, const VarType& y, const VarType& z) const;
         template<typename VarType, typename Iter>
         double mi(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
+
+        std::vector<std::string> column_names() const override {
+            return m_df.column_names();
+        }
     private:
         DataFrame m_df;
         DataFrame m_ranked_df;

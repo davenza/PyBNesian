@@ -14,13 +14,23 @@ public:
     Combinations() = default;
 
     template<typename Iter>
-    Combinations(Iter begin, Iter end, int k) : m_elements(begin, end), m_k(k), m_num_combinations(-1) {}
+    Combinations(Iter begin, Iter end, int k) : 
+                            m_elements(begin, end), 
+                            m_k(k), 
+                            m_num_combinations(
+                                std::round(
+                                    boost::math::binomial_coefficient<double>(m_elements.size(), m_k)
+                                )
+                            ) {}
 
-    // Combinations(std::vector<T> elements, int k) : m_elements(std::move(elements)), m_k(k), m_num_combinations(-1) {}
-    // Combinations(const std::vector<T>& elements, int k) : m_elements(elements), m_k(k), m_num_combinations(-1) {}
-    Combinations(std::vector<T>&& elements, int k) : m_elements(std::forward<std::vector<T>>(elements)), 
-                                                        m_k(k), 
-                                                        m_num_combinations(-1) {}
+    Combinations(std::vector<T>&& elements, int k) : 
+                            m_elements(std::forward<std::vector<T>>(elements)), 
+                            m_k(k), 
+                            m_num_combinations(
+                                std::round(
+                                    boost::math::binomial_coefficient<double>(m_elements.size(), m_k)
+                                )
+                            ) {}
 
     class combination_iterator {
     public:
@@ -58,7 +68,7 @@ public:
         }
 
         void next_subset() {
-            for (int i = m_subset.size()-1; i >= 0; --i) {
+            for (int i = m_self->m_k-1; i >= 0; --i) {
                 auto max_index = m_self->m_elements.size() - m_subset.size() + i;
                 if (m_indices[i] < max_index) {
                     ++m_indices[i];
@@ -112,12 +122,7 @@ public:
     combination_iterator end() const { return combination_iterator(this, num_combinations()); }
     
     int num_combinations() const {
-        if (m_num_combinations != -1) {
-            return m_num_combinations;
-        } else {
-            m_num_combinations = std::round(boost::math::binomial_coefficient<double>(m_elements.size(), m_k));
-            return m_num_combinations;
-        }
+        return m_num_combinations;
     }
 
 private:
@@ -137,19 +142,18 @@ public:
                       Iter end_set1, 
                       Iter2 begin_set2, 
                       Iter2 end_set2, 
-                      int k) : m_comb1(),
-                               m_comb2(),
-                               m_comb2_valid_combinations(),
-                               m_num_combinations(-1),
-                               m_k(k) {
+                      int k) : Combinations2Sets({begin_set1, end_set1}, {begin_set2, end_set2}, k) {
         static_assert(std::is_same_v<typename std::iterator_traits<Iter>::value_type,
                                      typename std::iterator_traits<Iter2>::value_type>, 
                                 "The elements of both sets should be of the same type");
 
+    }
 
-        std::vector<T> v1 {begin_set1, end_set1};
-        std::vector<T> v2 {begin_set2, end_set2};
-
+    Combinations2Sets(std::vector<T>&& v1, std::vector<T>&& v2, int k) : m_comb1(),
+                                                                         m_comb2(),
+                                                                         m_comb2_valid_combinations(),
+                                                                         m_num_combinations(-1),
+                                                                         m_k(k) {
         std::sort(v1.begin(), v1.end());
         std::sort(v2.begin(), v2.end());
 
@@ -162,11 +166,10 @@ public:
             m_comb2 = Combinations<T>(std::move(v2), m_k);
             m_comb2_valid_combinations = m_comb2.num_combinations();
         } else {
-            auto common_end = common_elements.end();
             for (size_t i = 0, common_start = v2.size() - common_elements.size(); i < common_start; ++i) {
-                if (common_elements.find(v2[i]) != common_end) {
+                if (common_elements.count(v2[i]) > 0) {
                     for (size_t j = v2.size()-1; j >= common_start; --j) {
-                        if (common_elements.find(v2[j]) == common_end) {
+                        if (common_elements.count(v2[j]) == 0) {
                             std::swap(v2[i], v2[j]);
                         }
                     }

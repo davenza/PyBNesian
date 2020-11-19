@@ -22,8 +22,8 @@ namespace models {
         using CPD = DiscreteFactor;
         DiscreteBN(const std::vector<std::string>& nodes) : 
                                             BayesianNetwork<DiscreteBN>(nodes) {}
-        DiscreteBN(const ArcVector& arcs) : BayesianNetwork<DiscreteBN>(arcs) {}
-        DiscreteBN(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
+        DiscreteBN(const ArcStringVector& arcs) : BayesianNetwork<DiscreteBN>(arcs) {}
+        DiscreteBN(const std::vector<std::string>& nodes, const ArcStringVector& arcs) : 
                                             BayesianNetwork<DiscreteBN>(nodes, arcs) {}
         DiscreteBN(const Dag& graph) : BayesianNetwork<DiscreteBN>(graph) {}
         DiscreteBN(Dag&& graph) : BayesianNetwork<DiscreteBN>(std::move(graph)) {}

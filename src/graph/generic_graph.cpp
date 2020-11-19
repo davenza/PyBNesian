@@ -5,7 +5,6 @@ using boost::dynamic_bitset;
 
 namespace graph {
 
-
     UndirectedGraph UndirectedGraph::Complete(const std::vector<std::string>& nodes) {
         UndirectedGraph un;
 
@@ -24,7 +23,7 @@ namespace graph {
         }
 
         for (int i = 0, limit = nodes.size() - 1; i < limit; ++i) {
-            for (int j = i + 1, size = nodes.size(); j < size; j++) {
+            for (int j = i + 1, size = nodes.size(); j < size; ++j) {
                 un.m_edges.insert({i, j});
             }
         }
@@ -113,6 +112,35 @@ namespace graph {
         m_free_indices = std::move(g.m_free_indices);
     }
 
+    PartiallyDirectedGraph PartiallyDirectedGraph::CompleteUndirected(const std::vector<std::string>& nodes) {
+        PartiallyDirectedGraph pdag;
+
+        std::unordered_set<int> neighbors;
+        for(int i = 0, size = nodes.size(); i < size; ++i) {
+            neighbors.insert(i);
+        }
+        
+        // Roots and leaves are all the nodes because it is undirected.
+        pdag.m_roots = neighbors;
+        pdag.m_leaves = neighbors;
+        pdag.m_nodes.reserve(nodes.size());
+        for (int i = 0, size = nodes.size(); i < size; ++i) {
+            neighbors.erase(i);
+            PDNode n(i, nodes[i], {}, {}, neighbors);
+            pdag.m_nodes.push_back(n);
+            pdag.m_indices.insert(std::make_pair(nodes[i], i));
+            neighbors.insert(i);
+        }
+
+        for (int i = 0, limit = nodes.size() - 1; i < limit; ++i) {
+            for (int j = i + 1, size = nodes.size(); j < size; ++j) {
+                pdag.m_edges.insert({i, j});
+            }
+        }
+
+        return pdag;
+    }
+
     void PartiallyDirectedGraph::direct_unsafe(int source, int target) {
         if (has_edge_unsafe(source, target)) {
             remove_edge_unsafe(source, target);
@@ -126,9 +154,8 @@ namespace graph {
         if (has_arc_unsafe(source, target))
             remove_arc_unsafe(source, target);
 
-        if (!has_arc_unsafe(target, source)) {
+        if (!has_arc_unsafe(target, source))
             add_edge_unsafe(source, target);
-        }
     }
 
     bool pdag2dag_adjacent_node(const PartiallyDirectedGraph& g,
@@ -154,8 +181,13 @@ namespace graph {
         // PDAG-TO-DAG by D.Dor, M.Tarsi (1992). A simple algorithm to construct a consistent extension of a partially oriented graph.
         Dag directed(nodes());
 
-        for (const auto& arc : arc_indices()) {
-            directed.add_arc_unsafe(arc.first, arc.second);
+        for (const auto& arc : arcs()) {
+            directed.add_arc_unsafe(directed.index(arc.first), 
+                                    directed.index(arc.second));
+        }
+
+        if (!directed.is_dag()) {
+            throw std::invalid_argument("PDAG contains directed cycles.");
         }
         
         if (num_edges() > 0) {
@@ -169,7 +201,8 @@ namespace graph {
 
                     if (pdag2dag_adjacent_node(copy, x_neighbors, x_parents)) {
                         for (auto neighbor : x_neighbors) {
-                            directed.add_arc(neighbor, x);
+                            // Use names because pdag could have removed/invalidated nodes.
+                            directed.add_arc(copy.name(neighbor), copy.name(x));
                         }
 
                         copy.remove_node(x);
@@ -322,18 +355,23 @@ namespace graph {
         for (size_t i = 0; i < sorted_arcs.size() && (pdag.num_arcs() + pdag.num_edges()) < num_arcs(); ++i) {
             auto x = sorted_arcs[i].first;
             auto y = sorted_arcs[i].second;
-            if (!pdag.has_arc(x, y) && !pdag.has_edge(x, y)) {
+            // Use name because Dag could have removed/invalidated nodes.
+            const auto& x_name = name(x);
+            const auto& y_name = name(y);
+            if (!pdag.has_arc(x_name, y_name) && !pdag.has_edge(x_name, y_name)) {
                 bool done = false;
-                for (auto w : pdag.parent_set(x)) {
-                    if (!has_arc(w, y)) {
-                        for (auto z : parent_set(y)) {
-                            pdag.add_arc(z, y);
+                for (auto w : pdag.parent_set(x_name)) {
+                    const auto& w_name = pdag.name(w);
+                    if (!has_arc(w_name, y_name)) {
+                        for (auto z : parent_set(y_name)) {
+                            const auto& z_name = name(z);
+                            pdag.add_arc(z_name, y_name);
                         }
 
                         done = true;
                         break;
                     } else {
-                        pdag.add_arc(w, y);
+                        pdag.add_arc(w_name, y_name);
                     }
                 }
 
@@ -349,11 +387,13 @@ namespace graph {
 
                     if (compelled) {
                         for (auto z : parent_set(y)) {
-                            pdag.add_arc(z, y);
+                            const auto& z_name = name(z);
+                            pdag.add_arc(z_name, y_name);
                         }
                     } else {
                         for (auto z : parent_set(y)) {
-                            pdag.add_edge(z, y);
+                            const auto& z_name = name(z);
+                            pdag.add_edge(z_name, y_name);
                         }
                     }
                 }

@@ -5,7 +5,7 @@
 #include <util/util_types.hpp>
 
 using models::BayesianNetwork, models::SemiparametricBNBase;
-using util::FactorTypeVector;
+using util::FactorStringTypeVector;
 
 namespace models {
 
@@ -24,36 +24,36 @@ namespace models {
         // using node_descriptor = typename BayesianNetwork<SemiparametricBN<D>>::node_descriptor;
 
         SemiparametricBN(const std::vector<std::string>& nodes, 
-                         FactorTypeVector& node_types) : BayesianNetwork<SemiparametricBN>(nodes),
+                         FactorStringTypeVector& node_types) : BayesianNetwork<SemiparametricBN>(nodes),
                                                        m_factor_types(nodes.size()) {
             
             for(auto& p : node_types) {
                 m_factor_types[this->index(p.first)] = p.second;
             }
         }
-        SemiparametricBN(const ArcVector& arcs, 
-                         FactorTypeVector& node_types) : BayesianNetwork<SemiparametricBN>(arcs),
+        SemiparametricBN(const ArcStringVector& arcs, 
+                         FactorStringTypeVector& node_types) : BayesianNetwork<SemiparametricBN>(arcs),
                                                        m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
                 m_factor_types[this->index(p.first)] = p.second;
             }
         }
         SemiparametricBN(const std::vector<std::string>& nodes, 
-                         const ArcVector& arcs, 
-                         FactorTypeVector& node_types) : BayesianNetwork<SemiparametricBN>(nodes, arcs),
+                         const ArcStringVector& arcs, 
+                         FactorStringTypeVector& node_types) : BayesianNetwork<SemiparametricBN>(nodes, arcs),
                                                        m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
                 m_factor_types[this->index(p.first)] = p.second;
             }
         }
-        SemiparametricBN(const Dag& graph, FactorTypeVector& node_types) : 
+        SemiparametricBN(const Dag& graph, FactorStringTypeVector& node_types) : 
                                                     BayesianNetwork<SemiparametricBN>(graph),
                                                     m_factor_types(graph.num_nodes()) {
             for(auto& p : node_types) {
                 m_factor_types[this->index(p.first)] = p.second;
             }
         }
-        SemiparametricBN(Dag&& graph, FactorTypeVector& node_types) :
+        SemiparametricBN(Dag&& graph, FactorStringTypeVector& node_types) :
                                                     BayesianNetwork<SemiparametricBN>(std::move(graph)),
                                                     m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
@@ -64,10 +64,10 @@ namespace models {
         SemiparametricBN(const std::vector<std::string>& nodes) : 
                                                     BayesianNetwork<SemiparametricBN>(nodes),
                                                     m_factor_types(nodes.size()) {}
-        SemiparametricBN(const ArcVector& arcs) : 
+        SemiparametricBN(const ArcStringVector& arcs) : 
                                                     BayesianNetwork<SemiparametricBN>(arcs),
                                                     m_factor_types(this->num_nodes()) {}
-        SemiparametricBN(const std::vector<std::string>& nodes, const ArcVector& arcs) : 
+        SemiparametricBN(const std::vector<std::string>& nodes, const ArcStringVector& arcs) : 
                                                     BayesianNetwork<SemiparametricBN>(nodes, arcs),
                                                     m_factor_types(nodes.size()) {}
         SemiparametricBN(const Dag& graph) : BayesianNetwork<SemiparametricBN>(graph),
@@ -95,7 +95,7 @@ namespace models {
             set_node_type(this->index(node), new_type);
         }
 
-        void force_type_whitelist(const FactorTypeVector& type_whitelist) {
+        void force_type_whitelist(const FactorStringTypeVector& type_whitelist) {
             for (auto& nt : type_whitelist) {
                 set_node_type(nt.first, nt.second);
             }

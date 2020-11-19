@@ -24,8 +24,8 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
                             const DataFrame& df, 
                             OperatorPool& pool,
                             const Model& start,
-                            ArcVector& arc_blacklist,
-                            ArcVector& arc_whitelist,
+                            ArcStringVector& arc_blacklist,
+                            ArcStringVector& arc_whitelist,
                             int max_indegree,
                             int max_iters, 
                             double epsilon,
@@ -34,8 +34,8 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
         },  py::arg("df"),
             py::arg("pool"),
             py::arg("start"),
-            py::arg("arc_blacklist") = ArcVector(),
-            py::arg("arc_whitelist") = ArcVector(),
+            py::arg("arc_blacklist") = ArcStringVector(),
+            py::arg("arc_whitelist") = ArcStringVector(),
             py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
             py::arg("epsilon") = 0,
@@ -47,9 +47,9 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
                                      OperatorPool& pool, 
                                      Score& validation_score,
                                      const Model& start,
-                                     ArcVector& arc_blacklist,
-                                     ArcVector& arc_whitelist,
-                                     FactorTypeVector& type_whitelist,
+                                     ArcStringVector& arc_blacklist,
+                                     ArcStringVector& arc_whitelist,
+                                     FactorStringTypeVector& type_whitelist,
                                      int max_indegree,
                                      int max_iters,
                                      double epsilon,
@@ -61,9 +61,9 @@ py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
             py::arg("pool"),
             py::arg("validation_score"),
             py::arg("start"),
-            py::arg("arc_blacklist") = ArcVector(),
-            py::arg("arc_whitelist") = ArcVector(),
-            py::arg("type_whitelist") = FactorTypeVector(),
+            py::arg("arc_blacklist") = ArcStringVector(),
+            py::arg("arc_whitelist") = ArcStringVector(),
+            py::arg("type_whitelist") = FactorStringTypeVector(),
             py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
             py::arg("epsilon") = 0,
@@ -84,9 +84,9 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("bn_type") = "gbn",
                 py::arg("score_type") = "bic",
                 py::arg("operators_type") = std::vector<std::string>{"arcs"},
-                py::arg("arc_blacklist") = ArcVector(),
-                py::arg("arc_whitelist") = ArcVector(),
-                py::arg("type_whitelist") = FactorTypeVector(),
+                py::arg("arc_blacklist") = ArcStringVector(),
+                py::arg("arc_whitelist") = ArcStringVector(),
+                py::arg("type_whitelist") = FactorStringTypeVector(),
                 py::arg("max_indegree") = 0,
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,
@@ -95,10 +95,18 @@ void pybindings_algorithms(py::module& root) {
 
     register_GreedyHillClimbing<GaussianNetwork, SemiparametricBN>(algorithms);
 
-
     py::class_<PC>(algorithms, "PC")
         .def(py::init<>())
-        .def("estimate", &PC::estimate);
+        .def("estimate", &PC::estimate, 
+            py::arg("hypot_test"),
+            py::arg("arc_blacklist") = ArcStringVector(),
+            py::arg("arc_whitelist") = ArcStringVector(),
+            py::arg("edge_blacklist") = EdgeStringVector(),
+            py::arg("edge_whitelist") = EdgeStringVector(),
+            py::arg("alpha") = 0.05,
+            py::arg("use_sepsets") = false,
+            py::arg("ambiguous_threshold") = 0.5,
+            py::arg("allow_bidirected") = true);
 
     py::class_<MeekRules>(algorithms, "MeekRules")
         .def_static("rule1", &MeekRules::rule1)

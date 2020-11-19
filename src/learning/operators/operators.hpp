@@ -15,7 +15,7 @@ using VectorXb = Matrix<bool, Dynamic, 1>;
 using models::BayesianNetwork, models::BayesianNetworkBase;
 using factors::FactorType;
 using learning::scores::Score;
-using util::ArcVector, util::FactorTypeVector;
+using util::ArcStringVector, util::FactorStringTypeVector;
 
 namespace learning::operators {
 
@@ -458,10 +458,10 @@ namespace learning::operators {
             m_local_cache = score_cache;
         }
 
-        virtual void set_arc_blacklist(const ArcVector&) = 0;
-        virtual void set_arc_whitelist(const ArcVector&) = 0;
+        virtual void set_arc_blacklist(const ArcStringVector&) = 0;
+        virtual void set_arc_whitelist(const ArcStringVector&) = 0;
         virtual void set_max_indegree(int) = 0;
-        virtual void set_type_whitelist(const FactorTypeVector&) = 0;
+        virtual void set_type_whitelist(const FactorStringTypeVector&) = 0;
     protected:
         bool owns_local_cache() {
             return m_local_cache.use_count() == 1;
@@ -520,8 +520,8 @@ namespace learning::operators {
     {
     public:
         ArcOperatorSet(std::shared_ptr<Score>& score, 
-                       ArcVector blacklist = ArcVector(), 
-                       ArcVector whitelist = ArcVector(),
+                       ArcStringVector blacklist = ArcStringVector(), 
+                       ArcStringVector whitelist = ArcStringVector(),
                        int indegree = 0) : m_score(score),
                                            delta(),
                                            valid_op(), 
@@ -549,25 +549,25 @@ namespace learning::operators {
 
         void update_listed_arcs(BayesianNetworkBase& bn);
 
-        void set_arc_blacklist(const ArcVector& blacklist) override {
+        void set_arc_blacklist(const ArcStringVector& blacklist) override {
             m_blacklist = blacklist;
             required_arclist_update = true;
         }
-        void set_arc_whitelist(const ArcVector& whitelist) override {
+        void set_arc_whitelist(const ArcStringVector& whitelist) override {
             m_whitelist = whitelist;
             required_arclist_update = true;
         }
         void set_max_indegree(int indegree) override {
             max_indegree = indegree;
         }
-        void set_type_whitelist(const FactorTypeVector&) override {}
+        void set_type_whitelist(const FactorStringTypeVector&) override {}
     private:
         std::shared_ptr<Score> m_score;
         MatrixXd delta;
         MatrixXb valid_op;
         std::vector<int> sorted_idx;
-        ArcVector m_blacklist;
-        ArcVector m_whitelist;
+        ArcStringVector m_blacklist;
+        ArcStringVector m_whitelist;
         bool required_arclist_update;
         int max_indegree;
     };
@@ -798,7 +798,7 @@ namespace learning::operators {
                                                      SemiparametricBN> {
     public:
         ChangeNodeTypeSet(std::shared_ptr<Score>& score, 
-                          FactorTypeVector fv = FactorTypeVector()) : m_score(score),
+                          FactorStringTypeVector fv = FactorStringTypeVector()) : m_score(score),
                                                                         delta(),
                                                                         valid_op(),
                                                                         sorted_idx(),
@@ -856,10 +856,10 @@ namespace learning::operators {
             }
         }
 
-        void set_arc_blacklist(const ArcVector&) override {}
-        void set_arc_whitelist(const ArcVector&) override {}
+        void set_arc_blacklist(const ArcStringVector&) override {}
+        void set_arc_whitelist(const ArcStringVector&) override {}
         void set_max_indegree(int) override {}
-        void set_type_whitelist(const FactorTypeVector& type_whitelist) override {
+        void set_type_whitelist(const FactorStringTypeVector& type_whitelist) override {
             m_type_whitelist = type_whitelist;
             required_whitelist_update = true;
         }
@@ -869,7 +869,7 @@ namespace learning::operators {
         VectorXd delta;
         VectorXb valid_op;
         std::vector<int> sorted_idx;
-        FactorTypeVector m_type_whitelist;
+        FactorStringTypeVector m_type_whitelist;
         bool required_whitelist_update;
     };
 
@@ -1005,12 +1005,12 @@ namespace learning::operators {
             return s;
         }
 
-        void set_arc_blacklist(const ArcVector& blacklist) {
+        void set_arc_blacklist(const ArcStringVector& blacklist) {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_blacklist(blacklist);
             }
         }
-        void set_arc_whitelist(const ArcVector& whitelist) {
+        void set_arc_whitelist(const ArcStringVector& whitelist) {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_whitelist(whitelist);
             }
@@ -1020,7 +1020,7 @@ namespace learning::operators {
                 opset->set_max_indegree(indegree);
             }
         }
-        void set_type_whitelist(const FactorTypeVector& type_whitelist) {
+        void set_type_whitelist(const FactorStringTypeVector& type_whitelist) {
             for(auto& opset : m_op_sets) {
                 opset->set_type_whitelist(type_whitelist);
             }

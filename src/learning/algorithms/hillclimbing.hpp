@@ -16,7 +16,7 @@ using learning::scores::Score;
 using learning::operators::Operator, learning::operators::OperatorType, learning::operators::ArcOperator, 
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorPool;
 
-using util::ArcVector;
+using util::ArcStringVector;
 
 namespace learning::algorithms {
 
@@ -30,7 +30,7 @@ namespace learning::algorithms {
 
     // TODO: Include start graph.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
-            ArcVector& arc_blacklist, ArcVector& arc_whitelist, FactorTypeVector& type_whitelist,
+            ArcStringVector& arc_blacklist, ArcStringVector& arc_whitelist, FactorStringTypeVector& type_whitelist,
                   int max_indegree, int max_iters, double epsilon, int patience, int verbose = 0);
 
     class GreedyHillClimbing {
@@ -40,8 +40,8 @@ namespace learning::algorithms {
         Model estimate(const DataFrame& df, 
                        OperatorPool& op_pool,
                        const Model& start,
-                       ArcVector& arc_blacklist,
-                       ArcVector& arc_whitelist,
+                       ArcStringVector& arc_blacklist,
+                       ArcStringVector& arc_whitelist,
                        int max_indegree,
                        int max_iters, 
                        double epsilon,
@@ -52,9 +52,9 @@ namespace learning::algorithms {
                                  OperatorPool& op_pool, 
                                  Score& validation_score,
                                  const Model& start,
-                                 ArcVector& arc_blacklist,
-                                 ArcVector& arc_whitelist,
-                                 FactorTypeVector& type_whitelist,
+                                 ArcStringVector& arc_blacklist,
+                                 ArcStringVector& arc_whitelist,
+                                 FactorStringTypeVector& type_whitelist,
                                  int max_indegree,
                                  int max_iters,
                                  double epsilon, 
@@ -66,8 +66,8 @@ namespace learning::algorithms {
     Model GreedyHillClimbing::estimate(const DataFrame& df,
                                        OperatorPool& op,
                                        const Model& start,
-                                       ArcVector& arc_blacklist,
-                                       ArcVector& arc_whitelist,
+                                       ArcStringVector& arc_blacklist,
+                                       ArcStringVector& arc_whitelist,
                                        int max_indegree,
                                        int max_iters,
                                        double epsilon,
@@ -179,9 +179,9 @@ namespace learning::algorithms {
                              OperatorPool& op_pool, 
                              Score& validation_score,
                              const Model& start,
-                             ArcVector& arc_blacklist,
-                             ArcVector& arc_whitelist,
-                             FactorTypeVector& type_whitelist,
+                             ArcStringVector& arc_blacklist,
+                             ArcStringVector& arc_whitelist,
+                             FactorStringTypeVector& type_whitelist,
                              int max_indegree,
                              int max_iters,
                              double epsilon, 

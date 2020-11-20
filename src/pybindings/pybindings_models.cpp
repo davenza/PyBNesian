@@ -1,5 +1,6 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <models/BayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>

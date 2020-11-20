@@ -1,4 +1,5 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 #include <pybindings/pybindings_learning/pybindings_mle.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>

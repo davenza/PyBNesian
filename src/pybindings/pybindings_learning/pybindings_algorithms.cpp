@@ -1,4 +1,5 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <learning/operators/operators.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <learning/algorithms/pc.hpp>

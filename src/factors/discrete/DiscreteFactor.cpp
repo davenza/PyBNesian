@@ -1,4 +1,3 @@
-#include <pybind11/stl.h>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <learning/parameters/mle.hpp>
 #include <util/math_constants.hpp>

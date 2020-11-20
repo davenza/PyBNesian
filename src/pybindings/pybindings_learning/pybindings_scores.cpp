@@ -1,5 +1,5 @@
 #include <pybind11/pybind11.h>
-
+#include <pybind11/stl.h>
 #include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>

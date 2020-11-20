@@ -1,4 +1,5 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <learning/operators/operators.hpp>
 
@@ -176,14 +177,14 @@ void pybindings_operators(py::module& root) {
         .def("apply", &ChangeNodeType::apply)
         .def("opposite", &ChangeNodeType::opposite);
 
-
     register_OperatorTabuSet(operators);
 
     register_OperatorSet<GaussianNetwork, SemiparametricBN>(operators);
     auto arc_set = register_DerivedOperatorSet<ArcOperatorSet,
                                                 GaussianNetwork,
                                                 SemiparametricBN>(operators, "ArcOperatorSet");
-    arc_set.def(py::init<std::shared_ptr<Score>&, const ArcStringVector&, const ArcStringVector&, int>(),
+
+    arc_set.def(py::init<std::shared_ptr<Score>&, ArcStringVector, ArcStringVector, int>(),
                 py::arg("score"),
                 py::arg("blacklist") = ArcStringVector(),
                 py::arg("whitelist") = ArcStringVector(),

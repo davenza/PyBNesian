@@ -1,6 +1,6 @@
+#include <pybind11/stl.h>
 #include <dataset/crossvalidation_adaptator.hpp>
 #include <dataset/holdout_adaptator.hpp>
-#include <pybind11/stl.h>
 
 using dataset::DataFrame, dataset::CrossValidation, dataset::HoldOut;
 

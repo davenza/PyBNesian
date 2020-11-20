@@ -51,7 +51,6 @@ ext_modules = [
         [
          'src/lib.cpp',
          'src/pybindings/pybindings_dataset.cpp',
-         'src/pybindings/pybindings_distributions.cpp',
          'src/pybindings/pybindings_factors.cpp',
          'src/pybindings/pybindings_graph.cpp',
          'src/pybindings/pybindings_models.cpp',

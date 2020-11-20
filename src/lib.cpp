@@ -9,8 +9,6 @@ void pybindings_factors(py::module& root);
 void pybindings_graph(py::module& root);
 void pybindings_models(py::module& root);
 void pybindings_learning(py::module& root);
-void pybindings_distributions(py::module& root);
-
 
 PYBIND11_MODULE(pybnesian, m) {
     pyarrow::import_pyarrow();
@@ -22,5 +20,4 @@ PYBIND11_MODULE(pybnesian, m) {
     pybindings_graph(m);
     pybindings_models(m);
     pybindings_learning(m);
-    pybindings_distributions(m);
 }

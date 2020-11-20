@@ -1,14 +1,15 @@
 #include <optional>
-
+#include <indicators/cursor_control.hpp>
 #include <graph/graph_types.hpp>
 #include <learning/algorithms/pc.hpp>
 #include <util/combinations.hpp>
 #include <util/validate_whitelists.hpp>
+#include <util/progress.hpp>
 
 using graph::PartiallyDirectedGraph, graph::UndirectedGraph, 
       graph::Arc, graph::ArcHash, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo;
 
-using util::Combinations, util::Combinations2Sets;
+using util::Combinations, util::Combinations2Sets, util::ProgressBar;
 
 namespace learning::algorithms {
 
@@ -154,29 +155,43 @@ namespace learning::algorithms {
     SepSet find_skeleton(PartiallyDirectedGraph& g,
                          const IndependenceTest& test, 
                          double alpha,
-                         ArcSet& arc_blacklist,
-                         EdgeSet& edge_whitelist) {
+                         EdgeSet& edge_whitelist,
+                         util::BaseProgressBar* progress) {
+
+        if (static_cast<size_t>(g.num_edges()) == edge_whitelist.size()) {
+            return SepSet{};
+        }
+
         SepSet sepset;
 
         int nnodes = g.num_nodes();
+
+        progress->set_max_progress((nnodes*(nnodes-1) / 2) - edge_whitelist.size());
+        progress->set_text("Non sepset");
+        progress->set_progress(0);
+
         for (int i = 0; i < nnodes-1; ++i) {
             for (int j = i+1; j < nnodes; ++j) {
                 if (g.has_edge_unsafe(i, j) && edge_whitelist.count({i, j}) == 0) {                  
                     double pvalue = test.pvalue(i, j);
-                    
                     if (pvalue > alpha) {
                         g.remove_edge_unsafe(i, j);
                         sepset.insert({i,j}, {}, pvalue);
                     }
+                    progress->tick();
                 }
             }
         }
 
-        if (max_cardinality(g, 1)) {
+        if (static_cast<size_t>(g.num_edges()) == edge_whitelist.size() || max_cardinality(g, 1)) {
             return sepset;
         }
 
         std::vector<Edge> edges_to_remove;
+
+        progress->set_max_progress(g.num_edges() - edge_whitelist.size());
+        progress->set_text("Sepset Order 1");
+        progress->set_progress(0);
 
         for (auto& edge : g.edge_indices()) {
             if (edge_whitelist.count({edge.first, edge.second}) == 0) {
@@ -185,15 +200,20 @@ namespace learning::algorithms {
                     edges_to_remove.push_back(edge);
                     sepset.insert(edge, {indep->first}, indep->second);
                 }
+                progress->tick();
             }
         }
 
         remove_edges(g, edges_to_remove);
 
         auto limit = 2;
-        while(!max_cardinality(g, limit)) {
+        while(static_cast<size_t>(g.num_edges()) > edge_whitelist.size() && !max_cardinality(g, limit)) {
             edges_to_remove.clear();
-            
+
+            progress->set_max_progress(g.num_edges() - edge_whitelist.size());
+            progress->set_text("Sepset Order " + std::to_string(limit));
+            progress->set_progress(0);
+
             for (auto& edge : g.edge_indices()) {
                 if (edge_whitelist.count({edge.first, edge.second}) == 0) {
                     auto indep = find_multivariate_sepset(g, edge, limit, test, alpha);
@@ -201,17 +221,12 @@ namespace learning::algorithms {
                         edges_to_remove.push_back(edge);
                         sepset.insert(edge, std::move(indep->first), indep->second);
                     }
+                    progress->tick();
                 }
             }
 
             remove_edges(g, edges_to_remove);
             ++limit;
-        }
-
-        for (const auto& arc : arc_blacklist) {
-            if (g.has_edge_unsafe(arc.first, arc.second)) {
-                g.direct(arc.second, arc.first);
-            }
         }
 
         return sepset;
@@ -450,15 +465,21 @@ namespace learning::algorithms {
                                    SepSet& sepset,
                                    bool use_sepsets,
                                    double ambiguous_threshold,
-                                   bool allow_bidirected) {
+                                   bool allow_bidirected,
+                                   util::BaseProgressBar* progress) {
 
         std::vector<vstructure> vs;
+
+        progress->set_max_progress(pdag.num_nodes());
+        progress->set_text("Finding v-structures");
+        progress->set_progress(0);
 
         for (const auto& node : pdag.node_indices()) {
             if (node.neighbors().size() >= 1 && (node.parents().size() + node.neighbors().size()) >= 2) {
                 auto tmp = evaluate_vstructures_at_node(pdag, node, test, alpha, sepset, use_sepsets, ambiguous_threshold);
                 vs.insert(vs.end(), tmp.begin(), tmp.end());
             }
+            progress->tick();
         }
 
         if (allow_bidirected) {
@@ -492,6 +513,14 @@ namespace learning::algorithms {
                     pdag.remove_arc_unsafe(vstructure.children, vstructure.p1);
                 if (pdag.has_arc_unsafe(vstructure.children, vstructure.p2))
                     pdag.remove_arc_unsafe(vstructure.children, vstructure.p2);
+            }
+        }
+    }
+
+    void direct_arc_blacklist(PartiallyDirectedGraph g, const ArcSet& arc_blacklist) {
+        for (const auto& arc : arc_blacklist) {
+            if (g.has_edge_unsafe(arc.first, arc.second)) {
+                g.direct(arc.second, arc.first);
             }
         }
     }
@@ -619,7 +648,8 @@ namespace learning::algorithms {
                         double alpha,
                         bool use_sepsets,
                         double ambiguous_threshold,
-                        bool allow_bidirected) {
+                        bool allow_bidirected,
+                        int verbose) {
         
         auto skeleton = PartiallyDirectedGraph::CompleteUndirected(test.column_names());
 
@@ -647,21 +677,34 @@ namespace learning::algorithms {
             }
         }
 
-        auto sepset = find_skeleton(skeleton, test, alpha, 
-                                    restrictions.arc_blacklist, restrictions.edge_whitelist);
+        indicators::show_console_cursor(false);
+        auto progress = util::progress_bar(verbose);
+        auto sepset = find_skeleton(skeleton, test, alpha, restrictions.edge_whitelist, progress.get());
+
+        direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
 
         direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist,
-                                    alpha, sepset, use_sepsets, ambiguous_threshold, allow_bidirected);
+                                    alpha, sepset, use_sepsets, ambiguous_threshold, allow_bidirected, progress.get());
+
+
+        progress->set_max_progress(3);
+        progress->set_text("Applying Meek rules");
 
         bool changed = true;
         while(changed) {
             changed = false;
+            progress->set_progress(0);
 
             changed |= MeekRules::rule1(skeleton);
+            progress->tick();
             changed |= MeekRules::rule2(skeleton);
+            progress->tick();
             changed |= MeekRules::rule3(skeleton);
+            progress->tick();
         }
 
+        progress->mark_as_completed("Finished PC!");
+        indicators::show_console_cursor(true);
         return skeleton;
     }
 

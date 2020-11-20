@@ -180,6 +180,8 @@ public:
             m_comb2_valid_combinations = m_comb2.num_combinations() - 
                         std::round(boost::math::binomial_coefficient<double>(common_elements.size(), m_k));
         }
+
+        m_num_combinations = m_comb1.num_combinations() + m_comb2_valid_combinations;
     }
 
     class combination2set_iterator {
@@ -240,12 +242,7 @@ public:
     combination2set_iterator end() { return combination2set_iterator(*this, num_combinations()); }
 
     int num_combinations() const {
-        if (m_num_combinations != -1) {
-            return m_num_combinations;
-        } else {
-            m_num_combinations = m_comb1.num_combinations() + m_comb2_valid_combinations;
-            return m_num_combinations;
-        }
+        return m_num_combinations;
     }
 
 private:

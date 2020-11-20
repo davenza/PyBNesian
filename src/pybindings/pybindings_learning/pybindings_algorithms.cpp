@@ -106,7 +106,8 @@ void pybindings_algorithms(py::module& root) {
             py::arg("alpha") = 0.05,
             py::arg("use_sepsets") = false,
             py::arg("ambiguous_threshold") = 0.5,
-            py::arg("allow_bidirected") = true);
+            py::arg("allow_bidirected") = true,
+            py::arg("verbose") = 0);
 
     py::class_<MeekRules>(algorithms, "MeekRules")
         .def_static("rule1", &MeekRules::rule1)

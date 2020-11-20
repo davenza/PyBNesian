@@ -2,6 +2,7 @@
 #define PYBNESIAN_LEARNING_ALGORITHMS_HILLCLIMBING_HPP
 
 #include <pybind11/pybind11.h>
+#include <indicators/cursor_control.hpp>
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
 #include <learning/scores/scores.hpp>
@@ -19,14 +20,6 @@ using learning::operators::Operator, learning::operators::OperatorType, learning
 using util::ArcStringVector;
 
 namespace learning::algorithms {
-
-    // DagType check_valid_dag_string(std::string& dag_type);
-    // BayesianNetworkType check_valid_bn_string(std::string& bn_type);
-    // ScoreType check_valid_score_string(std::string& score);
-    // std::vector<OperatorSetType> check_valid_operators_string(std::vector<std::string>& operators);
-    // void check_valid_score(BayesianNetworkType bn_type, ScoreType score);
-    // void check_valid_operators(BayesianNetworkType bn_type, std::vector<OperatorSetType>& operators);
-
 
     // TODO: Include start graph.
     py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
@@ -72,7 +65,7 @@ namespace learning::algorithms {
                                        int max_iters,
                                        double epsilon,
                                        int verbose) {
-        
+        indicators::show_console_cursor(false);
         auto spinner = util::indeterminate_spinner(verbose);
         spinner->update_status("Checking dataset...");
 
@@ -107,6 +100,7 @@ namespace learning::algorithms {
         }
 
         spinner->mark_as_completed("Finished Hill-climbing!");
+        indicators::show_console_cursor(true);
         return current_model;
     }
 
@@ -187,7 +181,7 @@ namespace learning::algorithms {
                              double epsilon, 
                              int patience,
                              int verbose) {
-
+        indicators::show_console_cursor(false);
         auto spinner = util::indeterminate_spinner(verbose);
         spinner->update_status("Checking dataset...");
 
@@ -250,6 +244,7 @@ namespace learning::algorithms {
         }
 
         spinner->mark_as_completed("Finished Hill-climbing!");
+        indicators::show_console_cursor(true);
         return best_model;
     }
 }

@@ -24,7 +24,8 @@ namespace learning::algorithms {
                         double alpha,
                         bool use_sepsets,
                         double ambiguous_threshold,
-                        bool allow_bidirected);
+                        bool allow_bidirected,
+                        int verbose);
 
     };
 

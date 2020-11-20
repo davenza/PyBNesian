@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <arrow/api.h>
 
-typedef std::shared_ptr<arrow::Array> Array_ptr;
-typedef std::shared_ptr<arrow::Buffer> Buffer_ptr;
+using Array_ptr = std::shared_ptr<arrow::Array>;
+using Buffer_ptr = std::shared_ptr<arrow::Buffer>;
 
 namespace util::bit_util {
 

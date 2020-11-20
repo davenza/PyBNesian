@@ -1,18 +1,16 @@
 #ifndef PYBNESIAN_LEARNING_OPERATORS_OPERATORS_HPP
 #define PYBNESIAN_LEARNING_OPERATORS_OPERATORS_HPP
 
-#include <queue>
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
-#include <util/util_types.hpp>
 #include <util/validate_scores.hpp>
 
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 using VectorXb = Matrix<bool, Dynamic, 1>;
 
-using models::BayesianNetwork, models::BayesianNetworkBase;
+using models::BayesianNetwork, models::BayesianNetworkBase, models::SemiparametricBNBase;
 using factors::FactorType;
 using learning::scores::Score;
 using util::ArcStringVector, util::FactorStringTypeVector;

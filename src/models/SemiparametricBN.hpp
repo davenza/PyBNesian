@@ -2,9 +2,9 @@
 #define PYBNESIAN_MODELS_SEMIPARAMETRICBN_HPP
 
 #include <models/BayesianNetwork.hpp>
-#include <util/util_types.hpp>
+#include <factors/continuous/SemiparametricCPD.hpp>
 
-using models::BayesianNetwork, models::SemiparametricBNBase;
+using factors::continuous::SemiparametricCPD;
 using util::FactorStringTypeVector;
 
 namespace models {

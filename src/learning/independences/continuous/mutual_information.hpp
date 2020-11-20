@@ -2,18 +2,14 @@
 #define PYBNESIAN_LEARNING_INDEPENDENCES_CONTINUOUS_MUTUAL_INFORMATION_HPP
 
 #include <random>
-#include <Eigen/Dense>
-#include <learning/independences/independence.hpp>
 #include <dataset/dataset.hpp>
+#include <learning/independences/independence.hpp>
 #include <kdtree/kdtree.hpp>
-#include <util/validate_dtype.hpp>
-#include <boost/math/special_functions/digamma.hpp>
 
-using dataset::DataFrame, dataset::CopyLOC, dataset::IndexLOC, dataset::Copy;
+using dataset::DataFrame, dataset::Copy;
 using Eigen::MatrixXi;
 using Array_ptr = std::shared_ptr<arrow::Array>;
-using util::to_type;
-using learning::independences::IndexComparator;
+using kdtree::KDTree, kdtree::IndexComparator;
 
 namespace learning::independences {
     

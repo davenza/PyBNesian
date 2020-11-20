@@ -2,21 +2,13 @@
 #define PYBNESIAN_FACTORS_CONTINUOUS_CKDE_HPP
 
 #include <random>
-#include <CL/cl2.hpp>
 #include <opencl/opencl_config.hpp>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/eigen.h>
-#include <Eigen/Dense>
-#include <pybind11/eigen.h>
 #include <dataset/dataset.hpp>
 #include <util/math_constants.hpp>
-#include <util/bit_util.hpp>
-#include <util/arrow_macros.hpp>
 
 namespace py = pybind11;
 using dataset::DataFrame;
-using Eigen::VectorXd, Eigen::VectorXi, Eigen::Ref, Eigen::LLT;
+using Eigen::VectorXd, Eigen::VectorXi, Eigen::LLT;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {

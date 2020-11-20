@@ -1,8 +1,8 @@
 #ifndef PYBNESIAN_LEARNING_PARAMETERS_MLE_LINEARGAUSSIANCPD_HPP
 #define PYBNESIAN_LEARNING_PARAMETERS_MLE_LINEARGAUSSIANCPD_HPP
 
-#include <factors/continuous/LinearGaussianCPD.hpp>
 #include <learning/parameters/mle_base.hpp>
+#include <factors/continuous/LinearGaussianCPD.hpp>
 
 using factors::continuous::LinearGaussianCPD;
 

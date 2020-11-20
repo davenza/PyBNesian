@@ -1,7 +1,7 @@
 #ifndef PYBNESIAN_FACTORS_CONTINUOUS_SEMIPARAMETRICCPD_HPP
 #define PYBNESIAN_FACTORS_CONTINUOUS_SEMIPARAMETRICCPD_HPP
 
-#include <random>
+#include <variant>
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>

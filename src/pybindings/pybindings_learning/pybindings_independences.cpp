@@ -9,7 +9,7 @@ namespace py = pybind11;
 
 using learning::independences::IndependenceTest, learning::independences::continuous::LinearCorrelation;
 
-using learning::independences::KDTree;
+using kdtree::KDTree;
 using learning::independences::KMutualInformation;
 
 void pybindings_independence_tests(py::module& root) {

@@ -1,10 +1,8 @@
 #ifndef PYBNESIAN_FACTORS_DISCRETE_DISCRETEFACTOR_HPP
 #define PYBNESIAN_FACTORS_DISCRETE_DISCRETEFACTOR_HPP
 
-#include <dataset/dataset.hpp>
-#include <Eigen/Dense>
 #include <random>
-#include <util/arrow_macros.hpp>
+#include <dataset/dataset.hpp>
 
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;

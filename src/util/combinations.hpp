@@ -1,8 +1,8 @@
 #ifndef PYBNESIAN_UTIL_COMBINATIONS_HPP
 #define PYBNESIAN_UTIL_COMBINATIONS_HPP
 
-#include <iterator>
-#include <util/math_constants.hpp>
+#include <vector>
+#include <unordered_set>
 #include <boost/math/special_functions/binomial.hpp>
 
 namespace util {

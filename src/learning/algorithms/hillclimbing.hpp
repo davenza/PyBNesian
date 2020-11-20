@@ -1,13 +1,10 @@
 #ifndef PYBNESIAN_LEARNING_ALGORITHMS_HILLCLIMBING_HPP
 #define PYBNESIAN_LEARNING_ALGORITHMS_HILLCLIMBING_HPP
 
-#include <pybind11/pybind11.h>
 #include <indicators/cursor_control.hpp>
 #include <dataset/dataset.hpp>
-#include <graph/generic_graph.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
-#include <util/validate_dtype.hpp>
 #include <util/progress.hpp>
 
 namespace py = pybind11; 

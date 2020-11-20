@@ -1,7 +1,6 @@
 #ifndef PYBNESIAN_DATASET_DATASET_HPP
 #define PYBNESIAN_DATASET_DATASET_HPP
 
-#include <tuple>
 #include <arrow/api.h>
 #include <arrow/python/pyarrow.h>
 #include <pybind11/pybind11.h>

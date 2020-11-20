@@ -1,6 +1,9 @@
 #ifndef PYBNESIAN_LEARNING_INDEPENDENCES_INDEPENDENCE_HPP
 #define PYBNESIAN_LEARNING_INDEPENDENCES_INDEPENDENCE_HPP
 
+#include <string>
+#include <vector>
+
 namespace learning::independences {
 
 

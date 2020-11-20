@@ -1,18 +1,16 @@
 #include <kdtree/kdtree.hpp>
 
-
-namespace learning::independences {
-
+namespace kdtree {
 
     std::unique_ptr<KDTreeNode> KDTree::build_kdtree(const DataFrame& df, int leafsize) {
         switch(df.same_type()) {
             case Type::DOUBLE: {
-                return learning::independences::build_kdtree<arrow::DoubleType>(df, leafsize, 
+                return kdtree::build_kdtree<arrow::DoubleType>(df, leafsize, 
                                                        m_indices.begin(), m_indices.end(), -1, true,
                                                        m_maxes, m_mines);
             }
             case Type::FLOAT: {
-                return learning::independences::build_kdtree<arrow::FloatType>(df, leafsize, 
+                return kdtree::build_kdtree<arrow::FloatType>(df, leafsize, 
                                                       m_indices.begin(), m_indices.end(), -1, true,
                                                       m_maxes.template cast<float>(), 
                                                       m_mines.template cast<float>());

@@ -3,10 +3,8 @@
 
 #include <random>
 #include <dataset/dataset.hpp>
-#include <util/arrow_macros.hpp>
 
 using Array_ptr =  std::shared_ptr<arrow::Array>;
-using Array_vector =  std::vector<Array_ptr>;
 template<typename T>
 using const_vecit = typename std::vector<T>::const_iterator;
 

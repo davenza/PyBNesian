@@ -2,7 +2,6 @@
 #define PYBNESIAN_GRAPH_GENERIC_GRAPH_HPP
 
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 #include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
 

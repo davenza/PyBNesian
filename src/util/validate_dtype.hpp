@@ -1,15 +1,12 @@
 #ifndef PYBNESIAN_UTIL_VALIDATE_DTYPE_HPP
 #define PYBNESIAN_UTIL_VALIDATE_DTYPE_HPP
 
-#include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
-#include <factors/factors.hpp>
 #include <util/util_types.hpp>
 
 namespace py = pybind11;
 
 using namespace dataset;
-using factors::FactorType;
 using util::ArcStringVector, util::FactorStringTypeVector;
 
 namespace util {

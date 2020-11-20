@@ -1,8 +1,8 @@
 #ifndef PYBNESIAN_UTIL_VALIDATE_WHITELISTS_HPP
 #define PYBNESIAN_UTIL_VALIDATE_WHITELISTS_HPP
 
-#include <util/util_types.hpp>
 #include <graph/generic_graph.hpp>
+#include <util/util_types.hpp>
 
 using util::ArcSet, util::EdgeSet;
 using graph::PartiallyDirectedGraph;

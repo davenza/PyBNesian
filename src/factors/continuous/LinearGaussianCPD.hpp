@@ -2,14 +2,9 @@
 #define PYBNESIAN_FACTORS_CONTINUOUS_LINEARGAUSSIANCPD_HPP
 
 #include <random>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/eigen.h>
-#include <Eigen/Dense>
 #include <dataset/dataset.hpp>
 
-using Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
-
+using Eigen::VectorXd;
 using dataset::DataFrame;
 
 namespace py = pybind11;

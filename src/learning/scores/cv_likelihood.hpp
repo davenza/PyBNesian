@@ -1,11 +1,10 @@
 #ifndef PYBNESIAN_LEARNING_SCORES_CV_LIKELIHOOD_HPP
 #define PYBNESIAN_LEARNING_SCORES_CV_LIKELIHOOD_HPP
 
-#include <dataset/dataset.hpp>
 #include <dataset/crossvalidation_adaptator.hpp>
-#include <factors/factors.hpp>
 #include <learning/scores/scores.hpp>
 
+using dataset::CrossValidation;
 using learning::scores::Score, learning::scores::ScoreImpl;
 using factors::FactorType;
 using models::GaussianNetwork, models::SemiparametricBN;

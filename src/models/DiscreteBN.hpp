@@ -5,7 +5,6 @@
 #include <factors/discrete/DiscreteFactor.hpp>
 
 using factors::discrete::DiscreteFactor;
-// using models::BayesianNetworkType, models::BayesianNetwork;
 
 namespace models {
 

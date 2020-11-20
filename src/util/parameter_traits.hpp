@@ -1,6 +1,8 @@
 #ifndef PYBNESIAN_UTIL_PARAMETER_TRAITS_HPP
 #define PYBNESIAN_UTIL_PARAMETER_TRAITS_HPP
 
+#include <string>
+
 namespace util {
 
 //    Check that type is iterable container: https://stackoverflow.com/questions/12042824/how-to-write-a-type-trait-is-container-or-is-vector

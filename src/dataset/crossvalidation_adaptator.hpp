@@ -1,18 +1,10 @@
 #ifndef PYBNESIAN_DATASET_CROSSVALIDATION_ADAPTATOR_HPP
 #define PYBNESIAN_DATASET_CROSSVALIDATION_ADAPTATOR_HPP
 
-#include <dataset/dataset.hpp>
 #include <random>
-#include <arrow/api.h>
-#include <util/bit_util.hpp>
-#include <util/arrow_macros.hpp>
-
-using Eigen::MatrixXd;
+#include <dataset/dataset.hpp>
 
 using Array_ptr = std::shared_ptr<arrow::Array>;
-using Array_vector =  std::vector<Array_ptr>;
-using Buffer_ptr = std::shared_ptr<arrow::Buffer>;
-
 using arrow::NumericBuilder;
 
 template<typename T>

@@ -1,21 +1,13 @@
 #ifndef PYBNESIAN_MODELS_BAYESIANNETWORK_HPP
 #define PYBNESIAN_MODELS_BAYESIANNETWORK_HPP
 
-#include <iterator>
-#include <pybind11/stl.h>
+#include <random>
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
-#include <factors/continuous/LinearGaussianCPD.hpp>
-#include <factors/continuous/SemiparametricCPD.hpp>
-#include <util/util_types.hpp>
 
 using dataset::DataFrame;
 using graph::Dag;
-
-using factors::continuous::LinearGaussianCPD;
-using factors::continuous::SemiparametricCPD;
-
-using util::ArcStringVector, util::FactorStringTypeVector;
+using util::ArcStringVector;
 
 using Field_ptr = std::shared_ptr<arrow::Field>;
 using Array_ptr = std::shared_ptr<arrow::Array>;

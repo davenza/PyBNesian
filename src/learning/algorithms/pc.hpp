@@ -1,14 +1,11 @@
 #ifndef PYBNESIAN_LEARNING_ALGORITHMS_PC_HPP
 #define PYBNESIAN_LEARNING_ALGORITHMS_PC_HPP
 
-#include <util/util_types.hpp>
 #include <graph/generic_graph.hpp>
-#include <models/GaussianNetwork.hpp>
 #include <learning/independences/independence.hpp>
 
 using util::ArcStringVector;
 using graph::PartiallyDirectedGraph;
-using models::GaussianNetwork;
 using learning::independences::IndependenceTest;
 
 namespace learning::algorithms {

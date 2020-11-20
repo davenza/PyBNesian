@@ -1,17 +1,14 @@
 #ifndef PYBNESIAN_LEARNING_SCORES_HOLDOUT_LIKELIHOOD_HPP
 #define PYBNESIAN_LEARNING_SCORES_HOLDOUT_LIKELIHOOD_HPP
 
-#include <dataset/dataset.hpp>
 #include <dataset/holdout_adaptator.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
 #include <learning/scores/scores.hpp>
-#include <learning/operators/operators.hpp>
 
 using dataset::HoldOut;
 using models::GaussianNetwork, models::SemiparametricBN;
 using learning::scores::ScoreImpl;
-using learning::operators::Operator, learning::operators::ArcOperator, learning::operators::ChangeNodeType, learning::operators::OperatorType;
 
 namespace learning::scores {
 

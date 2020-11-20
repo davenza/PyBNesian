@@ -2,9 +2,7 @@
 #define PYBNESIAN_KDTREE_KDTREE_HPP
 
 #include <dataset/dataset.hpp>
-#include <Eigen/Dense>
 #include <queue>
-#include <algorithm>
 
 using dataset::DataFrame;
 using Eigen::Matrix, Eigen::Dynamic, Eigen::VectorXd, Eigen::VectorXi;
@@ -18,7 +16,7 @@ using DowncastArray_ptr = std::shared_ptr<typename arrow::TypeTraits<ArrowType>:
 template<typename ArrowType>
 using DowncastArray_vector = std::vector<DowncastArray_ptr<ArrowType>>;
 
-namespace learning::independences {
+namespace kdtree {
 
     template<typename ArrowType>
     class EuclideanDistance {

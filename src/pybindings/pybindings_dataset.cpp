@@ -1,11 +1,8 @@
-
-#include <pybind11/stl.h>
 #include <dataset/crossvalidation_adaptator.hpp>
 #include <dataset/holdout_adaptator.hpp>
-
+#include <pybind11/stl.h>
 
 using dataset::DataFrame, dataset::CrossValidation, dataset::HoldOut;
-
 
 void pybindings_dataset(py::module& root) {
     auto dataset = root.def_submodule("dataset", "Dataset functionality.");

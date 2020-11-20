@@ -1,12 +1,10 @@
 #ifndef PYBNESIAN_OPENCL_OPENCL_CONFIG_HPP
 #define PYBNESIAN_OPENCL_OPENCL_CONFIG_HPP
 
-#include <fstream>
 #include <cmath>
 #include <arrow/api.h>
 #include <CL/cl2.hpp>
 #include <util/bit_util.hpp>
-
 
 #define CL_HPP_ENABLE_EXCEPTIONS
 #ifdef CL_HPP_MINIMUM_OPENCL_VERSION

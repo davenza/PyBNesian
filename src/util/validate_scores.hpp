@@ -1,7 +1,6 @@
 #ifndef PYBNESIAN_UTIL_VALIDATE_SCORES_HPP
 #define PYBNESIAN_UTIL_VALIDATE_SCORES_HPP
 
-#include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>
 #include <util/bn_traits.hpp>

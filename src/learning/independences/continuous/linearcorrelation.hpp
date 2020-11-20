@@ -3,8 +3,6 @@
 
 #include <dataset/dataset.hpp>
 #include <learning/independences/independence.hpp>
-#include <arrow/api.h>
-#include <Eigen/Dense>
 
 using dataset::DataFrame;
 using learning::independences::IndependenceTest;

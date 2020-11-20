@@ -1,18 +1,11 @@
 #ifndef PYBNESIAN_LEARNING_PARAMETERS_MLE_DISCRETEFACTOR_HPP
 #define PYBNESIAN_LEARNING_PARAMETERS_MLE_DISCRETEFACTOR_HPP
 
-#include <factors/discrete/DiscreteFactor.hpp>
 #include <learning/parameters/mle_base.hpp>
-#include <util/bit_util.hpp>
+#include <factors/discrete/DiscreteFactor.hpp>
 
-using arrow::Array;
 using factors::discrete::DiscreteFactor;
-
-using Array_ptr = std::shared_ptr<arrow::Array>;
-using Buffer_ptr = std::shared_ptr<arrow::Buffer>;
-
 using factors::discrete::discrete_indices;
-
 
 namespace learning::parameters {
 

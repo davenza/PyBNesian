@@ -6,7 +6,6 @@
 
 using models::GaussianNetwork, models::SemiparametricBN;
 
-
 namespace util {
 
     template<typename Model>

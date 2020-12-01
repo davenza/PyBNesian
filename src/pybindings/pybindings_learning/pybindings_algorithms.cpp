@@ -2,12 +2,15 @@
 #include <pybind11/stl.h>
 #include <learning/operators/operators.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
+#include <learning/algorithms/constraint.hpp>
 #include <learning/algorithms/pc.hpp>
+#include <learning/algorithms/mmpc.hpp>
 
 namespace py = pybind11;
 
 using learning::operators::OperatorPool;
-using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC, learning::algorithms::MeekRules;
+using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC, learning::algorithms::MeekRules,
+      learning::algorithms::MMPC;
 
 template<typename Model, typename... Models>
 py::class_<GreedyHillClimbing> register_GreedyHillClimbing(py::module& m) {
@@ -114,6 +117,19 @@ void pybindings_algorithms(py::module& root) {
         .def_static("rule1", &MeekRules::rule1)
         .def_static("rule2", &MeekRules::rule2)
         .def_static("rule3", &MeekRules::rule3);
+    
+    py::class_<MMPC>(algorithms, "MMPC")
+        .def(py::init<>())
+        .def("estimate", &MMPC::estimate, 
+            py::arg("hypot_test"),
+            py::arg("arc_blacklist") = ArcStringVector(),
+            py::arg("arc_whitelist") = ArcStringVector(),
+            py::arg("edge_blacklist") = EdgeStringVector(),
+            py::arg("edge_whitelist") = EdgeStringVector(),
+            py::arg("alpha") = 0.05,
+            py::arg("ambiguous_threshold") = 0.5,
+            py::arg("allow_bidirected") = true,
+            py::arg("verbose") = 0);
 
 
 }

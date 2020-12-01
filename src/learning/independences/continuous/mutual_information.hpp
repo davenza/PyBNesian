@@ -140,6 +140,12 @@ namespace learning::independences {
         std::vector<std::string> column_names() const override {
             return m_df.column_names();
         }
+        
+        const std::string& name(int i) const override {
+            return m_df.name(i);
+        }
+
+        int num_columns() const override { return m_df->num_columns(); }
     private:
         DataFrame m_df;
         DataFrame m_ranked_df;

@@ -21,6 +21,7 @@ namespace util {
             auto e1 = g.index(edge.first);
             auto e2 = g.index(edge.second);
             
+            // Edge blacklist + Edge whitelist = Not possible
             if (r.edge_blacklist.count({e1, e2}) > 0) {
                 throw std::invalid_argument("Edge " + edge.first + " -- " + edge.second 
                                             + " in blacklist and whitelist");
@@ -69,7 +70,19 @@ namespace util {
                 r.arc_blacklist.insert({g.index(arc.first), g.index(arc.second)});
         }
 
-        // PartiallyDirectedGraph acyclic()
+        for (auto it = r.arc_blacklist.begin(), end = r.arc_blacklist.end(); it != end;) {
+            auto arc = *it;
+
+            // Arc blacklist + Arc blacklist in opposite direction = Edge blacklist
+            if (r.arc_blacklist.count({arc.second, arc.first}) > 0) {
+                r.edge_blacklist.insert(arc);
+                r.arc_blacklist.erase({arc.second, arc.first});
+                it = r.arc_blacklist.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
         return r;
     }
 }

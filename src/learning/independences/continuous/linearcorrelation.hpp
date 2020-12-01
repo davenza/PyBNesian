@@ -130,6 +130,12 @@ namespace learning::independences::continuous {
         std::vector<std::string> column_names() const override {
             return m_df.column_names();
         }
+
+        const std::string& name(int i) const override {
+            return m_df.name(i);
+        }
+
+        int num_columns() const override { return m_df->num_columns(); }
     private:
         int cached_index(int v) const {
             return m_indices.at(m_df->column_name(v)); 

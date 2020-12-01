@@ -25,6 +25,8 @@ namespace learning::independences {
                         const typename std::vector<std::string>::const_iterator evidence_end) const = 0;
         
         virtual std::vector<std::string> column_names() const = 0;
+        virtual const std::string& name(int i) const = 0;
+        virtual int num_columns() const = 0;
     };
 }
 

@@ -1,16 +1,16 @@
-#ifndef PYBNESIAN_LEARNING_ALGORITHMS_PC_HPP
-#define PYBNESIAN_LEARNING_ALGORITHMS_PC_HPP
+#ifndef PYBNESIAN_LEARNING_ALGORITHMS_MMPC_HPP
+#define PYBNESIAN_LEARNING_ALGORITHMS_MMPC_HPP
 
 #include <graph/generic_graph.hpp>
 #include <learning/independences/independence.hpp>
 
-using util::ArcStringVector;
 using graph::PartiallyDirectedGraph;
 using learning::independences::IndependenceTest;
+using util::ArcStringVector, util::EdgeStringVector;
 
 namespace learning::algorithms {
-    
-    class PC {
+
+    class MMPC {
     public:
         PartiallyDirectedGraph estimate(const IndependenceTest& test,
                         const ArcStringVector& arc_blacklist, 
@@ -18,13 +18,10 @@ namespace learning::algorithms {
                         const EdgeStringVector& edge_blacklist,
                         const EdgeStringVector& edge_whitelist,
                         double alpha,
-                        bool use_sepsets,
                         double ambiguous_threshold,
                         bool allow_bidirected,
                         int verbose) const;
-
     };
-
 
 }
 

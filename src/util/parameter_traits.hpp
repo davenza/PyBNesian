@@ -87,6 +87,9 @@ namespace util {
     template<typename T>
     inline constexpr auto is_iterator_v = is_iterator<T>::value;
 
+    template<typename T, typename R = void>
+    using enable_if_iterator_t = std::enable_if_t<is_iterator_v<T>, R>;
+
     template<typename T>
     using is_integral_iterator = std::integral_constant<bool, is_iterator_v<T> && std::is_integral_v<typename std::iterator_traits<T>::value_type>>;
 
@@ -110,6 +113,15 @@ namespace util {
                                                 >
                                             >, R
                                         >;
+
+    template<typename V, typename T>
+    using is_vector_of_type = std::is_same<std::vector<T>, std::remove_reference_t<V>>;
+
+    template<typename V, typename T>
+    inline constexpr auto is_vector_of_type_v = is_vector_of_type<V,T>::value;
+
+    template<typename V, typename T, typename R = void>
+    using enable_if_vector_of_type_t = std::enable_if_t<is_vector_of_type_v<V, T>, R>;
 
 
 }

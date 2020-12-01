@@ -22,7 +22,7 @@ namespace learning::algorithms {
                         bool use_sepsets,
                         double ambiguous_threshold,
                         bool allow_bidirected,
-                        int verbose);
+                        int verbose) const;
 
     };
 

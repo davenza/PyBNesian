@@ -68,10 +68,12 @@ def test_ckde_fit():
         assert cpd.fitted
 
         kde_joint = cpd.kde_joint
-        kde_marg = cpd.kde_marg
-
         assert np.all(np.isclose(kde_joint.bandwidth, scipy_kde.covariance))
-        assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
+        
+        if evidence:
+            kde_marg = cpd.kde_marg
+            assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
+        
         assert cpd.N == instances
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
@@ -94,10 +96,12 @@ def test_ckde_fit_null():
         scipy_kde = gaussian_kde(npdata_no_null.T)
 
         kde_joint = cpd.kde_joint
-        kde_marg = cpd.kde_marg
-
         assert np.all(np.isclose(kde_joint.bandwidth, scipy_kde.covariance))
-        assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
+        
+        if evidence:
+            kde_marg = cpd.kde_marg
+            assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
+
         assert cpd.N == scipy_kde.n
 
     np.random.seed(0)

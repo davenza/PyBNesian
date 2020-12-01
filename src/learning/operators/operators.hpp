@@ -429,17 +429,17 @@ namespace learning::operators {
         using Base::cache_scores;
         using Base::find_max;
         using Base::update_scores;
-        virtual void cache_scores(Model&) {
-            throw std::invalid_argument("OperatorSet::cache_scores() not implemented.");
+        virtual void cache_scores(Model& m) {
+            throw std::invalid_argument("OperatorSet::cache_scores() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual std::shared_ptr<Operator> find_max(Model&) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        virtual std::shared_ptr<Operator> find_max(Model& m) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual std::shared_ptr<Operator> find_max(Model&, OperatorTabuSet&) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented.");
+        virtual std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet&) {
+            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
         }
-        virtual void update_scores(Model&, Operator&) {
-            throw std::invalid_argument("OperatorSet::update_scores() not implemented.");
+        virtual void update_scores(Model& m, Operator&) {
+            throw std::invalid_argument("OperatorSet::update_scores() not implemented for model " + m.type().ToString() + ".");
         }
     };
 
@@ -681,7 +681,7 @@ namespace learning::operators {
     }
 
     template<typename Model, bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(Model& model,  OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(Model& model, OperatorTabuSet& tabu_set) {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty

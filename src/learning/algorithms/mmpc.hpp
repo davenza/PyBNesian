@@ -25,4 +25,4 @@ namespace learning::algorithms {
 
 }
 
-#endif //PYBNESIAN_LEARNING_ALGORITHMS_PC_HPP
+#endif //PYBNESIAN_LEARNING_ALGORITHMS_MMPC_HPP

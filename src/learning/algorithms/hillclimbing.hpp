@@ -25,7 +25,6 @@ namespace learning::algorithms {
                   int max_indegree, int max_iters, double epsilon, int patience, int verbose = 0);
 
     class GreedyHillClimbing {
-
     public:
         template<typename Model>
         Model estimate(const DataFrame& df, 

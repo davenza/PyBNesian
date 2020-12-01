@@ -131,5 +131,4 @@ void pybindings_algorithms(py::module& root) {
             py::arg("allow_bidirected") = true,
             py::arg("verbose") = 0);
 
-
 }

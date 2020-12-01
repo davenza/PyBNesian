@@ -6,6 +6,7 @@
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <util/progress.hpp>
+#include <util/vector.hpp>
 
 namespace py = pybind11; 
 
@@ -123,7 +124,7 @@ namespace learning::algorithms {
                 auto parents = model.parent_indices(target_index);
                 auto source_index = model.index(dwn_op->source());
 
-                std::iter_swap(std::find(parents.begin(), parents.end(), source_index), parents.end() - 1);
+                util::swap_remove_v(parents, source_index);
 
                 double prev = current_local_scores(target_index);
                 current_local_scores(target_index) = val_score.local_score(model, target_index, parents.begin(), parents.end() - 1);
@@ -137,7 +138,7 @@ namespace learning::algorithms {
                 auto source_index = model.index(dwn_op->source());
                 auto source_parents = model.parent_indices(source_index);
 
-                std::iter_swap(std::find(target_parents.begin(), target_parents.end(), source_index), target_parents.end() - 1);
+                util::swap_remove_v(target_parents, source_index);
                 source_parents.push_back(target_index);
 
                 double prev_source = current_local_scores(source_index);

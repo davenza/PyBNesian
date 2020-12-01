@@ -5,6 +5,7 @@
 #include <util/combinations.hpp>
 #include <util/validate_whitelists.hpp>
 #include <util/progress.hpp>
+#include <util/vector.hpp>
 
 using graph::PartiallyDirectedGraph, graph::UndirectedGraph, 
       graph::Arc, graph::ArcHash, graph::Edge, graph::EdgeHash, graph::EdgeEqualTo;
@@ -94,8 +95,7 @@ namespace learning::algorithms {
             u1.reserve(nbr1.size() + pa1.size());
             u1.insert(u1.end(), nbr1.begin(), nbr1.end());
             u1.insert(u1.end(), pa1.begin(), pa1.end());
-            std::iter_swap(std::find(u1.begin(), u1.end(), edge.second), u1.end() - 1); 
-            u1.pop_back();
+            util::swap_remove_v(u1, edge.second);
         }
 
         std::vector<int> u2;
@@ -103,8 +103,7 @@ namespace learning::algorithms {
             u2.reserve(nbr2.size() + pa2.size());
             u2.insert(u2.end(), nbr2.begin(), nbr2.end());
             u2.insert(u2.end(), pa2.begin(), pa2.end());
-            std::iter_swap(std::find(u2.begin(), u2.end(), edge.first), u2.end() - 1); 
-            u2.pop_back();
+            util::swap_remove_v(u2, edge.first);
         }
 
         if (set1_valid) {

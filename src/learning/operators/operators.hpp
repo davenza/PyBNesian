@@ -5,6 +5,7 @@
 #include <models/BayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
 #include <util/validate_scores.hpp>
+#include <util/vector.hpp>
 
 using Eigen::MatrixXd, Eigen::VectorXd, Eigen::Matrix, Eigen::Dynamic;
 using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
@@ -598,10 +599,10 @@ namespace learning::operators {
                         delta(source, dest) = d;
                     } else if (model.has_arc(dest, source)) {
                         auto new_parents_source = model.parent_indices(source);
-                        std::iter_swap(std::find(new_parents_source.begin(), new_parents_source.end(), dest), new_parents_source.end() - 1);
+                        util::swap_remove_v(new_parents_source, dest);
                         
                         new_parents_dest.push_back(source);
-                        double d = m_score->local_score(model, source, new_parents_source.begin(), new_parents_source.end() - 1) + 
+                        double d = m_score->local_score(model, source, new_parents_source.begin(), new_parents_source.end()) + 
                                    m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
                                    - this->m_local_cache->local_score(source) - this->m_local_cache->local_score(dest);
                         new_parents_dest.pop_back();
@@ -774,10 +775,10 @@ namespace learning::operators {
                                             - this->m_local_cache->local_score(i);
                 } else if (model.has_arc(dest_idx, i)) {
                     auto new_parents_i = model.parent_indices(i);
-                    std::iter_swap(std::find(new_parents_i.begin(), new_parents_i.end(), dest_idx), new_parents_i.end() - 1);
-                        
+                    util::swap_remove_v(new_parents_i, dest_idx);
+
                     parents.push_back(i);
-                    double d = m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end() - 1) + 
+                    double d = m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end()) + 
                                 m_score->local_score(model, dest_idx, parents.begin(), parents.end()) 
                                 - this->m_local_cache->local_score(i) - this->m_local_cache->local_score(dest_idx);
                     parents.pop_back();

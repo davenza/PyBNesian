@@ -60,7 +60,7 @@ namespace learning::operators {
                 case Value::CHANGE_NODE_TYPE:
                     return "ChangeNodeType";
                 default:
-                    throw std::invalid_argument("Unreachable code in OperatorSetType.");
+                    throw std::invalid_argument("Unreachable code in OperatorType.");
             }
         }
 

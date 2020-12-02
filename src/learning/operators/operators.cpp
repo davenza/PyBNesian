@@ -186,7 +186,7 @@ namespace learning::operators {
                                    score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
                                    - this->m_local_cache->local_score(source) - this->m_local_cache->local_score(dest);
                         new_parents_dest.pop_back();
-                        delta(dest, source) = d;
+                        delta(source, dest) = d;
                     } else {
                         new_parents_dest.push_back(source);
                         double d = score.local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 

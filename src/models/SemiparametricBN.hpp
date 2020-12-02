@@ -150,6 +150,10 @@ namespace models {
             return BayesianNetworkType::SPBN;
         }
 
+        std::unique_ptr<BayesianNetworkBase> clone() const override {
+            return std::make_unique<SemiparametricBN>(*this);
+        }
+
         py::tuple __getstate__() const {
             return BayesianNetwork<SemiparametricBN>::__getstate__();
         }

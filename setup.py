@@ -70,6 +70,8 @@ ext_modules = [
          'src/dataset/holdout_adaptator.cpp',
          'src/util/bit_util.cpp',
          'src/util/validate_dtype.cpp',
+         'src/util/validate_scores.cpp',
+         'src/util/validate_options.cpp',
          'src/util/validate_whitelists.cpp',
          'src/kdtree/kdtree.cpp',
          'src/learning/operators/operators.cpp',

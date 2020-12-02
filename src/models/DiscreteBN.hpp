@@ -40,6 +40,10 @@ namespace models {
             return BayesianNetworkType::DISCRETEBN;
         }
 
+        std::unique_ptr<BayesianNetworkBase> clone() const override {
+            return std::make_unique<DiscreteBN>(*this);
+        }
+
         py::tuple __getstate__() const {
             return BayesianNetwork<DiscreteBN>::__getstate__();
         }

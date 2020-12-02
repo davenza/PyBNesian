@@ -1,5 +1,6 @@
 #include <learning/algorithms/hillclimbing.hpp>
-#include <util/validate_dtype.hpp>
+#include <util/validate_whitelists.hpp>
+#include <util/validate_options.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
@@ -20,185 +21,278 @@ using util::ArcStringVector;
 
 
 namespace learning::algorithms {
-
-    using OperatorSetTypeS = std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>;
-
-    BayesianNetworkType check_valid_bn_string(std::string& bn_type) {
-        if (bn_type == "gbn") return BayesianNetworkType::GBN;
-        if (bn_type == "spbn") return BayesianNetworkType::SPBN;
-        else
-            throw std::invalid_argument("Wrong Bayesian Network type \"" + bn_type + "\" specified. The possible alternatives are " 
-                                        "\"gbn\" (Gaussian Bayesian networks) or \"spbn\" (Semiparametric Bayesian networks).");
-    }
-
-    ScoreType check_valid_score_string(std::string& score) {
-        if (score == "bic") return ScoreType::BIC;
-        if (score == "predic-l") return ScoreType::PREDICTIVE_LIKELIHOOD;
-        else
-            throw std::invalid_argument("Wrong Bayesian Network score \"" + score + "\" specified. The possible alternatives are " 
-                                    "\"bic\" (Bayesian Information Criterion) or \"predic-l\" (Predicitive Log-likelihood).");
+ 
+    std::unique_ptr<BayesianNetworkBase> hc(const DataFrame& df,
+                                            const BayesianNetworkBase* start,
+                                            std::string bn_str,
+                                            std::string score_str,
+                                            std::vector<std::string> operators_str,
+                                            ArcStringVector& arc_blacklist,
+                                            ArcStringVector& arc_whitelist,
+                                            FactorStringTypeVector& type_whitelist,
+                                            int max_indegree,
+                                            int max_iters,
+                                            double epsilon,
+                                            int patience,
+                                            std::optional<unsigned int> seed,
+                                            int num_folds,
+                                            double test_holdout_ratio,
+                                            int verbose) {
         
-    }
-
-    OperatorSetTypeS check_valid_operators_string(std::vector<std::string>& operators) {
-        std::unordered_set<OperatorSetType, typename OperatorSetType::HashType> ops(operators.size());
-        for (auto& op : operators) {
-            if (op == "arcs") ops.insert(OperatorSetType::ARCS);
-            else if (op == "node_type") ops.insert(OperatorSetType::NODE_TYPE);
-            else
-                throw std::invalid_argument("Wrong operator set \"" + op + "\". Valid choices are:"
-                                            "\"arcs\" (Changes in arcs; addition, removal and flip) or "
-                                            "\"node_type\" (Change of node type)");
-        }
-        return ops;
-    }
-
-    void check_valid_score(BayesianNetworkType bn_type, ScoreType score) {
-        static std::unordered_map<BayesianNetworkType, 
-                                  std::unordered_set<ScoreType, typename ScoreType::HashType>, 
-                                  typename BayesianNetworkType::HashType>
-        map_bn_score {
-            { BayesianNetworkType::GBN, { ScoreType::BIC, ScoreType::PREDICTIVE_LIKELIHOOD } },
-            { BayesianNetworkType::SPBN, { ScoreType::PREDICTIVE_LIKELIHOOD } }
-        };
-        
-        if (map_bn_score[bn_type].count(score) == 0) {
-            throw std::invalid_argument("Score \"" + score.ToString() + "\" is not compabible with "
-                                        "Bayesian network type \"" + bn_type.ToString() + "\"");
-        }
-    }
-
-    void check_valid_operators(BayesianNetworkType bn_type, OperatorSetTypeS& operators) 
-    {
-        static std::unordered_map<BayesianNetworkType,
-                                  std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>,
-                                  typename BayesianNetworkType::HashType>
-        map_bn_operators {
-            { BayesianNetworkType::GBN, { OperatorSetType::ARCS }},
-            { BayesianNetworkType::SPBN, { OperatorSetType::ARCS, OperatorSetType::NODE_TYPE }}
-        };
-
-        auto bn_set = map_bn_operators[bn_type];
-        for (auto& op : operators) {
-            if (bn_set.count(op) == 0) {
-                throw std::invalid_argument("Operator \"" + op.ToString() + "\" is not compabible with " 
-                                            "Bayesian network type \"" + bn_type.ToString() + "\"");
-            }
-        }
-    }
-
-    py::object call_hc_validated_spbn(const DataFrame& df, 
-                               ArcStringVector arc_blacklist, 
-                               ArcStringVector arc_whitelist, 
-                               FactorStringTypeVector type_whitelist, 
-                               int max_indegree,
-                               int max_iters,
-                               double epsilon,
-                               int patience,
-                               int verbose) 
-    {
-        using Model = SemiparametricBN;
-        auto nodes = df.column_names();
-
-        Model m(nodes, arc_whitelist, type_whitelist);
-
-        HoldoutLikelihood validation_score(df, 0.2, 0);
-        std::shared_ptr<Score> training_score = std::make_shared<CVLikelihood>(validation_score.training_data(), 10, 0);
-        
-        auto arc_set = std::make_shared<ArcOperatorSet>(training_score);
-        auto nodetype_set = std::make_shared<ChangeNodeTypeSet>(training_score);
-        std::vector<std::shared_ptr<OperatorSet>> v{std::move(arc_set), std::move(nodetype_set)};
-
-        OperatorPool pool(m, training_score, std::move(v));        
-        GreedyHillClimbing hc;
-        return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist,
-                                                type_whitelist, max_indegree, max_iters, epsilon, patience, verbose));
-    }
-
-    py::object call_hc_validated_gbn(const DataFrame& df, ArcStringVector arc_blacklist, ArcStringVector arc_whitelist, int max_indegree, int max_iters,
-                               double epsilon, int patience, int verbose) 
-    {
-        using Model = GaussianNetwork;
-        auto nodes = df.column_names();
-
-        Model m(nodes, arc_whitelist);
-
-        HoldoutLikelihood validation_score(df, 0.2);
-        std::shared_ptr<Score> training_score = std::make_shared<CVLikelihood>(validation_score.training_data(), 10);
-
-        auto arc_set = std::make_shared<ArcOperatorSet>(training_score);
-
-        std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
-        OperatorPool pool(m, training_score, std::move(v));
-        
-        GreedyHillClimbing hc;
-        FactorStringTypeVector type_whitelist;
-        return py::cast(hc.estimate_validation(df, pool, validation_score, m, arc_blacklist, arc_whitelist, 
-                                                type_whitelist, max_indegree, max_iters, epsilon, patience, verbose));
-    }
-
-    py::object call_hc(const DataFrame& df, ArcStringVector arc_blacklist, ArcStringVector arc_whitelist, int max_indegree, int max_iters,
-                 double epsilon, ScoreType score_type, int verbose) 
-    {
-        using Model = GaussianNetwork;
-        auto nodes = df.column_names();
-
-        Model m(nodes, arc_whitelist);
-
-        GreedyHillClimbing hc;
-
-        switch(score_type) {
-            case ScoreType::BIC: {
-                std::shared_ptr<Score> score = std::make_shared<BIC>(df);
-                auto arc_set = std::make_shared<ArcOperatorSet>(score);
-                std::vector<std::shared_ptr<OperatorSet>> v {std::move(arc_set)};
-                OperatorPool pool(m, score, std::move(v));
-                return py::cast(hc.estimate(df, pool, m, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, verbose));
-            }
-                break;
-            case ScoreType::PREDICTIVE_LIKELIHOOD:
-                throw std::invalid_argument("call_hc() cannot be called with a cross-validated score.");
-            default:
-                throw std::invalid_argument("Wrong Score type!");
-        }   
-    }
-    
-    // TODO: Include start model.
-    // TODO: Include test ratio of holdout / number k-folds.
-    py::object hc(const DataFrame& df, std::string bn_str, std::string score_str, std::vector<std::string> operators_str,
-            ArcStringVector& arc_blacklist, ArcStringVector& arc_whitelist, FactorStringTypeVector& type_whitelist,
-                  int max_indegree, int max_iters, double epsilon, int patience, int verbose) {
-        
-        auto bn_type = learning::algorithms::check_valid_bn_string(bn_str);
-        auto score_type = learning::algorithms::check_valid_score_string(score_str);
-        auto operators_type = learning::algorithms::check_valid_operators_string(operators_str);
-
-        learning::algorithms::check_valid_score(bn_type, score_type);
-        learning::algorithms::check_valid_operators(bn_type, operators_type);
-        
-        util::check_edge_list(df, arc_blacklist);
-        util::check_edge_list(df, arc_whitelist);
-
+        util::check_arc_list(df, arc_blacklist);
+        util::check_arc_list(df, arc_whitelist);
         util::check_node_type_list(df, type_whitelist);
 
+        auto iseed = [seed]() {
+            if (seed) return *seed;
+            else return std::random_device{}();
+        }();
+
+        auto bn_type = [start, &bn_str]() {
+            if (start) return start->type();
+            else return util::check_valid_bn_string(bn_str);
+        }();
+
+        auto score_type = util::check_valid_score_string(score_str);
+        auto operators_type = util::check_valid_operators_string(operators_str);
+
+        auto operators = util::check_valid_operators(bn_type, operators_type, 
+                                arc_blacklist, arc_whitelist, max_indegree, type_whitelist);
+        
         if (max_iters == 0) max_iters = std::numeric_limits<int>::max();
 
-        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
-            switch(bn_type) {
-                case BayesianNetworkType::GBN: {
-                    return call_hc_validated_gbn(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
-                                            epsilon, patience, verbose);
+        std::unique_ptr<BayesianNetworkBase> created_start_model = [start, bn_type, &df]() -> std::unique_ptr<BayesianNetworkBase> {
+            if (!start) {
+                switch (bn_type) {
+                    case BayesianNetworkType::GBN:
+                        return std::make_unique<GaussianNetwork>(df.column_names());
+                    case BayesianNetworkType::SPBN:
+                        return std::make_unique<SemiparametricBN>(df.column_names());
+                    default:
+                        throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
                 }
-                case BayesianNetworkType::SPBN: {
-                    return call_hc_validated_spbn(df, arc_blacklist, arc_whitelist, type_whitelist, 
-                                            max_indegree, max_iters, epsilon, patience, verbose);
-                }
-                default:
-                    throw std::invalid_argument("Wrong BayesianNetwork type!");
+            } else {
+                return nullptr;
             }
+        }();
+
+        const auto start_model = [start, &created_start_model]() -> const BayesianNetworkBase* {
+            if (start) return start;
+            else return created_start_model.get();
+        }();
+
+        GreedyHillClimbing hc;
+
+        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
+            HoldoutLikelihood validation_score(df, test_holdout_ratio);
+            auto score = util::check_valid_score(validation_score.training_data(), 
+                            bn_type, score_type, iseed, num_folds, test_holdout_ratio);
+    
+            OperatorPool pool(score, std::move(operators));
+
+
+            return hc.estimate_validation(pool, validation_score, *start_model, arc_blacklist, arc_whitelist, 
+                                        type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
+
         } else {
-            return call_hc(df, arc_blacklist, arc_whitelist, max_indegree, max_iters,
-                        epsilon, score_type, verbose);
+            auto score = util::check_valid_score(df, bn_type, score_type, iseed, num_folds, test_holdout_ratio);
+
+            OperatorPool pool(score, std::move(operators));
+
+            return hc.estimate(pool, *start_model, arc_blacklist, arc_whitelist,
+                                max_indegree, max_iters, epsilon, verbose);
         }
+    }
+
+    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorPool& op,
+                                                                      const BayesianNetworkBase& start,
+                                                                      ArcStringVector& arc_blacklist,
+                                                                      ArcStringVector& arc_whitelist,
+                                                                      int max_indegree,
+                                                                      int max_iters,
+                                                                      double epsilon,
+                                                                      int verbose) {
+        indicators::show_console_cursor(false);
+        auto spinner = util::indeterminate_spinner(verbose);
+        spinner->update_status("Checking dataset...");
+
+        auto current_model = start.clone();
+        current_model->check_blacklist(arc_blacklist);
+        current_model->force_whitelist(arc_whitelist);
+
+        op.set_arc_blacklist(arc_blacklist);
+        op.set_arc_whitelist(arc_whitelist);
+        op.set_max_indegree(max_indegree);
+
+        spinner->update_status("Caching scores...");
+
+        op.cache_scores(*current_model);
+
+        auto iter = 0;
+        while(iter < max_iters) {
+            auto best_op = op.find_max(*current_model);
+
+            if (!best_op || best_op->delta() <= epsilon) {
+                break;
+            }
+
+            best_op->apply(*current_model);
+
+            op.update_scores(*current_model, *best_op);
+            ++iter;
+            
+            spinner->update_status(best_op->ToString());
+        }
+
+        spinner->mark_as_completed("Finished Hill-climbing!");
+        indicators::show_console_cursor(true);
+        return current_model;
+    }
+
+    double validation_delta_score(const BayesianNetworkBase& model, const Score& val_score, 
+                                  const Operator* op, VectorXd& current_local_scores) {
+        switch(op->type()) {
+            case OperatorType::ADD_ARC: {
+                auto dwn_op = dynamic_cast<const ArcOperator*>(op);
+                auto target_index = model.index(dwn_op->target());
+                auto parents = model.parent_indices(target_index);
+                auto source_index = model.index(dwn_op->source());
+                parents.push_back(source_index);
+
+                double prev = current_local_scores(target_index);
+                current_local_scores(target_index) = val_score.local_score(model, target_index, parents.begin(), parents.end());
+
+                return current_local_scores(target_index) - prev;
+            }
+            case OperatorType::REMOVE_ARC: {
+                auto dwn_op = dynamic_cast<const ArcOperator*>(op);
+                auto target_index = model.index(dwn_op->target());
+                auto parents = model.parent_indices(target_index);
+                auto source_index = model.index(dwn_op->source());
+
+                util::swap_remove_v(parents, source_index);
+
+                double prev = current_local_scores(target_index);
+                current_local_scores(target_index) = val_score.local_score(model, target_index, parents.begin(), parents.end() - 1);
+
+                return current_local_scores(target_index) - prev;
+            }
+            case OperatorType::FLIP_ARC: {
+                auto dwn_op = dynamic_cast<const ArcOperator*>(op);
+                auto target_index = model.index(dwn_op->target());
+                auto target_parents = model.parent_indices(target_index);
+                auto source_index = model.index(dwn_op->source());
+                auto source_parents = model.parent_indices(source_index);
+
+                util::swap_remove_v(target_parents, source_index);
+                source_parents.push_back(target_index);
+
+                double prev_source = current_local_scores(source_index);
+                double prev_target = current_local_scores(target_index);
+                current_local_scores(source_index) = val_score.local_score(model, source_index, source_parents.begin(), source_parents.end());
+                current_local_scores(target_index) = val_score.local_score(model, target_index, target_parents.begin(), target_parents.end() - 1);
+
+                return current_local_scores(source_index) +
+                        current_local_scores(target_index) -
+                        prev_source -
+                        prev_target;
+            }
+            case OperatorType::CHANGE_NODE_TYPE: {
+                auto dwn_op = dynamic_cast<const ChangeNodeType*>(op);
+                auto node_index = model.index(dwn_op->node());
+                auto new_node_type = dwn_op->node_type();
+                auto parents = model.parent_indices(node_index);
+                
+                double prev = current_local_scores(node_index);
+                const auto& score_spbn = dynamic_cast<const ScoreSPBN&>(val_score);
+                current_local_scores(node_index) = score_spbn.local_score(new_node_type, node_index, parents.begin(), parents.end());
+                return current_local_scores(node_index) - prev;
+            }
+            default:
+                throw std::invalid_argument("Unreachable code. Wrong operator in HoldoutLikelihood::delta_score().");
+        }
+    }
+    
+    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorPool& op_pool,
+                                                                                 Score& validation_score,
+                                                                                 const BayesianNetworkBase& start,
+                                                                                 ArcStringVector& arc_blacklist,
+                                                                                 ArcStringVector& arc_whitelist,
+                                                                                 FactorStringTypeVector& type_whitelist,
+                                                                                 int max_indegree,
+                                                                                 int max_iters,
+                                                                                 double epsilon, 
+                                                                                 int patience,
+                                                                                 int verbose) {
+
+        if (!util::compatible_score(start, validation_score.type())) {
+            throw std::invalid_argument("Invalid score " + validation_score.ToString() + 
+                                        " for model type " + start.type().ToString() + ".");
+        }
+
+        indicators::show_console_cursor(false);
+        auto spinner = util::indeterminate_spinner(verbose);
+        spinner->update_status("Checking dataset...");
+
+        auto current_model = start.clone();
+        current_model->check_blacklist(arc_blacklist);
+        current_model->force_whitelist(arc_whitelist);
+
+        if (current_model->type() == BayesianNetworkType::SPBN) {
+            auto current_spbn = dynamic_cast<SemiparametricBN&>(*current_model);
+            current_spbn.force_type_whitelist(type_whitelist);
+        }
+
+        op_pool.set_arc_blacklist(arc_blacklist);
+        op_pool.set_arc_whitelist(arc_whitelist);
+        op_pool.set_type_whitelist(type_whitelist);
+        op_pool.set_max_indegree(max_indegree);
+
+        auto best_model = start.clone();
+
+        spinner->update_status("Caching scores...");
+        VectorXd local_validation(current_model->num_nodes());
+        for (auto n = 0; n < current_model->num_nodes(); ++n) {
+            local_validation(n) = validation_score.local_score(*current_model, n);
+        }
+
+        op_pool.cache_scores(*current_model);
+        int p = 0;
+        double validation_offset = 0;
+
+        OperatorTabuSet tabu_set;
+        
+        auto iter = 0;
+        while(iter < max_iters) {
+            auto best_op = op_pool.find_max(*current_model, tabu_set);
+            if (!best_op || best_op->delta() <= epsilon) {
+                break;
+            }
+
+            double validation_delta = validation_delta_score(*current_model, validation_score, best_op.get(), local_validation);
+            
+            best_op->apply(*current_model);
+            if ((validation_delta + validation_offset) > 0) {
+                p = 0;
+                validation_offset = 0;
+                best_model = current_model->clone();
+                tabu_set.clear();
+            } else {
+                if (++p >= patience)
+                    break;
+                validation_offset += validation_delta;
+                tabu_set.insert(best_op->opposite());
+            }
+
+
+            op_pool.update_scores(*current_model, *best_op);
+
+            spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
+            ++iter;
+        }
+
+        spinner->mark_as_completed("Finished Hill-climbing!");
+        indicators::show_console_cursor(true);
+        return best_model;
     }
 }

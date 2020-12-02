@@ -217,12 +217,12 @@ namespace learning::algorithms {
                         int verbose) const {
         
         auto skeleton = PartiallyDirectedGraph::CompleteUndirected(test.column_names());
-
-        auto restrictions = util::check_whitelists(skeleton, 
-                                                   varc_blacklist,
-                                                   varc_whitelist,
-                                                   vedge_blacklist,
-                                                   vedge_whitelist);
+        
+        auto restrictions = util::validate_restrictions(skeleton, 
+                                                        varc_blacklist,
+                                                        varc_whitelist,
+                                                        vedge_blacklist,
+                                                        vedge_whitelist);
 
         for (const auto& e : restrictions.edge_blacklist) {
             skeleton.remove_edge(e.first, e.second);

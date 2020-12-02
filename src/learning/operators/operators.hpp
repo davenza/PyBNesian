@@ -68,7 +68,6 @@ namespace learning::operators {
         Value value;
     };
 
-
     class Operator {
     public:
         Operator(double delta, OperatorType type) : m_delta(delta), m_type(type) {}
@@ -193,8 +192,7 @@ namespace learning::operators {
         }
         std::string ToString() const override {
             return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + "; Delta: " + std::to_string(this->delta()) + ")";
-            // return "ChangeNodeType(" + node() + " -> " + m_new_node_type.ToString() + ")";
-        } 
+        }
     private:
         std::string m_node;
         FactorType m_new_node_type;
@@ -350,25 +348,24 @@ namespace learning::operators {
 
     class LocalScoreCache {
     public:
+        LocalScoreCache() : m_local_score() {}
+        LocalScoreCache(BayesianNetworkBase& m) : m_local_score(m.num_nodes()) {}
 
-        template<typename Model>
-        LocalScoreCache(Model& m) : m_local_score(m.num_nodes()) {}
+        void cache_local_scores(BayesianNetworkBase& model, Score& score) {
+            if (m_local_score.rows() != model.num_nodes()) {
+                m_local_score = VectorXd(model.num_nodes());
+            }
 
-
-        template<typename Model>
-        void cache_local_scores(Model& model, Score& score) {
             for (int i = 0; i < model.num_nodes(); ++i) {
                 m_local_score(i) = score.local_score(model, i);
             }
         }
 
-        template<typename Model>
-        void update_local_score(Model& model, Score& score, int index) {
+        void update_local_score(BayesianNetworkBase& model, Score& score, int index) {
             m_local_score(index) = score.local_score(model, index);
         }
 
-        template<typename Model>
-        void update_local_score(Model& model, Score& score, Operator& op) {
+        void update_local_score(BayesianNetworkBase& model, Score& score, Operator& op) {
             switch(op.type()) {
                 case OperatorType::ADD_ARC:
                 case OperatorType::REMOVE_ARC: {
@@ -402,56 +399,13 @@ namespace learning::operators {
         VectorXd m_local_score;
     };
     
-    template<typename... Models>
-    class OperatorSetInterface {};
-
-    template<typename Model>
-    class OperatorSetInterface<Model> {
+    class OperatorSet {
     public:
-        virtual void cache_scores(Model& m) {
-            throw std::invalid_argument("OperatorSet::cache_scores() not implemented for model " + m.type().ToString() + ".");
-        }
-        virtual std::shared_ptr<Operator> find_max(Model& m) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
-        }
-        virtual std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet&) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
-        }
-        virtual void update_scores(Model& m, Operator&) {
-            throw std::invalid_argument("OperatorSet::update_scores() not implemented for model " + m.type().ToString() + ".");
-        }
-    };
-
-    template<typename Model, typename... Models>
-    class OperatorSetInterface<Model, Models...> : public OperatorSetInterface<Models...> {
-    public:
-        using Base = OperatorSetInterface<Models...>;
-        using Base::cache_scores;
-        using Base::find_max;
-        using Base::update_scores;
-        virtual void cache_scores(Model& m) {
-            throw std::invalid_argument("OperatorSet::cache_scores() not implemented for model " + m.type().ToString() + ".");
-        }
-        virtual std::shared_ptr<Operator> find_max(Model& m) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
-        }
-        virtual std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet&) {
-            throw std::invalid_argument("OperatorSet::find_max() not implemented for model " + m.type().ToString() + ".");
-        }
-        virtual void update_scores(Model& m, Operator&) {
-            throw std::invalid_argument("OperatorSet::update_scores() not implemented for model " + m.type().ToString() + ".");
-        }
-    };
-
-    class OperatorSet : public OperatorSetInterface<GaussianNetwork, SemiparametricBN>
-    {
-    public:
-        using Base = OperatorSetInterface<GaussianNetwork, SemiparametricBN>;
-        using Base::cache_scores;
-        using Base::find_max;
-        using Base::update_scores;
-
-        virtual ~OperatorSet() {};
+        virtual ~OperatorSet() {}
+        virtual void cache_scores(BayesianNetworkBase&, Score&) = 0;
+        virtual std::shared_ptr<Operator> find_max(BayesianNetworkBase&) = 0;
+        virtual std::shared_ptr<Operator> find_max(BayesianNetworkBase&, OperatorTabuSet&) = 0;
+        virtual void update_scores(BayesianNetworkBase&, Score&, Operator&) = 0;
 
         void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
             m_local_cache = score_cache;
@@ -468,61 +422,11 @@ namespace learning::operators {
         std::shared_ptr<LocalScoreCache> m_local_cache;
     };
 
-    template<typename Derived, typename... Models>
-    class OperatorSetImpl {};
-
-    template<typename Derived, typename Model>
-    class OperatorSetImpl<Derived, Model>  : public OperatorSet {
+    class ArcOperatorSet : public OperatorSet {
     public:
-        using Base = OperatorSet;
-        using Base::cache_scores;
-        using Base::find_max;
-        using Base::update_scores;
-        void cache_scores(Model& m) override {
-            static_cast<Derived*>(this)->template cache_scores<>(m);
-        }
-        std::shared_ptr<Operator> find_max(Model& m) override {
-            return static_cast<Derived*>(this)->template find_max<>(m);
-        }
-        std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet& tabu) override {
-            return static_cast<Derived*>(this)->template find_max<>(m, tabu);
-        }
-        void update_scores(Model& m, Operator& op) override {
-            static_cast<Derived*>(this)->template update_scores<>(m, op);
-        }
-    };
-
-    template<typename Derived, typename Model, typename... Models>
-    class OperatorSetImpl<Derived, Model, Models...> : 
-                public OperatorSetImpl<Derived,Models...> {
-    public:
-        using Base = OperatorSetImpl<Derived,Models...>;
-        using Base::cache_scores;
-        using Base::find_max;
-        using Base::update_scores;
-        void cache_scores(Model& m) override {
-            static_cast<Derived*>(this)->template cache_scores<>(m);
-        }
-        std::shared_ptr<Operator> find_max(Model& m) override {
-            return static_cast<Derived*>(this)->template find_max<>(m);
-        }
-        std::shared_ptr<Operator> find_max(Model& m, OperatorTabuSet& tabu) override {
-            return static_cast<Derived*>(this)->template find_max<>(m, tabu);
-        }
-        void update_scores(Model& m, Operator& op) override {
-            static_cast<Derived*>(this)->template update_scores<>(m, op);
-        }
-    };
-
-    class ArcOperatorSet : public OperatorSetImpl<ArcOperatorSet,
-                                                  GaussianNetwork, SemiparametricBN>
-    {
-    public:
-        ArcOperatorSet(std::shared_ptr<Score>& score, 
-                       ArcStringVector blacklist = ArcStringVector(), 
+        ArcOperatorSet(ArcStringVector blacklist = ArcStringVector(), 
                        ArcStringVector whitelist = ArcStringVector(),
-                       int indegree = 0) : m_score(score),
-                                           delta(),
+                       int indegree = 0) : delta(),
                                            valid_op(), 
                                            sorted_idx(),
                                            m_blacklist(blacklist),
@@ -530,21 +434,17 @@ namespace learning::operators {
                                            required_arclist_update(true),
                                            max_indegree(indegree) {}
 
-        template<typename Model>
-        void cache_scores(Model& model);
+        void cache_scores(BayesianNetworkBase& model, Score& score) override;
 
-        template<typename Model>
-        std::shared_ptr<Operator> find_max(Model& model);
-        template<typename Model>
-        std::shared_ptr<Operator> find_max(Model& model, OperatorTabuSet& tabu_set);
-        template<typename Model, bool limited_indigree>
-        std::shared_ptr<Operator> find_max_indegree(Model& model);
-        template<typename Model, bool limited_indigree>
-        std::shared_ptr<Operator> find_max_indegree(Model& model, OperatorTabuSet& tabu_set);
-        template<typename Model>
-        void update_scores(Model& model, Operator& op);
-        template<typename Model>
-        void update_node_arcs_scores(Model& model, const std::string& dest_node);
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        template<bool limited_indigree>
+        std::shared_ptr<Operator> find_max_indegree(BayesianNetworkBase& model);
+        template<bool limited_indigree>
+        std::shared_ptr<Operator> find_max_indegree(BayesianNetworkBase& model, OperatorTabuSet& tabu_set);
+
+        void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
+        void update_node_arcs_scores(BayesianNetworkBase& model, Score& score, const std::string& dest_node);
 
         void update_listed_arcs(BayesianNetworkBase& bn);
 
@@ -561,7 +461,6 @@ namespace learning::operators {
         }
         void set_type_whitelist(const FactorStringTypeVector&) override {}
     private:
-        std::shared_ptr<Score> m_score;
         MatrixXd delta;
         MatrixXb valid_op;
         std::vector<int> sorted_idx;
@@ -571,81 +470,8 @@ namespace learning::operators {
         int max_indegree;
     };
 
-    template<typename Model>
-    void ArcOperatorSet::cache_scores(Model& model) {
-        if (!util::compatible_score<Model>(m_score->type())) {
-            throw std::invalid_argument("Invalid score " + m_score->ToString() + " for model type " + model.type().ToString() + ".");
-        }
-
-        update_listed_arcs(model);
-
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->cache_local_scores(model, *m_score);
-        } else if (this->owns_local_cache()) {
-            this->m_local_cache->cache_local_scores(model, *m_score);
-        }
-
-        for (auto dest = 0; dest < model.num_nodes(); ++dest) {
-            std::vector<int> new_parents_dest = model.parent_indices(dest);
-            
-            for (auto source = 0; source < model.num_nodes(); ++source) {
-                if(valid_op(source, dest)) {
-                    if (model.has_arc(source, dest)) {            
-                        std::iter_swap(std::find(new_parents_dest.begin(), new_parents_dest.end(), source), new_parents_dest.end() - 1);
-                        double d = m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end() - 1) - 
-                                    this->m_local_cache->local_score(dest);
-                        delta(source, dest) = d;
-                    } else if (model.has_arc(dest, source)) {
-                        auto new_parents_source = model.parent_indices(source);
-                        util::swap_remove_v(new_parents_source, dest);
-                        
-                        new_parents_dest.push_back(source);
-                        double d = m_score->local_score(model, source, new_parents_source.begin(), new_parents_source.end()) + 
-                                   m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
-                                   - this->m_local_cache->local_score(source) - this->m_local_cache->local_score(dest);
-                        new_parents_dest.pop_back();
-                        delta(dest, source) = d;
-                    } else {
-                        new_parents_dest.push_back(source);
-                        double d = m_score->local_score(model, dest, new_parents_dest.begin(), new_parents_dest.end()) 
-                                    - this->m_local_cache->local_score(dest);
-                        new_parents_dest.pop_back();
-                        delta(source, dest) = d;
-                    }
-                }
-            }
-        }
-    }
-
-    template<typename Model>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max(Model& model) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
-
-        if (max_indegree > 0)
-            return find_max_indegree<Model, true>(model);
-        else
-            return find_max_indegree<Model, false>(model);
-    }
-
-    template<typename Model>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max(Model& model, OperatorTabuSet& tabu_set) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
-
-        if (max_indegree > 0)
-            return find_max_indegree<Model, true>(model, tabu_set);
-        else
-            return find_max_indegree<Model, false>(model, tabu_set);
-    }
-
-
-    template<typename Model, bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(Model& model) {
+    template<bool limited_indegree>
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(BayesianNetworkBase& model) {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -680,8 +506,8 @@ namespace learning::operators {
         return nullptr;
     }
 
-    template<typename Model, bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(Model& model, OperatorTabuSet& tabu_set) {
+    template<bool limited_indegree>
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -722,107 +548,29 @@ namespace learning::operators {
         return nullptr;
     }
 
-    template<typename Model>
-    void ArcOperatorSet::update_scores(Model& model, Operator& op) {
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->update_local_score(model, *m_score, op);
-        } else if(this->owns_local_cache()) {
-            this->m_local_cache->update_local_score(model, *m_score, op);
-        }
-
-        switch(op.type()) {
-            case OperatorType::ADD_ARC:
-            case OperatorType::REMOVE_ARC: {
-                auto& dwn_op = dynamic_cast<ArcOperator&>(op);
-                update_node_arcs_scores(model, dwn_op.target());
-            }
-                break;
-            case OperatorType::FLIP_ARC: {
-                auto& dwn_op = dynamic_cast<ArcOperator&>(op);
-                update_node_arcs_scores(model, dwn_op.source());
-                update_node_arcs_scores(model, dwn_op.target());
-            }
-                break;
-            case OperatorType::CHANGE_NODE_TYPE: {
-                auto& dwn_op = dynamic_cast<ChangeNodeType&>(op);
-                update_node_arcs_scores(model, dwn_op.node());
-            }
-                break;
-        }
-    }   
-
-    template<typename Model>
-    void ArcOperatorSet::update_node_arcs_scores(Model& model, const std::string& dest_node) {
-
-        auto dest_idx = model.index(dest_node);
-        auto parents = model.parent_indices(dest_idx);
-        
-        for (int i = 0; i < model.num_nodes(); ++i) {
-            if (valid_op(i, dest_idx)) {
-
-                if (model.has_arc(i, dest_idx)) {
-                    std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
-                    double d = m_score->local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
-                               this->m_local_cache->local_score(dest_idx);
-                    delta(i, dest_idx) = d;
-
-                    auto new_parents_i = model.parent_indices(i);
-                    new_parents_i.push_back(dest_idx);
-
-                    delta(dest_idx, i) = d + m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end())
-                                            - this->m_local_cache->local_score(i);
-                } else if (model.has_arc(dest_idx, i)) {
-                    auto new_parents_i = model.parent_indices(i);
-                    util::swap_remove_v(new_parents_i, dest_idx);
-
-                    parents.push_back(i);
-                    double d = m_score->local_score(model, i, new_parents_i.begin(), new_parents_i.end()) + 
-                                m_score->local_score(model, dest_idx, parents.begin(), parents.end()) 
-                                - this->m_local_cache->local_score(i) - this->m_local_cache->local_score(dest_idx);
-                    parents.pop_back();
-                    delta(dest_idx, i) = d;
-                } else {
-                    parents.push_back(i);
-                    double d = m_score->local_score(model, dest_idx, parents.begin(), parents.end()) - this->m_local_cache->local_score(dest_idx);
-                    parents.pop_back();
-                    delta(i, dest_idx) = d;
-                }
-            }
-        }
-    }
-
-    class ChangeNodeTypeSet : public OperatorSetImpl<ChangeNodeTypeSet,
-                                                     SemiparametricBN> {
+    class ChangeNodeTypeSet : public OperatorSet {
     public:
-        ChangeNodeTypeSet(std::shared_ptr<Score>& score, 
-                          FactorStringTypeVector fv = FactorStringTypeVector()) : m_score(score),
-                                                                        delta(),
-                                                                        valid_op(),
-                                                                        sorted_idx(),
-                                                                        m_type_whitelist(fv),
-                                                                        required_whitelist_update(true) {}
+        ChangeNodeTypeSet(FactorStringTypeVector fv = FactorStringTypeVector()) : delta(),
+                                                                                  valid_op(),
+                                                                                  sorted_idx(),
+                                                                                  m_type_whitelist(fv),
+                                                                                  required_whitelist_update(true) {}
 
-        template<typename Model>
-        void cache_scores(Model& model);
-        template<typename Model>
-        std::shared_ptr<Operator> find_max(Model& model);
-        template<typename Model>
-        std::shared_ptr<Operator> find_max(Model& model, OperatorTabuSet& tabu_set);
-        template<typename Model>
-        void update_scores(Model& model, Operator& op);
+        void cache_scores(BayesianNetworkBase& model, Score& score) override;
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
 
-        template<typename Model>
-        void update_local_delta(Model& model, const std::string& node) {
-            update_local_delta(model, model.index(node));
+        void update_local_delta(BayesianNetworkBase& model, Score& score, const std::string& node) {
+            update_local_delta(model, score, model.index(node));
         }
 
-        template<typename Model>
-        void update_local_delta(Model& model, int node_index) {
-            FactorType type = model.node_type(node_index);
+        void update_local_delta(BayesianNetworkBase& model, Score& score, int node_index) {
+            auto& spbn = dynamic_cast<SemiparametricBNBase&>(model);
+            FactorType type = spbn.node_type(node_index);
             auto parents = model.parent_indices(node_index);
-            delta(node_index) = m_score->local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
+            auto& spbn_score = dynamic_cast<ScoreSPBN&>(score);
+            delta(node_index) = spbn_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
                                 - this->m_local_cache->local_score(node_index);
         }
 
@@ -864,114 +612,18 @@ namespace learning::operators {
         }
 
     private:
-        std::shared_ptr<Score> m_score;
         VectorXd delta;
         VectorXb valid_op;
         std::vector<int> sorted_idx;
         FactorStringTypeVector m_type_whitelist;
         bool required_whitelist_update;
     };
-
-    template<typename Model>
-    void ChangeNodeTypeSet::cache_scores(Model& model) {
-        if (!util::compatible_score<Model>(m_score->type())) {
-            throw std::invalid_argument("Invalid score " + m_score->ToString() + " for model type " + model.type().ToString() + ".");
-        }
-        
-        update_whitelisted(model);
-
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->cache_local_scores(model, *m_score);
-        } else if (this->owns_local_cache()) {
-            this->m_local_cache->cache_local_scores(model, *m_score);
-        }
-
-        for(int i = 0, num_nodes = model.num_nodes(); i < num_nodes; ++i) {
-            if(valid_op(i)) {
-                update_local_delta(model, i);
-            }
-        }
-    }
-
-    template<typename Model>
-    std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(Model& model) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
-        auto delta_ptr = delta.data();
-        auto max_element = std::max_element(delta_ptr, delta_ptr + model.num_nodes());
-        int idx_max = std::distance(delta_ptr, max_element);
-        auto node_type = model.node_type(idx_max);
-
-        if(valid_op(idx_max))
-            return std::make_shared<ChangeNodeType>(model.name(idx_max), node_type.opposite(), *max_element);
-        else
-            return nullptr;
-    }
-
-    template<typename Model>
-    std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(Model& model, OperatorTabuSet& tabu_set) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
-        auto delta_ptr = delta.data();
-        // TODO: Not checking sorted_idx empty
-        std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
-        });
-
-        for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
-            int idx_max = *it;
-            auto node_type = model.node_type(idx_max);
-            std::shared_ptr<Operator> op = std::make_shared<ChangeNodeType>(model.name(idx_max), node_type.opposite(), delta(idx_max));
-            if (tabu_set.contains(op))
-                return op;
-
-        }
-
-        return nullptr;
-    }
-
-    template<typename Model>
-    void ChangeNodeTypeSet::update_scores(Model& model, Operator& op) {
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->update_local_score(model, *m_score, op);
-        } else if(this->owns_local_cache()) {
-            this->m_local_cache->update_local_score(model, *m_score, op);
-        }
-        switch(op.type()) {
-            case OperatorType::ADD_ARC:
-            case OperatorType::REMOVE_ARC: {
-                auto& dwn_op = dynamic_cast<ArcOperator&>(op);
-                update_local_delta(model, dwn_op.target());
-            }
-                break;
-            case OperatorType::FLIP_ARC: {
-                auto& dwn_op = dynamic_cast<ArcOperator&>(op);
-                update_local_delta(model, dwn_op.source());
-                update_local_delta(model, dwn_op.target());
-            }
-                break;
-            case OperatorType::CHANGE_NODE_TYPE: {
-                auto& dwn_op = dynamic_cast<ChangeNodeType&>(op);
-                int index = model.index(dwn_op.node());
-                delta(index) = -dwn_op.delta();
-            }
-                break;
-        }
-    }
-
+    
     class OperatorPool {
     public:
-        template<typename Model>
-        OperatorPool(Model& model, 
-                     std::shared_ptr<Score>& score, 
+        OperatorPool(std::shared_ptr<Score>& score, 
                      std::vector<std::shared_ptr<OperatorSet>> op_sets) : m_score(score),
-                                                                          local_cache(std::make_shared<LocalScoreCache>(model)),
+                                                                          local_cache(std::make_shared<LocalScoreCache>()),
                                                                           m_op_sets(std::move(op_sets)) {
             if (m_op_sets.empty()) {
                 throw std::invalid_argument("op_sets argument cannot be empty.");
@@ -982,26 +634,17 @@ namespace learning::operators {
             }
         }
         
-        template<typename Model>
-        void cache_scores(Model& model);
-        template<typename Model>
-        std::shared_ptr<Operator> find_max(Model& model);
-        template<typename Model>
-        std::shared_ptr<Operator> find_max(Model& model, OperatorTabuSet& tabu_set);
-        template<typename Model>
-        void update_scores(Model& model, Operator& op);
+        void cache_scores(BayesianNetworkBase& model);
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model);
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set);
+        void update_scores(BayesianNetworkBase& model, Operator& op);
                
         double score() {
             return local_cache->sum();
         }
 
-        template<typename Model>
-        double score(Model& model) {
-            double s = 0;
-            for (int i = 0; i < model.num_nodes(); ++i) {
-                s += m_score->local_score(model, i);
-            }
-            return s;
+        double score(BayesianNetworkBase& model) {
+            return m_score->score(model);
         }
 
         void set_arc_blacklist(const ArcStringVector& blacklist) {
@@ -1029,60 +672,6 @@ namespace learning::operators {
         std::shared_ptr<LocalScoreCache> local_cache;
         std::vector<std::shared_ptr<OperatorSet>> m_op_sets;
     };
-
-    template<typename Model>
-    void OperatorPool::cache_scores(Model& model) {
-        local_cache->cache_local_scores(model, *m_score);
-
-        for (auto& op_set : m_op_sets) {
-            op_set->cache_scores(model);
-        }
-    }
-
-    template<typename Model>
-    std::shared_ptr<Operator> OperatorPool::find_max(Model& model) {
-
-        double max_delta = std::numeric_limits<double>::lowest();
-        std::shared_ptr<Operator> max_op = nullptr;
-
-        for (auto it = m_op_sets.begin(); it != m_op_sets.end(); ++it) {
-            auto new_op = (*it)->find_max(model);
-            if (new_op && new_op->delta() > max_delta) {
-                max_op = std::move(new_op);
-                max_delta = max_op->delta();
-            }
-        }
-
-        return max_op;
-    }
-
-    template<typename Model>
-    std::shared_ptr<Operator> OperatorPool::find_max(Model& model, OperatorTabuSet& tabu_set) {
-        if (tabu_set.empty())
-            return find_max(model);
-        
-        double max_delta = std::numeric_limits<double>::lowest();
-        std::shared_ptr<Operator> max_op = nullptr;
-
-        for (auto it = m_op_sets.begin(); it != m_op_sets.end(); ++it) {
-            auto new_op = (*it)->find_max(model, tabu_set);
-            if (new_op && new_op->delta() > max_delta) {
-                max_op = std::move(new_op);
-                max_delta = max_op->delta();
-            }
-        }
-
-        return max_op;
-    }
-
-    template<typename Model>
-    void OperatorPool::update_scores(Model& model, Operator& op) {
-        local_cache->update_local_score(model, *m_score, op);
-        for (auto& op_set : m_op_sets) {
-            op_set->update_scores(model, op);
-        }
-    }
-
 }
 
 #endif //PYBNESIAN_LEARNING_OPERATORS_OPERATORS_HPP

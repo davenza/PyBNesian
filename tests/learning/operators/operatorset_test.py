@@ -15,49 +15,46 @@ def test_create():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
 
     bic = BIC(df)
-    arc_bic = ArcOperatorSet(bic)
     
     cv = CVLikelihood(df)
-    arc_cv = ArcOperatorSet(cv)
+    arc_op = ArcOperatorSet()
 
     with pytest.raises(ValueError) as ex:
-        arc_bic.cache_scores(spbn)
+        arc_op.cache_scores(spbn, bic)
     "Invalid score" in str(ex.value)
 
-    node_cv = ChangeNodeTypeSet(cv)
-
-    with pytest.raises(TypeError) as ex:
-        node_cv.cache_scores(gbn)
-    "incompatible function arguments" in str(ex.value)
-
-    node_bic = ChangeNodeTypeSet(bic)
+    node_op = ChangeNodeTypeSet()
 
     with pytest.raises(ValueError) as ex:
-        node_bic.cache_scores(spbn)
+        node_op.cache_scores(gbn, cv)
+    "can only be used with SemiparametricBN" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        node_op.cache_scores(spbn, bic)
     "Invalid score" in str(ex.value)
 
 def test_lists():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
     bic = BIC(df)
-    arc_bic = ArcOperatorSet(bic)
+    arc_op = ArcOperatorSet()
 
-    arc_bic.set_arc_blacklist([("b", "a")])
-    arc_bic.set_arc_whitelist([("b", "c")])
-    arc_bic.set_max_indegree(3)
-    arc_bic.set_type_whitelist([("a", FactorType.LinearGaussianCPD)])
+    arc_op.set_arc_blacklist([("b", "a")])
+    arc_op.set_arc_whitelist([("b", "c")])
+    arc_op.set_max_indegree(3)
+    arc_op.set_type_whitelist([("a", FactorType.LinearGaussianCPD)])
 
-    arc_bic.cache_scores(gbn)
+    arc_op.cache_scores(gbn, bic)
 
-    arc_bic.set_arc_blacklist([("e", "a")])
+    arc_op.set_arc_blacklist([("e", "a")])
 
     with pytest.raises(ValueError) as ex:
-        arc_bic.cache_scores(gbn)
+        arc_op.cache_scores(gbn, bic)
     "present in the blacklist, but not" in str(ex.value)
 
-    arc_bic.set_arc_whitelist([("e", "a")])
+    arc_op.set_arc_whitelist([("e", "a")])
 
     with pytest.raises(ValueError) as ex:
-        arc_bic.cache_scores(gbn)
+        arc_op.cache_scores(gbn, bic)
     "present in the whitelist, but not" in str(ex.value)
 
 
@@ -65,18 +62,18 @@ def test_check_max_score():
     gbn = GaussianNetwork(['a', 'b'])
 
     bic = BIC(df)
-    arc_bic = ArcOperatorSet(bic)
+    arc_op = ArcOperatorSet()
 
-    arc_bic.cache_scores(gbn)
-    op = arc_bic.find_max(gbn)
+    arc_op.cache_scores(gbn, bic)
+    op = arc_op.find_max(gbn)
 
     assert op.delta == (bic.local_score(gbn, 'b', ['a']) - bic.local_score(gbn, 'b'))
 
     # arc_gbn_bic = ArcOperatorSet( bic, [(op.source, op.target)], [], 0)
-    arc_bic.set_arc_blacklist([(op.source, op.target)])
-    arc_bic.cache_scores(gbn)
+    arc_op.set_arc_blacklist([(op.source, op.target)])
+    arc_op.cache_scores(gbn, bic)
     
-    op2 = arc_bic.find_max(gbn)
+    op2 = arc_op.find_max(gbn)
 
     assert op.source == op2.target
     assert op.target == op2.source
@@ -86,10 +83,10 @@ def test_nomax():
     gbn = GaussianNetwork(['a', 'b'])
 
     bic = BIC(df)
-    arc_bic = ArcOperatorSet(bic, whitelist=[("a", "b")])
-    arc_bic.cache_scores(gbn)
+    arc_op = ArcOperatorSet(whitelist=[("a", "b")])
+    arc_op.cache_scores(gbn, bic)
 
-    op = arc_bic.find_max(gbn)
+    op = arc_op.find_max(gbn)
 
     assert op is None
 

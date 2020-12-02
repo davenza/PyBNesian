@@ -41,6 +41,10 @@ namespace models {
             return BayesianNetworkType::GBN;
         }
 
+        std::unique_ptr<BayesianNetworkBase> clone() const override {
+            return std::make_unique<GaussianNetwork>(*this);
+        }
+
         py::tuple __getstate__() const {
             return BayesianNetwork<GaussianNetwork>::__getstate__();
         }

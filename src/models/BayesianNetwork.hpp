@@ -106,6 +106,8 @@ namespace models {
         virtual bool can_add_arc(const std::string& source, const std::string& dest) const = 0;
         virtual bool can_flip_arc(int source_index, int dest_index) = 0;
         virtual bool can_flip_arc(const std::string& source, const std::string& dest) = 0;
+        virtual void check_blacklist(const ArcStringVector& arc_blacklist) const = 0;
+        virtual void force_whitelist(const ArcStringVector& arc_whitelist) = 0;
         virtual bool fitted() const = 0;
         virtual void fit(const DataFrame& df) = 0;
         virtual VectorXd logl(const DataFrame& df) const = 0;
@@ -114,6 +116,7 @@ namespace models {
         virtual BayesianNetworkType type() const = 0;
         virtual DataFrame sample(int n, long unsigned int seed, bool ordered) const = 0;
         virtual void save(std::string name, bool include_cpd = false) const = 0;
+        virtual std::unique_ptr<BayesianNetworkBase> clone() const = 0;
     };
 
     class SemiparametricBNBase {
@@ -303,7 +306,7 @@ namespace models {
             return g.can_flip_arc(source, target);
         }
 
-        void check_blacklist(const ArcStringVector& arc_blacklist) const {
+        void check_blacklist(const ArcStringVector& arc_blacklist) const override {
             for(auto& arc : arc_blacklist) {
                 if (has_arc(arc.first, arc.second)) {
                     throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in blacklist,"
@@ -312,7 +315,7 @@ namespace models {
             }
         }
 
-        void force_whitelist(const ArcStringVector& arc_whitelist) {
+        void force_whitelist(const ArcStringVector& arc_whitelist) override {
             for(auto& arc : arc_whitelist) {
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {
@@ -359,6 +362,7 @@ namespace models {
         DataFrame sample(int n, long unsigned int seed = std::random_device{}(), bool ordered = false) const override;
 
         void save(std::string name, bool include_cpd = false) const override;
+        
         py::tuple __getstate__() const;
         static Derived __setstate__(py::tuple& t);
 

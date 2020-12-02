@@ -5,11 +5,16 @@ using graph::PartiallyDirectedGraph;
 namespace util {
 
 
-    ListRestrictions check_whitelists(const PartiallyDirectedGraph& g,
+    ListRestrictions validate_restrictions(const PartiallyDirectedGraph& g,
                                       const ArcStringVector& varc_blacklist, 
                                       const ArcStringVector& varc_whitelist,
                                       const EdgeStringVector& vedge_blacklist,
                                       const EdgeStringVector& vedge_whitelist) {
+
+        check_arc_list(g, varc_blacklist);
+        check_arc_list(g, varc_whitelist);
+        check_edge_list(g, vedge_blacklist);
+        check_edge_list(g, vedge_whitelist);
         
         ListRestrictions r;
 
@@ -84,5 +89,51 @@ namespace util {
         }
 
         return r;
+    }
+
+    void check_arc_list(const PartiallyDirectedGraph& g, const ArcStringVector& list) {
+        for (auto pair : list) {
+            if(!g.contains_node(pair.first))
+                throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
+
+            if(!g.contains_node(pair.second))
+                throw std::invalid_argument("Node " + pair.second + " not present in the graph.");
+        }
+    }
+
+    void check_edge_list(const PartiallyDirectedGraph& g, const EdgeStringVector& list) {
+        return check_arc_list(g, list);
+    }
+
+    void check_node_type_list(const PartiallyDirectedGraph& g, const FactorStringTypeVector& list) {
+        for (auto pair : list) {
+            if(!g.contains_node(pair.first))
+                throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
+        }
+    }
+
+    void check_arc_list(const DataFrame& df, const ArcStringVector& list) {
+        auto schema = df->schema();
+
+        for (auto pair : list) {
+            if(!schema->GetFieldByName(pair.first))
+                throw std::invalid_argument("Node " + pair.first + " not present in the data set.");
+
+            if(!schema->GetFieldByName(pair.second))
+                throw std::invalid_argument("Node " + pair.second + " not present in the data set.");
+        }
+    }
+
+    void check_edge_list(const DataFrame& df, const EdgeStringVector& list) {
+        check_arc_list(df, list);
+    }
+
+    void check_node_type_list(const DataFrame& df, const FactorStringTypeVector& list) {
+        auto schema = df->schema();
+
+        for (auto pair : list) {
+            if(!schema->GetFieldByName(pair.first))
+                throw std::invalid_argument("Node " + pair.first + " not present in the data set.");
+        }
     }
 }

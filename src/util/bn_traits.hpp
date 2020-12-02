@@ -32,36 +32,6 @@ namespace util {
 
     template<typename Model, typename R = void>
     using enable_if_semiparametricbn_t = std::enable_if_t<is_semiparametricbn_v<Model>, R>;
-
-
-    template<typename Model, typename Score, typename _ = void>
-    struct is_compatible_score : std::false_type {};
-
-    template<typename Model, typename Score>
-    struct is_compatible_score<
-            Model,
-            Score,
-            std::void_t<
-            decltype(std::declval<Score>().local_score(std::declval<Model>(), 
-                                                       std::declval<std::string>(), 
-                                                       std::declval<typename std::vector<std::string>::iterator>(), 
-                                                       std::declval<typename std::vector<std::string>::iterator>())),
-            decltype(std::declval<Score>().local_score(std::declval<Model>(), 
-                                                       std::declval<int>(), 
-                                                       std::declval<typename std::vector<int>::iterator>(), 
-                                                       std::declval<typename std::vector<int>::iterator>()))
-            >
-    > : public std::true_type {};
-
-    template<typename Model, typename Score>
-    inline constexpr auto is_compatible_score_v = is_compatible_score<Model, Score>::value;
-
-    template<typename Model, typename Score, typename R = void>
-    using enable_if_compatible_score_t = std::enable_if_t<is_compatible_score_v<Model, Score>, R>;
-    
-    template<typename Model, typename Score, typename R = void>
-    using enable_if_not_compatible_score_t = std::enable_if_t<!is_compatible_score_v<Model, Score>, R>;
 }
-
 
 #endif //PYBNESIAN_UTIL_BN_TRAITS_HPP

@@ -518,11 +518,11 @@ namespace learning::algorithms {
 
         PartiallyDirectedGraph skeleton(test.column_names());
 
-        auto restrictions = util::check_whitelists(skeleton, 
-                                                   varc_blacklist,
-                                                   varc_whitelist,
-                                                   vedge_blacklist,
-                                                   vedge_whitelist);
+        auto restrictions = util::validate_restrictions(skeleton, 
+                                                        varc_blacklist,
+                                                        varc_whitelist,
+                                                        vedge_blacklist,
+                                                        vedge_whitelist);
 
         for (const auto& a : restrictions.arc_whitelist) {
             skeleton.add_arc(a.first, a.second);

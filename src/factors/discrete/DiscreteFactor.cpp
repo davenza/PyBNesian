@@ -201,7 +201,7 @@ namespace factors::discrete {
     }
 
     Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, 
-                                     long unsigned int seed) const {
+                                     unsigned int seed) const {
         arrow::StringBuilder dict_builder;
         RAISE_STATUS_ERROR(dict_builder.AppendValues(m_variable_values));
 

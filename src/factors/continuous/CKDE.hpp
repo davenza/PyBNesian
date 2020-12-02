@@ -704,7 +704,7 @@ namespace factors::continuous {
 
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 
-                         long unsigned int seed = std::random_device{}()) const;
+                         unsigned int seed = std::random_device{}()) const;
         
         VectorXd cdf(const DataFrame& df) const;
 
@@ -726,10 +726,10 @@ namespace factors::continuous {
         double _slogl(const DataFrame& df) const;
 
         template<typename ArrowType>
-        Array_ptr _sample(int n, const DataFrame& evidence_values, long unsigned int seed) const;
+        Array_ptr _sample(int n, const DataFrame& evidence_values, unsigned int seed) const;
         
         template<typename ArrowType>
-        Array_ptr _sample_multivariate(int n, const DataFrame& evidence_values, long unsigned int seed) const;
+        Array_ptr _sample_multivariate(int n, const DataFrame& evidence_values, unsigned int seed) const;
 
         template<typename ArrowType>
         VectorXi _sample_indices_multivariate(Matrix<typename ArrowType::c_type, Dynamic, 1>& random_prob,
@@ -870,7 +870,7 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    Array_ptr CKDE::_sample(int n, const DataFrame& evidence_values, long unsigned int seed) const {
+    Array_ptr CKDE::_sample(int n, const DataFrame& evidence_values, unsigned int seed) const {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<CType, Dynamic, 1>;
         
@@ -900,7 +900,7 @@ namespace factors::continuous {
     }
 
     template<typename ArrowType>
-    Array_ptr CKDE::_sample_multivariate(int n, const DataFrame& evidence_values, long unsigned int seed) const {
+    Array_ptr CKDE::_sample_multivariate(int n, const DataFrame& evidence_values, unsigned int seed) const {
         using CType = typename ArrowType::c_type;
         using ArrowArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using VectorType = Matrix<CType, Dynamic, 1>;

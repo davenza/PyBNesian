@@ -144,7 +144,7 @@ namespace factors::discrete {
         }
 
         Array_ptr sample(int n, const DataFrame& evidence_values, 
-                         long unsigned int seed = std::random_device{}()) const;
+                         unsigned int seed = std::random_device{}()) const;
 
         py::tuple __getstate__() const;
         static DiscreteFactor __setstate__(py::tuple& t);
@@ -160,7 +160,7 @@ namespace factors::discrete {
 
         template<typename ArrowType>
         Array_ptr sample_indices(int n, const DataFrame& evidence_values,
-                                 long unsigned int seed) const;
+                                 unsigned int seed) const;
 
         std::string m_variable;
         std::vector<std::string> m_evidence;
@@ -174,7 +174,7 @@ namespace factors::discrete {
 
     template<typename ArrowType>
     Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values, 
-                                             long unsigned int seed) const {
+                                             unsigned int seed) const {
 
         int parent_configurations = m_logprob.rows() / m_variable_values.size();
         VectorXd accum_prob(m_logprob.rows());

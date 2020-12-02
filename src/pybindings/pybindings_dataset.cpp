@@ -12,7 +12,7 @@ void pybindings_dataset(py::module& root) {
                     py::arg("df"), 
                     py::arg("k") = 10, 
                     py::arg("include_null") = false)
-        .def(py::init<DataFrame, int, long unsigned int, bool>(), 
+        .def(py::init<DataFrame, int, unsigned int, bool>(), 
                     py::arg("df"), 
                     py::arg("k") = 10, 
                     py::arg("seed"), 
@@ -33,7 +33,7 @@ void pybindings_dataset(py::module& root) {
                     py::arg("df"), 
                     py::arg("test_ratio") = 0.2, 
                     py::arg("include_null") = false)
-        .def(py::init<const DataFrame&, double, long unsigned int, bool>(), 
+        .def(py::init<const DataFrame&, double, unsigned int, bool>(), 
                     py::arg("df"), 
                     py::arg("test_ratio") = 0.2, 
                     py::arg("seed"), 

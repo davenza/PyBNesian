@@ -61,7 +61,7 @@ void pybindings_factors(py::module& root) {
             else
                 return self.sample(n, DataFrame(), std::random_device{}());
         }, py::arg("n"), py::arg("evidence_values"))
-        .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, long unsigned int seed) {
+        .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
             if (evidence_values)
                 return self.sample(n, *evidence_values, seed);
             else
@@ -153,7 +153,7 @@ void pybindings_factors(py::module& root) {
                 return self.sample(n, DataFrame(), std::random_device{}());
             }
         }, py::arg("n"), py::arg("evidence_values"))
-        .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values, long unsigned int seed) {
+        .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);
             }
@@ -196,7 +196,7 @@ void pybindings_factors(py::module& root) {
         .def("sample", [](const SemiparametricCPD& self, 
                           int n, 
                           std::optional<const DataFrame> evidence_values, 
-                          long unsigned int seed) 
+                          unsigned int seed) 
         {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);

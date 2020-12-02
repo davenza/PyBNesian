@@ -219,7 +219,7 @@ namespace factors::continuous {
         }
     }
 
-    Array_ptr CKDE::sample(int n, const DataFrame& evidence_values, long unsigned int seed) const {
+    Array_ptr CKDE::sample(int n, const DataFrame& evidence_values, unsigned int seed) const {
         if (!m_evidence.empty()) {
             auto type_id = evidence_values.same_type(m_evidence);
 

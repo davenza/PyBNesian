@@ -76,7 +76,7 @@ namespace learning::independences {
         KMutualInformation(DataFrame df, int k, int shuffle_neighbors = 5, int samples = 1000) : 
                     KMutualInformation(df, k, std::random_device{}(), shuffle_neighbors, samples) {}
 
-        KMutualInformation(DataFrame df, int k, long unsigned int seed, int shuffle_neighbors = 5, int samples = 1000) : 
+        KMutualInformation(DataFrame df, int k, unsigned int seed, int shuffle_neighbors = 5, int samples = 1000) : 
                                                                             m_df(df),
                                                                             m_ranked_df(rank_data<arrow::FloatType>(df)),
                                                                             m_k(k),
@@ -86,8 +86,8 @@ namespace learning::independences {
 
         int samples() { return m_samples; }
         void set_samples(int s) { m_samples = s; } 
-        long unsigned int seed() { return m_seed; }
-        void set_seed(long unsigned int seed) { m_seed = seed; }
+        unsigned int seed() { return m_seed; }
+        void set_seed(unsigned int seed) { m_seed = seed; }
         
         template<typename VarType>
         double pvalue(const VarType& x, const VarType& y) const;
@@ -150,7 +150,7 @@ namespace learning::independences {
         DataFrame m_df;
         DataFrame m_ranked_df;
         int m_k;
-        long unsigned int m_seed;
+        unsigned int m_seed;
         int m_shuffle_neighbors;
         int m_samples;
     };

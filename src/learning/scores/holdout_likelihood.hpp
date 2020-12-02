@@ -15,7 +15,7 @@ namespace learning::scores {
     class HoldoutLikelihood : public Score, public ScoreSPBN {
     public:
         HoldoutLikelihood(const DataFrame& df, double test_ratio) : m_holdout(df, test_ratio) { }
-        HoldoutLikelihood(const DataFrame& df, double test_ratio, long unsigned int seed) : m_holdout(df, test_ratio, seed) { }
+        HoldoutLikelihood(const DataFrame& df, double test_ratio, unsigned int seed) : m_holdout(df, test_ratio, seed) { }
 
         double local_score(const BayesianNetworkBase& model, int variable) const override {
             return local_score<>(model, variable);

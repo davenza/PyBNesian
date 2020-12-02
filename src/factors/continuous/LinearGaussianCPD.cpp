@@ -280,7 +280,7 @@ namespace factors::continuous {
 
     Array_ptr LinearGaussianCPD::sample(int n, 
                                         const DataFrame& evidence_values, 
-                                        long unsigned int seed) const {
+                                        unsigned int seed) const {
         arrow::NumericBuilder<arrow::DoubleType> builder;
         RAISE_STATUS_ERROR(builder.Resize(n));
 

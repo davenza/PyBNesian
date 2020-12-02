@@ -114,7 +114,7 @@ namespace models {
         virtual double slogl(const DataFrame& df) const = 0;
         virtual std::string ToString() const = 0;
         virtual BayesianNetworkType type() const = 0;
-        virtual DataFrame sample(int n, long unsigned int seed, bool ordered) const = 0;
+        virtual DataFrame sample(int n, unsigned int seed, bool ordered) const = 0;
         virtual void save(std::string name, bool include_cpd = false) const = 0;
         virtual std::unique_ptr<BayesianNetworkBase> clone() const = 0;
     };
@@ -359,7 +359,7 @@ namespace models {
         VectorXd logl(const DataFrame& df) const override;
         double slogl(const DataFrame& df) const override;
 
-        DataFrame sample(int n, long unsigned int seed = std::random_device{}(), bool ordered = false) const override;
+        DataFrame sample(int n, unsigned int seed = std::random_device{}(), bool ordered = false) const override;
 
         void save(std::string name, bool include_cpd = false) const override;
         
@@ -575,7 +575,7 @@ namespace models {
     }
 
     template<typename Derived>
-    DataFrame BayesianNetwork<Derived>::sample(int n, long unsigned int seed, bool ordered) const {
+    DataFrame BayesianNetwork<Derived>::sample(int n, unsigned int seed, bool ordered) const {
         check_fitted();
 
         DataFrame parents(n);

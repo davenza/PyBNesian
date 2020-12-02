@@ -51,7 +51,7 @@ namespace factors::continuous {
 
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 
-                         long unsigned int seed = std::random_device{}()) const;
+                         unsigned int seed = std::random_device{}()) const;
 
         py::tuple __getstate__() const;
         static LinearGaussianCPD __setstate__(py::tuple& t);

@@ -53,7 +53,7 @@ namespace factors::continuous {
     }
 
     Array_ptr SemiparametricCPD::sample(int n, const DataFrame& evidence_values, 
-                                        long unsigned int seed) const {
+                                        unsigned int seed) const {
         
         return std::visit([n, &evidence_values, seed](auto& cpd) {
             return cpd.sample(n, evidence_values, seed);

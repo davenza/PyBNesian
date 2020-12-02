@@ -15,7 +15,7 @@ namespace learning::scores {
     class CVLikelihood : public Score, public ScoreSPBN {
     public:
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
-        CVLikelihood(const DataFrame& df, int k, long unsigned int seed) : m_cv(df, k, seed) {}
+        CVLikelihood(const DataFrame& df, int k, unsigned int seed) : m_cv(df, k, seed) {}
 
         double local_score(const BayesianNetworkBase& model, int variable) const override {
             return local_score<>(model, variable);

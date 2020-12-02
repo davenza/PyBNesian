@@ -158,7 +158,7 @@ void pybindings_models(py::module& root) {
         .def("fit", &BayesianNetworkBase::fit)
         .def("logl", &BayesianNetworkBase::logl, py::return_value_policy::take_ownership)
         .def("slogl", &BayesianNetworkBase::slogl)
-        .def("sample", [](const BayesianNetworkBase& self, int n, long unsigned int ordered) {
+        .def("sample", [](const BayesianNetworkBase& self, int n, unsigned int ordered) {
                 return self.sample(n, std::random_device{}(), ordered);
         }, py::return_value_policy::move, py::arg("n"), py::arg("ordered") = false)
         .def("sample", &BayesianNetworkBase::sample, py::return_value_policy::move, 

@@ -79,6 +79,7 @@ ext_modules = [
          'src/learning/algorithms/constraint.cpp',
          'src/learning/algorithms/pc.cpp',
          'src/learning/algorithms/mmpc.cpp',
+         'src/learning/algorithms/mmhc.cpp',
          'src/learning/independences/continuous/linearcorrelation.cpp',
          'src/learning/independences/continuous/mutual_information.cpp',
          'src/graph/generic_graph.cpp',

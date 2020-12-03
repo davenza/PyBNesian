@@ -192,8 +192,8 @@ void pybindings_operators(py::module& root) {
         .def("update_scores", [](OperatorSet& self, BayesianNetworkBase& model, Score& score, Operator& op) {
             self.update_scores(model, score, op);
         })
-        .def("set_arc_blacklist", &OperatorSet::set_arc_blacklist)
-        .def("set_arc_whitelist", &OperatorSet::set_arc_whitelist)
+        .def("set_arc_blacklist", py::overload_cast<const ArcStringVector&>(&OperatorSet::set_arc_blacklist))
+        .def("set_arc_whitelist", py::overload_cast<const ArcStringVector&>(&OperatorSet::set_arc_whitelist))
         .def("set_max_indegree", &OperatorSet::set_max_indegree)
         .def("set_type_whitelist", &OperatorSet::set_type_whitelist);
 

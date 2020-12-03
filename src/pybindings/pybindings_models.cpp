@@ -62,6 +62,8 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
         .def("can_add_arc", py::overload_cast<int, int>(&BaseClass::can_add_arc, py::const_))
         .def("can_flip_arc", py::overload_cast<const std::string&, const std::string&>(&BaseClass::can_flip_arc))
         .def("can_flip_arc", py::overload_cast<int, int>(&BaseClass::can_flip_arc))
+        .def("check_blacklist", py::overload_cast<const ArcStringVector&>(&BayesianNetworkBase::check_blacklist, py::const_))
+        .def("force_whitelist", py::overload_cast<const ArcStringVector&>(&BayesianNetworkBase::force_whitelist))
         .def("fitted", &BaseClass::fitted)
         .def("add_cpds", &BaseClass::add_cpds)
         .def("fit", &BaseClass::fit)

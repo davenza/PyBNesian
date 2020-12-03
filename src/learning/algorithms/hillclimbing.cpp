@@ -39,10 +39,6 @@ namespace learning::algorithms {
                                             double test_holdout_ratio,
                                             int verbose) {
         
-        util::check_arc_list(df, arc_blacklist);
-        util::check_arc_list(df, arc_whitelist);
-        util::check_node_type_list(df, type_whitelist);
-
         auto iseed = [seed]() {
             if (seed) return *seed;
             else return std::random_device{}();
@@ -90,7 +86,6 @@ namespace learning::algorithms {
     
             OperatorPool pool(score, std::move(operators));
 
-
             return hc.estimate_validation(pool, validation_score, *start_model, arc_blacklist, arc_whitelist, 
                                         type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
 
@@ -104,14 +99,14 @@ namespace learning::algorithms {
         }
     }
 
-    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorPool& op,
-                                                                      const BayesianNetworkBase& start,
-                                                                      const ArcStringVector& arc_blacklist,
-                                                                      const ArcStringVector& arc_whitelist,
-                                                                      int max_indegree,
-                                                                      int max_iters,
-                                                                      double epsilon,
-                                                                      int verbose) {
+    std::unique_ptr<BayesianNetworkBase> estimate_hc(OperatorPool& op,
+                                                     const BayesianNetworkBase& start,
+                                                     const ArcSet& arc_blacklist,
+                                                     const ArcSet& arc_whitelist,
+                                                     int max_indegree,
+                                                     int max_iters,
+                                                     double epsilon,
+                                                     int verbose) {
         indicators::show_console_cursor(false);
         auto spinner = util::indeterminate_spinner(verbose);
         spinner->update_status("Checking dataset...");
@@ -147,6 +142,27 @@ namespace learning::algorithms {
         spinner->mark_as_completed("Finished Hill-climbing!");
         indicators::show_console_cursor(true);
         return current_model;
+    }
+
+    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorPool& op,
+                                                                      const BayesianNetworkBase& start,
+                                                                      const ArcStringVector& arc_blacklist,
+                                                                      const ArcStringVector& arc_whitelist,
+                                                                      int max_indegree,
+                                                                      int max_iters,
+                                                                      double epsilon,
+                                                                      int verbose) {
+        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
+
+        return estimate_hc(op,
+                           start,
+                           restrictions.arc_blacklist,
+                           restrictions.arc_whitelist,
+                           max_indegree,
+                           max_iters,
+                           epsilon,
+                           verbose);
+
     }
 
     double validation_delta_score(const BayesianNetworkBase& model, const Score& val_score, 
@@ -212,19 +228,19 @@ namespace learning::algorithms {
                 throw std::invalid_argument("Unreachable code. Wrong operator in HoldoutLikelihood::delta_score().");
         }
     }
-    
-    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorPool& op_pool,
-                                                                                 Score& validation_score,
-                                                                                 const BayesianNetworkBase& start,
-                                                                                 const ArcStringVector& arc_blacklist,
-                                                                                 const ArcStringVector& arc_whitelist,
-                                                                                 const FactorStringTypeVector& type_whitelist,
-                                                                                 int max_indegree,
-                                                                                 int max_iters,
-                                                                                 double epsilon, 
-                                                                                 int patience,
-                                                                                 int verbose) {
 
+    std::unique_ptr<BayesianNetworkBase> estimate_validation_hc(OperatorPool& op_pool,
+                                                                Score& validation_score,
+                                                                const BayesianNetworkBase& start,
+                                                                const ArcSet& arc_blacklist,
+                                                                const ArcSet& arc_whitelist,
+                                                                const FactorStringTypeVector& type_whitelist,
+                                                                int max_indegree,
+                                                                int max_iters,
+                                                                double epsilon, 
+                                                                int patience,
+                                                                int verbose) {
+        util::check_node_type_list(start, type_whitelist);
         if (!util::compatible_score(start, validation_score.type())) {
             throw std::invalid_argument("Invalid score " + validation_score.ToString() + 
                                         " for model type " + start.type().ToString() + ".");
@@ -294,5 +310,32 @@ namespace learning::algorithms {
         spinner->mark_as_completed("Finished Hill-climbing!");
         indicators::show_console_cursor(true);
         return best_model;
+    }
+
+    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorPool& op_pool,
+                                                                                 Score& validation_score,
+                                                                                 const BayesianNetworkBase& start,
+                                                                                 const ArcStringVector& arc_blacklist,
+                                                                                 const ArcStringVector& arc_whitelist,
+                                                                                 const FactorStringTypeVector& type_whitelist,
+                                                                                 int max_indegree,
+                                                                                 int max_iters,
+                                                                                 double epsilon, 
+                                                                                 int patience,
+                                                                                 int verbose) {
+        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
+
+        return estimate_validation_hc(op_pool,
+                                      validation_score,
+                                      start,
+                                      restrictions.arc_blacklist,
+                                      restrictions.arc_whitelist,
+                                      type_whitelist,
+                                      max_indegree,
+                                      max_iters,
+                                      epsilon,
+                                      patience,
+                                      verbose);
+
     }
 }

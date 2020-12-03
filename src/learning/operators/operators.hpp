@@ -411,7 +411,9 @@ namespace learning::operators {
         }
 
         virtual void set_arc_blacklist(const ArcStringVector&) = 0;
+        virtual void set_arc_blacklist(const ArcSet&) = 0;
         virtual void set_arc_whitelist(const ArcStringVector&) = 0;
+        virtual void set_arc_whitelist(const ArcSet&) = 0;
         virtual void set_max_indegree(int) = 0;
         virtual void set_type_whitelist(const FactorStringTypeVector&) = 0;
     protected:
@@ -428,8 +430,10 @@ namespace learning::operators {
                        int indegree = 0) : delta(),
                                            valid_op(), 
                                            sorted_idx(),
-                                           m_blacklist(blacklist),
-                                           m_whitelist(whitelist),
+                                           m_blacklist_names(blacklist),
+                                           m_whitelist_names(whitelist),
+                                           m_blacklist(),
+                                           m_whitelist(),
                                            required_arclist_update(true),
                                            max_indegree(indegree) {}
 
@@ -448,23 +452,38 @@ namespace learning::operators {
         void update_listed_arcs(BayesianNetworkBase& bn);
 
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
+            m_blacklist_names = blacklist;
+            required_arclist_update = true;
+        }
+
+        void set_arc_blacklist(const ArcSet& blacklist) override {
             m_blacklist = blacklist;
             required_arclist_update = true;
         }
+
         void set_arc_whitelist(const ArcStringVector& whitelist) override {
+            m_whitelist_names = whitelist;
+            required_arclist_update = true;
+        }
+
+        void set_arc_whitelist(const ArcSet& whitelist) override {
             m_whitelist = whitelist;
             required_arclist_update = true;
         }
+
         void set_max_indegree(int indegree) override {
             max_indegree = indegree;
         }
+        
         void set_type_whitelist(const FactorStringTypeVector&) override {}
     private:
         MatrixXd delta;
         MatrixXb valid_op;
         std::vector<int> sorted_idx;
-        ArcStringVector m_blacklist;
-        ArcStringVector m_whitelist;
+        ArcStringVector m_blacklist_names;
+        ArcStringVector m_whitelist_names;
+        ArcSet m_blacklist;
+        ArcSet m_whitelist;
         bool required_arclist_update;
         int max_indegree;
     };
@@ -484,22 +503,27 @@ namespace learning::operators {
             auto dest = idx / model.num_nodes();
 
             if(model.has_arc(source, dest)) {
-                return std::make_shared<RemoveArc>(model.name(source), model.name(dest), delta(source, dest));
+                return std::make_shared<RemoveArc>(model.name(source),
+                                                   model.name(dest),
+                                                   delta(source, dest));
             } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
-
-                return std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(source, dest));
+                return std::make_shared<FlipArc>(model.name(dest),
+                                                 model.name(source),
+                                                 delta(source, dest));
             } else if (model.can_add_arc(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_shared<AddArc>(model.name(source), model.name(dest), delta(source, dest));
+                return std::make_shared<AddArc>(model.name(source),
+                                                model.name(dest),
+                                                delta(source, dest));
             }
         }
 
@@ -521,7 +545,9 @@ namespace learning::operators {
             auto dest = idx / model.num_nodes();
 
             if(model.has_arc(source, dest)) {
-                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source), model.name(dest), delta(source, dest));
+                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source),
+                                                                           model.name(dest),
+                                                                           delta(source, dest));
                 if (!tabu_set.contains(op))
                     return op;
             } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
@@ -530,7 +556,9 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(source, dest));
+                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest),
+                                                                         model.name(source),
+                                                                         delta(source, source));
                 if (!tabu_set.contains(op))
                     return op;
             } else if (model.can_add_arc(source, dest)) {
@@ -539,7 +567,9 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source), model.name(dest), delta(source, dest));
+                std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source),
+                                                                        model.name(dest),
+                                                                        delta(source, dest));
                 if (!tabu_set.contains(op))
                     return op;
             }
@@ -604,7 +634,9 @@ namespace learning::operators {
         }
 
         void set_arc_blacklist(const ArcStringVector&) override {}
+        void set_arc_blacklist(const ArcSet&) override {}
         void set_arc_whitelist(const ArcStringVector&) override {}
+        void set_arc_whitelist(const ArcSet&) override {}
         void set_max_indegree(int) override {}
         void set_type_whitelist(const FactorStringTypeVector& type_whitelist) override {
             m_type_whitelist = type_whitelist;
@@ -652,11 +684,25 @@ namespace learning::operators {
                 opset->set_arc_blacklist(blacklist);
             }
         }
+
+        void set_arc_blacklist(const ArcSet& blacklist) {
+            for(auto& opset : m_op_sets) {
+                opset->set_arc_blacklist(blacklist);
+            }
+        }
+
         void set_arc_whitelist(const ArcStringVector& whitelist) {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_whitelist(whitelist);
             }
         }
+
+        void set_arc_whitelist(const ArcSet& whitelist) {
+            for(auto& opset : m_op_sets) {
+                opset->set_arc_whitelist(whitelist);
+            }
+        }
+
         void set_max_indegree(int indegree) {
             for(auto& opset : m_op_sets) {
                 opset->set_max_indegree(indegree);
@@ -666,6 +712,10 @@ namespace learning::operators {
             for(auto& opset : m_op_sets) {
                 opset->set_type_whitelist(type_whitelist);
             }
+        }
+
+        const Score& score_class() const {
+            return *m_score;
         }
     private:
         std::shared_ptr<Score> m_score;

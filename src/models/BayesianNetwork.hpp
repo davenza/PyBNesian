@@ -107,7 +107,9 @@ namespace models {
         virtual bool can_flip_arc(int source_index, int dest_index) = 0;
         virtual bool can_flip_arc(const std::string& source, const std::string& dest) = 0;
         virtual void check_blacklist(const ArcStringVector& arc_blacklist) const = 0;
+        virtual void check_blacklist(const ArcSet& arc_blacklist) const = 0;
         virtual void force_whitelist(const ArcStringVector& arc_whitelist) = 0;
+        virtual void force_whitelist(const ArcSet& arc_whitelist) = 0;
         virtual bool fitted() const = 0;
         virtual void fit(const DataFrame& df) = 0;
         virtual VectorXd logl(const DataFrame& df) const = 0;
@@ -309,7 +311,16 @@ namespace models {
         void check_blacklist(const ArcStringVector& arc_blacklist) const override {
             for(auto& arc : arc_blacklist) {
                 if (has_arc(arc.first, arc.second)) {
-                    throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in blacklist,"
+                    throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second + " in blacklist,"
+                                                " but it is present in the Bayesian Network.");
+                }
+            }
+        }
+
+        void check_blacklist(const ArcSet& arc_blacklist) const override {
+            for(auto& arc : arc_blacklist) {
+                if (has_arc(arc.first, arc.second)) {
+                    throw std::invalid_argument("Arc " + name(arc.first) + " -> " + name(arc.second) + " in blacklist,"
                                                 " but it is present in the Bayesian Network.");
                 }
             }
@@ -319,8 +330,24 @@ namespace models {
             for(auto& arc : arc_whitelist) {
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {
-                        throw std::invalid_argument("Edge " + arc.first + " -> " + arc.second + " in whitelist,"
-                                                    " but edge " + arc.second + " -> " + arc.first + " is present"
+                        throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second + " in whitelist,"
+                                                    " but arc " + arc.second + " -> " + arc.first + " is present"
+                                                    " in the Bayesian Network.");
+                    } else {
+                        add_arc(arc.first, arc.second);
+                    }
+                }
+            }
+
+            g.topological_sort();
+        }
+
+        void force_whitelist(const ArcSet& arc_whitelist) override {
+            for(auto& arc : arc_whitelist) {
+                if (!has_arc(arc.first, arc.second)) {
+                    if (has_arc(arc.second, arc.first)) {
+                        throw std::invalid_argument("Arc " + name(arc.first) + " -> " + name(arc.second) + " in whitelist,"
+                                                    " but arc " + name(arc.second) + " -> " + name(arc.first) + " is present"
                                                     " in the Bayesian Network.");
                     } else {
                         add_arc(arc.first, arc.second);

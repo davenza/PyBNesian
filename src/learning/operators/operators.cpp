@@ -88,6 +88,18 @@ namespace learning::operators {
                 valid_op = MatrixXb(num_nodes, num_nodes);
             }
 
+            for (const auto& arc : m_blacklist_names) {
+                m_blacklist.insert({model.index(arc.first), model.index(arc.second)});
+            }
+
+            m_blacklist_names.clear();
+
+            for (const auto& arc : m_whitelist_names) {
+                m_whitelist.insert({model.index(arc.first), model.index(arc.second)});
+            }
+
+            m_whitelist_names.clear();
+
             auto val_ptr = valid_op.data();
 
             std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
@@ -95,18 +107,9 @@ namespace learning::operators {
             auto indices = model.indices();
             auto valid_ops = (num_nodes * num_nodes) - 2*m_whitelist.size() - m_blacklist.size() - num_nodes;
 
-            for(auto whitelist_edge : m_whitelist) {
-                auto source_pair = indices.find(whitelist_edge.first);
-                if (source_pair == indices.end())
-                    throw std::invalid_argument("Node " + whitelist_edge.first + " present in the" 
-                                                    " whitelist list, but not present in the Bayesian network.");
-                int source_index = source_pair->second;
-                
-                auto target_pair = indices.find(whitelist_edge.second);
-                if (target_pair == indices.end())
-                    throw std::invalid_argument("Node " + whitelist_edge.second + " present in the" 
-                                                    " whitelist list, but not present in the Bayesian network.");
-                int target_index = target_pair->second;
+            for(auto whitelist_arc : m_whitelist) {
+                int source_index = whitelist_arc.first; 
+                int target_index = whitelist_arc.second;
 
                 valid_op(source_index, target_index) = false;
                 valid_op(target_index, source_index) = false;
@@ -114,19 +117,9 @@ namespace learning::operators {
                 delta(target_index, source_index) = std::numeric_limits<double>::lowest();
             }
             
-            for(auto blacklist_edge : m_blacklist) {
-                auto source_pair = indices.find(blacklist_edge.first);
-                if (source_pair == indices.end())
-                    throw std::invalid_argument("Node " + blacklist_edge.first + " present in the"
-                                                    " blacklist list, but not present in the Bayesian network.");
-                int source_index = source_pair->second;
-                
-                auto target_pair = indices.find(blacklist_edge.second);
-                if (target_pair == indices.end())
-                    throw std::invalid_argument("Node " + blacklist_edge.second + " present in the" 
-                                                    "blacklist list, but not present in the Bayesian network.");
-                int target_index = target_pair->second;
-
+            for(auto blacklist_arc : m_blacklist) {
+                int source_index = blacklist_arc.first; 
+                int target_index = blacklist_arc.second;
 
                 valid_op(source_index, target_index) = false;
                 delta(source_index, target_index) = std::numeric_limits<double>::lowest();

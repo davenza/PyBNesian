@@ -37,6 +37,27 @@ namespace learning::algorithms {
                                             double test_holdout_ratio,
                                             int verbose = 0);
 
+    std::unique_ptr<BayesianNetworkBase> estimate_hc(OperatorPool& op,
+                                                const BayesianNetworkBase& start,
+                                                const ArcSet& arc_blacklist,
+                                                const ArcSet& arc_whitelist,
+                                                int max_indegree,
+                                                int max_iters,
+                                                double epsilon,
+                                                int verbose);
+    
+    std::unique_ptr<BayesianNetworkBase> estimate_validation_hc(OperatorPool& op_pool,
+                                                            Score& validation_score,
+                                                            const BayesianNetworkBase& start,
+                                                            const ArcSet& arc_blacklist,
+                                                            const ArcSet& arc_whitelist,
+                                                            const FactorStringTypeVector& type_whitelist,
+                                                            int max_indegree,
+                                                            int max_iters,
+                                                            double epsilon, 
+                                                            int patience,
+                                                            int verbose);
+
     class GreedyHillClimbing {
     public:
         std::unique_ptr<BayesianNetworkBase> estimate(OperatorPool& op_pool,

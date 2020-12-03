@@ -25,15 +25,15 @@ namespace learning::algorithms {
                          const std::unordered_set<int>& cpc,
                          const std::unordered_set<int>& to_be_checked,
                          VectorType& min_assoc,
-                         util::BaseProgressBar* progress) {
+                         util::BaseProgressBar& progress) {
 
         std::vector<int> cpc_vec(cpc.begin(), cpc.end());
-        progress->set_text("MMPC Forward: sepset order " + std::to_string(cpc_vec.size()) +  " for " + test.name(variable));
-        progress->set_max_progress(to_be_checked.size());
-        progress->set_progress(0);
+        progress.set_text("MMPC Forward: sepset order " + std::to_string(cpc_vec.size()) +  " for " + test.name(variable));
+        progress.set_max_progress(to_be_checked.size());
+        progress.set_progress(0);
         for (auto other : to_be_checked) {
             min_assoc(other) = test.pvalue(variable, other, cpc_vec.begin(), cpc_vec.end());
-            progress->tick();
+            progress.tick();
         }
     }
 
@@ -44,35 +44,35 @@ namespace learning::algorithms {
                           const std::unordered_set<int>& cpc,
                           VectorType& min_assoc,
                           int last_added_cpc,
-                          util::BaseProgressBar* progress) {
+                          util::BaseProgressBar& progress) {
                 
         if (cpc.empty()) {
-            progress->set_text("MMPC Forward: no sepset for " + test.name(variable));
-            progress->set_max_progress(to_be_checked.size());
-            progress->set_progress(0);
+            progress.set_text("MMPC Forward: no sepset for " + test.name(variable));
+            progress.set_max_progress(to_be_checked.size());
+            progress.set_progress(0);
 
             for (auto v : to_be_checked) {
                 double pvalue = test.pvalue(variable, v);
                 min_assoc(v) = pvalue;
-                progress->tick();
+                progress.tick();
             }
         } else if (cpc.size() == 1) {
-            progress->set_text("MMPC Forward: sepset order 1 for " + test.name(variable));
-            progress->set_max_progress(to_be_checked.size());
-            progress->set_progress(0);
+            progress.set_text("MMPC Forward: sepset order 1 for " + test.name(variable));
+            progress.set_max_progress(to_be_checked.size());
+            progress.set_progress(0);
 
             for (auto v : to_be_checked) {
                 double pvalue = test.pvalue(variable, v, last_added_cpc);
                 min_assoc(v) = std::max(min_assoc(v), pvalue);
-                progress->tick();
+                progress.tick();
             }
         } else if (cpc.size() == 2) {
             std::vector<int> cond(2);
             cond[1] = last_added_cpc;
 
-            progress->set_text("MMPC Forward: sepset order 2 for " + test.name(variable));
-            progress->set_max_progress(to_be_checked.size());
-            progress->set_progress(0);
+            progress.set_text("MMPC Forward: sepset order 2 for " + test.name(variable));
+            progress.set_max_progress(to_be_checked.size());
+            progress.set_progress(0);
 
             for (auto v : to_be_checked) {
                 double pvalue = test.pvalue(variable, v, last_added_cpc);
@@ -87,12 +87,12 @@ namespace learning::algorithms {
                     min_assoc(v) = std::max(min_assoc(v), pvalue);
                 }
 
-                progress->tick();
+                progress.tick();
             }
         } else {
-            progress->set_text("MMPC Forward: sepset up to order " + std::to_string(cpc.size()) + " for " + test.name(variable));
-            progress->set_max_progress(to_be_checked.size());
-            progress->set_progress(0);
+            progress.set_text("MMPC Forward: sepset up to order " + std::to_string(cpc.size()) + " for " + test.name(variable));
+            progress.set_max_progress(to_be_checked.size());
+            progress.set_progress(0);
 
             std::vector<int> fixed = {last_added_cpc};
             std::vector<int> old_cpc {cpc.begin(), cpc.end()};
@@ -133,7 +133,7 @@ namespace learning::algorithms {
                 old_cpc.pop_back();
             }
 
-            progress->tick();
+            progress.tick();
         }
     }
 
@@ -164,7 +164,7 @@ namespace learning::algorithms {
                                                std::unordered_set<int>& to_be_checked,
                                                VectorType& min_assoc,
                                                int last_added,
-                                               util::BaseProgressBar* progress) {
+                                               util::BaseProgressBar& progress) {
         bool changed_cpc = true;
 
         if (cpc.empty()) {
@@ -211,19 +211,19 @@ namespace learning::algorithms {
                              std::unordered_set<int>& cpc,
                              const ArcSet& arc_whitelist,
                              const EdgeSet& edge_whitelist,
-                             util::BaseProgressBar* progress) {
+                             util::BaseProgressBar& progress) {
 
         if (cpc.size() > 1) {
             std::vector<int> subset_variables {cpc.begin(), cpc.end()};
 
-            progress->set_text("MMPC Backwards for " + test.name(variable));
-            progress->set_max_progress(cpc.size());
-            progress->set_progress(0);
+            progress.set_text("MMPC Backwards for " + test.name(variable));
+            progress.set_max_progress(cpc.size());
+            progress.set_progress(0);
 
             for (auto it = cpc.begin(), end = cpc.end(); it != end;) {
                 if (is_whitelisted_pc(variable, *it, arc_whitelist, edge_whitelist)) {
                     ++it;
-                    progress->tick();
+                    progress.tick();
                     continue;
                 }
 
@@ -232,8 +232,8 @@ namespace learning::algorithms {
                 // Marginal independence
                 if (test.pvalue(variable, *it) > alpha) {
                     it = cpc.erase(it);
-                    progress->set_max_progress(cpc.size());
-                    progress->tick();
+                    progress.set_max_progress(cpc.size());
+                    progress.tick();
                     continue;
                 }
 
@@ -242,7 +242,7 @@ namespace learning::algorithms {
                 for (auto it_other = subset_variables.begin(), end_other = subset_variables.end(); it_other != end_other; ++it_other) {
                     if (test.pvalue(variable, *it, *it_other) > alpha) {
                         it = cpc.erase(it);
-                        progress->set_max_progress(cpc.size());
+                        progress.set_max_progress(cpc.size());
                         found_sepset = true;
                         break;
                     }
@@ -255,7 +255,7 @@ namespace learning::algorithms {
                     for (const auto& s : comb) {
                         if (test.pvalue(variable, *it, s.begin(), s.end()) > alpha) {
                             it = cpc.erase(it);
-                            progress->set_max_progress(cpc.size());
+                            progress.set_max_progress(cpc.size());
                             found_sepset = true;
                             break;
                         }
@@ -266,7 +266,7 @@ namespace learning::algorithms {
                 if (!found_sepset && subset_variables.size() > 1 && 
                     test.pvalue(variable, *it, subset_variables.begin(), subset_variables.end()) > alpha) {
                     it = cpc.erase(it);
-                    progress->set_max_progress(cpc.size());
+                    progress.set_max_progress(cpc.size());
                     found_sepset = true;
                 }
 
@@ -276,7 +276,7 @@ namespace learning::algorithms {
                     ++it;
                 }
 
-                progress->tick();
+                progress.tick();
             }
         }
     }
@@ -286,7 +286,8 @@ namespace learning::algorithms {
                                           double alpha,
                                           const ArcSet& arc_whitelist,
                                           const EdgeSet& edge_blacklist,
-                                          const EdgeSet& edge_whitelist) {
+                                          const EdgeSet& edge_whitelist,
+                                          util::BaseProgressBar& progress) {
         std::unordered_set<int> cpc;
         std::unordered_set<int> to_be_checked;
 
@@ -325,9 +326,8 @@ namespace learning::algorithms {
         int last_added = 0;
         if (!cpc.empty()) last_added = MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC;
 
-        util::VoidProgressBar void_bar;
-        mmpc_forward_phase(test, variable, alpha, cpc, to_be_checked, min_assoc, last_added, &void_bar);
-        mmpc_backward_phase(test, variable, alpha, cpc, arc_whitelist, edge_whitelist, &void_bar);
+        mmpc_forward_phase(test, variable, alpha, cpc, to_be_checked, min_assoc, last_added, progress);
+        mmpc_backward_phase(test, variable, alpha, cpc, arc_whitelist, edge_whitelist, progress);
         return cpc;
     }
 
@@ -339,11 +339,11 @@ namespace learning::algorithms {
                                      MatrixXd& min_assoc,
                                      VectorXd& maxmin_assoc,
                                      VectorXi& maxmin_index,
-                                     util::BaseProgressBar* progress) {
+                                     util::BaseProgressBar& progress) {
         auto nnodes = test.num_columns();
-        progress->set_text("MMPC Forward: No sepset");
-        progress->set_max_progress((nnodes*(nnodes-1) / 2));
-        progress->set_progress(0);
+        progress.set_text("MMPC Forward: No sepset");
+        progress.set_max_progress((nnodes*(nnodes-1) / 2));
+        progress.set_progress(0);
 
         for (int i = 0, i_end = nnodes-1; i < i_end; ++i) {
             for (int j = i+1; j < nnodes; ++j) {
@@ -371,7 +371,7 @@ namespace learning::algorithms {
                     }
                 }
 
-                progress->tick();
+                progress.tick();
             }
         }
     }
@@ -383,11 +383,11 @@ namespace learning::algorithms {
                                        MatrixXd& min_assoc,
                                        VectorXd& maxmin_assoc,
                                        VectorXi& maxmin_index,
-                                       util::BaseProgressBar* progress) {
+                                       util::BaseProgressBar& progress) {
         auto nnodes = test.num_columns();
-        progress->set_text("MMPC Forward: sepset order 1");
-        progress->set_max_progress(nnodes);
-        progress->set_progress(0);
+        progress.set_text("MMPC Forward: sepset order 1");
+        progress.set_max_progress(nnodes);
+        progress.set_progress(0);
         
         for (int i = 0; i < nnodes; ++i) {
             if (cpcs[i].size() == 1) {
@@ -425,7 +425,7 @@ namespace learning::algorithms {
                 }
             }
 
-            progress->tick();
+            progress.tick();
         }
     }
 
@@ -434,7 +434,7 @@ namespace learning::algorithms {
                                                             const ArcSet& arc_whitelist,
                                                             const EdgeSet& edge_blacklist,
                                                             const EdgeSet& edge_whitelist,
-                                                            util::BaseProgressBar* progress) {
+                                                            util::BaseProgressBar& progress) {
         std::vector<std::unordered_set<int>> cpcs(test.num_columns());
         std::vector<std::unordered_set<int>> to_be_checked(test.num_columns());
 
@@ -532,7 +532,7 @@ namespace learning::algorithms {
         auto progress = util::progress_bar(verbose);
 
         auto cpcs = mmpc_all_variables(test, alpha, restrictions.arc_whitelist, 
-                                        restrictions.edge_blacklist, restrictions.edge_whitelist, progress.get());
+                                        restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
 
         for (auto i = 0; i < test.num_columns(); ++i) {
             for (auto p : cpcs[i]) {
@@ -545,7 +545,7 @@ namespace learning::algorithms {
 
         direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
         direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist, 
-                                  alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, progress.get());
+                                  alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
 
         progress->set_max_progress(3);
         progress->set_text("Applying Meek rules");

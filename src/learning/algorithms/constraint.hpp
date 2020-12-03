@@ -47,7 +47,7 @@ namespace learning::algorithms {
                                    bool use_sepsets,
                                    double ambiguous_threshold,
                                    bool allow_bidirected,
-                                   util::BaseProgressBar* progress);
+                                   util::BaseProgressBar& progress);
 
     class MeekRules {
     public:

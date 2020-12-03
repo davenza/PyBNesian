@@ -253,20 +253,20 @@ namespace learning::algorithms {
                                    bool use_sepsets,
                                    double ambiguous_threshold,
                                    bool allow_bidirected,
-                                   util::BaseProgressBar* progress) {
+                                   util::BaseProgressBar& progress) {
 
         std::vector<vstructure> vs;
 
-        progress->set_max_progress(pdag.num_nodes());
-        progress->set_text("Finding v-structures");
-        progress->set_progress(0);
+        progress.set_max_progress(pdag.num_nodes());
+        progress.set_text("Finding v-structures");
+        progress.set_progress(0);
 
         for (const auto& node : pdag.node_indices()) {
             if (node.neighbors().size() >= 1 && (node.parents().size() + node.neighbors().size()) >= 2) {
                 auto tmp = evaluate_vstructures_at_node(pdag, node, test, alpha, sepset, use_sepsets, ambiguous_threshold);
                 vs.insert(vs.end(), tmp.begin(), tmp.end());
             }
-            progress->tick();
+            progress.tick();
         }
 
         if (allow_bidirected) {

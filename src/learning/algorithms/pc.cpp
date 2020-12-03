@@ -129,7 +129,7 @@ namespace learning::algorithms {
                          const IndependenceTest& test, 
                          double alpha,
                          EdgeSet& edge_whitelist,
-                         util::BaseProgressBar* progress) {
+                         util::BaseProgressBar& progress) {
 
         if (static_cast<size_t>(g.num_edges()) == edge_whitelist.size()) {
             return SepSet{};
@@ -139,9 +139,9 @@ namespace learning::algorithms {
 
         int nnodes = g.num_nodes();
 
-        progress->set_max_progress((nnodes*(nnodes-1) / 2) - edge_whitelist.size());
-        progress->set_text("No sepset");
-        progress->set_progress(0);
+        progress.set_max_progress((nnodes*(nnodes-1) / 2) - edge_whitelist.size());
+        progress.set_text("No sepset");
+        progress.set_progress(0);
 
         for (int i = 0; i < nnodes-1; ++i) {
             for (int j = i+1; j < nnodes; ++j) {
@@ -151,7 +151,7 @@ namespace learning::algorithms {
                         g.remove_edge_unsafe(i, j);
                         sepset.insert({i,j}, {}, pvalue);
                     }
-                    progress->tick();
+                    progress.tick();
                 }
             }
         }
@@ -162,9 +162,9 @@ namespace learning::algorithms {
 
         std::vector<Edge> edges_to_remove;
 
-        progress->set_max_progress(g.num_edges() - edge_whitelist.size());
-        progress->set_text("Sepset Order 1");
-        progress->set_progress(0);
+        progress.set_max_progress(g.num_edges() - edge_whitelist.size());
+        progress.set_text("Sepset Order 1");
+        progress.set_progress(0);
 
         for (auto& edge : g.edge_indices()) {
             if (edge_whitelist.count({edge.first, edge.second}) == 0) {
@@ -173,7 +173,7 @@ namespace learning::algorithms {
                     edges_to_remove.push_back(edge);
                     sepset.insert(edge, {indep->first}, indep->second);
                 }
-                progress->tick();
+                progress.tick();
             }
         }
 
@@ -183,9 +183,9 @@ namespace learning::algorithms {
         while(static_cast<size_t>(g.num_edges()) > edge_whitelist.size() && !max_cardinality(g, limit)) {
             edges_to_remove.clear();
 
-            progress->set_max_progress(g.num_edges() - edge_whitelist.size());
-            progress->set_text("Sepset Order " + std::to_string(limit));
-            progress->set_progress(0);
+            progress.set_max_progress(g.num_edges() - edge_whitelist.size());
+            progress.set_text("Sepset Order " + std::to_string(limit));
+            progress.set_progress(0);
 
             for (auto& edge : g.edge_indices()) {
                 if (edge_whitelist.count({edge.first, edge.second}) == 0) {
@@ -194,7 +194,7 @@ namespace learning::algorithms {
                         edges_to_remove.push_back(edge);
                         sepset.insert(edge, std::move(indep->first), indep->second);
                     }
-                    progress->tick();
+                    progress.tick();
                 }
             }
 
@@ -244,12 +244,12 @@ namespace learning::algorithms {
 
         indicators::show_console_cursor(false);
         auto progress = util::progress_bar(verbose);
-        auto sepset = find_skeleton(skeleton, test, alpha, restrictions.edge_whitelist, progress.get());
+        auto sepset = find_skeleton(skeleton, test, alpha, restrictions.edge_whitelist, *progress);
 
         direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
 
         direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist,
-                                    alpha, sepset, use_sepsets, ambiguous_threshold, allow_bidirected, progress.get());
+                                    alpha, sepset, use_sepsets, ambiguous_threshold, allow_bidirected, *progress);
 
 
         progress->set_max_progress(3);

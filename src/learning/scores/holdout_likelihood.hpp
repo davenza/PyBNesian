@@ -12,7 +12,7 @@ using learning::scores::ScoreSPBN;
 
 namespace learning::scores {
 
-    class HoldoutLikelihood : public Score, public ScoreSPBN {
+    class HoldoutLikelihood : public ScoreSPBN {
     public:
         HoldoutLikelihood(const DataFrame& df, double test_ratio) : m_holdout(df, test_ratio) { }
         HoldoutLikelihood(const DataFrame& df, double test_ratio, unsigned int seed) : m_holdout(df, test_ratio, seed) { }

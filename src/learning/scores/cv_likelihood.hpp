@@ -12,7 +12,7 @@ using models::BayesianNetworkBase, models::BayesianNetworkType,
 
 namespace learning::scores {
 
-    class CVLikelihood : public Score, public ScoreSPBN {
+    class CVLikelihood : public ScoreSPBN {
     public:
         CVLikelihood(const DataFrame& df, int k) : m_cv(df, k) {}
         CVLikelihood(const DataFrame& df, int k, unsigned int seed) : m_cv(df, k, seed) {}

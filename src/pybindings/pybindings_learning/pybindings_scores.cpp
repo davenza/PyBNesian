@@ -79,7 +79,27 @@ void pybindings_scores(py::module& root) {
         .def("is_decomposable", &Score::is_decomposable)
         .def("type", &Score::type);
 
-    py::class_<ScoreSPBN, std::shared_ptr<ScoreSPBN>>(scores, "ScoreSPBN")
+    py::class_<ScoreSPBN, Score, std::shared_ptr<ScoreSPBN>>(scores, "ScoreSPBN")
+    //  Include parent methods.
+        .def("score", &Score::score)
+        .def("local_score", [](Score& self, const BayesianNetworkBase& m, const std::string& variable) {
+            return self.local_score(m, variable);
+        })
+        .def("local_score", [](Score& self, const BayesianNetworkBase& m, const int variable) {
+            return self.local_score(m, variable);
+        })
+        .def("local_score", [](Score& self, const BayesianNetworkBase& m, const std::string& variable, 
+                                const std::vector<std::string> evidence) {
+            return self.local_score(m, variable, evidence.begin(), evidence.end());
+        })
+        .def("local_score", [](Score& self, const BayesianNetworkBase& m, const int variable, 
+                                const std::vector<int> evidence) {
+            return self.local_score(m, variable, evidence.begin(), evidence.end());
+        })
+        .def("ToString", &Score::ToString)
+        .def("is_decomposable", &Score::is_decomposable)
+        .def("type", &Score::type)
+    // SPBN methods.
         .def("local_score", [](ScoreSPBN& self, FactorType variable_type, const std::string& variable, 
                                 const std::vector<std::string> evidence) {
             return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
@@ -92,7 +112,7 @@ void pybindings_scores(py::module& root) {
     py::class_<BIC, Score, std::shared_ptr<BIC>>(scores, "BIC")
         .def(py::init<const DataFrame&>());
 
-    py::class_<CVLikelihood, Score, ScoreSPBN, std::shared_ptr<CVLikelihood>>(scores, "CVLikelihood")
+    py::class_<CVLikelihood, ScoreSPBN, std::shared_ptr<CVLikelihood>>(scores, "CVLikelihood")
         .def(py::init<const DataFrame&, int>(),
                 py::arg("df"),
                 py::arg("k") = 10)
@@ -102,7 +122,7 @@ void pybindings_scores(py::module& root) {
                 py::arg("seed"))
         .def_property_readonly("cv", &CVLikelihood::cv);
 
-    py::class_<HoldoutLikelihood, Score, ScoreSPBN, std::shared_ptr<HoldoutLikelihood>>(scores, "HoldoutLikelihood")
+    py::class_<HoldoutLikelihood, ScoreSPBN, std::shared_ptr<HoldoutLikelihood>>(scores, "HoldoutLikelihood")
         .def(py::init<const DataFrame&, double>(),
                 py::arg("df"),
                 py::arg("test_ratio") = 0.2)

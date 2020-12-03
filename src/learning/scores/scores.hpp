@@ -82,8 +82,9 @@ namespace learning::scores {
         virtual ScoreType type() const = 0;
     };
 
-    class ScoreSPBN {
+    class ScoreSPBN : public Score {
     public:
+        using Score::local_score;
         virtual ~ScoreSPBN() {}
         virtual double local_score(FactorType variable_type, int variable, 
                                    const typename std::vector<int>::const_iterator evidence_begin, 

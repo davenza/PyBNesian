@@ -12,28 +12,53 @@ namespace util {
                                         "\"gbn\" (Gaussian Bayesian networks) or \"spbn\" (Semiparametric Bayesian networks).");
     }
 
-    ScoreType check_valid_score_string(const std::string& score) {
-        if (score == "bic") return ScoreType::BIC;
-        if (score == "predic-l") return ScoreType::PREDICTIVE_LIKELIHOOD;
-        if (score == "holdout-l") return ScoreType::HOLDOUT_LIKELIHOOD;
-        else
-            throw std::invalid_argument("Wrong Bayesian Network score \"" + score + "\" specified. The possible alternatives are " 
-                                    "\"bic\" (Bayesian Information Criterion), \"predic-l\" (Predictive Log-likelihood) or"
-                                    "\"holdout-l\" (Holdout likelihood).");
-        
+    ScoreType check_valid_score_string(const std::optional<std::string>& score, BayesianNetworkType bn_type) {
+        if (score) {
+            if (*score == "bic") return ScoreType::BIC;
+            if (*score == "predic-l") return ScoreType::PREDICTIVE_LIKELIHOOD;
+            if (*score == "holdout-l") return ScoreType::HOLDOUT_LIKELIHOOD;
+            else
+                throw std::invalid_argument("Wrong Bayesian Network score \"" + *score + "\" specified. The possible alternatives are " 
+                                        "\"bic\" (Bayesian Information Criterion), \"predic-l\" (Predictive Log-likelihood) or"
+                                        "\"holdout-l\" (Holdout likelihood).");
+        } else {
+            switch(bn_type) {
+                case BayesianNetworkType::GBN:
+                    return ScoreType::BIC;
+                case BayesianNetworkType::SPBN:
+                    return ScoreType::PREDICTIVE_LIKELIHOOD;
+                default:
+                    throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
+            }
+        }
     }
 
-    OperatorSetTypeS check_valid_operators_string(const std::vector<std::string>& operators) {
-        std::unordered_set<OperatorSetType, typename OperatorSetType::HashType> ops(operators.size());
-        for (auto& op : operators) {
-            if (op == "arcs") ops.insert(OperatorSetType::ARCS);
-            else if (op == "node_type") ops.insert(OperatorSetType::NODE_TYPE);
-            else
-                throw std::invalid_argument("Wrong operator set \"" + op + "\". Valid choices are:"
-                                            "\"arcs\" (Changes in arcs; addition, removal and flip) or "
-                                            "\"node_type\" (Change of node type)");
+    OperatorSetTypeS check_valid_operators_string(const std::optional<std::vector<std::string>>& operators, 
+                                                  BayesianNetworkType bn_type) {
+
+        if (operators) {
+            OperatorSetTypeS ops(operators->size());
+            for (auto& op : *operators) {
+                if (op == "arcs") ops.insert(OperatorSetType::ARCS);
+                else if (op == "node_type") ops.insert(OperatorSetType::NODE_TYPE);
+                else
+                    throw std::invalid_argument("Wrong operator set \"" + op + "\". Valid choices are:"
+                                                "\"arcs\" (Changes in arcs; addition, removal and flip) or "
+                                                "\"node_type\" (Change of node type)");
+            }
+            
+            return ops;
+        } else {
+            switch(bn_type) {
+                case BayesianNetworkType::GBN:
+                    return {OperatorSetType::ARCS};
+                case BayesianNetworkType::SPBN:
+                    return {OperatorSetType::ARCS, OperatorSetType::NODE_TYPE};
+                default:
+                    throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
+            }
         }
-        return ops;
+
     }
 
     std::shared_ptr<Score> check_valid_score(const DataFrame& df, 

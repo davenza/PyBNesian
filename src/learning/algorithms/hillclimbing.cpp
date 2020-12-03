@@ -24,12 +24,12 @@ namespace learning::algorithms {
  
     std::unique_ptr<BayesianNetworkBase> hc(const DataFrame& df,
                                             const BayesianNetworkBase* start,
-                                            std::string bn_str,
-                                            std::string score_str,
-                                            std::vector<std::string> operators_str,
-                                            ArcStringVector& arc_blacklist,
-                                            ArcStringVector& arc_whitelist,
-                                            FactorStringTypeVector& type_whitelist,
+                                            const std::string& bn_str,
+                                            const std::optional<std::string>& score_str,
+                                            const std::optional<std::vector<std::string>>& operators_str,
+                                            const ArcStringVector& arc_blacklist,
+                                            const ArcStringVector& arc_whitelist,
+                                            const FactorStringTypeVector& type_whitelist,
                                             int max_indegree,
                                             int max_iters,
                                             double epsilon,
@@ -53,8 +53,8 @@ namespace learning::algorithms {
             else return util::check_valid_bn_string(bn_str);
         }();
 
-        auto score_type = util::check_valid_score_string(score_str);
-        auto operators_type = util::check_valid_operators_string(operators_str);
+        auto score_type = util::check_valid_score_string(score_str, bn_type);
+        auto operators_type = util::check_valid_operators_string(operators_str, bn_type);
 
         auto operators = util::check_valid_operators(bn_type, operators_type, 
                                 arc_blacklist, arc_whitelist, max_indegree, type_whitelist);
@@ -106,8 +106,8 @@ namespace learning::algorithms {
 
     std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorPool& op,
                                                                       const BayesianNetworkBase& start,
-                                                                      ArcStringVector& arc_blacklist,
-                                                                      ArcStringVector& arc_whitelist,
+                                                                      const ArcStringVector& arc_blacklist,
+                                                                      const ArcStringVector& arc_whitelist,
                                                                       int max_indegree,
                                                                       int max_iters,
                                                                       double epsilon,
@@ -216,9 +216,9 @@ namespace learning::algorithms {
     std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorPool& op_pool,
                                                                                  Score& validation_score,
                                                                                  const BayesianNetworkBase& start,
-                                                                                 ArcStringVector& arc_blacklist,
-                                                                                 ArcStringVector& arc_whitelist,
-                                                                                 FactorStringTypeVector& type_whitelist,
+                                                                                 const ArcStringVector& arc_blacklist,
+                                                                                 const ArcStringVector& arc_whitelist,
+                                                                                 const FactorStringTypeVector& type_whitelist,
                                                                                  int max_indegree,
                                                                                  int max_iters,
                                                                                  double epsilon, 

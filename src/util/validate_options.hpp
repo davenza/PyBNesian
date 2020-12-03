@@ -9,8 +9,9 @@ namespace util {
     using OperatorSetTypeS = std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>;
 
     BayesianNetworkType check_valid_bn_string(const std::string& bn_type);
-    ScoreType check_valid_score_string(const std::string& score);
-    OperatorSetTypeS check_valid_operators_string(const std::vector<std::string>& operators);
+    ScoreType check_valid_score_string(const std::optional<std::string>& score, BayesianNetworkType bn_type);
+    OperatorSetTypeS check_valid_operators_string(const std::optional<std::vector<std::string>>& operators, 
+                                                  BayesianNetworkType bn_type);
 
     std::shared_ptr<Score> check_valid_score(const DataFrame& df, 
                                              BayesianNetworkType bn_type,

@@ -150,8 +150,7 @@ namespace learning::operators {
                 double delta) : ArcOperator(source, target, delta, OperatorType::FLIP_ARC) {}
 
         void apply(BayesianNetworkBase& m) override {
-            m.remove_arc(this->source(), this->target());
-            m.add_arc(this->target(), this->source());
+            m.flip_arc(this->source(), this->target());
         }
         std::shared_ptr<Operator> opposite() override {
             return std::make_shared<FlipArc>(this->target(), this->source(), -this->delta());
@@ -492,7 +491,8 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                return std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(dest, source));
+
+                return std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(source, dest));
             } else if (model.can_add_arc(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
@@ -530,7 +530,7 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(dest, source));
+                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest), model.name(source), delta(source, dest));
                 if (!tabu_set.contains(op))
                     return op;
             } else if (model.can_add_arc(source, dest)) {

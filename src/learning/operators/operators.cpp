@@ -231,9 +231,18 @@ namespace learning::operators {
         }
 
         switch(op.type()) {
-            case OperatorType::ADD_ARC:
-            case OperatorType::REMOVE_ARC: {
+            case OperatorType::ADD_ARC: {
                 auto& dwn_op = dynamic_cast<ArcOperator&>(op);
+                update_node_arcs_scores(model, score, dwn_op.target());
+            }
+                break;
+            case OperatorType::REMOVE_ARC: {
+                auto& dwn_op = dynamic_cast<ArcOperator&>(op);   
+                // Update the cost of (AddArc: target -> source). New Add delta = Old Flip delta - Old Remove delta
+                auto source_idx = model.index(dwn_op.source());
+                auto target_idx = model.index(dwn_op.target());
+                auto easy_compute = delta(target_idx, source_idx) - delta(source_idx, target_idx);
+
                 update_node_arcs_scores(model, score, dwn_op.target());
             }
                 break;
@@ -258,19 +267,26 @@ namespace learning::operators {
         
         for (int i = 0; i < model.num_nodes(); ++i) {
             if (valid_op(i, dest_idx)) {
-
                 if (model.has_arc(i, dest_idx)) {
+
+                    // Update remove arc: i -> dest_idx
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
                     double d = score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
                                this->m_local_cache->local_score(dest_idx);
+
+                    auto old_remove_delta = delta(i, dest_idx);
                     delta(i, dest_idx) = d;
 
-                    auto new_parents_i = model.parent_indices(i);
-                    new_parents_i.push_back(dest_idx);
+                    // Update flip arc: i -> dest_idx
+                    if (valid_op(dest_idx, i)) {                       
+                        auto new_parents_i = model.parent_indices(i);
+                        new_parents_i.push_back(dest_idx);
 
-                    delta(dest_idx, i) = d + score.local_score(model, i, new_parents_i.begin(), new_parents_i.end())
-                                            - this->m_local_cache->local_score(i);
+                        delta(dest_idx, i) = d + score.local_score(model, i, new_parents_i.begin(), new_parents_i.end())
+                                                - this->m_local_cache->local_score(i);
+                    }
                 } else if (model.has_arc(dest_idx, i)) {
+                    // Update flip arc: dest_idx -> i
                     auto new_parents_i = model.parent_indices(i);
                     util::swap_remove_v(new_parents_i, dest_idx);
 
@@ -279,8 +295,9 @@ namespace learning::operators {
                                score.local_score(model, dest_idx, parents.begin(), parents.end()) 
                                 - this->m_local_cache->local_score(i) - this->m_local_cache->local_score(dest_idx);
                     parents.pop_back();
-                    delta(dest_idx, i) = d;
+                    delta(i, dest_idx) = d;
                 } else {
+                    // Update add arc: i -> dest_idx
                     parents.push_back(i);
                     double d = score.local_score(model, dest_idx, parents.begin(), parents.end()) - 
                                 this->m_local_cache->local_score(dest_idx);

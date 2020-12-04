@@ -6,7 +6,7 @@
 #include <learning/independences/independence.hpp>
 
 using models::BayesianNetworkBase;
-using learning::operators::OperatorPool;
+using learning::operators::OperatorSet;
 using learning::independences::IndependenceTest;
 
 namespace learning::algorithms {
@@ -14,7 +14,8 @@ namespace learning::algorithms {
     class MMHC {
     public:
         std::unique_ptr<BayesianNetworkBase> estimate(const IndependenceTest& test,
-                                                      OperatorPool& op_pool,
+                                                      OperatorSet& op_set,
+                                                      Score& score,
                                                       Score* validation_score,
                                                       const std::string& bn_str,
                                                       const ArcStringVector& varc_blacklist,

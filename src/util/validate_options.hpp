@@ -20,12 +20,12 @@ namespace util {
                                              int num_folds,
                                              double test_holdout_ratio);
     
-    std::vector<std::shared_ptr<OperatorSet>> check_valid_operators(BayesianNetworkType bn_type, 
-                                                const OperatorSetTypeS& operators,
-                                                const ArcStringVector& arc_blacklist,
-                                                const ArcStringVector& arc_whitelist,
-                                                int max_indegree,
-                                                const FactorStringTypeVector& type_whitelist);
+    std::shared_ptr<OperatorSet> check_valid_operators(BayesianNetworkType bn_type, 
+                                                       const OperatorSetTypeS& operators,
+                                                       const ArcStringVector& arc_blacklist,
+                                                       const ArcStringVector& arc_whitelist,
+                                                       int max_indegree,
+                                                       const FactorStringTypeVector& type_whitelist);
 }
 
 #endif //PYBNESIAN_UTIL_VALIDATE_OPTIONS_HPP

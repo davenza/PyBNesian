@@ -13,7 +13,7 @@ namespace py = pybind11;
 using dataset::DataFrame;
 using learning::scores::Score;
 using learning::operators::Operator, learning::operators::OperatorType, learning::operators::ArcOperator, 
-      learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorPool;
+      learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorSet;
 
 using util::ArcStringVector;
 
@@ -37,30 +37,33 @@ namespace learning::algorithms {
                                             double test_holdout_ratio,
                                             int verbose = 0);
 
-    std::unique_ptr<BayesianNetworkBase> estimate_hc(OperatorPool& op,
-                                                const BayesianNetworkBase& start,
-                                                const ArcSet& arc_blacklist,
-                                                const ArcSet& arc_whitelist,
-                                                int max_indegree,
-                                                int max_iters,
-                                                double epsilon,
-                                                int verbose);
+    std::unique_ptr<BayesianNetworkBase> estimate_hc(OperatorSet& op_set,
+                                                     Score& score,
+                                                     const BayesianNetworkBase& start,
+                                                     const ArcSet& arc_blacklist,
+                                                     const ArcSet& arc_whitelist,
+                                                     int max_indegree,
+                                                     int max_iters,
+                                                     double epsilon,
+                                                     int verbose);
     
-    std::unique_ptr<BayesianNetworkBase> estimate_validation_hc(OperatorPool& op_pool,
-                                                            Score& validation_score,
-                                                            const BayesianNetworkBase& start,
-                                                            const ArcSet& arc_blacklist,
-                                                            const ArcSet& arc_whitelist,
-                                                            const FactorStringTypeVector& type_whitelist,
-                                                            int max_indegree,
-                                                            int max_iters,
-                                                            double epsilon, 
-                                                            int patience,
-                                                            int verbose);
+    std::unique_ptr<BayesianNetworkBase> estimate_validation_hc(OperatorSet& op_set,
+                                                                Score& score,
+                                                                Score& validation_score,
+                                                                const BayesianNetworkBase& start,
+                                                                const ArcSet& arc_blacklist,
+                                                                const ArcSet& arc_whitelist,
+                                                                const FactorStringTypeVector& type_whitelist,
+                                                                int max_indegree,
+                                                                int max_iters,
+                                                                double epsilon, 
+                                                                int patience,
+                                                                int verbose);
 
     class GreedyHillClimbing {
     public:
-        std::unique_ptr<BayesianNetworkBase> estimate(OperatorPool& op_pool,
+        std::unique_ptr<BayesianNetworkBase> estimate(OperatorSet& op_set,
+                                                      Score& score,
                                                       const BayesianNetworkBase& start,
                                                       const ArcStringVector& arc_blacklist,
                                                       const ArcStringVector& arc_whitelist,
@@ -69,7 +72,8 @@ namespace learning::algorithms {
                                                       double epsilon,
                                                       int verbose = 0);
 
-        std::unique_ptr<BayesianNetworkBase> estimate_validation(OperatorPool& op_pool,
+        std::unique_ptr<BayesianNetworkBase> estimate_validation(OperatorSet& op_set,
+                                                                 Score& score,
                                                                  Score& validation_score,
                                                                  const BayesianNetworkBase& start,
                                                                  const ArcStringVector& arc_blacklist,

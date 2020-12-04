@@ -34,20 +34,11 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("test_holdout_ratio") = 0.2,
                 py::arg("verbose") = 0);
 
-    // register_GreedyHillClimbing<GaussianNetwork, SemiparametricBN>(algorithms);
     py::class_<GreedyHillClimbing> (algorithms, "GreedyHillClimbing")
         .def(py::init<>())
-        .def("estimate", [](GreedyHillClimbing& self, 
-                            OperatorPool& pool,
-                            const BayesianNetworkBase& start,
-                            ArcStringVector& arc_blacklist,
-                            ArcStringVector& arc_whitelist,
-                            int max_indegree,
-                            int max_iters, 
-                            double epsilon,
-                            int verbose) {
-                return self.estimate(pool, start, arc_blacklist, arc_whitelist, max_indegree, max_iters, epsilon, verbose);
-            },  py::arg("pool"),
+        .def("estimate", &GreedyHillClimbing::estimate,
+                py::arg("op_set"),
+                py::arg("score"),
                 py::arg("start"),
                 py::arg("arc_blacklist") = ArcStringVector(),
                 py::arg("arc_whitelist") = ArcStringVector(),
@@ -55,21 +46,9 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,
                 py::arg("verbose") = 0)
-        .def("estimate_validation", [](GreedyHillClimbing& self,
-                                       OperatorPool& pool, 
-                                       Score& validation_score,
-                                       const BayesianNetworkBase& start,
-                                       ArcStringVector& arc_blacklist,
-                                       ArcStringVector& arc_whitelist,
-                                       FactorStringTypeVector& type_whitelist,
-                                       int max_indegree,
-                                       int max_iters,
-                                       double epsilon,
-                                       int patience,
-                                       int verbose) {
-                    return self.estimate_validation(pool, validation_score, start, arc_blacklist, arc_whitelist, 
-                                                    type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
-                },  py::arg("pool"),
+        .def("estimate_validation", &GreedyHillClimbing::estimate_validation,
+                    py::arg("op_set"),
+                    py::arg("score"),
                     py::arg("validation_score"),
                     py::arg("start"),
                     py::arg("arc_blacklist") = ArcStringVector(),
@@ -118,7 +97,8 @@ void pybindings_algorithms(py::module& root) {
         .def(py::init<>())
         .def("estimate", &MMHC::estimate, 
             py::arg("hypot_test"),
-            py::arg("pool"),
+            py::arg("op_set"),
+            py::arg("score"),
             py::arg("validation_score") = nullptr,
             py::arg("bn_type") = "gbn",
             py::arg("arc_blacklist") = ArcStringVector(),

@@ -31,55 +31,6 @@ namespace learning::operators {
         return std::make_shared<RemoveArc>(this->source(), this->target(), -this->delta());
     }
 
-    void OperatorPool::cache_scores(BayesianNetworkBase& model) {
-        local_cache->cache_local_scores(model, *m_score);
-
-        for (auto& op_set : m_op_sets) {
-            op_set->cache_scores(model, *m_score);
-        }
-    }
-
-    std::shared_ptr<Operator> OperatorPool::find_max(BayesianNetworkBase& model) {
-
-        double max_delta = std::numeric_limits<double>::lowest();
-        std::shared_ptr<Operator> max_op = nullptr;
-
-        for (auto& op_set : m_op_sets) {
-            auto new_op = op_set->find_max(model);
-            if (new_op && new_op->delta() > max_delta) {
-                max_op = std::move(new_op);
-                max_delta = max_op->delta();
-            }
-        }
-
-        return max_op;
-    }
-
-    std::shared_ptr<Operator> OperatorPool::find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
-        if (tabu_set.empty())
-            return find_max(model);
-        
-        double max_delta = std::numeric_limits<double>::lowest();
-        std::shared_ptr<Operator> max_op = nullptr;
-
-        for (auto& op_set : m_op_sets) {
-            auto new_op = op_set->find_max(model, tabu_set);
-            if (new_op && new_op->delta() > max_delta) {
-                max_op = std::move(new_op);
-                max_delta = max_op->delta();
-            }
-        }
-
-        return max_op;
-    }
-
-    void OperatorPool::update_scores(BayesianNetworkBase& model, Operator& op) {
-        local_cache->update_local_score(model, *m_score, op);
-        for (auto& op_set : m_op_sets) {
-            op_set->update_scores(model, *m_score, op);
-        }
-    }
-
     void ArcOperatorSet::update_listed_arcs(BayesianNetworkBase& model) {
         if (required_arclist_update) {
             int num_nodes = model.num_nodes();
@@ -146,19 +97,17 @@ namespace learning::operators {
     }
 
     void ArcOperatorSet::cache_scores(BayesianNetworkBase& model, Score& score) {
+        initialize_local_cache(model);
+
+        if (owns_local_cache()) {
+            this->m_local_cache->cache_local_scores(model, score);
+        }
+
         if (!util::compatible_score(model, score.type())) {
             throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + model.type().ToString() + ".");
         }
 
         update_listed_arcs(model);
-
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->cache_local_scores(model, score);
-        } else if (this->owns_local_cache()) {
-            this->m_local_cache->cache_local_scores(model, score);
-        }
 
         for (auto dest = 0; dest < model.num_nodes(); ++dest) {
             std::vector<int> new_parents_dest = model.parent_indices(dest);
@@ -193,9 +142,7 @@ namespace learning::operators {
     }
 
     std::shared_ptr<Operator> ArcOperatorSet::find_max(BayesianNetworkBase& model) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
+        raise_uninitialized();
 
         if (max_indegree > 0)
             return find_max_indegree<true>(model);
@@ -204,9 +151,7 @@ namespace learning::operators {
     }
 
     std::shared_ptr<Operator> ArcOperatorSet::find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
+        raise_uninitialized();
 
         if (max_indegree > 0)
             return find_max_indegree<true>(model, tabu_set);
@@ -215,12 +160,10 @@ namespace learning::operators {
     }
 
     void ArcOperatorSet::update_scores(BayesianNetworkBase& model, Score& score, Operator& op) {
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->update_local_score(model, score, op);
-        } else if(this->owns_local_cache()) {
-            this->m_local_cache->update_local_score(model, score, op);
+        raise_uninitialized();
+
+        if (owns_local_cache()) {
+            m_local_cache->update_local_score(model, score, op);
         }
 
         switch(op.type()) {
@@ -234,7 +177,7 @@ namespace learning::operators {
                 // Update the cost of (AddArc: target -> source). New Add delta = Old Flip delta - Old Remove delta
                 auto source_idx = model.index(dwn_op.source());
                 auto target_idx = model.index(dwn_op.target());
-                auto easy_compute = delta(target_idx, source_idx) - delta(source_idx, target_idx);
+                delta(target_idx, source_idx) = delta(target_idx, source_idx) - delta(source_idx, target_idx);
 
                 update_node_arcs_scores(model, score, dwn_op.target());
             }
@@ -254,20 +197,16 @@ namespace learning::operators {
     }   
 
     void ArcOperatorSet::update_node_arcs_scores(BayesianNetworkBase& model, Score& score, const std::string& dest_node) {
-
         auto dest_idx = model.index(dest_node);
         auto parents = model.parent_indices(dest_idx);
         
         for (int i = 0; i < model.num_nodes(); ++i) {
             if (valid_op(i, dest_idx)) {
                 if (model.has_arc(i, dest_idx)) {
-
                     // Update remove arc: i -> dest_idx
                     std::iter_swap(std::find(parents.begin(), parents.end(), i), parents.end() - 1);
                     double d = score.local_score(model, dest_idx, parents.begin(), parents.end() - 1) - 
                                this->m_local_cache->local_score(dest_idx);
-
-                    auto old_remove_delta = delta(i, dest_idx);
                     delta(i, dest_idx) = d;
 
                     // Update flip arc: i -> dest_idx
@@ -302,6 +241,12 @@ namespace learning::operators {
     }
 
     void ChangeNodeTypeSet::cache_scores(BayesianNetworkBase& model, Score& score) {
+        initialize_local_cache(model);
+
+        if (owns_local_cache()) {
+            this->m_local_cache->cache_local_scores(model, score);
+        }
+
         if (model.type() != BayesianNetworkType::SPBN) {
             throw std::invalid_argument("ChangeNodeTypeSet can only be used with SemiparametricBN");
         }
@@ -312,14 +257,6 @@ namespace learning::operators {
         
         update_whitelisted(model);
 
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->cache_local_scores(model, score);
-        } else if (this->owns_local_cache()) {
-            this->m_local_cache->cache_local_scores(model, score);
-        }
-
         for(int i = 0, num_nodes = model.num_nodes(); i < num_nodes; ++i) {
             if(valid_op(i)) {
                 update_local_delta(model, score, i);
@@ -328,9 +265,7 @@ namespace learning::operators {
     }
 
     std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(BayesianNetworkBase& model) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
+        raise_uninitialized();
 
         auto delta_ptr = delta.data();
         auto max_element = std::max_element(delta_ptr, delta_ptr + model.num_nodes());
@@ -345,9 +280,8 @@ namespace learning::operators {
     }
 
     std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
-        if (this->m_local_cache == nullptr) {
-            throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
-        }
+        raise_uninitialized();
+        
         auto delta_ptr = delta.data();
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
@@ -367,12 +301,10 @@ namespace learning::operators {
     }
 
     void ChangeNodeTypeSet::update_scores(BayesianNetworkBase& model, Score& score, Operator& op) {
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
-            this->m_local_cache->update_local_score(model, score, op);
-        } else if(this->owns_local_cache()) {
-            this->m_local_cache->update_local_score(model, score, op);
+        raise_uninitialized();
+
+        if (owns_local_cache()) {
+            m_local_cache->update_local_score(model, score, op);
         }
 
         switch(op.type()) {
@@ -394,6 +326,61 @@ namespace learning::operators {
                 delta(index) = -dwn_op.delta();
             }
                 break;
+        }
+    }
+
+    void OperatorPool::cache_scores(BayesianNetworkBase& model, Score& score) {
+        initialize_local_cache(model);
+        m_local_cache->cache_local_scores(model, score);
+
+        for (auto& op_set : m_op_sets) {
+            op_set->cache_scores(model, score);
+        }
+    }
+
+    std::shared_ptr<Operator> OperatorPool::find_max(BayesianNetworkBase& model) {
+        raise_uninitialized();
+
+        double max_delta = std::numeric_limits<double>::lowest();
+        std::shared_ptr<Operator> max_op = nullptr;
+
+        for (auto& op_set : m_op_sets) {
+            auto new_op = op_set->find_max(model);
+            if (new_op && new_op->delta() > max_delta) {
+                max_op = std::move(new_op);
+                max_delta = max_op->delta();
+            }
+        }
+
+        return max_op;
+    }
+
+    std::shared_ptr<Operator> OperatorPool::find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
+        raise_uninitialized();
+
+        if (tabu_set.empty())
+            return find_max(model);
+        
+        double max_delta = std::numeric_limits<double>::lowest();
+        std::shared_ptr<Operator> max_op = nullptr;
+
+        for (auto& op_set : m_op_sets) {
+            auto new_op = op_set->find_max(model, tabu_set);
+            if (new_op && new_op->delta() > max_delta) {
+                max_op = std::move(new_op);
+                max_delta = max_op->delta();
+            }
+        }
+
+        return max_op;
+    }
+
+    void OperatorPool::update_scores(BayesianNetworkBase& model, Score& score, Operator& op) {
+        raise_uninitialized();
+
+        m_local_cache->update_local_score(model, score, op);
+        for (auto& op_set : m_op_sets) {
+            op_set->update_scores(model, score, op);
         }
     }
 }

@@ -33,20 +33,21 @@ namespace learning::algorithms {
     }
     
     std::unique_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test,
-                                                  OperatorPool& op_pool,
-                                                  Score* validation_score,
-                                                  const std::string& bn_str,
-                                                  const ArcStringVector& varc_blacklist,
-                                                  const ArcStringVector& varc_whitelist,
-                                                  const EdgeStringVector& vedge_blacklist,
-                                                  const EdgeStringVector& vedge_whitelist,
-                                                  const FactorStringTypeVector& type_whitelist,
-                                                  int max_indegree,
-                                                  int max_iters, 
-                                                  double epsilon,
-                                                  int patience,
-                                                  double alpha,
-                                                  int verbose) {
+                                                        OperatorSet& op_set,
+                                                        Score& score,
+                                                        Score* validation_score,
+                                                        const std::string& bn_str,
+                                                        const ArcStringVector& varc_blacklist,
+                                                        const ArcStringVector& varc_whitelist,
+                                                        const EdgeStringVector& vedge_blacklist,
+                                                        const EdgeStringVector& vedge_whitelist,
+                                                        const FactorStringTypeVector& type_whitelist,
+                                                        int max_indegree,
+                                                        int max_iters, 
+                                                        double epsilon,
+                                                        int patience,
+                                                        double alpha,
+                                                        int verbose) {
 
         auto bn_type = util::check_valid_bn_string(bn_str);
 
@@ -76,16 +77,33 @@ namespace learning::algorithms {
 
         auto hc_blacklist = create_hc_blacklist(cpcs);
 
-        auto score_type = op_pool.score_class().type();
+        auto score_type = score.type();
 
         if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
             if (!validation_score)
                 throw std::invalid_argument("A validation score is needed if predictive likelihood is used as score.");
-            return estimate_validation_hc(op_pool, *validation_score, *skeleton, hc_blacklist, restrictions.arc_whitelist,
-                                          type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
+            return learning::algorithms::estimate_validation_hc(op_set,
+                                                                score,
+                                                                *validation_score,
+                                                                *skeleton,
+                                                                hc_blacklist,
+                                                                restrictions.arc_whitelist,
+                                                                type_whitelist,
+                                                                max_indegree,
+                                                                max_iters,
+                                                                epsilon,
+                                                                patience,
+                                                                verbose);
         } else {
-            return estimate_hc(op_pool, *skeleton, hc_blacklist, restrictions.arc_whitelist, 
-                               max_indegree, max_iters, epsilon, verbose);
+            return learning::algorithms::estimate_hc(op_set,
+                                                     score,
+                                                     *skeleton,
+                                                     hc_blacklist,
+                                                     restrictions.arc_whitelist,
+                                                     max_indegree,
+                                                     max_iters,
+                                                     epsilon,
+                                                     verbose);
         }
 
         indicators::show_console_cursor(true);

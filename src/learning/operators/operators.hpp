@@ -165,8 +165,6 @@ namespace learning::operators {
 
     class ChangeNodeType : public Operator {
     public:
-
-        // static_assert(util::is_semiparametricbn_v<Model>, "ChangeNodeType operator can only be used with a SemiparametricBN.")
         ChangeNodeType(std::string node,
                        FactorType new_node_type,
                        double delta) : Operator(delta, OperatorType::CHANGE_NODE_TYPE),
@@ -406,7 +404,7 @@ namespace learning::operators {
         virtual std::shared_ptr<Operator> find_max(BayesianNetworkBase&, OperatorTabuSet&) = 0;
         virtual void update_scores(BayesianNetworkBase&, Score&, Operator&) = 0;
 
-        void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
+        void set_local_score_cache(std::shared_ptr<LocalScoreCache> score_cache) {
             m_local_cache = score_cache;
         }
 
@@ -420,6 +418,20 @@ namespace learning::operators {
         bool owns_local_cache() {
             return m_local_cache.use_count() == 1;
         }
+
+        void initialize_local_cache(BayesianNetworkBase& model) {
+            if (this->m_local_cache == nullptr) {
+                auto lc = std::make_shared<LocalScoreCache>(model);
+                this->set_local_score_cache(lc);
+            }
+        }
+
+        void raise_uninitialized() {
+            if (m_local_cache == nullptr) {
+                throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
+            }
+        }
+
         std::shared_ptr<LocalScoreCache> m_local_cache;
     };
 
@@ -651,75 +663,55 @@ namespace learning::operators {
         bool required_whitelist_update;
     };
     
-    class OperatorPool {
+    class OperatorPool : public OperatorSet {
     public:
-        OperatorPool(std::shared_ptr<Score>& score, 
-                     std::vector<std::shared_ptr<OperatorSet>> op_sets) : m_score(score),
-                                                                          local_cache(std::make_shared<LocalScoreCache>()),
-                                                                          m_op_sets(std::move(op_sets)) {
+        OperatorPool(std::vector<std::shared_ptr<OperatorSet>> op_sets) : m_op_sets(std::move(op_sets)) {
             if (m_op_sets.empty()) {
                 throw std::invalid_argument("op_sets argument cannot be empty.");
             }
-            
-            for (auto& op_set : m_op_sets) {
-                op_set->set_local_score_cache(local_cache);
-            }
         }
         
-        void cache_scores(BayesianNetworkBase& model);
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model);
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set);
-        void update_scores(BayesianNetworkBase& model, Operator& op);
+        void cache_scores(BayesianNetworkBase& model, Score& score) override;
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
+        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
                
-        double score() {
-            return local_cache->sum();
-        }
-
-        double score(BayesianNetworkBase& model) {
-            return m_score->score(model);
-        }
-
-        void set_arc_blacklist(const ArcStringVector& blacklist) {
+        void set_arc_blacklist(const ArcStringVector& blacklist) override {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_blacklist(blacklist);
             }
         }
 
-        void set_arc_blacklist(const ArcSet& blacklist) {
+        void set_arc_blacklist(const ArcSet& blacklist) override {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_blacklist(blacklist);
             }
         }
 
-        void set_arc_whitelist(const ArcStringVector& whitelist) {
+        void set_arc_whitelist(const ArcStringVector& whitelist) override {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_whitelist(whitelist);
             }
         }
 
-        void set_arc_whitelist(const ArcSet& whitelist) {
+        void set_arc_whitelist(const ArcSet& whitelist) override {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_whitelist(whitelist);
             }
         }
 
-        void set_max_indegree(int indegree) {
+        void set_max_indegree(int indegree) override {
             for(auto& opset : m_op_sets) {
                 opset->set_max_indegree(indegree);
             }
         }
-        void set_type_whitelist(const FactorStringTypeVector& type_whitelist) {
+
+        void set_type_whitelist(const FactorStringTypeVector& type_whitelist) override {
             for(auto& opset : m_op_sets) {
                 opset->set_type_whitelist(type_whitelist);
             }
         }
-
-        const Score& score_class() const {
-            return *m_score;
-        }
     private:
-        std::shared_ptr<Score> m_score;
-        std::shared_ptr<LocalScoreCache> local_cache;
         std::vector<std::shared_ptr<OperatorSet>> m_op_sets;
     };
 }

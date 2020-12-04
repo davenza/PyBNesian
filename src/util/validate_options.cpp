@@ -1,6 +1,6 @@
 #include <util/validate_options.hpp>
 
-using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
+using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet, learning::operators::OperatorPool;
 
 namespace util {
 
@@ -36,8 +36,8 @@ namespace util {
     OperatorSetTypeS check_valid_operators_string(const std::optional<std::vector<std::string>>& operators, 
                                                   BayesianNetworkType bn_type) {
 
-        if (operators) {
-            OperatorSetTypeS ops(operators->size());
+        if (operators && !operators->empty()) {
+            OperatorSetTypeS ops;
             for (auto& op : *operators) {
                 if (op == "arcs") ops.insert(OperatorSetType::ARCS);
                 else if (op == "node_type") ops.insert(OperatorSetType::NODE_TYPE);
@@ -97,12 +97,12 @@ namespace util {
         }
     }
 
-    std::vector<std::shared_ptr<OperatorSet>> check_valid_operators(BayesianNetworkType bn_type, 
-                                                                    const OperatorSetTypeS& operators,
-                                                                    const ArcStringVector& arc_blacklist,
-                                                                    const ArcStringVector& arc_whitelist,
-                                                                    int max_indegree,
-                                                                    const FactorStringTypeVector& type_whitelist) {
+    std::shared_ptr<OperatorSet> check_valid_operators(BayesianNetworkType bn_type, 
+                                                       const OperatorSetTypeS& operators,
+                                                       const ArcStringVector& arc_blacklist,
+                                                       const ArcStringVector& arc_whitelist,
+                                                       int max_indegree,
+                                                       const FactorStringTypeVector& type_whitelist) {
         static std::unordered_map<BayesianNetworkType,
                                   std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>,
                                   typename BayesianNetworkType::HashType>
@@ -112,7 +112,7 @@ namespace util {
         };
 
         auto bn_set = map_bn_operators[bn_type];
-        for (auto& op : operators) {
+        for (auto op : operators) {
             if (bn_set.count(op) == 0) {
                 throw std::invalid_argument("Operator \"" + op.ToString() + "\" is not compabible with " 
                                             "Bayesian network type \"" + bn_type.ToString() + "\"");
@@ -121,7 +121,7 @@ namespace util {
 
         std::vector<std::shared_ptr<OperatorSet>> res;
 
-        for (auto& op : operators) {
+        for (auto op : operators) {
             switch (op) {
                 case OperatorSetType::ARCS:
                     res.push_back(std::make_shared<ArcOperatorSet>(arc_blacklist, arc_whitelist, max_indegree));
@@ -134,6 +134,10 @@ namespace util {
             }
         }
 
-        return res;
+        if (res.size() == 1) {
+            return std::move(res[0]);
+        } else {
+            return std::make_unique<OperatorPool>(std::move(res));
+        }
     }
 }

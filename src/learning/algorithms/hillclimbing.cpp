@@ -80,26 +80,23 @@ namespace learning::algorithms {
         GreedyHillClimbing hc;
 
         if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
-            HoldoutLikelihood validation_score(df, test_holdout_ratio);
+            HoldoutLikelihood validation_score(df, test_holdout_ratio, iseed);
             auto score = util::check_valid_score(validation_score.training_data(), 
                             bn_type, score_type, iseed, num_folds, test_holdout_ratio);
     
-            OperatorPool pool(score, std::move(operators));
-
-            return hc.estimate_validation(pool, validation_score, *start_model, arc_blacklist, arc_whitelist, 
+            return hc.estimate_validation(*operators, *score, validation_score, *start_model, arc_blacklist, arc_whitelist, 
                                         type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
 
         } else {
             auto score = util::check_valid_score(df, bn_type, score_type, iseed, num_folds, test_holdout_ratio);
 
-            OperatorPool pool(score, std::move(operators));
-
-            return hc.estimate(pool, *start_model, arc_blacklist, arc_whitelist,
+            return hc.estimate(*operators, *score, *start_model, arc_blacklist, arc_whitelist,
                                 max_indegree, max_iters, epsilon, verbose);
         }
     }
 
-    std::unique_ptr<BayesianNetworkBase> estimate_hc(OperatorPool& op,
+    std::unique_ptr<BayesianNetworkBase> estimate_hc(OperatorSet& op_set,
+                                                     Score& score,
                                                      const BayesianNetworkBase& start,
                                                      const ArcSet& arc_blacklist,
                                                      const ArcSet& arc_whitelist,
@@ -115,17 +112,17 @@ namespace learning::algorithms {
         current_model->check_blacklist(arc_blacklist);
         current_model->force_whitelist(arc_whitelist);
 
-        op.set_arc_blacklist(arc_blacklist);
-        op.set_arc_whitelist(arc_whitelist);
-        op.set_max_indegree(max_indegree);
+        op_set.set_arc_blacklist(arc_blacklist);
+        op_set.set_arc_whitelist(arc_whitelist);
+        op_set.set_max_indegree(max_indegree);
 
         spinner->update_status("Caching scores...");
 
-        op.cache_scores(*current_model);
+        op_set.cache_scores(*current_model, score);
 
         auto iter = 0;
         while(iter < max_iters) {
-            auto best_op = op.find_max(*current_model);
+            auto best_op = op_set.find_max(*current_model);
 
             if (!best_op || best_op->delta() <= epsilon) {
                 break;
@@ -133,7 +130,7 @@ namespace learning::algorithms {
 
             best_op->apply(*current_model);
 
-            op.update_scores(*current_model, *best_op);
+            op_set.update_scores(*current_model, score, *best_op);
             ++iter;
             
             spinner->update_status(best_op->ToString());
@@ -144,7 +141,8 @@ namespace learning::algorithms {
         return current_model;
     }
 
-    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorPool& op,
+    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorSet& op_set,
+                                                                      Score& score,
                                                                       const BayesianNetworkBase& start,
                                                                       const ArcStringVector& arc_blacklist,
                                                                       const ArcStringVector& arc_whitelist,
@@ -154,7 +152,8 @@ namespace learning::algorithms {
                                                                       int verbose) {
         auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
 
-        return estimate_hc(op,
+        return estimate_hc(op_set,
+                           score,
                            start,
                            restrictions.arc_blacklist,
                            restrictions.arc_whitelist,
@@ -229,7 +228,8 @@ namespace learning::algorithms {
         }
     }
 
-    std::unique_ptr<BayesianNetworkBase> estimate_validation_hc(OperatorPool& op_pool,
+    std::unique_ptr<BayesianNetworkBase> estimate_validation_hc(OperatorSet& op_set,
+                                                                Score& score,
                                                                 Score& validation_score,
                                                                 const BayesianNetworkBase& start,
                                                                 const ArcSet& arc_blacklist,
@@ -259,10 +259,10 @@ namespace learning::algorithms {
             current_spbn.force_type_whitelist(type_whitelist);
         }
 
-        op_pool.set_arc_blacklist(arc_blacklist);
-        op_pool.set_arc_whitelist(arc_whitelist);
-        op_pool.set_type_whitelist(type_whitelist);
-        op_pool.set_max_indegree(max_indegree);
+        op_set.set_arc_blacklist(arc_blacklist);
+        op_set.set_arc_whitelist(arc_whitelist);
+        op_set.set_type_whitelist(type_whitelist);
+        op_set.set_max_indegree(max_indegree);
 
         auto best_model = start.clone();
 
@@ -272,7 +272,7 @@ namespace learning::algorithms {
             local_validation(n) = validation_score.local_score(*current_model, n);
         }
 
-        op_pool.cache_scores(*current_model);
+        op_set.cache_scores(*current_model, score);
         int p = 0;
         double validation_offset = 0;
 
@@ -280,7 +280,7 @@ namespace learning::algorithms {
         
         auto iter = 0;
         while(iter < max_iters) {
-            auto best_op = op_pool.find_max(*current_model, tabu_set);
+            auto best_op = op_set.find_max(*current_model, tabu_set);
             if (!best_op || best_op->delta() <= epsilon) {
                 break;
             }
@@ -301,7 +301,7 @@ namespace learning::algorithms {
             }
 
 
-            op_pool.update_scores(*current_model, *best_op);
+            op_set.update_scores(*current_model, score, *best_op);
 
             spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
             ++iter;
@@ -312,7 +312,8 @@ namespace learning::algorithms {
         return best_model;
     }
 
-    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorPool& op_pool,
+    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorSet& op_set,
+                                                                                 Score& score,
                                                                                  Score& validation_score,
                                                                                  const BayesianNetworkBase& start,
                                                                                  const ArcStringVector& arc_blacklist,
@@ -325,7 +326,8 @@ namespace learning::algorithms {
                                                                                  int verbose) {
         auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
 
-        return estimate_validation_hc(op_pool,
+        return estimate_validation_hc(op_set,
+                                      score,
                                       validation_score,
                                       start,
                                       restrictions.arc_blacklist,

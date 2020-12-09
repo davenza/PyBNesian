@@ -236,7 +236,7 @@ namespace learning::algorithms {
         if (restrictions.arc_whitelist.size() > 2) {
             try {
                 skeleton.to_dag();
-            } catch (std::invalid_argument) {
+            } catch (std::invalid_argument&) {
                 throw std::invalid_argument("The selected blacklist/whitelist configuration "
                                             "does not allow an acyclic graph.");
             }

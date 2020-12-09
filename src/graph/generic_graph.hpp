@@ -681,7 +681,7 @@ namespace graph {
 
     template<typename G>
     py::tuple __getstate__(const G&& g) {
-        graph::__getstate__(g);
+        return graph::__getstate__(g);
     }
 
     template<typename G>
@@ -1042,7 +1042,7 @@ namespace graph {
             try {
                 topological_sort();
                 return true;
-            } catch (std::invalid_argument) {
+            } catch (std::invalid_argument&) {
                 return false;
             }
         }

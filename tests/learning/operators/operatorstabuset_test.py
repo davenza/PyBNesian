@@ -1,5 +1,4 @@
 import pytest
-import pyarrow as pa
 from pybnesian.models import BayesianNetworkType
 from pybnesian.learning.operators import OperatorTabuSet, AddArc, RemoveArc, FlipArc, RemoveArc
 

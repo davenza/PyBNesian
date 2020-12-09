@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 
 
 def generate_normal_data(size, seed=0):

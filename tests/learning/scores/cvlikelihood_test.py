@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from scipy.stats import norm, gaussian_kde
-import pyarrow as pa
 from pybnesian.dataset import CrossValidation
 from pybnesian.factors import FactorType
 from pybnesian.models import GaussianNetwork, SemiparametricBN

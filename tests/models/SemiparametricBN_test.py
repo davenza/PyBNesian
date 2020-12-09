@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import pyarrow as pa
 from pybnesian.factors import FactorType
 from pybnesian.factors.continuous import LinearGaussianCPD, CKDE, SemiparametricCPD
 from pybnesian.models import SemiparametricBN

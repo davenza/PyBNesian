@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 from pybnesian.dataset import HoldOut
 
 import util_test

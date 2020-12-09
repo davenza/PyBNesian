@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import pyarrow as pa
 from pybnesian.factors.continuous import KDE
 from scipy.stats import gaussian_kde
 

@@ -1,4 +1,3 @@
-import pyarrow as pa
 from pybnesian.learning.algorithms import GreedyHillClimbing, hc
 from pybnesian.learning.operators import ArcOperatorSet, OperatorPool
 from pybnesian.learning.scores import BIC, HoldoutLikelihood, CVLikelihood

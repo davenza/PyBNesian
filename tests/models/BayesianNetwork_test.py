@@ -1,5 +1,4 @@
 import pytest
-import pyarrow as pa
 import numpy as np
 from pybnesian.models import GaussianNetwork
 from pybnesian.factors.continuous import LinearGaussianCPD

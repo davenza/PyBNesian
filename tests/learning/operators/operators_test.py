@@ -1,5 +1,4 @@
 import pytest
-import pyarrow as pa
 from pybnesian.factors import FactorType
 from pybnesian.models import BayesianNetworkType, GaussianNetwork, SemiparametricBN
 from pybnesian.learning.operators import OperatorType, AddArc, RemoveArc, FlipArc, ChangeNodeType

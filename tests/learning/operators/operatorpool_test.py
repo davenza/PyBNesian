@@ -1,5 +1,4 @@
 import pytest
-import pyarrow as pa
 from pybnesian.learning.operators import OperatorPool, ArcOperatorSet, ChangeNodeTypeSet
 from pybnesian.learning.scores import CVLikelihood
 from pybnesian.models import SemiparametricBN

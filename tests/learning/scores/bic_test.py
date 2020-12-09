@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.stats import norm
-import pyarrow as pa
 from pybnesian.models import GaussianNetwork
 from pybnesian.learning.scores import BIC
 from pybnesian.factors.continuous import LinearGaussianCPD

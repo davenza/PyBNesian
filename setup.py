@@ -23,7 +23,6 @@ class get_pybind_include(object):
 
     def __str__(self):
         import pybind11
-        print("Include pybind11: " + pybind11.get_include(self.user))
         return pybind11.get_include(self.user)
 
 import pyarrow as pa
@@ -99,6 +98,8 @@ ext_modules = [
         language='c++',
         # Included as isystem to avoid errors in arrow headers.
         extra_compile_args=system_headers,
+        # Include this to find the Apache Arrow shared library at runtime (this is equal to set RPATH)
+        runtime_library_dirs=pa.get_library_dirs()
     ),
 ]
 
@@ -166,7 +167,6 @@ namespace opencl {{
     
 
 def create_symlinks():
-    print("Pyarrow version: " + str(pa.__version__))
     pa.create_library_symlinks()
 
 

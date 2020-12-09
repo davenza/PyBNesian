@@ -1,4 +1,3 @@
-import pyarrow as pa
 from pybnesian.factors.discrete import DiscreteFactor
 import util_test
 

@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import pyarrow as pa
 from pybnesian.learning.parameters import MLE
 from pybnesian.factors import FactorType
 import util_test

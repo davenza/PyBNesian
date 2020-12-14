@@ -240,7 +240,8 @@ __kernel void exp_elementwise_@dt@(__global @dt@ *mat) {
 // A variation of the code in https://community.khronos.org/t/is-there-any-opencl-library-having-prefix-sum/3945/4.
 // This version works in the columns of a matrix and exp() the input values before performing the prefix sum.
 // It is best explained in Blelloch, 1990 "Prefix Sums and Their Applications":
-//  https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf
+//  https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf.
+// See also https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
 __kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat, 
                                          __private uint mat_rows,
                                          __local @dt@ *local_block,

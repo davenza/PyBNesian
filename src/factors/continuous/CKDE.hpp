@@ -68,8 +68,11 @@ namespace factors::continuous {
         k_logl_values_1d_mat.setArg(4, cholesky);
         k_logl_values_1d_mat.setArg(5, lognorm_const);
         k_logl_values_1d_mat.setArg(6, output_mat);
-        auto queue = opencl.queue();        
-        queue.enqueueNDRangeKernel(k_logl_values_1d_mat, cl::NullRange,  cl::NDRange(training_length*test_length), cl::NullRange);
+        auto queue = opencl.queue();
+        RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_logl_values_1d_mat, 
+                                                             cl::NullRange,
+                                                             cl::NDRange(training_length*test_length),
+                                                             cl::NullRange));
     }
 
     template<typename ArrowType>
@@ -93,8 +96,11 @@ namespace factors::continuous {
         k_conditional_means_1d.setArg(4, test_offset);
         k_conditional_means_1d.setArg(5, transform_mean);
         k_conditional_means_1d.setArg(6, output_mat);
-        auto queue = opencl.queue();        
-        queue.enqueueNDRangeKernel(k_conditional_means_1d, cl::NullRange,  cl::NDRange(training_rows*test_length), cl::NullRange);
+        auto queue = opencl.queue();
+        RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_conditional_means_1d,
+                                                             cl::NullRange,
+                                                             cl::NDRange(training_rows*test_length),
+                                                             cl::NullRange));
     }
 
     struct MultivariateKDE {
@@ -173,11 +179,23 @@ namespace factors::continuous {
 
             for (unsigned int i = 0; i < test_length; ++i) {
                 k_substract.setArg(7, i);
-                queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(training_rows*matrices_cols), cl::NullRange);
-                queue.enqueueNDRangeKernel(k_solve, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
-                queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(training_rows*matrices_cols), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_substract,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(training_rows*matrices_cols),
+                                                                     cl::NullRange));
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_solve,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(training_rows),
+                                                                     cl::NullRange));
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_square,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(training_rows*matrices_cols),
+                                                                     cl::NullRange));
                 k_logl_values_mat.setArg(4, i);
-                queue.enqueueNDRangeKernel(k_logl_values_mat, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_logl_values_mat,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(training_rows),
+                                                                     cl::NullRange));
             }
         } else {
             k_substract.setArg(0, test_mat);
@@ -200,11 +218,23 @@ namespace factors::continuous {
 
             for(unsigned int i = 0; i < training_rows; ++i) {
                 k_substract.setArg(7, i);
-                queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(test_length*matrices_cols), cl::NullRange);
-                queue.enqueueNDRangeKernel(k_solve, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
-                queue.enqueueNDRangeKernel(k_square, cl::NullRange,  cl::NDRange(test_length*matrices_cols), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_substract,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(test_length*matrices_cols),
+                                                                     cl::NullRange));
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_solve,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(test_length),
+                                                                     cl::NullRange));
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_square,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(test_length*matrices_cols),
+                                                                     cl::NullRange));
                 k_logl_values_mat.setArg(4, i);
-                queue.enqueueNDRangeKernel(k_logl_values_mat, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_logl_values_mat,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(test_length),
+                                                                     cl::NullRange));
             }
         }
     }
@@ -250,10 +280,15 @@ namespace factors::continuous {
 
             for (unsigned int i = 0; i < test_length; ++i) {
                 k_substract.setArg(7, i);
-                queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(training_rows*evidence_cols), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_substract,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(training_rows*evidence_cols),
+                                                                     cl::NullRange));
                 k_conditional_means.setArg(7, i);
-                queue.enqueueNDRangeKernel(k_conditional_means, cl::NullRange,  cl::NDRange(training_rows), cl::NullRange);
-
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_conditional_means,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(training_rows),
+                                                                     cl::NullRange));
             }
         } else {
             k_substract.setArg(0, evidence_test);
@@ -278,18 +313,27 @@ namespace factors::continuous {
 
             for(unsigned int i = 0; i < training_rows; ++i) {
                 k_substract.setArg(7, i);
-                queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(test_length*evidence_cols), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_substract,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(test_length*evidence_cols),
+                                                                     cl::NullRange));
                 k_conditional_means.setArg(7, i);
-                queue.enqueueNDRangeKernel(k_conditional_means, cl::NullRange,  cl::NDRange(test_length), cl::NullRange);
+                RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_conditional_means,
+                                                                     cl::NullRange,
+                                                                     cl::NDRange(test_length),
+                                                                     cl::NullRange));
             }
         }
     }
 
     template<typename ArrowType>
-    std::pair<cl::Buffer, uint64_t> allocate_mat(int rows) {
+    std::pair<cl::Buffer, uint64_t> allocate_mat(int rows, int cols) {
         using CType = typename ArrowType::c_type;
         auto& opencl = OpenCLConfig::get();
-        return std::make_pair(opencl.new_buffer<CType>(rows*64), 64);
+
+        auto allocated_m = std::min(cols, 64);
+
+        return std::make_pair(opencl.new_buffer<CType>(rows*allocated_m), allocated_m);
     }
 
     class KDE {
@@ -597,8 +641,8 @@ namespace factors::continuous {
         auto& opencl = OpenCLConfig::get();
         auto res = opencl.new_buffer<CType>(m);
 
-        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N);
-        auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
+        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N, m);
+        auto iterations = static_cast<int>(std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m)));
 
         cl::Buffer tmp_mat_buffer;
         if constexpr(std::is_same_v<KDEType, MultivariateKDE>) {
@@ -608,19 +652,18 @@ namespace factors::continuous {
                 tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_variables.size());
         }
 
-        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
-
         for (auto i = 0; i < (iterations-1); ++i) {
             KDEType::template execute_logl_mat<ArrowType>(m_training, N, test_buffer, m, 
                                                         i*allocated_m, allocated_m, d, m_H_cholesky, m_lognorm_const, 
                                                         tmp_mat_buffer, mat_logls);
-            opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, allocated_m, res, i*allocated_m, reduc_buffers);
+            opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, allocated_m, res, i*allocated_m);
         }
         auto remaining_m = m - (iterations - 1)*allocated_m;
+
         KDEType::template execute_logl_mat<ArrowType>(m_training, N, test_buffer, m, 
                                                         m - remaining_m, remaining_m, d, m_H_cholesky, m_lognorm_const, 
                                                         tmp_mat_buffer, mat_logls);
-        opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, res, (iterations - 1)*allocated_m, reduc_buffers);
+        opencl.logsumexp_cols_offset<ArrowType>(mat_logls, N, remaining_m, res, (iterations - 1)*allocated_m);
 
         return res;
     }
@@ -806,7 +849,10 @@ namespace factors::continuous {
             k_substract.setArg(0, logl_joint);
             k_substract.setArg(1, logl_marg);
             auto& queue = opencl.queue();
-            queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(m), cl::NullRange);
+            RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_substract,
+                                                                 cl::NullRange,
+                                                                 cl::NDRange(m),
+                                                                 cl::NullRange));
         }
 
         if (combined_bitmap) {
@@ -859,7 +905,10 @@ namespace factors::continuous {
             k_substract.setArg(0, logl_joint);
             k_substract.setArg(1, logl_marg);
             auto& queue = opencl.queue();
-            queue.enqueueNDRangeKernel(k_substract, cl::NullRange,  cl::NDRange(m), cl::NullRange);
+            RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_substract,
+                                                                 cl::NullRange,
+                                                                 cl::NDRange(m),
+                                                                 cl::NullRange));
         }
 
         auto buffer_sum = opencl.sum1d<ArrowType>(logl_joint, m);
@@ -1012,7 +1061,7 @@ namespace factors::continuous {
         auto res = opencl.new_buffer<int>(n);
         opencl.fill_buffer<int>(res, N-1, n);
 
-        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N);
+        auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N, n);
         auto iterations = static_cast<int>(std::ceil(static_cast<double>(n) / static_cast<double>(allocated_m)));
 
         cl::Buffer tmp_mat_buffer;
@@ -1042,18 +1091,24 @@ namespace factors::continuous {
                                                         m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                         tmp_mat_buffer, mat_logls);
 
-            opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_exp,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N*allocated_m),
+                                                                          cl::NullRange));
             
             auto total_sum = opencl.accum_sum_cols<ArrowType>(mat_logls, N, allocated_m);
             
             k_normalize_accum_sumexp.setArg(2, total_sum);
-            opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp, 
-                                                cl::NullRange, 
-                                                cl::NDRange(N-1, allocated_m), 
-                                                cl::NullRange);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N-1, allocated_m),
+                                                                          cl::NullRange));
         
             k_find_random_indices.setArg(2, static_cast<unsigned int>(i*allocated_m));
-            opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, allocated_m), cl::NullRange);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_find_random_indices,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N-1, allocated_m),
+                                                                          cl::NullRange));
         }
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = n - offset;
@@ -1062,19 +1117,24 @@ namespace factors::continuous {
                                                     m_marg.cholesky_buffer(), m_marg.lognorm_const(), 
                                                     tmp_mat_buffer, mat_logls);
         
-        opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_exp,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N*remaining_m),
+                                                                      cl::NullRange));
 
         auto total_sum = opencl.accum_sum_cols<ArrowType>(mat_logls, N, remaining_m);
         
         k_normalize_accum_sumexp.setArg(2, total_sum);
-        opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp, 
-                                        cl::NullRange, 
-                                        cl::NDRange(N-1, remaining_m), 
-                                        cl::NullRange
-                                    );
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_normalize_accum_sumexp,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N-1, remaining_m),
+                                                                      cl::NullRange));
 
         k_find_random_indices.setArg(2, static_cast<unsigned int>(offset));
-        opencl.queue().enqueueNDRangeKernel(k_find_random_indices, cl::NullRange, cl::NDRange(N-1, remaining_m), cl::NullRange);
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_find_random_indices,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N-1, remaining_m),
+                                                                      cl::NullRange));
 
         return res;
     }
@@ -1137,10 +1197,8 @@ namespace factors::continuous {
         auto& opencl = OpenCLConfig::get();
         auto res = opencl.new_buffer<CType>(m);
 
-        auto [mu, allocated_m] = allocate_mat<ArrowType>(N);
+        auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m);
         auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
-
-        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
 
         auto k_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::univariate_normal_cdf);
         k_cdf.setArg(0, m_joint.training_buffer());
@@ -1152,16 +1210,22 @@ namespace factors::continuous {
 
         for (auto i = 0; i < (iterations-1); ++i) {
             k_cdf.setArg(3, static_cast<unsigned int>(i*allocated_m));
-            opencl.queue().enqueueNDRangeKernel(k_cdf, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
-            opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m, reduc_buffers);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_cdf,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N*allocated_m),
+                                                                          cl::NullRange));
+            opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m);
         }
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = m - offset;
 
         k_cdf.setArg(3, static_cast<unsigned int>(offset));
-        opencl.queue().enqueueNDRangeKernel(k_cdf, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_cdf,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N*remaining_m),
+                                                                      cl::NullRange));
 
-        opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset, reduc_buffers);
+        opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset);
 
         return res;
     }
@@ -1190,7 +1254,7 @@ namespace factors::continuous {
 
         auto res = opencl.new_buffer<CType>(m);
 
-        auto [mu, allocated_m] = allocate_mat<ArrowType>(N);
+        auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m);
         auto W = opencl.new_buffer<CType>(N*allocated_m) ;
         auto sum_W = opencl.new_buffer<CType>(allocated_m);
 
@@ -1203,8 +1267,6 @@ namespace factors::continuous {
             else
                 tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_evidence.size());
         }
-
-        auto reduc_buffers = opencl.create_reduction_mat_buffers<ArrowType>(N, allocated_m);
 
         auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
         k_exp.setArg(0, W);
@@ -1232,8 +1294,11 @@ namespace factors::continuous {
                                                         m_marg.cholesky_buffer(), new_lognorm_marg, 
                                                         tmp_mat_buffer, W);
             
-            opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
-            opencl.sum_cols_offset<ArrowType>(W, N, allocated_m, sum_W, 0, reduc_buffers);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_exp,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N*allocated_m),
+                                                                          cl::NullRange));
+            opencl.sum_cols_offset<ArrowType>(W, N, allocated_m, sum_W, 0);
 
             // Computes conditional mu.
             KDEType::template execute_conditional_means<ArrowType>(m_joint.training_buffer(), 
@@ -1243,11 +1308,20 @@ namespace factors::continuous {
                                                                     m_evidence.size(), transform_buffer,
                                                                     tmp_mat_buffer, mu);
             k_normal_cdf.setArg(3, static_cast<unsigned int>(i*allocated_m));
-            opencl.queue().enqueueNDRangeKernel(k_normal_cdf, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
-            opencl.queue().enqueueNDRangeKernel(k_product, cl::NullRange, cl::NDRange(N*allocated_m), cl::NullRange);
-            opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m, reduc_buffers);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_normal_cdf,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N*allocated_m),
+                                                                          cl::NullRange));
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_product,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(N*allocated_m),
+                                                                          cl::NullRange));
+            opencl.sum_cols_offset<ArrowType>(mu, N, allocated_m, res, i*allocated_m);
             k_divide.setArg(1, static_cast<unsigned int>(i*allocated_m));
-            opencl.queue().enqueueNDRangeKernel(k_divide, cl::NullRange, cl::NDRange(allocated_m), cl::NullRange);
+            RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_divide,
+                                                                          cl::NullRange,
+                                                                          cl::NDRange(allocated_m),
+                                                                          cl::NullRange));
         }
         auto offset = (iterations - 1)*allocated_m;
         auto remaining_m = m - offset;
@@ -1257,8 +1331,11 @@ namespace factors::continuous {
                                                     m_marg.cholesky_buffer(), new_lognorm_marg, 
                                                     tmp_mat_buffer, W);
         
-        opencl.queue().enqueueNDRangeKernel(k_exp, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
-        opencl.sum_cols_offset<ArrowType>(W, N, remaining_m, sum_W, 0, reduc_buffers);
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_exp,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N*remaining_m),
+                                                                      cl::NullRange));
+        opencl.sum_cols_offset<ArrowType>(W, N, remaining_m, sum_W, 0);
 
         // Computes conditional mu.
         KDEType::template execute_conditional_means<ArrowType>(m_joint.training_buffer(), 
@@ -1269,11 +1346,20 @@ namespace factors::continuous {
                                                                 tmp_mat_buffer, mu);
 
         k_normal_cdf.setArg(3, static_cast<unsigned int>(offset));
-        opencl.queue().enqueueNDRangeKernel(k_normal_cdf, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
-        opencl.queue().enqueueNDRangeKernel(k_product, cl::NullRange, cl::NDRange(N*remaining_m), cl::NullRange);
-        opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset, reduc_buffers);
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_normal_cdf,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N*remaining_m),
+                                                                      cl::NullRange));
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_product,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(N*remaining_m),
+                                                                      cl::NullRange));
+        opencl.sum_cols_offset<ArrowType>(mu, N, remaining_m, res, offset);
         k_divide.setArg(1, static_cast<unsigned int>(offset));
-        opencl.queue().enqueueNDRangeKernel(k_divide, cl::NullRange, cl::NDRange(remaining_m), cl::NullRange);
+        RAISE_ENQUEUEKERNEL_ERROR(opencl.queue().enqueueNDRangeKernel(k_divide,
+                                                                      cl::NullRange,
+                                                                      cl::NDRange(remaining_m),
+                                                                      cl::NullRange));
 
         return res;
     }

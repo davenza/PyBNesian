@@ -86,7 +86,7 @@ namespace util::bit_util {
     }
 
     // Extracted from arrow/util/bit_util.h
-    int round_to_power2(int value) {
+    int next_power2(int value) {
         value--;
         value |= value >> 1;
         value |= value >> 2;
@@ -95,6 +95,15 @@ namespace util::bit_util {
         value |= value >> 16;
         value++;
         return value;
+    }
+
+    int previous_power2(int value) {
+        value |= (value >> 1);
+        value |= (value >> 2);
+        value |= (value >> 4);
+        value |= (value >> 8);
+        value |= (value >> 16);
+        return value - (value >> 1);
     }
 
 }

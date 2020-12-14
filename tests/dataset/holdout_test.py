@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 from pybnesian.dataset import HoldOut
 
 import util_test

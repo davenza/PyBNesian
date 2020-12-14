@@ -80,9 +80,6 @@ namespace opencl {
         }
     }
 
-
-    // bool OpenCLConfig::initialized = false;
-    
     OpenCLConfig::OpenCLConfig() {
         std::vector<cl::Platform> platforms;
         cl::Platform::get(&platforms);
@@ -130,7 +127,14 @@ namespace opencl {
         }
 
         err_code = CL_SUCCESS;
-        int max_local_size = dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(&err_code);
+        auto max_local_size = dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(&err_code);
+        if (err_code != CL_SUCCESS) {
+            throw std::runtime_error(std::string("Maximum work group size could not be determined. ") + 
+                                     opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
+        }
+
+        err_code = CL_SUCCESS;
+        auto max_local_size_bytes = dev.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>(&err_code);
         if (err_code != CL_SUCCESS) {
             throw std::runtime_error(std::string("Maximum work group size could not be determined. ") + 
                                      opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
@@ -141,6 +145,7 @@ namespace opencl {
         m_program = program;
         m_device = dev;
         m_max_local_size = max_local_size;
+        m_max_local_memory_bytes = max_local_size_bytes;
     }
 
     OpenCLConfig& OpenCLConfig::get() {
@@ -163,16 +168,52 @@ namespace opencl {
             }
 
             m_kernels.insert({name, std::move(k)});
-            return m_kernels.find(name)->second;;
+            return m_kernels.find(name)->second;
         }
     }
 
+    size_t OpenCLConfig::kernel_local_size(const char* kernel_name) {
+        auto it = m_kernels_local_size.find(kernel_name);
 
+        if (it != m_kernels_local_size.end()) {
+            return it->second;
+        } else {
+            size_t kernel_local_size = 0;
+            auto& k = kernel(kernel_name);
+            cl_int err_code = CL_SUCCESS;
+            err_code = k.getWorkGroupInfo(m_device, CL_KERNEL_WORK_GROUP_SIZE, &kernel_local_size);
+            if (err_code != CL_SUCCESS) {
+                throw std::runtime_error(std::string("Could not query information for kernel ") + kernel_name);
+            }
+
+            m_kernels_local_size.insert({kernel_name, kernel_local_size});
+            return kernel_local_size;
+        }
+    }
+
+    cl_ulong OpenCLConfig::kernel_local_memory(const char* kernel_name) {
+        auto it = m_kernels_local_memory.find(kernel_name);
+
+        if (it != m_kernels_local_memory.end()) {
+            return it->second;
+        } else {
+            cl_ulong kernel_local_memory = 0;
+            cl_int err_code = CL_SUCCESS;
+            auto& k = kernel(kernel_name);
+            err_code = k.getWorkGroupInfo(m_device, CL_KERNEL_LOCAL_MEM_SIZE, &kernel_local_memory);
+            if (err_code != CL_SUCCESS) {
+                throw std::runtime_error(std::string("Could not query information for kernel ") + kernel_name);
+            }
+
+            m_kernels_local_memory.insert({kernel_name, kernel_local_memory});
+            return kernel_local_memory;
+        }
+    }
 
     void update_reduction_status(int& length, int& num_groups, int& local_size, int& global_size, int max_local_size) {
         length = num_groups;
-        num_groups = static_cast<int>(std::ceil(static_cast<double>(length) / static_cast<double>(max_local_size)));
-        local_size = (length > max_local_size) ? max_local_size : length;
+        local_size = std::min(length, max_local_size);
+        num_groups = static_cast<int>(std::ceil(static_cast<double>(length) / static_cast<double>(local_size)));
         global_size = local_size * num_groups;
     }
 }

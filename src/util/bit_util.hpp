@@ -36,7 +36,8 @@ namespace util::bit_util {
     Buffer_ptr combined_bitmap_with_null(std::vector<Array_ptr> columns);
 
     // Extracted from arrow/util/bit_util.h
-    int round_to_power2(int value);
+    int next_power2(int value);
+    int previous_power2(int value);
 }
 
 #endif //PYBNESIAN_UTIL_BIT_UTIL_HPP

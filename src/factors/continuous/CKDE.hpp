@@ -60,7 +60,7 @@ namespace factors::continuous {
                                                 cl::Buffer& output_mat)
     {
         auto& opencl = OpenCLConfig::get();
-        auto k_logl_values_1d_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_1d_mat);
+        auto& k_logl_values_1d_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_1d_mat);
         k_logl_values_1d_mat.setArg(0, training_vec);
         k_logl_values_1d_mat.setArg(1, training_length);
         k_logl_values_1d_mat.setArg(2, test_vec);
@@ -68,7 +68,7 @@ namespace factors::continuous {
         k_logl_values_1d_mat.setArg(4, cholesky);
         k_logl_values_1d_mat.setArg(5, lognorm_const);
         k_logl_values_1d_mat.setArg(6, output_mat);
-        auto queue = opencl.queue();
+        auto& queue = opencl.queue();
         RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_logl_values_1d_mat, 
                                                              cl::NullRange,
                                                              cl::NDRange(training_length*test_length),
@@ -88,7 +88,7 @@ namespace factors::continuous {
                                                             cl::Buffer&,
                                                             cl::Buffer& output_mat) {
         auto& opencl = OpenCLConfig::get();
-        auto k_conditional_means_1d = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_1d);
+        auto& k_conditional_means_1d = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_1d);
         k_conditional_means_1d.setArg(0, joint_training);
         k_conditional_means_1d.setArg(1, training_rows);
         k_conditional_means_1d.setArg(2, evidence_test);
@@ -96,7 +96,7 @@ namespace factors::continuous {
         k_conditional_means_1d.setArg(4, test_offset);
         k_conditional_means_1d.setArg(5, transform_mean);
         k_conditional_means_1d.setArg(6, output_mat);
-        auto queue = opencl.queue();
+        auto& queue = opencl.queue();
         RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(k_conditional_means_1d,
                                                              cl::NullRange,
                                                              cl::NDRange(training_rows*test_length),
@@ -146,14 +146,14 @@ namespace factors::continuous {
     {
         auto& opencl = OpenCLConfig::get();
         
-        auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract);
+        auto& k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract);
 
-        auto k_solve = opencl.kernel(OpenCL_kernel_traits<ArrowType>::solve);
+        auto& k_solve = opencl.kernel(OpenCL_kernel_traits<ArrowType>::solve);
         k_solve.setArg(0, tmp_mat);
         k_solve.setArg(2, matrices_cols);
         k_solve.setArg(3, cholesky);
 
-        auto k_square = opencl.kernel(OpenCL_kernel_traits<ArrowType>::square);
+        auto& k_square = opencl.kernel(OpenCL_kernel_traits<ArrowType>::square);
         k_square.setArg(0, tmp_mat);
 
         auto& queue = opencl.queue();
@@ -170,7 +170,7 @@ namespace factors::continuous {
 
             k_solve.setArg(1, training_rows);
             
-            auto k_logl_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_mat_column);
+            auto& k_logl_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_mat_column);
             k_logl_values_mat.setArg(0, tmp_mat);
             k_logl_values_mat.setArg(1, matrices_cols);
             k_logl_values_mat.setArg(2, output_mat);
@@ -209,7 +209,7 @@ namespace factors::continuous {
 
             k_solve.setArg(1, test_length);
 
-            auto k_logl_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_mat_row);
+            auto& k_logl_values_mat = opencl.kernel(OpenCL_kernel_traits<ArrowType>::logl_values_mat_row);
             k_logl_values_mat.setArg(0, tmp_mat);
             k_logl_values_mat.setArg(1, matrices_cols);
             k_logl_values_mat.setArg(2, output_mat);
@@ -254,7 +254,7 @@ namespace factors::continuous {
 
         auto& opencl = OpenCLConfig::get();
         
-        auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract);
+        auto& k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract);
         auto& queue = opencl.queue();
 
         if (training_rows > test_length) {
@@ -267,7 +267,7 @@ namespace factors::continuous {
             k_substract.setArg(6, test_offset);
             k_substract.setArg(8, tmp_mat);
 
-            auto k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_column);
+            auto& k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_column);
 
             k_conditional_means.setArg(0, joint_training);
             k_conditional_means.setArg(1, static_cast<unsigned int>(training_rows));
@@ -300,7 +300,7 @@ namespace factors::continuous {
             k_substract.setArg(6, 0);
             k_substract.setArg(8, tmp_mat);
 
-            auto k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_row);
+            auto& k_conditional_means = opencl.kernel(OpenCL_kernel_traits<ArrowType>::conditional_means_row);
 
             k_conditional_means.setArg(0, joint_training);
             k_conditional_means.setArg(1, training_rows);
@@ -845,7 +845,7 @@ namespace factors::continuous {
             else
                 logl_marg = m_marg.logl_buffer<ArrowType>(df);
 
-            auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
+            auto& k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
             k_substract.setArg(0, logl_joint);
             k_substract.setArg(1, logl_marg);
             auto& queue = opencl.queue();
@@ -901,7 +901,7 @@ namespace factors::continuous {
             else
                 logl_marg = m_marg.logl_buffer<ArrowType>(df);
             
-            auto k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
+            auto& k_substract = opencl.kernel(OpenCL_kernel_traits<ArrowType>::substract_vectors);
             k_substract.setArg(0, logl_joint);
             k_substract.setArg(1, logl_marg);
             auto& queue = opencl.queue();
@@ -1072,14 +1072,14 @@ namespace factors::continuous {
                 tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_evidence.size());
         }
 
-        auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
+        auto& k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
         k_exp.setArg(0, mat_logls);
 
-        auto k_normalize_accum_sumexp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normalize_accum_sum_mat_cols);
+        auto& k_normalize_accum_sumexp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normalize_accum_sum_mat_cols);
         k_normalize_accum_sumexp.setArg(0, mat_logls);
         k_normalize_accum_sumexp.setArg(1, static_cast<unsigned int>(N));
 
-        auto k_find_random_indices = opencl.kernel(OpenCL_kernel_traits<ArrowType>::find_random_indices);
+        auto& k_find_random_indices = opencl.kernel(OpenCL_kernel_traits<ArrowType>::find_random_indices);
         k_find_random_indices.setArg(0, mat_logls);
         k_find_random_indices.setArg(1, static_cast<unsigned int>(N));
         k_find_random_indices.setArg(3, random_prob);
@@ -1200,7 +1200,7 @@ namespace factors::continuous {
         auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m);
         auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
 
-        auto k_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::univariate_normal_cdf);
+        auto& k_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::univariate_normal_cdf);
         k_cdf.setArg(0, m_joint.training_buffer());
         k_cdf.setArg(1, static_cast<unsigned int>(N));
         k_cdf.setArg(2, test_buffer);
@@ -1268,20 +1268,20 @@ namespace factors::continuous {
                 tmp_mat_buffer = opencl.new_buffer<CType>(allocated_m*m_evidence.size());
         }
 
-        auto k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
+        auto& k_exp = opencl.kernel(OpenCL_kernel_traits<ArrowType>::exp_elementwise);
         k_exp.setArg(0, W);
 
-        auto k_normal_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normal_cdf);
+        auto& k_normal_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::normal_cdf);
         k_normal_cdf.setArg(0, mu);
         k_normal_cdf.setArg(1, static_cast<unsigned int>(N));
         k_normal_cdf.setArg(2, variable_test_buffer);
         k_normal_cdf.setArg(4, static_cast<CType>(1.0 / std::sqrt(cond_var)));
 
-        auto k_product = opencl.kernel(OpenCL_kernel_traits<ArrowType>::product_elementwise);
+        auto& k_product = opencl.kernel(OpenCL_kernel_traits<ArrowType>::product_elementwise);
         k_product.setArg(0, mu);
         k_product.setArg(1, W);
 
-        auto k_divide = opencl.kernel(OpenCL_kernel_traits<ArrowType>::division_elementwise);
+        auto& k_divide = opencl.kernel(OpenCL_kernel_traits<ArrowType>::division_elementwise);
         k_divide.setArg(0, res);
         k_divide.setArg(2, sum_W);
 

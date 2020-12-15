@@ -119,7 +119,7 @@ namespace opencl {
         cl::Buffer copy_to_buffer(const T* d, int size);
 
         template<typename T>
-        void read_from_buffer(T* dest, const cl::Buffer from, int size);
+        void read_from_buffer(T* dest, const cl::Buffer& from, int size);
 
         template<typename T>
         cl::Buffer new_buffer(int size, cl_mem_flags flags = CL_MEM_READ_WRITE);
@@ -224,9 +224,8 @@ namespace opencl {
     }
 
     template<typename T>
-    void OpenCLConfig::read_from_buffer(T* dest, const cl::Buffer from, int size) {
+    void OpenCLConfig::read_from_buffer(T* dest, const cl::Buffer& from, int size) {
         cl_int err_code = CL_SUCCESS;
-
         err_code = m_queue.enqueueReadBuffer(from, CL_TRUE, 0, sizeof(T)*size, dest);
 
         if (err_code != CL_SUCCESS) {

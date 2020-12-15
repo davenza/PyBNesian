@@ -235,7 +235,7 @@ def test_ckde_logl():
     cpd.fit(df_float)
     cpd2 = CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
-    assert np.all(np.isclose(cpd.logl(test_df_float), cpd2.logl(test_df_float))), "Order of evidence changes logl() result."
+    assert np.all(np.isclose(cpd.logl(test_df_float), cpd2.logl(test_df_float), atol=0.0005)), "Order of evidence changes logl() result."
 
 def test_ckde_logl_null():
     def _test_ckde_logl_null(variable, evidence, _df, _test_df):
@@ -500,7 +500,6 @@ def test_ckde_sample():
     assert sampled.type == pa.float64()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
     
-
     cpd = CKDE('c', ['a', 'b'])
     cpd.fit(df)
 
@@ -528,7 +527,6 @@ def test_ckde_sample():
     assert sampled.type == pa.float32()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
     
-
     cpd = CKDE('c', ['a', 'b'])
     cpd.fit(df_float)
 

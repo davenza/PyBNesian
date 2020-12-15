@@ -565,13 +565,12 @@ namespace opencl {
         auto local_wg = (input_rows > device_max_local_wg) ? 
                                             device_max_local_wg : 
                                             util::bit_util::next_power2(input_rows);
-        auto num_groups = static_cast<int>(std::ceil(static_cast<double>(input_rows) / 
-                                                    static_cast<double>(local_wg)));
+        auto num_groups = static_cast<int>(std::ceil(static_cast<double>(input_rows) / static_cast<double>(2*local_wg)));
         auto global_wg = static_cast<int>(std::ceil(static_cast<double>(num_groups*local_wg)));
 
         auto& opencl = OpenCLConfig::get();
         auto group_sums = opencl.new_buffer<CType>(num_groups*input_cols);
-        
+
         auto k_accum_sumexp = kernel(OpenCL_kernel_traits<ArrowType>::accum_sum_mat_cols);
         k_accum_sumexp.setArg(0, mat);
         k_accum_sumexp.setArg(1, static_cast<unsigned int>(input_rows));

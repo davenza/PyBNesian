@@ -243,9 +243,9 @@ __kernel void exp_elementwise_@dt@(__global @dt@ *mat) {
 //  https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf.
 // See also https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
 __kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat, 
-                                         __private uint mat_rows,
-                                         __local @dt@ *local_block,
-                                         __global @dt@ *sums)
+                                      __private uint mat_rows,
+                                      __local @dt@ *local_block,
+                                      __global @dt@ *sums)
 {
     uint row_id = get_global_id(0);
     uint col_id = get_global_id(1);
@@ -257,16 +257,16 @@ __kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat,
     if (2*row_id+1 < mat_rows) {
         local_block[2*local_id] = mat[IDX(2*row_id, col_id, mat_rows)];
         local_block[2*local_id+1] = mat[IDX(2*row_id+1, col_id, mat_rows)];
-
     } else {
         local_block[2*local_id] = 0;
         local_block[2*local_id+1] = 0;
     }
 
-    if (group_id == num_groups-1) {
-        local_block[mat_rows - group_id*group_size - 1] = mat[IDX(mat_rows-1, col_id, mat_rows)];
-    }
+    barrier (CLK_LOCAL_MEM_FENCE);
 
+    if (group_id == num_groups-1) {
+        local_block[mat_rows - 2*group_id*group_size - 1] = mat[IDX(mat_rows-1, col_id, mat_rows)];
+    }
 
 	uint offset = 1;
 	/* build the sum in place up the tree */
@@ -274,7 +274,6 @@ __kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat,
 	for (uint d = group_size; d > 0; d /= 2)
 	{
 		barrier (CLK_LOCAL_MEM_FENCE);
-
 
 		if (local_id < d)
 		{
@@ -318,7 +317,7 @@ __kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat,
 
 	barrier(CLK_LOCAL_MEM_FENCE);
 
-    // /*write the results back to global memory */
+    // write the results back to global memory
 
     if ((2*row_id+1) < mat_rows) {
         mat[IDX(2*row_id, col_id, mat_rows)] = local_block[2*local_id];

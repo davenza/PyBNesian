@@ -5,8 +5,6 @@
 #include <vector>
 
 namespace learning::independences {
-
-
     class IndependenceTest {
     public:
         virtual ~IndependenceTest() {};

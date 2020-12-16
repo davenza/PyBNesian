@@ -1,8 +1,9 @@
 #include <pybind11/stl.h>
 #include <dataset/crossvalidation_adaptator.hpp>
 #include <dataset/holdout_adaptator.hpp>
+#include <dataset/dynamic_dataset.hpp>
 
-using dataset::DataFrame, dataset::CrossValidation, dataset::HoldOut;
+using dataset::DataFrame, dataset::CrossValidation, dataset::HoldOut, dataset::DynamicDataFrame;
 
 void pybindings_dataset(py::module& root) {
     auto dataset = root.def_submodule("dataset", "Dataset functionality.");
@@ -41,4 +42,13 @@ void pybindings_dataset(py::module& root) {
         .def("training_data", &HoldOut::training_data, py::return_value_policy::reference_internal)
         .def("test_data", &HoldOut::test_data, py::return_value_policy::reference_internal);
 
+    py::class_<DynamicDataFrame>(dataset, "DynamicDataFrame")
+        .def(py::init<const DataFrame&, int>())
+        .def("temporal_slice", [](const DynamicDataFrame& self, int slice_index) {
+            return self.temporal_slice(slice_index);
+        })
+        .def("temporal_slice", [](const DynamicDataFrame& self, const std::vector<int>& slice_indices) {
+            return self.temporal_slice(slice_indices.begin(), slice_indices.end());
+        })
+        .def("joint", &DynamicDataFrame::joint);
 }

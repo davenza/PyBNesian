@@ -5,7 +5,7 @@ from scipy.stats import gaussian_kde
 
 import util_test
 
-SIZE = 10000
+SIZE = 500
 df = util_test.generate_normal_data(SIZE, seed=0)
 df_float = df.astype('float32')
 

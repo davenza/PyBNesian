@@ -375,6 +375,14 @@ namespace dataset {
         const std::shared_ptr<RecordBatch>& record_batch() const { return m_batch; }
         std::vector<std::string> column_names() const;
 
+        Field_ptr field(int i) const {
+            return m_batch->schema()->field(i);
+        }
+
+        Field_ptr field(const std::string& name) const {
+            return m_batch->schema()->GetFieldByName(name);
+        }
+
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         void has_columns(const T& cols) const { has_columns(cols.begin(), cols.end()); }
         template<typename V>
@@ -913,31 +921,31 @@ namespace dataset {
     };
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    inline int size_argument(const RecordBatch_ptr&, const T& arg) { return arg.size(); }
+    inline int size_argument(int, const T& arg) { return arg.size(); }
 
     template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline int size_argument(const RecordBatch_ptr&, const std::pair<IndexIter, IndexIter>& it) { 
+    inline int size_argument(int, const std::pair<IndexIter, IndexIter>& it) { 
         return std::distance(it.first, it.second); 
     }
 
-    inline int size_argument(const RecordBatch_ptr&, int) { return 1; }
+    inline int size_argument(int, int) { return 1; }
 
     template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    inline int size_argument(const RecordBatch_ptr&, const StringType&) { return 1; }
+    inline int size_argument(int, const StringType&) { return 1; }
 
     template<bool copy, typename... Args>
-    inline int size_argument(const RecordBatch_ptr& rb, const IndexLOC<copy, Args...>& cols) {
+    inline int size_argument(int total_columns, const IndexLOC<copy, Args...>& cols) {
         if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
-            return rb->num_columns();
+            return total_columns;
         } else {
-            return std::apply([&rb](const auto&... args) {
-                return (size_argument(rb, args) + ...);
+            return std::apply([total_columns](const auto&... args) {
+                return (size_argument(total_columns, args) + ...);
             }, cols.columns());
         }
     }
 
     inline void append_copy_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
-        if (i < rb->num_columns())
+        if (i >= 0 && i < rb->num_columns())
             arrays.push_back(copy_array(rb->column(i)));
         else
             throw std::invalid_argument("Column index " + std::to_string(i) + " do not exist in DataFrame.");
@@ -970,7 +978,7 @@ namespace dataset {
     }
 
     inline void append_columns(const RecordBatch_ptr& rb, Array_vector& arrays, int i) {
-        if (i < rb->num_columns())
+        if (i >= 0 && i < rb->num_columns())
             arrays.push_back(rb->column(i));
         else
             throw std::invalid_argument("Column index " + std::to_string(i) + " do not exist in DataFrame.");
@@ -1079,7 +1087,7 @@ namespace dataset {
     Array_vector DataFrame::indices_to_columns(const Args&... args) const {
         Array_vector cols;
 
-        int total_size = (size_argument(m_batch, args) + ...);
+        int total_size = (size_argument(m_batch->num_columns(), args) + ...);
         cols.reserve(total_size);
 
         (append_columns(m_batch, cols, args), ...);
@@ -1152,7 +1160,7 @@ namespace dataset {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_APPEND);
         Array_vector new_cols;
 
-        int total_size = (size_argument(m_batch, args) + ...);
+        int total_size = (size_argument(m_batch->num_columns(), args) + ...);
         new_cols.reserve(total_size);
 
         (append_columns(m_batch, new_cols, args),...);

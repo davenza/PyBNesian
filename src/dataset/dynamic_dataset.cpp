@@ -2,6 +2,10 @@
 
 namespace dataset {
 
+    std::string transform_temporal_name(const std::string& name, int slice_index) {
+        return name + "_t_" + std::to_string(slice_index);
+    }
+
     DataFrame create_temporal_slice(const DataFrame& df, int slice_index, int markovian_order) {
         int new_length = df->num_rows() - markovian_order;
         int offset = markovian_order - slice_index;
@@ -13,7 +17,7 @@ namespace dataset {
         new_fields.reserve(slice_df->num_columns());
 
         for (auto field : df->schema()->fields()) {
-            new_fields.push_back(field->WithName(field->name() + "_t_" + std::to_string(slice_index)));
+            new_fields.push_back(field->WithName(transform_temporal_name(field->name(), slice_index)));
         }
 
         auto new_schema = arrow::schema(new_fields);
@@ -68,7 +72,4 @@ namespace dataset {
 
         append_slice(slices[slice_index], columns, fields);
     }
-
-
-
 }

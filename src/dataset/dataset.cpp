@@ -207,7 +207,7 @@ namespace dataset {
 
     DataFrame DataFrame::loc(int i) const {
         arrow::SchemaBuilder b;
-        RAISE_STATUS_ERROR(b.AddField(m_batch->schema()->field(i)));
+        RAISE_STATUS_ERROR(b.AddField(field(i)));
 
         auto r = b.Finish();
         if (!r.ok()) {

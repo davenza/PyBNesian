@@ -9,6 +9,8 @@
 #include <util/bit_util.hpp>
 #include <util/arrow_macros.hpp>
 
+#include <iostream>
+
 namespace pyarrow = arrow::py;
 namespace py = pybind11;
 
@@ -101,6 +103,8 @@ namespace dataset {
         }
         return ptr + k;
     }
+
+    arrow::Type::type same_type(Array_iterator begin, Array_iterator end);
 
     template<typename ArrowType>
     typename ArrowType::c_type min(Array_ptr a) {
@@ -369,6 +373,8 @@ namespace dataset {
         template<typename StringType>
         using string_index = StringType;
         template<typename T, typename R>
+        using enable_if_index_t = util::enable_if_index_t<T, R>;
+        template<typename T, typename R>
         using enable_if_index_container_t = util::enable_if_index_container_t<T, R>;
         template<typename T, typename R>
         using enable_if_index_iterator_t = util::enable_if_index_iterator_t<T, R>;
@@ -384,6 +390,8 @@ namespace dataset {
         template<typename StringType>
         using string_index = DynamicVariable<StringType>;
         template<typename T, typename R>
+        using enable_if_index_t = util::enable_if_dynamic_index_t<T, R>;
+        template<typename T, typename R>
         using enable_if_index_container_t = util::enable_if_dynamic_index_container_t<T, R>;
         template<typename T, typename R>
         using enable_if_index_iterator_t = util::enable_if_dynamic_index_iterator_t<T, R>;
@@ -395,12 +403,255 @@ namespace dataset {
     std::string index_to_string(DynamicVariable<int> i);
     std::string index_to_string(DynamicVariable<std::string> name);
 
+    template<typename T, util::enable_if_index_container_t<T, int> = 0>
+    inline int size_argument(int, const T& arg) { return arg.size(); }
+
+    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+    inline int size_argument(int, const std::pair<IndexIter, IndexIter>& it) { 
+        return std::distance(it.first, it.second); 
+    }
+
+    inline int size_argument(int, int) { return 1; }
+
+    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+    inline int size_argument(int, const StringType&) { return 1; }
+
+    template<typename Index>
+    inline int size_argument(int, const DynamicVariable<Index>&) {
+        return 1;
+    }
+
+    template<typename T, util::enable_if_dynamic_index_container_t<T, int> = 0>
+    inline int size_argument(int, const T& arg) { return arg.size(); }
+
+    template<typename IndexIter, util::enable_if_dynamic_index_iterator_t<IndexIter, int> = 0>
+    inline int size_argument(int, const std::pair<IndexIter, IndexIter>& it) { 
+        return std::distance(it.first, it.second); 
+    }
+
+    template<bool copy, typename... Args>
+    inline int size_argument(int total_columns, const IndexLOC<copy, Args...>& cols) {
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            return total_columns;
+        } else {
+            return std::apply([total_columns](const auto&... args) {
+                return (size_argument(total_columns, args) + ...);
+            }, cols.columns());
+        }
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename Index,
+             typename FuncObj::template enable_if_index_t<Index, int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const Index& index) {
+        f(comp, index);
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename IndexIter,
+             typename FuncObj::template enable_if_index_iterator_t<IndexIter, int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const IndexIter& begin,
+                               const IndexIter& end) {
+        for (auto it = begin; it != end; ++it) {
+            f(comp, *it);
+        }
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename IndexIter,
+             typename FuncObj::template enable_if_index_iterator_t<IndexIter, int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const std::pair<IndexIter, IndexIter>& t) {
+        append_generic(comp, f, t.first, t.second);
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename T,
+             typename FuncObj::template enable_if_index_container_t<T, int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const T& arg) { 
+        append_generic(comp, f, arg.begin(), arg.end()); 
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename ...Args,
+             std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const CopyLOC<Args...>& cols) {
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            f(comp);            
+        } else {
+            f(comp, cols);
+        }
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename ...Args,
+             std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const MoveLOC<Args...>& cols) {
+        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
+            f(comp);
+        } else {
+            f(comp, cols);
+        }
+    }
+
+    template<typename Composition,
+             typename FuncObj,
+             typename ...Args,
+             std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+    inline void append_generic(Composition& comp,
+                               const FuncObj& f,
+                               const Args&... args) {
+        (append_generic(comp, f, args),...);
+    }
+
+    template<typename DataFrame>
+    struct AppendCopyColumns {
+        using BaseType = Array_ptr;
+
+        template<typename T, typename R>
+        using enable_if_index_t = typename DataFrame::template enable_if_index_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_container_t = typename DataFrame::template enable_if_index_container_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_iterator_t = typename DataFrame::template enable_if_index_iterator_t<T, R>;
+
+        template<typename Composition>
+        void operator()(Composition& vector) const {
+            for (const auto& col : self.derived().columns()) {
+                vector.push_back(copy_array(col));
+            }
+        }
+
+        template<typename Composition, typename Index, enable_if_index_t<Index, int> = 0>
+        void operator()(Composition& vector, const Index& index) const {
+            return vector.push_back(copy_array(self.derived().col(index)));
+        }
+
+        template<typename Composition, typename ...Args>
+        void operator()(Composition& vector, const CopyLOC<Args...>& indices) const {
+            std::apply([&vector, this](const auto&...args) {
+                (append_generic(vector, *this, args),...);
+            }, indices.columns());
+        }
+
+        const DataFrame& self;
+    };
+
+    template<typename DataFrame>
+    struct AppendColumns {
+        template<typename T, typename R>
+        using enable_if_index_t = typename DataFrame::template enable_if_index_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_container_t = typename DataFrame::template enable_if_index_container_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_iterator_t = typename DataFrame::template enable_if_index_iterator_t<T, R>;
+
+        template<typename Composition>
+        void operator()(Composition& comp) const {
+            for (const auto& col : self.derived().columns()) {
+                comp.push_back(col);
+            }
+        }
+
+        template<typename Composition, typename Index, enable_if_index_t<Index, int> = 0>
+        void operator()(Composition& comp, const Index& index) const {
+            comp.push_back(self.derived().col(index));
+        }
+
+        template<typename Composition, typename ...Args>
+        void operator()(Composition& comp, const CopyLOC<Args...>& indices) const {
+            AppendCopyColumns<DataFrame> copy { .self = self };
+
+            std::apply([&comp, &copy](const auto&...args) {
+                (append_generic(comp, copy, args),...);
+            }, indices.columns());
+        }
+
+        template<typename Composition, typename ...Args>
+        void operator()(Composition& comp, const MoveLOC<Args...>& indices) const {
+            std::apply([&comp, this](const auto&...args) {
+                (append_generic(comp, *this, args),...);
+            }, indices.columns());
+        }
+
+        const DataFrame& self;
+    };
+
+    template<typename DataFrame>
+    struct AppendSchema {
+        template<typename T, typename R>
+        using enable_if_index_t = typename DataFrame::template enable_if_index_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_container_t = typename DataFrame::template enable_if_index_container_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_iterator_t = typename DataFrame::template enable_if_index_iterator_t<T, R>;
+
+        template<typename Composition>
+        void operator()(Composition& comp) const {
+            auto schema = self.derived().schema();
+
+            for (auto i = 0; i < schema->num_fields(); ++i) {
+                RAISE_STATUS_ERROR(comp.AddField(schema->field(i)));
+            }
+        }
+
+        template<typename Composition, typename Index, enable_if_index_t<Index, int> = 0>
+        void operator()(Composition& comp, const Index& index) const {
+            RAISE_STATUS_ERROR(comp.AddField(self.derived().field(index)));
+        }
+
+        template<typename Composition, bool copy, typename ...Args>
+        void operator()(Composition& comp, const IndexLOC<copy, Args...>& indices) const {
+            std::apply([&comp, this](const auto&...args) {
+                (append_generic(comp, *this, args),...);
+            }, indices.columns());
+        }
+
+        const DataFrame& self;
+    };
+
+    template<typename DataFrame>
+    struct AppendNames {
+        template<typename T, typename R>
+        using enable_if_index_t = typename DataFrame::template enable_if_index_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_container_t = typename DataFrame::template enable_if_index_container_t<T, R>;
+        template<typename T, typename R>
+        using enable_if_index_iterator_t = typename DataFrame::template enable_if_index_iterator_t<T, R>;
+
+        template<typename Composition, typename Index, enable_if_index_t<Index, int> = 0>
+        void operator()(Composition& comp, const Index& index) const {
+            comp.push_back(self.derived().name(index));
+        }
+
+        const DataFrame& self;
+    };
+
     template<typename Derived>
     class DataFrameBase {
     public:
         using int_index = typename dataframe_traits<Derived>::int_index;
         template<typename StringType>
         using string_index = typename dataframe_traits<Derived>::template string_index<StringType>;
+        template<typename T, typename R>
+        using enable_if_index_t = typename dataframe_traits<Derived>::template enable_if_index_t<T, R>;
         template<typename T, typename R>
         using enable_if_index_container_t = typename dataframe_traits<Derived>::template enable_if_index_container_t<T, R>;
         template<typename T, typename R>
@@ -415,41 +666,39 @@ namespace dataset {
             return static_cast<Derived&>(*this);
         }
 
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        void has_columns(const Index& index) const { derived().has_column(index); }
         template<typename T, enable_if_index_container_t<T, int> = 0>
         void has_columns(const T& cols) const { has_columns(cols.begin(), cols.end()); }
         template<typename V>
         void has_columns(const std::initializer_list<V>& cols) const { has_columns(cols.begin(), cols.end()); }
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
         void has_columns(const IndexIter& begin, const IndexIter& end) const;
-        void has_columns(int_index i) const {
-            derived().has_columns(i);
-        }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        void has_columns(const string_index<StringType>& name) const {
-            derived().has_columns(name);
-        }
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
-        void has_columns(const std::pair<IndexIter, IndexIter>& it) {
-            has_columns(it.first, it.second);
-        }
-        template<typename ...Args>
+        void has_columns(const std::pair<IndexIter, IndexIter>& tuple) const { has_columns(tuple.first, tuple.second); }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         void has_columns(const Args&... args) const;
 
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        loc_return loc(const Index& index) const;
         template<typename T, enable_if_index_container_t<T, int> = 0>
         loc_return loc(const T& cols) const { return loc(cols.begin(), cols.end()); }
         template<typename V>
         loc_return loc(const std::initializer_list<V>& cols) const { return loc(cols.begin(), cols.end()); }
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
         loc_return loc(const IndexIter& begin, const IndexIter& end) const;
-        loc_return loc(int_index i) const;
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        loc_return loc(const string_index<StringType>& name) const;
-        template<typename ...Args>
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        loc_return loc(const std::pair<IndexIter, IndexIter>& tuple) const { return loc(tuple.first, tuple.second); }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         loc_return loc(const Args&... args) const;
 
         arrow::Type::type same_type() const {
             Array_vector cols = derived().columns();
-            return same_type(cols.begin(), cols.end());
+            return dataset::same_type(cols.begin(), cols.end());
+        }
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        arrow::Type::type same_type(const Index& index) const {
+            return derived().loc(index)->type_id();
         }
         template<typename T, enable_if_index_container_t<T, int> = 0>
         arrow::Type::type same_type(const T& cols) const { return same_type(cols.begin(), cols.end()); }
@@ -458,19 +707,21 @@ namespace dataset {
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
         arrow::Type::type same_type(const IndexIter& begin, const IndexIter& end) const {
             auto v = indices_to_columns(begin, end);
-            return same_type(v.begin(), v.end());
+            return dataset::same_type(v.begin(), v.end());
         }
-        arrow::Type::type same_type(int_index i) const { return derived().loc(i)->type_id(); }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        arrow::Type::type same_type(const string_index<StringType>& name) const { 
-            return derived().col(name)->type_id(); 
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        arrow::Type::type same_type(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return same_type(tuple.first, tuple.second);
         }
-        template<typename ...Args>
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         arrow::Type::type same_type(const Args&... args) const {
             auto v = indices_to_columns(args...);
-            return same_type(v.begin(), v.end());
+            return dataset::same_type(v.begin(), v.end());
         }
 
+        std::vector<std::string> names() const { return derived().column_names(); }
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        std::vector<std::string> names(const Index& index) const { return { derived().name(index) }; }
         template<typename T, enable_if_index_container_t<T, int> = 0>
         std::vector<std::string> names(const T& n) const { return names(n.begin(), n.end()); }
         template<typename V>
@@ -480,46 +731,34 @@ namespace dataset {
             std::vector<std::string> res;
             res.reserve(std::distance(begin, end));
 
-            for (auto it = begin; it != end; ++it) {
-                res.push_back(derived().name(*it));
-            }
+            AppendNames<DataFrameBase<Derived>> func { .self = *this };
+            append_generic(res, func, begin, end);
+            return res;
+        }
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        std::vector<std::string> names(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return names(tuple.first, tuple.second);
+        }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        std::vector<std::string> names(const Args&... args) {
+            int total_size = (size_argument(args) + ...);
+            std::vector<std::string> res;
+            res.reserve(total_size);
+
+            AppendNames<DataFrameBase<Derived>> func { .self = *this };
+            append_generic(res, func, args...);
+
             return res;
         }
 
-        template<typename ArrowType>
-        const typename ArrowType::c_type* data(int_index i) const {
-            return derived().col(i)->data()->template GetValues<typename ArrowType::c_type>(1);
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        const typename ArrowType::c_type* data(const Index& index) const {
+            return derived().col(index)->data()->template GetValues<typename ArrowType::c_type>(1);
         }
 
-        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        const typename ArrowType::c_type* data(const string_index<StringType>& name) const {
-            return derived().col(name)->data()->template GetValues<typename ArrowType::c_type>(1);
-        }
-
-        template<typename ArrowType>
-        typename ArrowType::c_type* mutable_data(int_index i) const {
-            return derived().col(i)->data()->template GetMutableValues<typename ArrowType::c_type>(1);
-        }
-
-        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        typename ArrowType::c_type* mutable_data(const string_index<StringType>& name) const {
-            return derived().col(name)->data()->template GetMutableValues<typename ArrowType::c_type>(1);
-        }
-
-
-        template<typename ArrowType>
-        std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>
-        downcast(int_index i) const {
-            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-            auto a = derived().col(i);
-            return std::static_pointer_cast<ArrayType>(a);
-        }
-        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>
-        downcast(const string_index<StringType>& name) const {
-            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-            auto a = derived().col(name);
-            return std::static_pointer_cast<ArrayType>(a);
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        typename ArrowType::c_type* mutable_data(const Index& index) const {
+            return derived().col(index)->data()->template GetMutableValues<typename ArrowType::c_type>(1);
         }
 
         template<typename ArrowType>
@@ -534,6 +773,13 @@ namespace dataset {
             }
 
             return res;
+        }
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>
+        downcast(const Index& index) const {
+            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+            auto a = derived().col(index);
+            return std::static_pointer_cast<ArrayType>(a);
         }
         template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
         std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>>
@@ -559,8 +805,14 @@ namespace dataset {
 
             return res;
         }
-
-        template<typename ArrowType, typename ...Args>
+        template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
+        downcast_vector(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return downcast_vector(tuple.first, tuple.second);
+        }
+        template<typename ArrowType,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
         downcast_vector(const Args&... args) const {
             using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
@@ -574,47 +826,13 @@ namespace dataset {
             return res;
         }
 
-        template<typename ArrowType>
-        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
-        downcast_map(int_index i) const {
-            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-            auto a = derived().col(i);
-            return { { derived().name(i), std::static_pointer_cast<ArrayType>(a) } };
-        }
-        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
-        downcast_map(const string_index<StringType>& name) const {
-            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-            auto a = derived().col(name);
-            return { {name, std::static_pointer_cast<ArrayType>(a) } };
-        }
-        template<typename ArrowType, typename T, util::enable_if_index_container_t<T, int> = 0>
-        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
-        downcast_map(const T& n) const { 
-            return downcast_map<ArrowType>(n.begin(), n.end());
-        }
-        template<typename ArrowType, typename V>
-        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
-        downcast_map(const std::initializer_list<V>& n) const { 
-            return downcast_map<ArrowType>(n.begin(), n.end());
-        }
-        template<typename ArrowType, typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-        std::unordered_map<std::string, std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>> 
-        downcast_map(const IndexIter& begin, const IndexIter& end) const {
-            using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-            std::unordered_map<std::string, std::shared_ptr<ArrayType>> res;
-            
-            for (auto it = begin; it != end; ++it) {
-                res.insert({derived().name(*it), 
-                            std::static_pointer_cast<ArrayType>(derived().col(*it))});
-            }
-
-            return res;
-        }
-
         Buffer_ptr combined_bitmap() const { 
             Array_vector cols = derived().columns(); 
             return dataset::combined_bitmap(cols.begin(), cols.end());
+        }
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        Buffer_ptr combined_bitmap(const Index& index) const { 
+            return derived().col(index)->null_bitmap(); 
         }
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         Buffer_ptr combined_bitmap(const T& cols) const { 
@@ -625,20 +843,16 @@ namespace dataset {
         Buffer_ptr combined_bitmap(const std::initializer_list<V>& cols) const { 
             return combined_bitmap(cols.begin(), cols.end()); 
         }
-        Buffer_ptr combined_bitmap(int_index i) const { 
-            return derived().col(i)->null_bitmap(); 
-        }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        Buffer_ptr combined_bitmap(const string_index<StringType>& name) const { 
-            return derived().col(name)->null_bitmap(); 
-        }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         Buffer_ptr combined_bitmap(const IndexIter& begin, const IndexIter& end) const { 
             Array_vector v = indices_to_columns(begin, end);
             return dataset::combined_bitmap(v.begin(), v.end());
         }
-
-        template<typename ...Args>
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        Buffer_ptr combined_bitmap(const std::pair<IndexIter, IndexIter>& tuple) const { 
+            return combined_bitmap(tuple.first, tuple.second);
+        }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         Buffer_ptr combined_bitmap(const Args&... args) const {
             Array_vector v = indices_to_columns(args...);
             return dataset::combined_bitmap(v.begin(), v.end());
@@ -648,6 +862,8 @@ namespace dataset {
             auto cols = derived().columns(); 
             return dataset::null_count(cols.begin(), cols.end()); 
         }
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        int64_t null_count(const Index& index) const { return derived().col(index)->null_count(); }
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
         int64_t null_count(const T& cols) const { 
             Array_vector v = indices_to_columns(cols); 
@@ -657,17 +873,16 @@ namespace dataset {
         int64_t null_count(const std::initializer_list<V>& cols) const { 
             return null_count(cols.begin(), cols.end()); 
         }
-        int64_t null_count(int_index i) const { return derived().col(i)->null_count(); }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        int64_t null_count(const string_index<StringType>& name) const { 
-            return derived().loc(name)->null_count(); 
-        }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         int64_t null_count(const IndexIter& begin, const IndexIter& end) const { 
             Array_vector v = indices_to_columns(begin, end); 
             return dataset::null_count(v.begin(), v.end());
         }
-        template<typename ...Args>
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        int64_t null_count(const std::pair<IndexIter, IndexIter>& tuple) const { 
+            return null_count(tuple.first, tuple.second);
+        }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         int64_t null_count(const Args&... args) const {
             Array_vector v = indices_to_columns(args...); 
             return dataset::null_count(v.begin(), v.end());
@@ -677,6 +892,10 @@ namespace dataset {
             auto cols = derived().columns();
             return dataset::valid_rows(cols.begin(), cols.end()); 
         }
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        int64_t valid_rows(const Index& index) const { 
+            return derived().num_rows() - derived().col(index)->null_count(); 
+        }
         template<typename T, enable_if_index_container_t<T, int> = 0>
         int64_t valid_rows(const T& cols) const { 
             return valid_rows(cols.begin(), cols.end()); 
@@ -685,42 +904,29 @@ namespace dataset {
         int64_t valid_rows(const std::initializer_list<V>& cols) const { 
             return valid_rows(cols.begin(), cols.end()); 
         }
-        int64_t valid_rows(int_index i) const { 
-            return derived().num_rows() - derived().col(i)->null_count(); 
-        }
-        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        int64_t valid_rows(const string_index<StringType>& name) const { 
-            return derived().num_rows() - derived().col(name)->null_count(); 
-        }
         template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
         int64_t valid_rows(const IndexIter& begin, const IndexIter& end) const {
             auto v = indices_to_columns(begin, end);
             return dataset::valid_rows(v.begin(), v.end());
         }
-        template<typename ...Args>
+        template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
+        int64_t valid_rows(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return valid_rows(tuple.first, tuple.second);
+        }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         int64_t valid_rows(const Args&... args) const {
             auto v = indices_to_columns(args...);
             return dataset::valid_rows(v.begin(), v.end());
         }
 
-        template<typename ArrowType>
-        typename ArrowType::c_type min(int_index i) const {
-            return dataset::min<ArrowType>(derived().col(i));
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        typename ArrowType::c_type min(const Index& index) const {
+            return dataset::min<ArrowType>(derived().col(index));
         }
 
-        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        typename ArrowType::c_type min(const string_index<StringType>& name) const {
-            return dataset::min<ArrowType>(derived().col(name));
-        }
-
-        template<typename ArrowType>
-        typename ArrowType::c_type max(int_index i) const {
-            return dataset::max<ArrowType>(derived().col(i));
-        }
-
-        template<typename ArrowType, typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        typename ArrowType::c_type max(const string_index<StringType>& name) const {
-            return dataset::max<ArrowType>(derived().col(name));
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        typename ArrowType::c_type max(const Index& index) const {
+            return dataset::max<ArrowType>(derived().col(index));
         }
 
         template<bool append_ones, typename ArrowType>
@@ -731,6 +937,34 @@ namespace dataset {
             } else {
                 return dataset::to_eigen<append_ones, ArrowType, true>(cols.begin(), cols.end());
             }
+        }
+
+        template<bool append_ones, typename ArrowType, bool contains_null>
+        EigenMatrix<ArrowType> to_eigen() const {
+            auto cols = derived().columns();
+            return dataset::to_eigen<append_ones, ArrowType, contains_null>(cols.begin(), cols.end());
+        }
+
+        template<bool append_ones, typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
+        MapOrMatrixType<append_ones, ArrowType, contains_null> to_eigen(const Index& index) const {
+            auto col = derived().col(index);
+            return dataset::to_eigen<append_ones, ArrowType, contains_null>(col);
+        }
+
+        template<bool append_ones, typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Index& index) const {
+            auto col = derived().col(index);
+            if (col->null_count() == 0)
+                return dataset::to_eigen<append_ones, ArrowType, false>(col);
+            else {
+                return dataset::to_eigen<append_ones, ArrowType, true>(col);
+            }
+        }
+
+        template<bool append_ones, typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Buffer_ptr& bitmap, const Index& index) const {
+            auto col = derived().col(index);
+            return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
         }
 
         template<bool append_ones,
@@ -761,6 +995,27 @@ namespace dataset {
         EigenMatrix<ArrowType> to_eigen(const Buffer_ptr& bitmap, const T& cols) const { 
             Array_vector v = indices_to_columns(cols); 
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end()); 
+        }
+
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename V>
+        EigenMatrix<ArrowType> to_eigen(const std::initializer_list<V>& cols) const { 
+            return to_eigen<append_ones, ArrowType>(cols.begin(), cols.end());
+        }
+        template<bool append_ones,
+                 typename ArrowType,
+                 bool contains_null,
+                 typename V>
+        EigenMatrix<ArrowType> to_eigen(const std::initializer_list<V>& cols) const { 
+            return to_eigen<append_ones, ArrowType, contains_null>(cols.begin(), cols.end());
+        }
+
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename V>
+        EigenMatrix<ArrowType> to_eigen(const Buffer_ptr& bitmap, const std::initializer_list<V>& cols) const { 
+            return to_eigen<append_ones, ArrowType>(bitmap, cols.begin(), cols.end());
         }
         
         template<bool append_ones,
@@ -794,39 +1049,35 @@ namespace dataset {
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end()); 
         }
 
-        template<bool append_ones, typename ArrowType, bool contains_null>
-        MapOrMatrixType<append_ones, ArrowType, contains_null> to_eigen(int_index i) const {
-            auto col = derived().col(i);
-            return dataset::to_eigen<append_ones, ArrowType, contains_null>(col);
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return to_eigen<append_ones, ArrowType>(tuple.first, tuple.second);
         }
-
-        template<bool append_ones, typename ArrowType>
-        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Buffer_ptr& bitmap, int_index i) const {
-            auto col = derived().col(i);
-            return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
-        }
-
+        
         template<bool append_ones,
                  typename ArrowType,
                  bool contains_null,
-                 typename StringType,
-                 util::enable_if_stringable_t<StringType, int> = 0>
-        MapOrMatrixType<append_ones, ArrowType, contains_null> to_eigen(const string_index<StringType>& name) const {
-            auto col = derived().col(name);
-            return dataset::to_eigen<append_ones, ArrowType, contains_null>(col);
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return to_eigen<append_ones, ArrowType, contains_null>(tuple.first, tuple.second);
+        }
+        
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const Buffer_ptr& bitmap, const std::pair<IndexIter, IndexIter>& tuple) const {
+            return to_eigen<append_ones, ArrowType>(bitmap, tuple.first, tuple.second);
         }
 
         template<bool append_ones,
                  typename ArrowType,
-                 typename StringType,
-                 util::enable_if_stringable_t<StringType, int> = 0>
-        EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Buffer_ptr& bitmap,
-                                                             const string_index<StringType>& name) const {
-            auto col = derived().col(name);
-            return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
-        }
-        
-        template<bool append_ones, typename ArrowType, typename ...Args>
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         EigenMatrix<ArrowType> to_eigen(const Args&... args) const {
             if (null_count(args...) == 0) {
                 return to_eigen<append_ones, ArrowType, false>(args...);
@@ -835,16 +1086,64 @@ namespace dataset {
             }
         }
         
-        template<bool append_ones, typename ArrowType, bool contains_null, typename ...Args>
+        template<bool append_ones,
+                 typename ArrowType,
+                 bool contains_null,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         EigenMatrix<ArrowType> to_eigen(const Args&... args) const {
             Array_vector v = indices_to_columns(args...); 
             return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end());
         }
 
-        template<bool append_ones, typename ArrowType, typename ...Args>
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         EigenMatrix<ArrowType> to_eigen(const Buffer_ptr& bitmap, const Args&... args) const {
             Array_vector v = indices_to_columns(args...); 
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end());
+        }
+
+        template<typename ArrowType>
+        EigenMatrix<ArrowType> cov() {
+            if (null_count() == 0) {
+                return cov<ArrowType, false>();
+            } else {
+                return cov<ArrowType, true>();
+            }
+        }
+
+        template<typename ArrowType, bool contains_null>
+        EigenMatrix<ArrowType> cov() {
+            auto c = derived().columns();
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
+
+
+        template<typename ArrowType>
+        EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap) {
+            auto c = derived().columns();
+            return cov<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> cov(const Index& index) const {
+            if (null_count(index) == 0) {
+                return cov<ArrowType, false>(index);
+            } else {
+                return cov<ArrowType, true>(index);
+            }
+        }
+
+        template<typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> cov(const Index& index) const {
+            dataset::cov<ArrowType, contains_null>(derived().col(index));
+        }
+
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const Index& index) const {
+            dataset::cov<ArrowType>(bitmap, derived().col(index));
         }
 
         template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
@@ -917,52 +1216,9 @@ namespace dataset {
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
-        template<typename ArrowType>
-        EigenMatrix<ArrowType> cov(int_index i) const {
-            if (null_count(i) == 0) {
-                return cov<ArrowType, false>(i);
-            } else {
-                return cov<ArrowType, true>(i);
-            }
-        }
-
-        template<typename ArrowType, bool contains_null>
-        EigenMatrix<ArrowType> cov(int_index i) const {
-            dataset::cov<ArrowType, contains_null>(derived().col(i));
-        }
-
-        template<typename ArrowType>
-        EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, int_index i) const {
-            dataset::cov<ArrowType>(bitmap, derived().col(i));
-        }
-
         template<typename ArrowType,
-                 typename StringType,
-                 util::enable_if_stringable_t<StringType, int> = 0>
-        EigenMatrix<ArrowType> cov(const string_index<StringType>& name) const {
-            if (null_count(name) == 0) {
-                return cov<ArrowType, false>(name);
-            } else {
-                return cov<ArrowType, true>(name);
-            }
-        }
-
-        template<typename ArrowType,
-                 bool contains_null,
-                 typename StringType,
-                 util::enable_if_stringable_t<StringType, int> = 0>
-        EigenMatrix<ArrowType> cov(const string_index<StringType>& name) const {
-            dataset::cov<ArrowType, contains_null>(derived().col(name));
-        }
-
-        template<typename ArrowType,
-                 typename StringType,
-                 util::enable_if_stringable_t<StringType, int> = 0>
-        EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const string_index<StringType>& name) const {
-            dataset::cov<ArrowType>(bitmap, derived().col(name));
-        }
-
-        template<typename ArrowType, typename ...Args>
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         EigenMatrix<ArrowType> cov(const Args&... args) const {
             if (null_count(args...) == 0) {
                 return cov<ArrowType, false>(args...);
@@ -971,13 +1227,18 @@ namespace dataset {
             }
         }
 
-        template<typename ArrowType, bool contains_null, typename ...Args>
+        template<typename ArrowType,
+                 bool contains_null,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         EigenMatrix<ArrowType> cov(const Args&... args) const {
             auto c = indices_to_columns(args...);
             return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
         }
 
-        template<typename ArrowType, typename ...Args>
+        template<typename ArrowType,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const Args&... args) const {
             auto c = indices_to_columns(args...);
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
@@ -990,7 +1251,9 @@ namespace dataset {
         }
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
         Array_vector indices_to_columns(const IndexIter& begin, const IndexIter& end) const;
-        template<typename ...Args>
+        // https://stackoverflow.com/questions/39659127/restrict-variadic-template-arguments
+        template<typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         Array_vector indices_to_columns(const Args&... args) const;
 
         std::shared_ptr<arrow::Schema> indices_to_schema() const;
@@ -1000,7 +1263,8 @@ namespace dataset {
         }
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
         std::shared_ptr<arrow::Schema> indices_to_schema(const IndexIter& begin, const IndexIter& end) const;
-        template<typename ...Args>
+        template<typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         std::shared_ptr<arrow::Schema> indices_to_schema(const Args&... args) const;
     };
 
@@ -1008,157 +1272,16 @@ namespace dataset {
     template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     void DataFrameBase<Derived>::has_columns(const IndexIter& begin, const IndexIter& end) const {
         for(auto it = begin; it != end; ++it) {
-            has_columns(*it);
+            derived().has_column(*it);
         }
     }
 
     template<typename Derived>
-    template<typename ...Args>
+    template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int>>
     void DataFrameBase<Derived>::has_columns(const Args&... args) const {
         (has_columns(args),...);
     }
 
-    template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    inline int size_argument(int, const T& arg) { return arg.size(); }
-
-    template<typename IndexIter, util::enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline int size_argument(int, const std::pair<IndexIter, IndexIter>& it) { 
-        return std::distance(it.first, it.second); 
-    }
-
-    inline int size_argument(int, int) { return 1; }
-
-    template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-    inline int size_argument(int, const StringType&) { return 1; }
-
-    template<typename Index>
-    inline int size_argument(int, const DynamicVariable<Index>&) {
-        return 1;
-    }
-    
-    template<typename T, util::enable_if_dynamic_index_container_t<T, int> = 0>
-    inline int size_argument(int, const T& arg) { return arg.size(); }
-
-    template<typename IndexIter, util::enable_if_dynamic_index_iterator_t<IndexIter, int> = 0>
-    inline int size_argument(int, const std::pair<IndexIter, IndexIter>& it) { 
-        return std::distance(it.first, it.second); 
-    }
-
-    template<bool copy, typename... Args>
-    inline int size_argument(int total_columns, const IndexLOC<copy, Args...>& cols) {
-        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
-            return total_columns;
-        } else {
-            return std::apply([total_columns](const auto&... args) {
-                return (size_argument(total_columns, args) + ...);
-            }, cols.columns());
-        }
-    }
-
-    template<typename Derived, typename Index>
-    inline void append_copy_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const Index& name) {
-        arrays.push_back(copy_array(df.derived().col(name)));
-    }
-
-    template<typename Derived,
-             typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_copy_columns(const DataFrameBase<Derived>& df,
-                                    Array_vector& arrays,
-                                    const IndexIter& begin,
-                                    const IndexIter& end) {
-        for (auto it = begin; it != end; ++it) {
-            append_copy_columns(df, arrays, *it);
-        }
-    }
-
-    template<typename Derived,
-             typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_copy_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const std::pair<IndexIter, IndexIter> t) {
-        append_copy_columns(df, arrays, t.first, t.second);
-    }
-
-    template<typename Derived,
-             typename T,
-             typename DataFrameBase<Derived>::template enable_if_index_container_t<T, int> = 0>
-    inline void append_copy_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const T& arg) { 
-        append_copy_columns(df, arrays, arg.begin(), arg.end()); 
-    }
-
-    template<typename Derived, typename Index>
-    inline void append_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const Index& name) {
-        arrays.push_back(df.derived().col(name));
-    }
-
-    template<typename Derived,
-             typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const IndexIter& begin,
-                               const IndexIter& end) {
-        for (auto it = begin; it != end; ++it) {
-            append_columns(df, arrays, *it);
-        }
-    }
-
-    template<typename Derived,
-             typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const std::pair<IndexIter, IndexIter>& t) {
-        append_columns(df, arrays, t.first, t.second);
-    }
-
-    template<typename Derived,
-             typename T,
-             typename DataFrameBase<Derived>::template enable_if_index_container_t<T, int> = 0>
-    inline void append_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const T& arg) { 
-        append_columns(df, arrays, arg.begin(), arg.end()); 
-    }
-
-    template<typename Derived, typename ...Args>
-    inline void append_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const CopyLOC<Args...>& cols) {
-        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
-            for (const auto& col : df.columns()) {
-                arrays.push_back(copy_array(col));
-            }
-        } else {
-            std::apply([&df, &arrays](const auto&...args) {
-                (append_copy_columns(df, arrays, args),...);
-            }, cols.columns());
-        }
-    }
-
-    template<typename Derived, typename ...Args>
-    inline void append_columns(const DataFrameBase<Derived>& df,
-                               Array_vector& arrays,
-                               const MoveLOC<Args...>& cols) {
-        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
-            for (const auto& col : df.columns()) {
-                arrays.push_back(col);
-            }
-        } else {
-            std::apply([&df, &arrays](const auto&...args) {
-                (append_columns(df, arrays, args),...);
-            }, cols.columns());
-        }
-    }
-    
     template<typename Derived>
     Array_vector DataFrameBase<Derived>::indices_to_columns() const {
         Array_vector v;
@@ -1174,91 +1297,27 @@ namespace dataset {
     template<typename Derived>
     template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     Array_vector DataFrameBase<Derived>::indices_to_columns(const IndexIter& begin, const IndexIter& end) const {
-        has_columns(begin, end);
-
-        Array_vector v;
-        v.reserve(std::distance(begin, end));
-
-        append_columns(*this, v, begin, end);
-
-        return v;
-    }
-
-    template<typename Derived>
-    template<typename ...Args>
-    Array_vector DataFrameBase<Derived>::indices_to_columns(const Args&... args) const {
-        has_columns(args...);
-
-        int total_size = (size_argument(derived().num_columns(), args) + ...);
-
         Array_vector cols;
-        cols.reserve(total_size);
-        
-        (indices_to_columns(args),...);
+        cols.reserve(std::distance(begin, end));
+
+        AppendColumns<DataFrameBase<Derived>> func{ .self = *this };
+        append_generic(cols, func, begin, end);
 
         return cols;
     }
 
     template<typename Derived>
-    inline void append_schema(const DataFrameBase<Derived>& df,
-                              arrow::SchemaBuilder& b,
-                              typename DataFrameBase<Derived>::int_type i) {
-        RAISE_STATUS_ERROR(b.AddField(df.derived().field(i)));
-    }
+    template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int>>
+    Array_vector DataFrameBase<Derived>::indices_to_columns(const Args&... args) const {
+        int total_size = (size_argument(derived().num_columns(), args) + ...);
 
-    template<typename Derived,
-             typename StringIndex>
-    void append_schema(const DataFrameBase<Derived>& df,
-                       arrow::SchemaBuilder& b,
-                       const StringIndex& name) {
-        RAISE_STATUS_ERROR(b.AddField(df.derived().field(name)));
-    }
+        Array_vector cols;
+        cols.reserve(total_size);
+        
+        AppendColumns<DataFrameBase<Derived>> func{ .self = *this };
+        append_generic(cols, func, args...);
 
-    template<typename Derived,
-             typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_schema(const DataFrameBase<Derived>& df,
-                              arrow::SchemaBuilder& b,
-                              const IndexIter& begin,
-                              const IndexIter& end) {
-        for (auto it = begin; it != end; ++it) {
-            append_schema(df, b, *it);
-        }
-    }
-
-    template<typename Derived,
-             typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int> = 0>
-    inline void append_schema(const DataFrameBase<Derived>& df,
-                              arrow::SchemaBuilder& b,
-                              const std::pair<IndexIter, IndexIter>& it) {
-        append_schema(df, b, it.first, it.second);
-    }
-
-    template<typename Derived,
-             typename T,
-             typename DataFrameBase<Derived>::template enable_if_index_container_t<T, int> = 0>
-    inline void append_schema(const DataFrameBase<Derived>& df, arrow::SchemaBuilder& b, const T& arg) { 
-        append_schema(df, b, arg.begin(), arg.end()); 
-    }
-
-    template<typename Derived,
-             bool copy,
-             typename ...Args>
-    inline void append_schema(const DataFrameBase<Derived>& df,
-                              arrow::SchemaBuilder& b,
-                              const IndexLOC<copy, Args...>& cols) {
-        if constexpr(std::tuple_size_v<std::remove_reference_t<decltype(cols.columns())>> == 0) {
-            auto schema = df.derived().schema();
-
-            for (auto i = 0; i < schema->num_fields(); ++i) {
-                RAISE_STATUS_ERROR(b.AddField(schema->field(i)));
-            }
-        } else {
-            std::apply([&df, &b](const auto&...args) {
-                (append_schema(df, b, args),...);
-            }, cols.columns());
-        }
+        return cols;
     }
 
     template<typename Derived>
@@ -1285,7 +1344,8 @@ namespace dataset {
                                                                              const IndexIter& end) const {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_APPEND);
 
-        append_schema(*this, b, begin, end);
+        AppendSchema<DataFrameBase<Derived>> func{ .self = *this };
+        append_generic(b, func, begin, end);
 
         auto r = b.Finish();
         if (!r.ok()) {
@@ -1296,16 +1356,19 @@ namespace dataset {
     }
 
     template<typename Derived>
-    template<typename ...Args>
+    template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int>>
     std::shared_ptr<arrow::Schema> DataFrameBase<Derived>::indices_to_schema(const Args&... args) const {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_APPEND);
 
-        (append_schema(*this, b, args),...);
+        AppendSchema<DataFrameBase<Derived>> func{ .self = *this };
+        append_generic(b, func, args...);
 
         auto r = b.Finish();
         if (!r.ok()) {
             throw std::domain_error("Schema could not be created for selected columns.");
         }
+
+        return std::move(r).ValueOrDie();
     }
 
     template<typename Derived>
@@ -1318,36 +1381,23 @@ namespace dataset {
     }
 
     template<typename Derived>
-    typename DataFrameBase<Derived>::loc_return DataFrameBase<Derived>::loc(typename DataFrameBase<Derived>::int_index i) const {
+    template<typename Index,
+             typename DataFrameBase<Derived>::template enable_if_index_t<Index, int>>
+    typename DataFrameBase<Derived>::loc_return DataFrameBase<Derived>::loc(const Index& index) const {
         arrow::SchemaBuilder b;
-        RAISE_STATUS_ERROR(b.AddField(derived().field(i)));
+        RAISE_STATUS_ERROR(b.AddField(derived().field(index)));
 
         auto r = b.Finish();
         if (!r.ok()) {
-            throw std::domain_error("Schema could not be created for column index " + index_to_string(i));
+            throw std::domain_error("Schema could not be created for column index " + index_to_string(index));
         }
 
-        Array_vector c = { derived().col(i) };
+        Array_vector c = { derived().col(index) };
         return RecordBatch::Make(std::move(r).ValueOrDie(), derived().num_rows(), c);
     }
 
     template<typename Derived>
-    template<typename StringType, util::enable_if_stringable_t<StringType, int>>
-    typename DataFrameBase<Derived>::loc_return DataFrameBase<Derived>::loc(const string_index<StringType>& name) const {
-        arrow::SchemaBuilder b;
-        RAISE_STATUS_ERROR(b.AddField(derived().field(name)));
-
-        auto r = b.Finish();
-        if (!r.ok()) {
-            throw std::domain_error("Schema could not be created for column index " + index_to_string(name));
-        }
-
-        Array_vector c = { derived().col(name) };
-        return RecordBatch::Make(std::move(r).ValueOrDie(), derived().num_rows(), c);
-    }
-
-    template<typename Derived>
-    template<typename ...Args>
+    template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int>>
     typename DataFrameBase<Derived>::loc_return DataFrameBase<Derived>::loc(const Args&... args) const {
         auto columns = indices_to_columns(args...);
         auto schema = indices_to_schema(args...);
@@ -1363,7 +1413,7 @@ namespace dataset {
                                                 Array_vector()
                                                 )) {}
 
-        DataFrame(std::shared_ptr<RecordBatch> rb);
+        DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) {};
 
         const std::shared_ptr<RecordBatch>& record_batch() const { return m_batch; }
 
@@ -1375,6 +1425,21 @@ namespace dataset {
             return m_batch->num_columns();
         }
 
+        void has_column(int index) const { 
+            if (index < 0 || index >= m_batch->num_columns()) {
+                throw std::domain_error("Index " + std::to_string(index) + 
+                                        " do no exist for DataFrame with " + std::to_string(m_batch->num_columns()) + " columns.");
+            }
+        }
+
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        void has_column(const StringType& name) const { 
+            auto a = m_batch->GetColumnByName(name);
+            if (!a) {
+                throw std::domain_error("Column \"" + name + "\" not found in DataFrame");
+            }
+        }
+
         Field_ptr field(int i) const {
             return m_batch->schema()->field(i);
         }
@@ -1383,6 +1448,12 @@ namespace dataset {
         Field_ptr field(const StringType& name) const {
             return m_batch->schema()->GetFieldByName(name);
         }
+
+        const std::string& name(int i) const { return m_batch->column_name(i); }
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        const std::string& name(const StringType& n) const { return n; }
+
+        std::vector<std::string> column_names() const;
 
         Array_ptr col(int i) const { 
             if (i >= 0 && i < m_batch->num_columns())
@@ -1402,26 +1473,13 @@ namespace dataset {
 
         std::vector<int> continuous_columns() const;
 
-        std::shared_ptr<RecordBatch> operator->() const;
+        std::shared_ptr<RecordBatch> operator->() const { return m_batch; }
         friend std::pair<DataFrame, DataFrame> generate_cv_pair(const DataFrame& df, int fold,
                                                                 const std::vector<int>& indices, 
                                                                 const std::vector<std::vector<int>::iterator>& test_limits);
     private:
         std::shared_ptr<RecordBatch> m_batch;
     };
-
-    // template<>
-    // struct dataframe_traits<DataFrame> {
-    //     using int_index = int;
-    //     template<typename StringType>
-    //     using string_index = StringType;
-    //     template<typename T, typename R>
-    //     using enable_if_index_container_t = util::enable_if_index_container_t<T, R>;
-    //     template<typename T, typename R>
-    //     using enable_if_index_iterator_t = util::enable_if_index_iterator_t<T, R>;
-    //     using loc_return = DataFrame;
-    // };
-
 }
 
 namespace pybind11::detail {

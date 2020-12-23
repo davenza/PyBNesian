@@ -33,9 +33,9 @@ namespace learning::parameters {
 
     template<typename VarType, typename EvidenceIter>
     typename DiscreteFactor::ParamsClass _fit(const DataFrame& df, 
-                                                const VarType& variable, 
-                                                EvidenceIter evidence_begin, 
-                                                EvidenceIter evidence_end) {
+                                              const VarType& variable, 
+                                              const EvidenceIter& evidence_begin, 
+                                              const EvidenceIter& evidence_end) {
         
         auto num_variables = std::distance(evidence_begin, evidence_end) + 1;
 
@@ -91,9 +91,9 @@ namespace learning::parameters {
     template<>
     template<typename VarType, typename EvidenceIter>
     typename DiscreteFactor::ParamsClass MLE<DiscreteFactor>::estimate(const DataFrame& df, 
-                                                                        const VarType& variable, 
-                                                                        EvidenceIter evidence_begin, 
-                                                                        EvidenceIter evidence_end) {
+                                                                       const VarType& variable, 
+                                                                       const EvidenceIter& evidence_begin, 
+                                                                       const EvidenceIter& evidence_end) {
         
         auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
         auto type_id = df.same_type(variable, evidence_pair);

@@ -2,6 +2,13 @@
 
 namespace dataset {
 
+    std::string index_to_string(DynamicVariable<int> index) {
+        return "(" + std::to_string(index.variable) + ", " + std::to_string(index.temporal_slice) + ")";
+    }
+    std::string index_to_string(DynamicVariable<std::string> index) {
+        return "(" + index.variable + ", " + std::to_string(index.temporal_slice) + ")";
+    }
+
     std::string transform_temporal_name(const std::string& name, int slice_index) {
         return name + "_t_" + std::to_string(slice_index);
     }

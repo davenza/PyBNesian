@@ -150,8 +150,8 @@ namespace learning::parameters {
     template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceIter>
     typename LinearGaussianCPD::ParamsClass _fit(const DataFrame& df,
                                                  const VarType& variable,  
-                                                 EvidenceIter evidence_begin,
-                                                 EvidenceIter evidence_end) {
+                                                 const EvidenceIter evidence_begin,
+                                                 const EvidenceIter evidence_end) {
         auto evidence_size = std::distance(evidence_begin, evidence_end);
         if (evidence_size == 0) {
             auto v = df.to_eigen<false, ArrowType, contains_null>(variable);
@@ -177,9 +177,8 @@ namespace learning::parameters {
     template<typename VarType, typename EvidenceIter>
     typename LinearGaussianCPD::ParamsClass MLE<LinearGaussianCPD>::estimate(const DataFrame& df, 
                                                                              const VarType& variable,  
-                                                                             EvidenceIter evidence_begin,
-                                                                             EvidenceIter evidence_end) {
-
+                                                                             const EvidenceIter& evidence_begin,
+                                                                             const EvidenceIter& evidence_end) {
         auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
         auto type_id = df.same_type(variable, evidence_pair);
         bool contains_null = df.null_count(variable, evidence_pair) > 0;

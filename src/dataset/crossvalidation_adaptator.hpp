@@ -4,6 +4,8 @@
 #include <random>
 #include <dataset/dataset.hpp>
 
+#include <iostream>
+
 using Array_ptr = std::shared_ptr<arrow::Array>;
 using arrow::NumericBuilder;
 
@@ -267,16 +269,14 @@ namespace dataset {
         const DataFrame& data() const { return m_df; }
 
         template<typename T, util::enable_if_index_container_t<T, int> = 0>
-        CrossValidation loc(T cols) const { return CrossValidation(m_df.loc(cols), prop); }
+        CrossValidation loc(const T& cols) const { return CrossValidation(m_df.loc(cols), prop); }
         template<typename V>
-        CrossValidation loc(std::initializer_list<V> cols) const { return loc<std::initializer_list<V>>(cols); }
+        CrossValidation loc(const std::initializer_list<V>& cols) const { return loc<std::initializer_list<V>>(cols); }
         CrossValidation loc(int i) const { return CrossValidation(m_df.loc(i), prop); }
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        CrossValidation loc(StringType name) const { return CrossValidation(m_df.loc(name), prop); }
+        CrossValidation loc(const StringType& name) const { return CrossValidation(m_df.loc(name), prop); }
         template<typename ...Args>
-        CrossValidation loc(Args... args) const  {
-            return CrossValidation(m_df.loc(args...), prop); 
-        }
+        CrossValidation loc(const Args&... args) const  { return CrossValidation(m_df.loc(args...), prop); }
 
 
         class cv_iterator_indices {

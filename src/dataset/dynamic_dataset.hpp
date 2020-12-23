@@ -44,12 +44,43 @@ namespace dataset {
             return m_markovian_order;
         }
 
+        int num_variables() const {
+            return m_temporal_slices[0]->num_columns();
+        }
+
         int num_columns() const {
             return m_joint->num_columns();
         }
 
         int num_rows() const {
             return m_temporal_slices[0]->num_rows();
+        }
+
+        void has_column(DynamicVariable<int> index) const {
+            if (index.temporal_slice < 0 || index.temporal_slice > m_markovian_order) {
+                throw std::invalid_argument("slice_index must be an index between 0 and " + 
+                                            std::to_string(m_markovian_order));
+            }
+
+            if (index.variable < 0 || index.variable >= num_variables()) {
+                throw std::domain_error("Index " + std::to_string(index.variable) + 
+                                        " do no exist for DataFrame with " + 
+                                        std::to_string(num_variables()) + " columns.");
+            }
+        }
+
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        void has_column(const DynamicVariable<StringType>& index) const {
+            if (index.temporal_slice < 0 || index.temporal_slice > m_markovian_order) {
+                throw std::invalid_argument("slice_index must be an index between 0 and " + 
+                                            std::to_string(m_markovian_order));
+            }
+
+            auto a = m_temporal_slices[index.temporal_slice]->GetColumnByName(index.variable);
+            if (!a) {
+                throw std::domain_error("Column \"" + transform_temporal_name(index.variable, index.temporal_slice) 
+                                                    + "\" not found in DataFrame");
+            }
         }
 
         Field_ptr field(DynamicVariable<int> index) const {
@@ -130,89 +161,6 @@ namespace dataset {
         DataFrame m_joint;
         int m_markovian_order;
     };
-
-    // class DynamicDataFrame {
-    // public:
-    //     DynamicDataFrame(const DataFrame& df, int markovian_order) : m_origin(df),
-    //                                                                  m_markovian_order(markovian_order) {
-    //         if (markovian_order < 1) {
-    //             throw std::invalid_argument("Markovian order must be at least 1.");
-    //         }
-
-    //         m_temporal_slices = create_temporal_slices(m_origin, m_markovian_order);
-    //         m_joint = create_joint_df(m_temporal_slices, m_markovian_order);
-    //     }
-
-    //     int markovian_order() const {
-    //         return m_markovian_order;
-    //     }
-
-    //     int num_columns() const {
-    //         return m_temporal_slices[0]->num_columns();
-    //     }
-
-    //     int num_rows() const {
-    //         return m_temporal_slices[0]->num_rows();
-    //     }
-
-    //     DataFrame temporal_slice(int slice_index) const {
-    //         if (slice_index < 0 || slice_index > m_markovian_order) {
-    //             throw std::invalid_argument("slice_index must be an index between 0 and " + 
-    //                                         std::to_string(m_markovian_order));
-    //         }
-
-    //         return m_temporal_slices[slice_index];
-    //     }
-
-    //     template<typename T, util::enable_if_integral_container_t<T, int> = 0>
-    //     DataFrame temporal_slice(const T& slices) const {
-    //         return temporal_slice(slices.begin(), slices.end());
-    //     }
-
-    //     DataFrame temporal_slice(const std::initializer_list<int>& slices) const { 
-    //         return temporal_slice(slices.begin(), slices.end()); 
-    //     }
-
-    //     template<typename Iter, util::enable_if_integral_iterator_t<Iter, int> = 0>
-    //     DataFrame temporal_slice(const Iter& begin, const Iter& end) const;
-    //     template<typename ...Args>
-    //     DataFrame temporal_slice(const Args&... args) const;
-
-    //     template<typename Index>
-    //     DataFrame loc(const DynamicVariable<Index>& v) const;
-    //     template<typename T, util::enable_if_dynamic_index_container_t<T, int> = 0>
-    //     DataFrame loc(const T& cols) const { return loc(cols.begin(), cols.end()); }
-    //     template<typename Index>
-    //     DataFrame loc(const std::initializer_list<DynamicVariable<Index>>& cols) { return loc(cols.begin(), cols.end()); }
-    //     template<typename IndexIter, util::enable_if_dynamic_index_iterator_t<IndexIter, int> = 0>
-    //     DataFrame loc(const IndexIter& begin, const IndexIter& end) const;
-    //     template<typename ...Args>
-    //     DataFrame loc(const Args&... args) const;
-
-    //     const DataFrame& joint() const {
-    //         return m_joint;
-    //     }
-
-    // private:
-    //     Array_vector indices_to_columns() const {
-    //         return m_joint->columns();
-    //     }
-    //     template<typename T, util::enable_if_index_container_t<T, int> = 0>
-    //     Array_vector indices_to_columns(const T& cols) const {
-    //         return indices_to_columns(cols.begin(), cols.end());
-    //     }
-
-    //     template<typename IndexIter, util::enable_if_dynamic_index_iterator_t<IndexIter, int> = 0>
-    //     Array_vector indices_to_columns(const IndexIter& begin, const IndexIter& end) const;
-
-    //     template<typename ...Args>
-    //     Array_vector indices_to_columns(const Args&... args) const;
-
-    //     DataFrame m_origin;
-    //     std::vector<DataFrame> m_temporal_slices;
-    //     DataFrame m_joint;
-    //     int m_markovian_order;
-    // };
 
     void append_slice(const std::vector<DataFrame>& slices,
                       Array_vector& columns,

@@ -10,6 +10,8 @@
 #include <learning/parameters/mle_LinearGaussianCPD.hpp>
 #include <boost/math/distributions/normal.hpp>
 
+#include <iostream>
+
 namespace py = pybind11;
 
 using arrow::Type;

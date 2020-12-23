@@ -130,21 +130,17 @@ namespace dataset {
         return std::make_shared<arrow::DictionaryArray>(array->type(), new_indices, new_dictionary);
     }
 
-    // DataFrame::DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) { }
+    std::vector<std::string> DataFrame::column_names() const {
+        auto schema = m_batch->schema();
+        std::vector<std::string> names;
+        names.reserve(schema->num_fields());
 
-    // std::vector<std::string> DataFrame::column_names() const {
-    //     auto schema = m_batch->schema();
-    //     std::vector<std::string> names;
-    //     names.reserve(schema->num_fields());
+        for(int i = 0, num_fields = schema->num_fields(); i < num_fields; ++i) {
+            names.push_back(schema->field(i)->name());
+        }
 
-    //     for(int i = 0, num_fields = schema->num_fields(); i < num_fields; ++i) {
-    //         names.push_back(schema->field(i)->name());
-    //     }
-
-    //     return names;
-    // }
-
-    // std::shared_ptr<arrow::RecordBatch> DataFrame::operator->() const { return m_batch; }
+        return names;
+    }
 
     int64_t null_count(Array_iterator begin, Array_iterator end) {
         int64_t r = 0;
@@ -206,13 +202,6 @@ namespace dataset {
         return name;
     }
 
-    std::string index_to_string(DynamicVariable<int> i) {
-        return "(" + std::to_string(i.variable) + ", " std::to_string(i.temporal_slice) + ")";
-    }
-    std::string index_to_string(DynamicVariable<std::string> name) {
-        return "(" + i.variable + ", " std::to_string(i.temporal_slice) + ")";
-    }
-
     // void DataFrame::has_columns(int i) const {
     //     if (i < 0 || i >= m_batch->num_columns()) {
     //         throw std::domain_error("Index " + std::to_string(i) + 
@@ -233,23 +222,23 @@ namespace dataset {
     //     return RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), c);
     // }
 
-    // arrow::Type::type DataFrame::same_type(Array_iterator begin, Array_iterator end) const {
-    //     if (std::distance(begin, end) == 0) {
-    //         throw std::invalid_argument("Cannot check the data type of no columns");
-    //     }
+    arrow::Type::type same_type(Array_iterator begin, Array_iterator end) {
+        if (std::distance(begin, end) == 0) {
+            throw std::invalid_argument("Cannot check the data type of no columns");
+        }
 
-    //     arrow::Type::type dt = (*begin)->type_id();
+        arrow::Type::type dt = (*begin)->type_id();
 
-    //     for (auto it = begin+1; it != end; ++it) {
-    //         if((*it)->type_id() != dt) {
-    //             throw std::invalid_argument("Column 0 [" + (*begin)->type()->ToString() + "] and "
-    //                                         "column " + std::to_string(std::distance(begin, it)) + 
-    //                                         " [" + (*it)->type()->ToString() + "] have different data types");
-    //         }
-    //     }
+        for (auto it = begin+1; it != end; ++it) {
+            if((*it)->type_id() != dt) {
+                throw std::invalid_argument("Column 0 [" + (*begin)->type()->ToString() + "] and "
+                                            "column " + std::to_string(std::distance(begin, it)) + 
+                                            " [" + (*it)->type()->ToString() + "] have different data types");
+            }
+        }
 
-    //     return dt;
-    // }
+        return dt;
+    }
 
     // std::vector<int> DataFrame::continuous_columns() const {
     //     std::vector<int> res;

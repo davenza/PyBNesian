@@ -929,6 +929,11 @@ namespace dataset {
             return dataset::max<ArrowType>(derived().col(index));
         }
 
+        template<bool append_ones, typename ArrowType, bool contains_null>
+        EigenMatrix<ArrowType> to_eigen() const {
+            auto cols = derived().columns();
+            return dataset::to_eigen<append_ones, ArrowType, contains_null>(cols.begin(), cols.end());
+        }
         template<bool append_ones, typename ArrowType>
         EigenMatrix<ArrowType> to_eigen() const {
             auto cols = derived().columns();
@@ -938,11 +943,10 @@ namespace dataset {
                 return dataset::to_eigen<append_ones, ArrowType, true>(cols.begin(), cols.end());
             }
         }
-
-        template<bool append_ones, typename ArrowType, bool contains_null>
-        EigenMatrix<ArrowType> to_eigen() const {
+        template<bool append_ones, typename ArrowType>
+        EigenMatrix<ArrowType> to_eigen(const Buffer_ptr& bitmap) const {
             auto cols = derived().columns();
-            return dataset::to_eigen<append_ones, ArrowType, contains_null>(cols.begin(), cols.end());
+            return dataset::to_eigen<append_ones, ArrowType>(bitmap, cols.begin(), cols.end());
         }
 
         template<bool append_ones, typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
@@ -950,7 +954,6 @@ namespace dataset {
             auto col = derived().col(index);
             return dataset::to_eigen<append_ones, ArrowType, contains_null>(col);
         }
-
         template<bool append_ones, typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Index& index) const {
             auto col = derived().col(index);
@@ -960,13 +963,21 @@ namespace dataset {
                 return dataset::to_eigen<append_ones, ArrowType, true>(col);
             }
         }
-
         template<bool append_ones, typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Buffer_ptr& bitmap, const Index& index) const {
             auto col = derived().col(index);
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, col);
         }
 
+        template<bool append_ones,
+                 typename ArrowType,
+                 bool contains_null,
+                 typename T,
+                 enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const T& cols) const { 
+            Array_vector v = indices_to_columns(cols);
+            return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end()); 
+        }
         template<bool append_ones,
                  typename ArrowType,
                  typename T,
@@ -980,16 +991,6 @@ namespace dataset {
         }
         template<bool append_ones,
                  typename ArrowType,
-                 bool contains_null,
-                 typename T,
-                 enable_if_index_container_t<T, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(const T& cols) const { 
-            Array_vector v = indices_to_columns(cols); 
-            return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end()); 
-        }
-
-        template<bool append_ones,
-                 typename ArrowType,
                  typename T,
                  enable_if_index_container_t<T, int> = 0>
         EigenMatrix<ArrowType> to_eigen(const Buffer_ptr& bitmap, const T& cols) const { 
@@ -999,18 +1000,17 @@ namespace dataset {
 
         template<bool append_ones,
                  typename ArrowType,
-                 typename V>
-        EigenMatrix<ArrowType> to_eigen(const std::initializer_list<V>& cols) const { 
-            return to_eigen<append_ones, ArrowType>(cols.begin(), cols.end());
-        }
-        template<bool append_ones,
-                 typename ArrowType,
                  bool contains_null,
                  typename V>
         EigenMatrix<ArrowType> to_eigen(const std::initializer_list<V>& cols) const { 
             return to_eigen<append_ones, ArrowType, contains_null>(cols.begin(), cols.end());
         }
-
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename V>
+        EigenMatrix<ArrowType> to_eigen(const std::initializer_list<V>& cols) const { 
+            return to_eigen<append_ones, ArrowType>(cols.begin(), cols.end());
+        }
         template<bool append_ones,
                  typename ArrowType,
                  typename V>
@@ -1018,6 +1018,15 @@ namespace dataset {
             return to_eigen<append_ones, ArrowType>(bitmap, cols.begin(), cols.end());
         }
         
+        template<bool append_ones,
+                 typename ArrowType,
+                 bool contains_null,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const IndexIter& begin, const IndexIter& end) const {
+            Array_vector v = indices_to_columns(begin, end); 
+            return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end());
+        }
         template<bool append_ones,
                  typename ArrowType,
                  typename IndexIter,
@@ -1029,17 +1038,6 @@ namespace dataset {
                 return to_eigen<append_ones, ArrowType, true>(begin, end);
             }
         }
-        
-        template<bool append_ones,
-                 typename ArrowType,
-                 bool contains_null,
-                 typename IndexIter,
-                 enable_if_index_iterator_t<IndexIter, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(const IndexIter& begin, const IndexIter& end) const {
-            Array_vector v = indices_to_columns(begin, end); 
-            return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end());
-        }
-        
         template<bool append_ones,
                  typename ArrowType,
                  typename IndexIter,
@@ -1051,21 +1049,19 @@ namespace dataset {
 
         template<bool append_ones,
                  typename ArrowType,
-                 typename IndexIter,
-                 enable_if_index_iterator_t<IndexIter, int> = 0>
-        EigenMatrix<ArrowType> to_eigen(const std::pair<IndexIter, IndexIter>& tuple) const {
-            return to_eigen<append_ones, ArrowType>(tuple.first, tuple.second);
-        }
-        
-        template<bool append_ones,
-                 typename ArrowType,
                  bool contains_null,
                  typename IndexIter,
                  enable_if_index_iterator_t<IndexIter, int> = 0>
         EigenMatrix<ArrowType> to_eigen(const std::pair<IndexIter, IndexIter>& tuple) const {
             return to_eigen<append_ones, ArrowType, contains_null>(tuple.first, tuple.second);
         }
-        
+        template<bool append_ones,
+                 typename ArrowType,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const std::pair<IndexIter, IndexIter>& tuple) const {
+            return to_eigen<append_ones, ArrowType>(tuple.first, tuple.second);
+        }
         template<bool append_ones,
                  typename ArrowType,
                  typename IndexIter,
@@ -1074,6 +1070,15 @@ namespace dataset {
             return to_eigen<append_ones, ArrowType>(bitmap, tuple.first, tuple.second);
         }
 
+        template<bool append_ones,
+                 typename ArrowType,
+                 bool contains_null,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        EigenMatrix<ArrowType> to_eigen(const Args&... args) const {
+            Array_vector v = indices_to_columns(args...); 
+            return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end());
+        }
         template<bool append_ones,
                  typename ArrowType,
                  typename ...Args,
@@ -1085,17 +1090,6 @@ namespace dataset {
                 return to_eigen<append_ones, ArrowType, true>(args...);
             }
         }
-        
-        template<bool append_ones,
-                 typename ArrowType,
-                 bool contains_null,
-                 typename ...Args,
-                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
-        EigenMatrix<ArrowType> to_eigen(const Args&... args) const {
-            Array_vector v = indices_to_columns(args...); 
-            return dataset::to_eigen<append_ones, ArrowType, contains_null>(v.begin(), v.end());
-        }
-
         template<bool append_ones,
                  typename ArrowType,
                  typename ...Args,
@@ -1105,6 +1099,11 @@ namespace dataset {
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end());
         }
 
+        template<typename ArrowType, bool contains_null>
+        EigenMatrix<ArrowType> cov() {
+            auto c = derived().columns();
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
         template<typename ArrowType>
         EigenMatrix<ArrowType> cov() {
             if (null_count() == 0) {
@@ -1113,20 +1112,16 @@ namespace dataset {
                 return cov<ArrowType, true>();
             }
         }
-
-        template<typename ArrowType, bool contains_null>
-        EigenMatrix<ArrowType> cov() {
-            auto c = derived().columns();
-            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
-        }
-
-
         template<typename ArrowType>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap) {
             auto c = derived().columns();
             return cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
+        template<typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> cov(const Index& index) const {
+            dataset::cov<ArrowType, contains_null>(derived().col(index));
+        }
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenMatrix<ArrowType> cov(const Index& index) const {
             if (null_count(index) == 0) {
@@ -1135,24 +1130,9 @@ namespace dataset {
                 return cov<ArrowType, true>(index);
             }
         }
-
-        template<typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
-        EigenMatrix<ArrowType> cov(const Index& index) const {
-            dataset::cov<ArrowType, contains_null>(derived().col(index));
-        }
-
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const Index& index) const {
             dataset::cov<ArrowType>(bitmap, derived().col(index));
-        }
-
-        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
-        EigenMatrix<ArrowType> cov(const T& cols) {
-            if (null_count(cols) == 0) {
-                return cov<ArrowType, false>(cols);
-            } else {
-                return cov<ArrowType, true>(cols);
-            }
         }
 
         template<typename ArrowType,
@@ -1165,11 +1145,24 @@ namespace dataset {
         
         }
         template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> cov(const T& cols) {
+            if (null_count(cols) == 0) {
+                return cov<ArrowType, false>(cols);
+            } else {
+                return cov<ArrowType, true>(cols);
+            }
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const T& cols) {
             auto c = indices_to_columns(cols);
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
+        template<typename ArrowType, bool contains_null, typename V>
+        EigenMatrix<ArrowType> cov(const std::initializer_list<V>& cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::cov<ArrowType, contains_null, std::initializer_list<V>>(c.begin(), c.end());
+        }
         template<typename ArrowType, typename V>
         EigenMatrix<ArrowType> cov(const std::initializer_list<V>& cols) {
             if (null_count(cols) == 0) {
@@ -1178,19 +1171,20 @@ namespace dataset {
                 return cov<ArrowType, true, std::initializer_list<V>>(cols);
             }
         }
-
-        template<typename ArrowType, bool contains_null, typename V>
-        EigenMatrix<ArrowType> cov(const std::initializer_list<V>& cols) {
-            auto c = indices_to_columns(cols);
-            return dataset::cov<ArrowType, contains_null, std::initializer_list<V>>(c.begin(), c.end());
-        }
-
         template<typename ArrowType, typename V>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const std::initializer_list<V>& cols) {
             auto c = indices_to_columns(cols);
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
+        template<typename ArrowType,
+                 bool contains_null,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> cov(const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
+        }
         template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
         EigenMatrix<ArrowType> cov(const IndexIter& begin, const IndexIter& end) const {
             if (null_count(begin, end) == 0) {
@@ -1200,31 +1194,11 @@ namespace dataset {
             }
         }
         template<typename ArrowType,
-                 bool contains_null,
-                 typename IndexIter,
-                 enable_if_index_iterator_t<IndexIter, int> = 0>
-        EigenMatrix<ArrowType> cov(const IndexIter& begin, const IndexIter& end) const {
-            auto c = indices_to_columns(begin, end);
-            return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
-        }
-
-        template<typename ArrowType,
                  typename IndexIter,
                  enable_if_index_iterator_t<IndexIter, int> = 0>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const IndexIter& begin, const IndexIter& end) const {
             auto c = indices_to_columns(begin, end);
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
-        }
-
-        template<typename ArrowType,
-                 typename ...Args,
-                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
-        EigenMatrix<ArrowType> cov(const Args&... args) const {
-            if (null_count(args...) == 0) {
-                return cov<ArrowType, false>(args...);
-            } else {
-                return cov<ArrowType, true>(args...);
-            }
         }
 
         template<typename ArrowType,
@@ -1235,7 +1209,16 @@ namespace dataset {
             auto c = indices_to_columns(args...);
             return dataset::cov<ArrowType, contains_null>(c.begin(), c.end());
         }
-
+        template<typename ArrowType,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        EigenMatrix<ArrowType> cov(const Args&... args) const {
+            if (null_count(args...) == 0) {
+                return cov<ArrowType, false>(args...);
+            } else {
+                return cov<ArrowType, true>(args...);
+            }
+        }
         template<typename ArrowType,
                  typename ...Args,
                  std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>

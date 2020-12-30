@@ -198,29 +198,9 @@ namespace dataset {
         return std::to_string(i);
     }
 
-    std::string index_to_string(std::string name) {
+    std::string index_to_string(const std::string& name) {
         return name;
     }
-
-    // void DataFrame::has_columns(int i) const {
-    //     if (i < 0 || i >= m_batch->num_columns()) {
-    //         throw std::domain_error("Index " + std::to_string(i) + 
-    //                                 " do no exist for DataFrame with " + std::to_string(m_batch->num_columns()) + " columns.");
-    //     }
-    // }
-
-    // DataFrame DataFrame::loc(int i) const {
-    //     arrow::SchemaBuilder b;
-    //     RAISE_STATUS_ERROR(b.AddField(field(i)));
-
-    //     auto r = b.Finish();
-    //     if (!r.ok()) {
-    //         throw std::domain_error("Schema could not be created for column index " + std::to_string(i));
-    //     }
-        
-    //     Array_vector c = { m_batch->column(i) };
-    //     return RecordBatch::Make(std::move(r).ValueOrDie(), m_batch->num_rows(), c);
-    // }
 
     arrow::Type::type same_type(Array_iterator begin, Array_iterator end) {
         if (std::distance(begin, end) == 0) {
@@ -240,54 +220,54 @@ namespace dataset {
         return dt;
     }
 
-    // std::vector<int> DataFrame::continuous_columns() const {
-    //     std::vector<int> res;
+    std::vector<int> DataFrame::continuous_columns() const {
+        std::vector<int> res;
 
-    //     arrow::Type::type dt = arrow::Type::NA;
-    //     for (int i = 0; i < m_batch->num_columns() && dt == Type::NA; ++i) {
-    //         auto column = m_batch->column(i);
-    //         switch (column->type_id()) {
-    //             case Type::DOUBLE:
-    //             case Type::FLOAT:
-    //                 dt = column->type_id();
-    //                 res.push_back(i);
-    //                 break;
-    //             default:
-    //                 break;
-    //         }
-    //     }
+        arrow::Type::type dt = arrow::Type::NA;
+        for (int i = 0; i < m_batch->num_columns() && dt == Type::NA; ++i) {
+            auto column = m_batch->column(i);
+            switch (column->type_id()) {
+                case Type::DOUBLE:
+                case Type::FLOAT:
+                    dt = column->type_id();
+                    res.push_back(i);
+                    break;
+                default:
+                    break;
+            }
+        }
 
-    //     if (dt == Type::NA) {
-    //         return res;
-    //     }
+        if (dt == Type::NA) {
+            return res;
+        }
 
-    //     for (int i = res[0]+1; i < m_batch->num_columns(); ++i) {
-    //         auto column = m_batch->column(i);
+        for (int i = res[0]+1; i < m_batch->num_columns(); ++i) {
+            auto column = m_batch->column(i);
 
-    //         switch(column->type_id()) {
-    //             case Type::DOUBLE: {
-    //                 if (dt == Type::FLOAT)
-    //                     throw std::invalid_argument("Column " + std::to_string(res[0]) + 
-    //                                         " [" + m_batch->column(res[0])->type()->ToString() + "] and "
-    //                                         "column " + std::to_string(i) + "[" + column->type()->ToString() + "] " 
-    //                                         "have different continuous data types");
-    //                 res.push_back(i);
-    //                 break;
-    //             }
-    //             case Type::FLOAT: {
-    //                 if (dt == Type::DOUBLE)
-    //                     throw std::invalid_argument("Column " + std::to_string(res[0]) + 
-    //                                         " [" + m_batch->column(res[0])->type()->ToString() + "] and "
-    //                                         "column " + std::to_string(i) + "[" + column->type()->ToString() + "] " 
-    //                                         "have different continuous data types");
-    //                 res.push_back(i);
-    //                 break;
-    //             }
-    //             default:
-    //                 break;
-    //         }
-    //     }
+            switch(column->type_id()) {
+                case Type::DOUBLE: {
+                    if (dt == Type::FLOAT)
+                        throw std::invalid_argument("Column " + std::to_string(res[0]) + 
+                                            " [" + m_batch->column(res[0])->type()->ToString() + "] and "
+                                            "column " + std::to_string(i) + "[" + column->type()->ToString() + "] " 
+                                            "have different continuous data types");
+                    res.push_back(i);
+                    break;
+                }
+                case Type::FLOAT: {
+                    if (dt == Type::DOUBLE)
+                        throw std::invalid_argument("Column " + std::to_string(res[0]) + 
+                                            " [" + m_batch->column(res[0])->type()->ToString() + "] and "
+                                            "column " + std::to_string(i) + "[" + column->type()->ToString() + "] " 
+                                            "have different continuous data types");
+                    res.push_back(i);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
 
-    //     return res;
-    // }
+        return res;
+    }
 }

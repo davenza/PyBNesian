@@ -11,7 +11,7 @@ using Eigen::MatrixXi;
 using Array_ptr = std::shared_ptr<arrow::Array>;
 using kdtree::KDTree, kdtree::IndexComparator;
 
-namespace learning::independences {
+namespace learning::independences::continuous {
     
     template<typename OutputArrowType, typename InputArrowType>
     DataFrame rank_data(const DataFrame& df) {
@@ -137,7 +137,7 @@ namespace learning::independences {
         template<typename VarType, typename Iter>
         double mi(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
 
-        std::vector<std::string> column_names() const override {
+        std::vector<std::string> variable_names() const override {
             return m_df.column_names();
         }
         
@@ -145,7 +145,7 @@ namespace learning::independences {
             return m_df.name(i);
         }
 
-        int num_columns() const override { return m_df->num_columns(); }
+        int num_variables() const override { return m_df->num_columns(); }
     private:
         DataFrame m_df;
         DataFrame m_ranked_df;
@@ -314,6 +314,8 @@ namespace learning::independences {
         
         return shuffled_pvalue(original_mi, original_rank_x, z_df, shuffled_df, MIGeneral{});
     }
+
+    using DynamicKMutualInformation = DynamicIndependenceTestAdaptator<KMutualInformation>;
 }
 
 #endif //PYBNESIAN_LEARNING_INDEPENDENCES_CONTINUOUS_MUTUAL_INFORMATION_HPP

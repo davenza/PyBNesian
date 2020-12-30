@@ -369,9 +369,6 @@ namespace dataset {
     class DataFrame;
     template<>
     struct dataframe_traits<DataFrame> {
-        using int_index = int;
-        template<typename StringType>
-        using string_index = StringType;
         template<typename T, typename R>
         using enable_if_index_t = util::enable_if_index_t<T, R>;
         template<typename T, typename R>
@@ -381,27 +378,15 @@ namespace dataset {
         using loc_return = DataFrame;
     };
 
-    template<typename Index, typename>
-    struct DynamicVariable;
-    class DynamicDataFrame;
-    template<>
-    struct dataframe_traits<DynamicDataFrame> {
-        using int_index = DynamicVariable<int>;
-        template<typename StringType>
-        using string_index = DynamicVariable<StringType>;
-        template<typename T, typename R>
-        using enable_if_index_t = util::enable_if_dynamic_index_t<T, R>;
-        template<typename T, typename R>
-        using enable_if_index_container_t = util::enable_if_dynamic_index_container_t<T, R>;
-        template<typename T, typename R>
-        using enable_if_index_iterator_t = util::enable_if_dynamic_index_iterator_t<T, R>;
-        using loc_return = DataFrame;
-    };
+    // template<typename Index, typename>
+    // struct DynamicVariable;
+    // class DynamicDataFrame;
+
 
     std::string index_to_string(int i);
-    std::string index_to_string(std::string name);
-    std::string index_to_string(DynamicVariable<int> i);
-    std::string index_to_string(DynamicVariable<std::string> name);
+    std::string index_to_string(const std::string& name);
+    std::string index_to_string(const DynamicVariable<int>& i);
+    std::string index_to_string(const DynamicVariable<std::string>& name);
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     inline int size_argument(int, const T& arg) { return arg.size(); }
@@ -647,9 +632,6 @@ namespace dataset {
     template<typename Derived>
     class DataFrameBase {
     public:
-        using int_index = typename dataframe_traits<Derived>::int_index;
-        template<typename StringType>
-        using string_index = typename dataframe_traits<Derived>::template string_index<StringType>;
         template<typename T, typename R>
         using enable_if_index_t = typename dataframe_traits<Derived>::template enable_if_index_t<T, R>;
         template<typename T, typename R>
@@ -1405,6 +1387,10 @@ namespace dataset {
         }
 
         int num_columns() const {
+            return m_batch->num_columns();
+        }
+
+        int num_variables() const {
             return m_batch->num_columns();
         }
 

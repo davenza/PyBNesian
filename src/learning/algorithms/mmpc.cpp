@@ -291,7 +291,7 @@ namespace learning::algorithms {
         std::unordered_set<int> cpc;
         std::unordered_set<int> to_be_checked;
 
-        for (int i = 0; i < test.num_columns(); ++i) {
+        for (int i = 0; i < test.num_variables(); ++i) {
             if (i != variable && edge_blacklist.count({variable, i}) == 0) {
                 to_be_checked.insert(i);
             }
@@ -321,7 +321,7 @@ namespace learning::algorithms {
             }
         }
 
-        VectorXd min_assoc(test.num_columns());
+        VectorXd min_assoc(test.num_variables());
 
         int last_added = 0;
         if (!cpc.empty()) last_added = MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC;
@@ -340,7 +340,7 @@ namespace learning::algorithms {
                                      VectorXd& maxmin_assoc,
                                      VectorXi& maxmin_index,
                                      util::BaseProgressBar& progress) {
-        auto nnodes = test.num_columns();
+        auto nnodes = test.num_variables();
         progress.set_text("MMPC Forward: No sepset");
         progress.set_max_progress((nnodes*(nnodes-1) / 2));
         progress.set_progress(0);
@@ -349,7 +349,6 @@ namespace learning::algorithms {
             for (int j = i+1; j < nnodes; ++j) {
                 if ((cpcs[i].empty() || cpcs[j].empty()) && edge_blacklist.count({i,j}) == 0) {
                     double pvalue = test.pvalue(i, j);
-
                     if (pvalue < alpha) {
                         if (cpcs[i].empty()) {
                             min_assoc(j, i) = pvalue;
@@ -384,7 +383,7 @@ namespace learning::algorithms {
                                        VectorXd& maxmin_assoc,
                                        VectorXi& maxmin_index,
                                        util::BaseProgressBar& progress) {
-        auto nnodes = test.num_columns();
+        auto nnodes = test.num_variables();
         progress.set_text("MMPC Forward: sepset order 1");
         progress.set_max_progress(nnodes);
         progress.set_progress(0);
@@ -435,8 +434,8 @@ namespace learning::algorithms {
                                                             const EdgeSet& edge_blacklist,
                                                             const EdgeSet& edge_whitelist,
                                                             util::BaseProgressBar& progress) {
-        std::vector<std::unordered_set<int>> cpcs(test.num_columns());
-        std::vector<std::unordered_set<int>> to_be_checked(test.num_columns());
+        std::vector<std::unordered_set<int>> cpcs(test.num_variables());
+        std::vector<std::unordered_set<int>> to_be_checked(test.num_variables());
 
         // Add whitelisted CPCs
         for (const auto& edge : edge_whitelist) {
@@ -450,9 +449,9 @@ namespace learning::algorithms {
         }
 
         // Generate to_be_checked indices for whitelisted CPCs
-        for (int i = 0; i < test.num_columns(); ++i) {
+        for (int i = 0; i < test.num_variables(); ++i) {
             if (!cpcs[i].empty()) {
-                for (int j = 0; j < test.num_columns(); ++j) {
+                for (int j = 0; j < test.num_variables(); ++j) {
                     if (j != i && edge_blacklist.count({i,j}) == 0 && cpcs[i].count(j) == 0) {
                         to_be_checked[i].insert(j);
                     }
@@ -460,14 +459,13 @@ namespace learning::algorithms {
             }
         }
 
-        MatrixXd min_assoc = MatrixXd::Zero(test.num_columns(), test.num_columns());
-        VectorXd maxmin_assoc = VectorXd::Constant(test.num_columns(), std::numeric_limits<double>::infinity());
-        VectorXi maxmin_index = VectorXi::Constant(test.num_columns(), MMPC_FORWARD_PHASE_STOP);
-
+        MatrixXd min_assoc = MatrixXd::Zero(test.num_variables(), test.num_variables());
+        VectorXd maxmin_assoc = VectorXd::Constant(test.num_variables(), std::numeric_limits<double>::infinity());
+        VectorXi maxmin_index = VectorXi::Constant(test.num_variables(), MMPC_FORWARD_PHASE_STOP);
         marginal_cpcs_all_variables(test, alpha, cpcs, to_be_checked, edge_blacklist, min_assoc, maxmin_assoc, maxmin_index, progress);
 
         bool all_finished = true;
-        for (int i = 0; i < test.num_columns(); ++i) {
+        for (int i = 0; i < test.num_variables(); ++i) {
             if (maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
                 all_finished = false;
                 cpcs[i].insert(maxmin_index(i));
@@ -476,16 +474,16 @@ namespace learning::algorithms {
         }
 
         if (!all_finished) {
-            for (int i = 0; i < test.num_columns(); ++i) {
+            for (int i = 0; i < test.num_variables(); ++i) {
                 if (cpcs[i].size() == 1) {
                     maxmin_assoc(i) = std::numeric_limits<double>::infinity();
                     maxmin_index(i) = MMPC_FORWARD_PHASE_STOP;
                 }
             }
-
+            
             univariate_cpcs_all_variables(test, alpha, cpcs, to_be_checked, min_assoc, maxmin_assoc, maxmin_index, progress);
 
-            for (int i = 0; i < test.num_columns(); ++i) {
+            for (int i = 0; i < test.num_variables(); ++i) {
                 auto col_min_assoc = min_assoc.col(i);
                 // The cpc is whitelisted.
                 if (cpcs[i].size() > 1) {
@@ -494,10 +492,9 @@ namespace learning::algorithms {
                 } else if (maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
                     cpcs[i].insert(maxmin_index(i));
                     to_be_checked[i].erase(maxmin_index(i));
-
                     mmpc_forward_phase(test, i, alpha, cpcs[i], to_be_checked[i], col_min_assoc, maxmin_index(i), progress);
                 }
-                
+
                 mmpc_backward_phase(test, i, alpha, cpcs[i], arc_whitelist, edge_whitelist, progress);
             }
         }
@@ -514,9 +511,7 @@ namespace learning::algorithms {
                     double ambiguous_threshold,
                     bool allow_bidirected,
                     int verbose) const {
-        
-
-        PartiallyDirectedGraph skeleton(test.column_names());
+        PartiallyDirectedGraph skeleton(test.variable_names());
 
         auto restrictions = util::validate_restrictions(skeleton, 
                                                         varc_blacklist,
@@ -534,7 +529,7 @@ namespace learning::algorithms {
         auto cpcs = mmpc_all_variables(test, alpha, restrictions.arc_whitelist, 
                                         restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
 
-        for (auto i = 0; i < test.num_columns(); ++i) {
+        for (auto i = 0; i < test.num_variables(); ++i) {
             for (auto p : cpcs[i]) {
                 if (i < p && cpcs[p].count(i) > 0 && !skeleton.has_arc(i, p) && !skeleton.has_arc(p, i)) {
                     skeleton.add_edge(i, p);

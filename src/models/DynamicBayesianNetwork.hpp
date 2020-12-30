@@ -9,6 +9,16 @@ namespace models {
 
 
     class DynamicBayesianNetworkBase {
+    public:
+        virtual ~DynamicBayesianNetworkBase() = default;
+        virtual BayesianNetworkBase& static_bn() = 0;
+        virtual BayesianNetworkBase& transition_bn() = 0;
+
+        virtual std::vector<std::string> variables() const = 0;
+        virtual int markovian_order() const = 0;
+
+
+
 
     };
 
@@ -16,17 +26,19 @@ namespace models {
     template<typename Derived>
     class DynamicBayesianNetwork : public DynamicBayesianNetworkBase {
     public:
+        DynamicBayesianNetwork(Derived static_bn, Derived transition_bn) : m_static(static_bn),
+                                                                           m_transition(transition_bn) {}
 
-        DynamicBayesianNetwork(Derived g0, Derived transition) : m_g0(g0), m_transition(transition) {}
+        BayesianNetworkBase& static_bn() override { return m_static; }
+        BayesianNetworkBase& transition_bn() override { return m_transition; }
 
-
-        Derived& g0() { return m_g0; }
-        Derived& transition() { return m_transition; }
-
+        std::vector<std::string> variables() const override;
+        int markovian_order() const override;
+        
 
 
     private:    
-        Derived m_g0;
+        Derived m_static;
         Derived m_transition;
     };
 

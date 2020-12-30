@@ -126,6 +126,8 @@ namespace learning::scores {
             return cpd.slogl(test_data());
         }
     }
+
+    using DynamicHoldoutLikelihood = DynamicScoreAdaptator<HoldoutLikelihood>;
 }
 
 #endif //PYBNESIAN_LEARNING_SCORES_HOLDOUT_LIKELIHOOD_HPP

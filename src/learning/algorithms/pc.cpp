@@ -206,17 +206,17 @@ namespace learning::algorithms {
     }
 
     PartiallyDirectedGraph PC::estimate(const IndependenceTest& test,
-                        const ArcStringVector& varc_blacklist, 
-                        const ArcStringVector& varc_whitelist,
-                        const EdgeStringVector& vedge_blacklist,
-                        const EdgeStringVector& vedge_whitelist,
-                        double alpha,
-                        bool use_sepsets,
-                        double ambiguous_threshold,
-                        bool allow_bidirected,
-                        int verbose) const {
+                                        const ArcStringVector& varc_blacklist, 
+                                        const ArcStringVector& varc_whitelist,
+                                        const EdgeStringVector& vedge_blacklist,
+                                        const EdgeStringVector& vedge_whitelist,
+                                        double alpha,
+                                        bool use_sepsets,
+                                        double ambiguous_threshold,
+                                        bool allow_bidirected,
+                                        int verbose) const {
         
-        auto skeleton = PartiallyDirectedGraph::CompleteUndirected(test.column_names());
+        auto skeleton = PartiallyDirectedGraph::CompleteUndirected(test.variable_names());
         
         auto restrictions = util::validate_restrictions(skeleton, 
                                                         varc_blacklist,

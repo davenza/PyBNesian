@@ -6,12 +6,15 @@
 #include <learning/algorithms/pc.hpp>
 #include <learning/algorithms/mmpc.hpp>
 #include <learning/algorithms/mmhc.hpp>
+#include <learning/algorithms/dmmhc.hpp>
 
 namespace py = pybind11;
 
 using learning::operators::OperatorPool;
 using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC, learning::algorithms::MeekRules,
       learning::algorithms::MMPC, learning::algorithms::MMHC;
+
+using learning::algorithms::DMMHC;
 
 void pybindings_algorithms(py::module& root) {
     auto algorithms = root.def_submodule("algorithms", "Learning algorithms");
@@ -106,6 +109,26 @@ void pybindings_algorithms(py::module& root) {
             py::arg("edge_blacklist") = EdgeStringVector(),
             py::arg("edge_whitelist") = EdgeStringVector(),
             py::arg("type_whitelist") = FactorStringTypeVector(),
+            py::arg("max_indegree") = 0,
+            py::arg("max_iters") = std::numeric_limits<int>::max(),
+            py::arg("epsilon") = 0,
+            py::arg("patience") = 0,
+            py::arg("alpha") = 0.05,
+            py::arg("verbose") = 0);
+
+    py::class_<DMMHC>(algorithms, "DMMHC")
+        .def(py::init<>())
+        .def("estimate", &DMMHC::estimate, 
+            py::arg("hypot_test"),
+            py::arg("op_set"),
+            py::arg("score"),
+            py::arg("validation_score") = nullptr,
+            py::arg("bn_type") = "gbn",
+            // py::arg("arc_blacklist") = ArcStringVector(),
+            // py::arg("arc_whitelist") = ArcStringVector(),
+            // py::arg("edge_blacklist") = EdgeStringVector(),
+            // py::arg("edge_whitelist") = EdgeStringVector(),
+            // py::arg("type_whitelist") = FactorStringTypeVector(),
             py::arg("max_indegree") = 0,
             py::arg("max_iters") = std::numeric_limits<int>::max(),
             py::arg("epsilon") = 0,

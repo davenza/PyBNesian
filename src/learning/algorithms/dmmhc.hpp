@@ -7,29 +7,29 @@
 
 using models::DynamicBayesianNetworkBase;
 using learning::operators::OperatorSet;
-using learning::independences::IndependenceTest;
+using learning::independences::DynamicIndependenceTest;
+using learning::scores::DynamicScore;
 
 namespace learning::algorithms {
 
 
     class DMMHC {
     public:
-        std::unique_ptr<DynamicBayesianNetworkBase> estimate(const IndependenceTest& test,
+        std::unique_ptr<DynamicBayesianNetworkBase> estimate(const DynamicIndependenceTest& test,
                                                              OperatorSet& op_set,
-                                                             Score& score,
-                                                             Score* validation_score,
+                                                             DynamicScore& score,
+                                                             DynamicScore* validation_score,
                                                              const std::string& bn_str,
-                                                             const ArcStringVector& varc_blacklist,
-                                                             const ArcStringVector& varc_whitelist,
-                                                             const EdgeStringVector& vedge_blacklist,
-                                                             const EdgeStringVector& vedge_whitelist,
-                                                             const FactorStringTypeVector& type_whitelist,
+                                                            //  const ArcStringVector& varc_blacklist,
+                                                            //  const ArcStringVector& varc_whitelist,
+                                                            //  const EdgeStringVector& vedge_blacklist,
+                                                            //  const EdgeStringVector& vedge_whitelist,
+                                                            //  const FactorStringTypeVector& type_whitelist,
                                                              int max_indegree,
                                                              int max_iters, 
                                                              double epsilon,
                                                              int patience,
                                                              double alpha,
-                                                             int markovian_order,
                                                              int verbose = 0);
     };
 }

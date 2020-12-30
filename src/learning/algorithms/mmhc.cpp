@@ -9,9 +9,11 @@ namespace learning::algorithms {
 
     void remove_asymmetries(std::vector<std::unordered_set<int>> cpcs) {
         for (size_t i = 0; i < cpcs.size(); ++i) {
-            for (auto it = cpcs[i].begin(), end = cpcs[i].end(); it != end; ++it) {
+            for (auto it = cpcs[i].begin(), end = cpcs[i].end(); it != end;) {
                 if (cpcs[*it].count(i) == 0) {
                     it = cpcs[i].erase(it);
+                } else {
+                    ++it;
                 }
             }
         }
@@ -50,13 +52,12 @@ namespace learning::algorithms {
                                                         int verbose) {
 
         auto bn_type = util::check_valid_bn_string(bn_str);
-
         std::unique_ptr<BayesianNetworkBase> skeleton = [bn_type, &test]() -> std::unique_ptr<BayesianNetworkBase> {
             switch (bn_type) {
                 case BayesianNetworkType::GBN:
-                    return std::make_unique<GaussianNetwork>(test.column_names());
+                    return std::make_unique<GaussianNetwork>(test.variable_names());
                 case BayesianNetworkType::SPBN:
-                    return std::make_unique<SemiparametricBN>(test.column_names());
+                    return std::make_unique<SemiparametricBN>(test.variable_names());
                 default:
                     throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
             }
@@ -67,6 +68,7 @@ namespace learning::algorithms {
                                                         varc_whitelist,
                                                         vedge_blacklist,
                                                         vedge_whitelist);
+
         indicators::show_console_cursor(false);
         auto progress = util::progress_bar(verbose);
     

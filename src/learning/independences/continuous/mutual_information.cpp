@@ -4,7 +4,7 @@
 
 #include <iomanip>
 
-namespace learning::independences {
+namespace learning::independences::continuous {
 
 
     double mi_pair(const DataFrame& df, int k) {

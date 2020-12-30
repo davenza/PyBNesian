@@ -140,6 +140,8 @@ namespace learning::scores {
             return loglik;
         }
     }
+
+    using DynamicCVLikelihood = DynamicScoreAdaptator<CVLikelihood>;
 }
 
 #endif //PYBNESIAN_CV_LIKELIHOOD_HPP

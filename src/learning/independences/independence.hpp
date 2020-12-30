@@ -5,8 +5,10 @@
 #include <vector>
 #include <dataset/dataset.hpp>
 #include <dataset/dynamic_dataset.hpp>
+#include <util/util_types.hpp>
 
-using dataset::DataFrame, dataset::DynamicDataFrame, dataset::DynamicVariable;
+using dataset::DataFrame, dataset::DynamicDataFrame, dataset::DynamicVariable, dataset::DynamicAdaptator;
+using util::ArcStringVector;
 
 namespace learning::independences {
     class IndependenceTest {
@@ -30,55 +32,53 @@ namespace learning::independences {
                               const string_iterator evidence_begin, 
                               const string_iterator evidence_end) const = 0;
         
-        virtual std::vector<std::string> column_names() const = 0;
+        virtual std::vector<std::string> variable_names() const = 0;
         virtual const std::string& name(int i) const = 0;
-        virtual int num_columns() const = 0;
+        virtual int num_variables() const = 0;
     };
 
     class DynamicIndependenceTest {
-        using int_iterator = typename std::vector<DynamicVariable<int>>::const_iterator;
-        using string_iterator = typename std::vector<DynamicVariable<std::string>>::const_iterator;
-        
+    public:
         virtual ~DynamicIndependenceTest() {}
 
-        virtual double pvalue(DynamicVariable<int> v1,
-                              DynamicVariable<int> v2) const = 0;
-        virtual double pvalue(DynamicVariable<std::string> v1,
-                              DynamicVariable<std::string> v2) const = 0;
+        virtual std::vector<std::string> variable_names() const = 0;
+        virtual int num_variables() const = 0;
+        virtual int markovian_order() const = 0;
+
+        virtual const IndependenceTest& static_tests() const = 0;
+        virtual const IndependenceTest& transition_tests() const = 0;
+
+        ArcStringVector static_blacklist() const;
+        ArcStringVector transition_blacklist() const;
+    };
+
+    template<typename BaseTest>
+    class DynamicIndependenceTestAdaptator : public DynamicIndependenceTest, DynamicAdaptator<BaseTest> {
+    public:
+        template<typename... Args>
+        DynamicIndependenceTestAdaptator(const DynamicDataFrame& df,
+                                         const Args&... args) : DynamicAdaptator<BaseTest>(df, args...) {}
         
-        virtual double pvalue(DynamicVariable<int> v1,
-                              DynamicVariable<int> v2,
-                              DynamicVariable<int> cond) const = 0;
-        virtual double pvalue(DynamicVariable<std::string> v1,
-                              DynamicVariable<std::string> v2,
-                              DynamicVariable<std::string> cond) const = 0;
-        
-        virtual double pvalue(DynamicVariable<int> v1,
-                              DynamicVariable<int> v2,
-                              const int_iterator evidence_begin,
-                              const int_iterator evidence_end) const = 0;
-        virtual double pvalue(DynamicVariable<std::string> v1,
-                              DynamicVariable<std::string> v2,
-                              const string_iterator evidence_begin,
-                              const string_iterator evidence_end) const = 0;
+        std::vector<std::string> variable_names() const override {
+            return this->dataframe().origin_df().column_names();
+        }
 
-        virtual int num_columns() const = 0;
-        virtual int num_temporal_slices() const = 0;
+        int num_variables() const override {
+            return this->dataframe().num_variables();
+        }
+
+        int markovian_order() const override {
+            return this->dataframe().markovian_order();
+        }
+
+        const IndependenceTest& static_tests() const override {
+            return this->static_element();
+        }
+
+        const IndependenceTest& transition_tests() const override {
+            return this->transition_element();
+        }
     };
-
-    template<typename DataFrameType>
-    struct independence_traits;
-
-    template<>
-    struct independence_traits<DataFrame> {
-        using independence_base = IndependenceTest;
-    };
-
-    template<>
-    struct independence_traits<DynamicDataFrame> {
-        using independence_base = DynamicIndependenceTest;
-    };
-
 }
 
 #endif //PYBNESIAN_LEARNING_INDEPENDENCES_INDEPENDENCE_HPP

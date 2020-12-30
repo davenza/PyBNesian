@@ -90,6 +90,8 @@ namespace learning::scores {
                                             + " not valid for score BIC");
         }
     }
+
+    using DynamicBIC = DynamicScoreAdaptator<BIC>;
 }
 
 #endif //PYBNESIAN_LEARNING_SCORES_BIC_HPP

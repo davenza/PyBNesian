@@ -3,8 +3,10 @@
 
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
+#include <dataset/dynamic_dataset.hpp>
 
 using models::BayesianNetworkBase, models::GaussianNetwork, models::SemiparametricBN;
+using dataset::DynamicDataFrame, dataset::DynamicAdaptator;
 
 namespace learning::scores {
 
@@ -93,7 +95,30 @@ namespace learning::scores {
                                    const typename std::vector<std::string>::const_iterator evidence_begin, 
                                    const typename std::vector<std::string>::const_iterator evidence_end) const = 0;
     };
-}
 
+    class DynamicScore {
+    public:
+        virtual ~DynamicScore() {}
+
+        virtual Score& static_score() = 0;
+        virtual Score& transition_score() = 0;
+    };
+
+    template<typename BaseScore>
+    class DynamicScoreAdaptator : public DynamicScore, public DynamicAdaptator<BaseScore> {
+    public:
+        template<typename... Args>
+        DynamicScoreAdaptator(const DynamicDataFrame& df,
+                                         const Args&... args) : DynamicAdaptator<BaseScore>(df, args...) {}
+        
+        Score& static_score() override {
+            return this->static_element();
+        }
+
+        Score& transition_score() override {
+            return this->transition_element();
+        }
+    };
+}
 
 #endif //PYBNESIAN_LEARNING_SCORES_SCORES_HPP

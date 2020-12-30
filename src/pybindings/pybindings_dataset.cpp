@@ -106,5 +106,7 @@ void pybindings_dataset(py::module& root) {
         .def("loc", [](const DynamicDataFrame& self, const std::vector<DynamicVariable<std::string>>& vec) {
             return self.loc(vec);
         })
-        .def("joint", &DynamicDataFrame::joint, py::return_value_policy::reference_internal);
+        .def("origin_df", &DynamicDataFrame::origin_df, py::return_value_policy::reference_internal)
+        .def("static_df", &DynamicDataFrame::static_df, py::return_value_policy::reference_internal)
+        .def("transition_df", &DynamicDataFrame::transition_df, py::return_value_policy::reference_internal);
 }

@@ -10,6 +10,9 @@ namespace py = pybind11;
 using learning::scores::Score, learning::scores::BIC, learning::scores::CVLikelihood, 
       learning::scores::HoldoutLikelihood;
 
+using learning::scores::DynamicScore, learning::scores::DynamicBIC,
+      learning::scores::DynamicCVLikelihood, learning::scores::DynamicHoldoutLikelihood;
+
 // template<typename Model, typename... Models>
 // py::class_<Score, std::shared_ptr<Score>> register_Score(py::module& m) {
 //     auto score = [&m](){
@@ -133,4 +136,29 @@ void pybindings_scores(py::module& root) {
         .def_property_readonly("holdout", &HoldoutLikelihood::holdout)
         .def("training_data", &HoldoutLikelihood::training_data, py::return_value_policy::reference_internal)
         .def("test_data", &HoldoutLikelihood::test_data, py::return_value_policy::reference_internal);
+
+    py::class_<DynamicScore, std::shared_ptr<DynamicScore>>(scores, "DynamicScore")
+        .def("static_score", &DynamicScore::static_score)
+        .def("transition_score", &DynamicScore::transition_score);
+
+    py::class_<DynamicBIC, DynamicScore, std::shared_ptr<DynamicBIC>>(scores, "DynamicBIC")
+        .def(py::init<const DynamicDataFrame&>());
+
+    py::class_<DynamicCVLikelihood, DynamicScore, std::shared_ptr<DynamicCVLikelihood>>(scores, "DynamicCVLikelihood")
+        .def(py::init<const DynamicDataFrame&, int>(),
+                py::arg("df"),
+                py::arg("k") = 10)
+        .def(py::init<const DynamicDataFrame&, int, unsigned int>(),
+                py::arg("df"),
+                py::arg("k") = 10,
+                py::arg("seed"));
+
+    py::class_<DynamicHoldoutLikelihood, DynamicScore, std::shared_ptr<DynamicHoldoutLikelihood>>(scores, "DynamicHoldoutLikelihood")
+        .def(py::init<const DynamicDataFrame&, double>(),
+                py::arg("df"),
+                py::arg("test_ratio") = 0.2)
+        .def(py::init<const DynamicDataFrame&, double, unsigned int>(),
+                py::arg("df"),
+                py::arg("test_ratio") = 0.2,
+                py::arg("seed"));
 }

@@ -86,22 +86,22 @@ namespace learning::algorithms {
         
 
         auto bn_type = util::check_valid_bn_string(bn_str);
-        auto dynamic_bn = [bn_type, &g0, &gt]() -> std::unique_ptr<DynamicBayesianNetworkBase> {
-            switch (bn_type) {
-                case BayesianNetworkType::GBN:
-                    return std::make_unique<DynamicBayesianNetwork<GaussianNetwork>>(
-                                    *static_cast<GaussianNetwork*>(g0.release()), 
-                                    *static_cast<GaussianNetwork*>(gt.release()));
-                case BayesianNetworkType::SPBN:
-                    return std::make_unique<DynamicBayesianNetwork<SemiparametricBN>>(
-                                    *static_cast<SemiparametricBN*>(g0.release()),
-                                    *static_cast<SemiparametricBN*>(gt.release()));
-                default:
-                    throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
-            }
-        }();
+        // auto dynamic_bn = [bn_type, &g0, &gt]() -> std::unique_ptr<DynamicBayesianNetworkBase> {
+        //     switch (bn_type) {
+        //         case BayesianNetworkType::GBN:
+        //             return std::make_unique<DynamicBayesianNetwork<GaussianNetwork>>(
+        //                             *static_cast<GaussianNetwork*>(g0.release()), 
+        //                             *static_cast<GaussianNetwork*>(gt.release()));
+        //         case BayesianNetworkType::SPBN:
+        //             return std::make_unique<DynamicBayesianNetwork<SemiparametricBN>>(
+        //                             *static_cast<SemiparametricBN*>(g0.release()),
+        //                             *static_cast<SemiparametricBN*>(gt.release()));
+        //         default:
+        //             throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
+        //     }
+        // }();
 
-        return dynamic_bn;
+        // return dynamic_bn;
     }
 
 }

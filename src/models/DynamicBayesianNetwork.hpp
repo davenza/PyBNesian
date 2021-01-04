@@ -2,6 +2,7 @@
 #define PYBNESIAN_MODELS_DYNAMICBAYESIANNETWORK_HPP
 
 #include <models/BayesianNetwork.hpp>
+#include <models/ConditionalBayesianNetwork.hpp>
 
 using models::BayesianNetworkBase;
 
@@ -12,34 +13,30 @@ namespace models {
     public:
         virtual ~DynamicBayesianNetworkBase() = default;
         virtual BayesianNetworkBase& static_bn() = 0;
-        virtual BayesianNetworkBase& transition_bn() = 0;
+        virtual ConditionalBayesianNetworkBase& transition_bn() = 0;
 
         virtual std::vector<std::string> variables() const = 0;
         virtual int markovian_order() const = 0;
-
-
-
-
     };
 
 
-    template<typename Derived>
+    template<typename BN, typename ConditionalBN>
     class DynamicBayesianNetwork : public DynamicBayesianNetworkBase {
     public:
-        DynamicBayesianNetwork(Derived static_bn, Derived transition_bn) : m_static(static_bn),
-                                                                           m_transition(transition_bn) {}
+        DynamicBayesianNetwork(BN static_bn, ConditionalBN transition_bn) : m_static(static_bn),
+                                                                            m_transition(transition_bn) {}
 
         BayesianNetworkBase& static_bn() override { return m_static; }
-        BayesianNetworkBase& transition_bn() override { return m_transition; }
+        ConditionalBayesianNetworkBase& transition_bn() override { return m_transition; }
 
-        std::vector<std::string> variables() const override;
-        int markovian_order() const override;
+        // std::vector<std::string> variables() const override;
+        // int markovian_order() const override;
         
 
 
     private:    
-        Derived m_static;
-        Derived m_transition;
+        BN m_static;
+        ConditionalBN m_transition;
     };
 
 }

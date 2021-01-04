@@ -63,7 +63,20 @@ namespace models {
         Value value;
     };
 
-    class BayesianNetworkBase {
+    // https://www.fluentcpp.com/2017/09/12/how-to-return-a-smart-pointer-and-use-covariance/
+    template <typename Derived, typename Base>
+    class clone_inherit : public Base {
+    public:
+        std::unique_ptr<Derived> clone() const {
+            return std::unique_ptr<Derived>(static_cast<Derived *>(this->clone_impl()));
+        }
+
+    private:
+        virtual clone_inherit * clone_impl() const = 0;
+    };
+
+
+    class BayesianNetworkBase : public clone_inherit<BayesianNetworkBase, BayesianNetworkBase> {
     public:
         virtual ~BayesianNetworkBase() = default;
         virtual int num_nodes() const = 0;
@@ -106,8 +119,24 @@ namespace models {
         virtual bool can_add_arc(const std::string& source, const std::string& dest) const = 0;
         virtual bool can_flip_arc(int source_index, int dest_index) = 0;
         virtual bool can_flip_arc(const std::string& source, const std::string& dest) = 0;
-        virtual void check_blacklist(const ArcStringVector& arc_blacklist) const = 0;
-        virtual void check_blacklist(const ArcSet& arc_blacklist) const = 0;
+        void check_blacklist(const ArcStringVector& arc_blacklist) const {
+            for(const auto& arc : arc_blacklist) {
+                if (has_arc(arc.first, arc.second)) {
+                    throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second + " in blacklist,"
+                                                " but it is present in the Bayesian Network.");
+                }
+            }
+        }
+        
+        void check_blacklist(const ArcSet& arc_blacklist) const {
+            for(const auto& arc : arc_blacklist) {
+                if (has_arc(arc.first, arc.second)) {
+                    throw std::invalid_argument("Arc " + name(arc.first) + " -> " + name(arc.second) + " in blacklist,"
+                                                " but it is present in the Bayesian Network.");
+                }
+            }
+        }
+
         virtual void force_whitelist(const ArcStringVector& arc_whitelist) = 0;
         virtual void force_whitelist(const ArcSet& arc_whitelist) = 0;
         virtual bool fitted() const = 0;
@@ -118,7 +147,7 @@ namespace models {
         virtual BayesianNetworkType type() const = 0;
         virtual DataFrame sample(int n, unsigned int seed, bool ordered) const = 0;
         virtual void save(std::string name, bool include_cpd = false) const = 0;
-        virtual std::unique_ptr<BayesianNetworkBase> clone() const = 0;
+        // virtual std::unique_ptr<BayesianNetworkBase> clone() const = 0;
     };
 
     class SemiparametricBNBase {
@@ -132,7 +161,6 @@ namespace models {
     template<typename Derived>
     class BayesianNetwork : public BayesianNetworkBase {
     public:
-        // using DagType = typename BN_traits<Derived>::DagType;
         using CPD = typename BN_traits<Derived>::CPD;
 
         BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {}
@@ -308,26 +336,8 @@ namespace models {
             return g.can_flip_arc(source, target);
         }
 
-        void check_blacklist(const ArcStringVector& arc_blacklist) const override {
-            for(auto& arc : arc_blacklist) {
-                if (has_arc(arc.first, arc.second)) {
-                    throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second + " in blacklist,"
-                                                " but it is present in the Bayesian Network.");
-                }
-            }
-        }
-
-        void check_blacklist(const ArcSet& arc_blacklist) const override {
-            for(auto& arc : arc_blacklist) {
-                if (has_arc(arc.first, arc.second)) {
-                    throw std::invalid_argument("Arc " + name(arc.first) + " -> " + name(arc.second) + " in blacklist,"
-                                                " but it is present in the Bayesian Network.");
-                }
-            }
-        }
-
         void force_whitelist(const ArcStringVector& arc_whitelist) override {
-            for(auto& arc : arc_whitelist) {
+            for(const auto& arc : arc_whitelist) {
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {
                         throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second + " in whitelist,"
@@ -343,7 +353,7 @@ namespace models {
         }
 
         void force_whitelist(const ArcSet& arc_whitelist) override {
-            for(auto& arc : arc_whitelist) {
+            for(const auto& arc : arc_whitelist) {
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {
                         throw std::invalid_argument("Arc " + name(arc.first) + " -> " + name(arc.second) + " in whitelist,"
@@ -359,13 +369,10 @@ namespace models {
         }
 
         bool fitted() const override;
-
-        void add_cpds(const std::vector<CPD>& cpds);
-
         void compatible_cpd(const CPD& cpd) const;
-        
-        void fit(const DataFrame& df) override;
+        void add_cpds(const std::vector<CPD>& cpds);       
         bool must_construct_cpd(const CPD& node) const;
+        void fit(const DataFrame& df) override;
 
         CPD create_cpd(const std::string& node) {
             auto pa = parents(node);
@@ -385,11 +392,11 @@ namespace models {
 
         VectorXd logl(const DataFrame& df) const override;
         double slogl(const DataFrame& df) const override;
-
-        DataFrame sample(int n, unsigned int seed = std::random_device{}(), bool ordered = false) const override;
-
+        DataFrame sample(int n,
+                         unsigned int seed = std::random_device{}(),
+                         bool ordered = false) const override;
         void save(std::string name, bool include_cpd = false) const override;
-        
+
         py::tuple __getstate__() const;
         static Derived __setstate__(py::tuple& t);
 
@@ -398,6 +405,9 @@ namespace models {
     protected:
         void check_fitted() const;
         size_t physical_num_nodes() const { return g.node_indices().size(); }
+        int inner_index(const std::string& name) const {
+            return index(name);
+        }
     private:
         py::tuple __getstate_extra__() const {
             return py::make_tuple();
@@ -412,12 +422,19 @@ namespace models {
         mutable bool m_include_cpd;
     };
 
-    template<typename Derived_>
-    std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn) {
-        os << "Bayesian network: " << std::endl;
-        for(auto& [source, target] : bn.g.arcs())
-            os << source << " -> " << target << std::endl;
-        return os;
+    template<typename Derived>
+    bool BayesianNetwork<Derived>::fitted() const {
+        if (m_cpds.empty()) {
+            return false;
+        } else {
+            for (size_t i = 0; i < m_cpds.size(); ++i) {
+                if (is_valid(i) && !m_cpds[i].fitted()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }    
     }
 
     template<typename Derived>
@@ -492,6 +509,22 @@ namespace models {
     }
 
     template<typename Derived>
+    bool BayesianNetwork<Derived>::must_construct_cpd(const CPD& cpd) const {
+        auto& node = cpd.variable();
+        auto& cpd_evidence = cpd.evidence();
+        auto parents = this->parents(node);
+        
+        if (cpd_evidence.size() != parents.size())
+            return true;
+
+        if (std::is_permutation(cpd_evidence.begin(), cpd_evidence.end(), parents.begin(), parents.end())) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    template<typename Derived>
     void BayesianNetwork<Derived>::fit(const DataFrame& df) {
         if (m_cpds.empty()) {
             m_cpds.reserve(physical_num_nodes());
@@ -517,37 +550,6 @@ namespace models {
                 }
             }
         }
-    }
-
-    template<typename Derived>
-    bool BayesianNetwork<Derived>::must_construct_cpd(const CPD& cpd) const {
-        auto& node = cpd.variable();
-        auto& cpd_evidence = cpd.evidence();
-        auto parents = this->parents(node);
-        
-        if (cpd_evidence.size() != parents.size())
-            return true;
-
-        if (std::is_permutation(cpd_evidence.begin(), cpd_evidence.end(), parents.begin(), parents.end())) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    template<typename Derived>
-    bool BayesianNetwork<Derived>::fitted() const {
-        if (m_cpds.empty()) {
-            return false;
-        } else {
-            for (size_t i = 0; i < m_cpds.size(); ++i) {
-                if (is_valid(i) && !m_cpds[i].fitted()) {
-                    return false;
-                }
-            }
-
-            return true;
-        }    
     }
 
     template<typename Derived>

@@ -340,4 +340,51 @@ namespace learning::algorithms {
                                       verbose);
 
     }
+
+    std::unique_ptr<ConditionalBayesianNetworkBase> GreedyHillClimbing::estimate_conditional(
+                                                    OperatorSet& op_set,
+                                                    Score& score,
+                                                    const ConditionalBayesianNetworkBase& start,
+                                                    const ArcStringVector& arc_blacklist,
+                                                    const ArcStringVector& arc_whitelist,
+                                                    int max_indegree,
+                                                    int max_iters, 
+                                                    double epsilon,
+                                                    int verbose) {
+        indicators::show_console_cursor(false);
+        auto spinner = util::indeterminate_spinner(verbose);
+        spinner->update_status("Checking dataset...");
+
+        auto current_model = start.clone();
+        current_model->check_blacklist(arc_blacklist);
+        current_model->force_whitelist(arc_whitelist);
+
+        op_set.set_arc_blacklist(arc_blacklist);
+        op_set.set_arc_whitelist(arc_whitelist);
+        op_set.set_max_indegree(max_indegree);
+
+        spinner->update_status("Caching scores...");
+
+        op_set.cache_scores(*current_model, score);
+
+        auto iter = 0;
+        while(iter < max_iters) {
+            auto best_op = op_set.find_max(*current_model);
+
+            if (!best_op || best_op->delta() <= epsilon) {
+                break;
+            }
+
+            best_op->apply(*current_model);
+
+            op_set.update_scores(*current_model, score, *best_op);
+            ++iter;
+            
+            spinner->update_status(best_op->ToString());
+        }
+
+        spinner->mark_as_completed("Finished Hill-climbing!");
+        indicators::show_console_cursor(true);
+        return current_model;
+    }
 }

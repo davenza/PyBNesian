@@ -3,6 +3,7 @@
 
 #include <indicators/cursor_control.hpp>
 #include <dataset/dataset.hpp>
+#include <models/ConditionalBayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <util/progress.hpp>
@@ -11,6 +12,7 @@
 namespace py = pybind11; 
 
 using dataset::DataFrame;
+using models::ConditionalBayesianNetworkBase;
 using learning::scores::Score;
 using learning::operators::Operator, learning::operators::OperatorType, learning::operators::ArcOperator, 
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorSet;
@@ -84,6 +86,17 @@ namespace learning::algorithms {
                                                                  double epsilon, 
                                                                  int patience,
                                                                  int verbose = 0);
+
+        std::unique_ptr<ConditionalBayesianNetworkBase> estimate_conditional(
+                                                            OperatorSet& op_set,
+                                                            Score& score,
+                                                            const ConditionalBayesianNetworkBase& start,
+                                                            const ArcStringVector& arc_blacklist,
+                                                            const ArcStringVector& arc_whitelist,
+                                                            int max_indegree,
+                                                            int max_iters, 
+                                                            double epsilon,
+                                                            int verbose = 0);
     };
 }
 

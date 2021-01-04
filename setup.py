@@ -83,6 +83,7 @@ ext_modules = [
          'src/learning/independences/continuous/mutual_information.cpp',
          'src/graph/generic_graph.cpp',
          'src/models/BayesianNetwork.cpp',
+         'src/models/ConditionalBayesianNetwork.cpp',
          'src/models/DynamicBayesianNetwork.cpp',
          'src/models/SemiparametricBN.cpp',
          'src/opencl/opencl_config.cpp',

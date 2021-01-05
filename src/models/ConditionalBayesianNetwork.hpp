@@ -3,11 +3,14 @@
 
 #include <models/BayesianNetwork.hpp>
 #include <util/vector.hpp>
+#include <util/virtual_clone.hpp>
+
+using util::abstract_class, util::clone_inherit;
 
 
 namespace models {
 
-    class ConditionalBayesianNetworkBase : public BayesianNetworkBase {
+    class ConditionalBayesianNetworkBase : public clone_inherit<abstract_class<ConditionalBayesianNetworkBase>, BayesianNetworkBase>  {
     public:
         virtual ~ConditionalBayesianNetworkBase() = default;
         virtual int num_interface_nodes() const = 0;
@@ -24,8 +27,6 @@ namespace models {
         virtual bool is_interface(int index) const = 0;
         using BayesianNetworkBase::sample;
         virtual DataFrame sample(const DataFrame& evidence, unsigned int seed, bool concat_evidence, bool ordered) const = 0;
-        // std::unique_ptr<ConditionalBayesianNetworkBase> clone() const = 0;
-    private:
     };
 
 

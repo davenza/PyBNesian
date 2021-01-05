@@ -3,8 +3,10 @@
 
 #include <models/BayesianNetwork.hpp>
 #include <factors/discrete/DiscreteFactor.hpp>
+#include <util/virtual_clone.hpp>
 
 using factors::discrete::DiscreteFactor;
+using util::clone_inherit;
 
 namespace models {
 
@@ -51,19 +53,25 @@ namespace models {
         }
     };
 
-    class DiscreteBN : public DiscreteNetworkImpl<DiscreteBN, BayesianNetwork> {
+    class DiscreteBN : public clone_inherit<DiscreteBN, DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>> {
     public:
-        using DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>::DiscreteNetworkImpl;
+        // using DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>::DiscreteNetworkImpl;
         
+        using clone_inherit<DiscreteBN, DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>>::clone_inherit;
+
         std::string ToString() const override {
             return "DiscreteBN";
         }        
     };
 
-    class ConditionalDiscreteBN : public DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork> {
+    class ConditionalDiscreteBN : public clone_inherit<ConditionalDiscreteBN,
+                                                       DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>> {
     public:
-        using DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>::DiscreteNetworkImpl;
+        // using DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>::DiscreteNetworkImpl;
         
+        using clone_inherit<ConditionalDiscreteBN,
+                            DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>>::clone_inherit;
+
         std::string ToString() const override {
             return "ConditionalGaussianNetwork";
         }        

@@ -4,9 +4,11 @@
 #include <models/BayesianNetwork.hpp>
 #include <models/ConditionalBayesianNetwork.hpp>
 #include <factors/continuous/SemiparametricCPD.hpp>
+#include <util/virtual_clone.hpp>
 
 using factors::continuous::SemiparametricCPD;
 using util::FactorStringTypeVector;
+using util::clone_inherit;
 
 namespace models {
 
@@ -259,9 +261,13 @@ namespace models {
         std::vector<FactorType> m_factor_types;
     };
 
-    class SemiparametricBN : public SemiparametricBNImpl<SemiparametricBN, BayesianNetwork> {
+    class SemiparametricBN : public clone_inherit<SemiparametricBN,
+                                                  SemiparametricBNImpl<SemiparametricBN, BayesianNetwork>> {
     public:
-        using SemiparametricBNImpl<SemiparametricBN, BayesianNetwork>::SemiparametricBNImpl;
+        // using SemiparametricBNImpl<SemiparametricBN, BayesianNetwork>::SemiparametricBNImpl;
+
+        using clone_inherit<SemiparametricBN,
+                            SemiparametricBNImpl<SemiparametricBN, BayesianNetwork>>::clone_inherit;
 
         std::string ToString() const override {
             return "SemiparametricBN";
@@ -272,9 +278,13 @@ namespace models {
         void __setstate_extra__(py::tuple&& t);
     };
 
-    class ConditionalSemiparametricBN : public SemiparametricBNImpl<ConditionalSemiparametricBN, ConditionalBayesianNetwork> {
+    class ConditionalSemiparametricBN : public clone_inherit<ConditionalSemiparametricBN,
+                                                             SemiparametricBNImpl<ConditionalSemiparametricBN, ConditionalBayesianNetwork>> {
     public:
-        using SemiparametricBNImpl<ConditionalSemiparametricBN, ConditionalBayesianNetwork>::SemiparametricBNImpl;
+        // using SemiparametricBNImpl<ConditionalSemiparametricBN, ConditionalBayesianNetwork>::SemiparametricBNImpl;
+
+        using clone_inherit<ConditionalSemiparametricBN,
+                            SemiparametricBNImpl<ConditionalSemiparametricBN, ConditionalBayesianNetwork>>::clone_inherit;
 
         std::string ToString() const override {
             return "ConditionalSemiparametricBN";

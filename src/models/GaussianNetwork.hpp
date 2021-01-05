@@ -53,19 +53,23 @@ namespace models {
         }
     };
 
-    class GaussianNetwork : public GaussianNetworkImpl<GaussianNetwork, BayesianNetwork> {
+    class GaussianNetwork : public clone_inherit<GaussianNetwork, GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>> {
     public:
-        using GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>::GaussianNetworkImpl;
-        
+        // using GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>::GaussianNetworkImpl;
+        using clone_inherit<GaussianNetwork, GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>>::clone_inherit;
+
         std::string ToString() const override {
             return "GaussianNetwork";
         }        
     };
 
-    class ConditionalGaussianNetwork : public GaussianNetworkImpl<GaussianNetwork, ConditionalBayesianNetwork> {
+    class ConditionalGaussianNetwork : public clone_inherit<ConditionalGaussianNetwork,
+                                                            GaussianNetworkImpl<ConditionalGaussianNetwork, ConditionalBayesianNetwork>> {
     public:
-        using GaussianNetworkImpl<GaussianNetwork, ConditionalBayesianNetwork>::GaussianNetworkImpl;
-        
+        // using GaussianNetworkImpl<GaussianNetwork, ConditionalBayesianNetwork>::GaussianNetworkImpl;
+        using clone_inherit<ConditionalGaussianNetwork,
+                            GaussianNetworkImpl<ConditionalGaussianNetwork, ConditionalBayesianNetwork>>::clone_inherit;
+
         std::string ToString() const override {
             return "ConditionalGaussianNetwork";
         }        

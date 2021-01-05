@@ -4,10 +4,13 @@
 #include <random>
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
+#include <util/virtual_clone.hpp>
 
 using dataset::DataFrame;
 using graph::Dag;
 using util::ArcStringVector;
+
+using util::abstract_class, util::clone_inherit;
 
 using Field_ptr = std::shared_ptr<arrow::Field>;
 using Array_ptr = std::shared_ptr<arrow::Array>;
@@ -63,20 +66,7 @@ namespace models {
         Value value;
     };
 
-    // https://www.fluentcpp.com/2017/09/12/how-to-return-a-smart-pointer-and-use-covariance/
-    template <typename Derived, typename Base>
-    class clone_inherit : public Base {
-    public:
-        std::unique_ptr<Derived> clone() const {
-            return std::unique_ptr<Derived>(static_cast<Derived *>(this->clone_impl()));
-        }
-
-    private:
-        virtual clone_inherit * clone_impl() const = 0;
-    };
-
-
-    class BayesianNetworkBase : public clone_inherit<BayesianNetworkBase, BayesianNetworkBase> {
+    class BayesianNetworkBase : public clone_inherit<abstract_class<BayesianNetworkBase>> {
     public:
         virtual ~BayesianNetworkBase() = default;
         virtual int num_nodes() const = 0;
@@ -147,7 +137,6 @@ namespace models {
         virtual BayesianNetworkType type() const = 0;
         virtual DataFrame sample(int n, unsigned int seed, bool ordered) const = 0;
         virtual void save(std::string name, bool include_cpd = false) const = 0;
-        // virtual std::unique_ptr<BayesianNetworkBase> clone() const = 0;
     };
 
     class SemiparametricBNBase {

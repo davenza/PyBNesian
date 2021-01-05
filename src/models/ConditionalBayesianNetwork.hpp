@@ -174,6 +174,23 @@ namespace models {
             return g.index(node);
         }
 
+        int collapsed_index(const std::string& name) const override {
+            return m_cpds_indices.at(name);
+        }
+
+        int index_from_collapsed(int collapsed_index) const override {
+            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
+                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + ")."
+                                            " It must be a number between 0 and " + std::to_string(num_nodes() - 1) + " ");
+            }
+
+            return g.index(m_nodes[collapsed_index]);
+        }
+
+        int collapsed_from_index(int index) const override {
+            return m_cpds_indices.at(name(index));
+        }
+
         bool is_valid(int idx) const override {
             return g.is_valid(idx);
         }
@@ -222,18 +239,18 @@ namespace models {
 
             g.remove_node(node);
 
-            auto inner_index = m_cpds_indices.at(node);
-            util::swap_remove(m_nodes, inner_index);
+            auto collapsed_index = m_cpds_indices.at(node);
+            util::swap_remove(m_nodes, collapsed_index);
             m_indices.erase(node);
             m_cpds_indices.erase(node);
 
             // Update cpds indices if swap remove was performed.
-            if (inner_index < m_nodes.size()) {
-                m_cpds_indices[m_nodes[inner_index]] = inner_index;
+            if (collapsed_index < m_nodes.size()) {
+                m_cpds_indices[m_nodes[collapsed_index]] = collapsed_index;
             }
 
             if (!m_cpds.empty()) {
-                util::swap_remove(m_cpds, inner_index);
+                util::swap_remove(m_cpds, collapsed_index);
             }
         }
 
@@ -258,6 +275,14 @@ namespace models {
 
         const std::string& name(int node_index) const override {
             return g.name(node_index);
+        }
+
+        const std::string& collapsed_name(int collapsed_index) const override {
+            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
+                throw std::invalid_argument("Wrong collapsed index. The collapsed index should be a number between 0 and num_nodes().");
+            }
+
+            return m_nodes[collapsed_index];
         }
         
         int num_parents(int node_index) const override {
@@ -459,11 +484,9 @@ namespace models {
 
         py::tuple __getstate__() const;
         static Derived __setstate__(py::tuple& t);
+
     protected:
         void check_fitted() const;
-        int inner_index(const std::string& name) const {
-            return m_cpds_indices.at(name);
-        }
     private:
         py::tuple __getstate_extra__() const {
             return py::make_tuple();

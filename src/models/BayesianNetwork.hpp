@@ -51,7 +51,7 @@ namespace models {
         constexpr bool operator!=(BayesianNetworkType a) const { return value != a.value; }
         constexpr bool operator!=(Value v) const { return value != v; }
 
-        std::string ToString() const { 
+        std::string ToString() const {
             switch(value) {
                 case Value::GBN:
                     return "GaussianNetwork";
@@ -75,12 +75,16 @@ namespace models {
         virtual ArcStringVector arcs() const = 0;
         virtual const std::unordered_map<std::string, int>& indices() const = 0;
         virtual int index(const std::string& node) const = 0;
+        virtual int collapsed_index(const std::string& node) const = 0;
+        virtual int index_from_collapsed(int collapsed_index) const = 0;
+        virtual int collapsed_from_index(int index) const = 0;
         virtual bool is_valid(int idx) const = 0;
         virtual bool contains_node(const std::string& name) const = 0;
         virtual size_t add_node(const std::string& node) = 0;
         virtual void remove_node(int node_index) = 0;
         virtual void remove_node(const std::string& node) = 0;
         virtual const std::string& name(int node_index) const = 0;
+        virtual const std::string& collapsed_name(int collapsed_index) const = 0;
         virtual int num_parents(int node_index) const = 0;
         virtual int num_parents(const std::string& node) const = 0;
         virtual int num_children(int node_index) const = 0;
@@ -183,6 +187,18 @@ namespace models {
             return g.index(node);
         }
 
+        int collapsed_index(const std::string& node) const override {
+            return index(node);
+        }
+
+        int index_from_collapsed(int collapsed_index) const override {
+            return collapsed_index;
+        }
+
+        int collapsed_from_index(int index) const override {
+            return index;
+        }
+
         bool is_valid(int idx) const override {
             return g.is_valid(idx);
         }
@@ -211,6 +227,10 @@ namespace models {
 
         const std::string& name(int node_index) const override {
             return g.name(node_index);
+        }
+
+        const std::string& collapsed_name(int collapsed_index) const override {
+            return g.name(collapsed_index);
         }
 
         int num_parents(int node_index) const override {
@@ -394,9 +414,6 @@ namespace models {
     protected:
         void check_fitted() const;
         size_t physical_num_nodes() const { return g.node_indices().size(); }
-        int inner_index(const std::string& name) const {
-            return index(name);
-        }
     private:
         py::tuple __getstate_extra__() const {
             return py::make_tuple();

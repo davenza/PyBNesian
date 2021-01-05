@@ -38,7 +38,7 @@ namespace models {
                              FactorStringTypeVector& node_types) : BNType<Derived>(nodes),
                                                                    m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -47,7 +47,7 @@ namespace models {
                              FactorStringTypeVector& node_types) : BNType<Derived>(arcs),
                                                                    m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -57,7 +57,7 @@ namespace models {
                              FactorStringTypeVector& node_types) : BNType<Derived>(nodes, arcs),
                                                                    m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
         
@@ -66,7 +66,7 @@ namespace models {
                              FactorStringTypeVector& node_types) : BNType<Derived>(graph),
                                                                    m_factor_types(graph.num_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -75,7 +75,7 @@ namespace models {
                                                     BNType<Derived>(std::move(graph)),
                                                     m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -114,7 +114,7 @@ namespace models {
                                                                    m_factor_types(nodes.size()) {
             
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->collapsed_index(p.first)] = p.second;
             }
         }
 
@@ -125,7 +125,7 @@ namespace models {
                              FactorStringTypeVector& node_types) : BNType<Derived>(nodes, interface_nodes, arcs),
                                                                    m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->collapsed_index(p.first)] = p.second;
             }
         }
         
@@ -136,7 +136,7 @@ namespace models {
                              FactorStringTypeVector& node_types) : BNType<Derived>(nodes, interface_nodes, graph),
                                                                    m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->collapsed_index(p.first)] = p.second;
             }
         }
 
@@ -148,7 +148,7 @@ namespace models {
                                                     BNType<Derived>(nodes, interface_nodes, std::move(graph)),
                                                     m_factor_types(nodes.size()) {
             for(auto& p : node_types) {
-                m_factor_types[this->inner_index(p.first)] = p.second;
+                m_factor_types[this->collapsed_index(p.first)] = p.second;
             }
         }
 
@@ -182,7 +182,7 @@ namespace models {
         }
 
         FactorType node_type(const std::string& node) const override {
-            return m_factor_types[this->inner_index(node)];
+            return m_factor_types[this->collapsed_index(node)];
         }
 
         void set_node_type(int node_index, FactorType new_type) override {
@@ -190,7 +190,7 @@ namespace models {
         }
 
         void set_node_type(const std::string& node, FactorType new_type) override {
-            m_factor_types[this->inner_index(node)] = new_type;
+            m_factor_types[this->collapsed_index(node)] = new_type;
         }
 
         std::unordered_map<std::string, FactorType> node_types() const {
@@ -224,13 +224,13 @@ namespace models {
         bool must_construct_cpd(const CPD& cpd) const {
             bool must_construct = BNType<Derived>::must_construct_cpd(cpd);
             
-            return must_construct || (cpd.node_type() != m_factor_types[this->inner_index(cpd.variable())]);
+            return must_construct || (cpd.node_type() != m_factor_types[this->collapsed_index(cpd.variable())]);
         }
 
         void compatible_cpd(const CPD& cpd) const {
             BNType<Derived>::compatible_cpd(cpd);
 
-            int index = this->inner_index(cpd.variable());
+            int index = this->collapsed_index(cpd.variable());
             if (m_factor_types[index] != cpd.node_type()) {
                 throw std::invalid_argument(
                     "CPD defined with a different node type. Expected node type: " + m_factor_types[index].ToString() +

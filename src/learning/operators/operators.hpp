@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
+#include <models/ConditionalBayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
 #include <util/validate_scores.hpp>
 #include <util/vector.hpp>
@@ -12,6 +13,7 @@ using MatrixXb = Matrix<bool, Dynamic, Dynamic>;
 using VectorXb = Matrix<bool, Dynamic, 1>;
 
 using models::BayesianNetwork, models::BayesianNetworkBase, models::SemiparametricBNBase;
+using models::ConditionalBayesianNetworkBase;
 using factors::FactorType;
 using learning::scores::Score;
 using util::ArcStringVector, util::FactorStringTypeVector;
@@ -347,6 +349,7 @@ namespace learning::operators {
     public:
         LocalScoreCache() : m_local_score() {}
         LocalScoreCache(BayesianNetworkBase& m) : m_local_score(m.num_nodes()) {}
+        LocalScoreCache(ConditionalBayesianNetworkBase& m) : m_local_score(m.num_nodes()) {}
 
         void cache_local_scores(BayesianNetworkBase& model, Score& score) {
             if (m_local_score.rows() != model.num_nodes()) {
@@ -355,6 +358,16 @@ namespace learning::operators {
 
             for (int i = 0; i < model.num_nodes(); ++i) {
                 m_local_score(i) = score.local_score(model, i);
+            }
+        }
+
+        void cache_local_scores(ConditionalBayesianNetworkBase& model, Score& score) {
+            if (m_local_score.rows() != model.num_nodes()) {
+                m_local_score = VectorXd(model.num_nodes());
+            }
+
+            for (int i = 0; i < model.num_nodes(); ++i) {
+                m_local_score(i) = score.local_score(model, model.collapsed_name(i));
             }
         }
 
@@ -404,6 +417,11 @@ namespace learning::operators {
         virtual std::shared_ptr<Operator> find_max(BayesianNetworkBase&, OperatorTabuSet&) = 0;
         virtual void update_scores(BayesianNetworkBase&, Score&, Operator&) = 0;
 
+        virtual void cache_scores(ConditionalBayesianNetworkBase&, Score&) = 0;
+        virtual std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase&) = 0;
+        virtual std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase&, OperatorTabuSet&) = 0;
+        virtual void update_scores(ConditionalBayesianNetworkBase&, Score&, Operator&) = 0;
+
         void set_local_score_cache(std::shared_ptr<LocalScoreCache> score_cache) {
             m_local_cache = score_cache;
         }
@@ -419,7 +437,8 @@ namespace learning::operators {
             return m_local_cache.use_count() == 1;
         }
 
-        void initialize_local_cache(BayesianNetworkBase& model) {
+        template<typename M>
+        void initialize_local_cache(M& model) {
             if (this->m_local_cache == nullptr) {
                 auto lc = std::make_shared<LocalScoreCache>(model);
                 this->set_local_score_cache(lc);
@@ -450,18 +469,28 @@ namespace learning::operators {
                                            max_indegree(indegree) {}
 
         void cache_scores(BayesianNetworkBase& model, Score& score) override;
-
         std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
         std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
         template<bool limited_indigree>
         std::shared_ptr<Operator> find_max_indegree(BayesianNetworkBase& model);
         template<bool limited_indigree>
         std::shared_ptr<Operator> find_max_indegree(BayesianNetworkBase& model, OperatorTabuSet& tabu_set);
-
         void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
+        
+        void cache_scores(ConditionalBayesianNetworkBase& model, Score& score) override;
+        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model) override;
+        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        template<bool limited_indigree>
+        std::shared_ptr<Operator> find_max_indegree(ConditionalBayesianNetworkBase& model);
+        template<bool limited_indigree>
+        std::shared_ptr<Operator> find_max_indegree(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set);
+        void update_scores(ConditionalBayesianNetworkBase& model, Score& score, Operator& op) override;
+
         void update_node_arcs_scores(BayesianNetworkBase& model, Score& score, const std::string& dest_node);
+        void update_node_arcs_scores(ConditionalBayesianNetworkBase& model, Score& score, const std::string& dest_node);
 
         void update_listed_arcs(BayesianNetworkBase& bn);
+        void update_listed_arcs(ConditionalBayesianNetworkBase& bn);
 
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
             m_blacklist_names = blacklist;
@@ -543,6 +572,56 @@ namespace learning::operators {
     }
 
     template<bool limited_indegree>
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(ConditionalBayesianNetworkBase& model) {
+        auto delta_ptr = delta.data();
+
+        // TODO: Not checking sorted_idx empty
+        std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+            return delta_ptr[i1] >= delta_ptr[i2];
+        });
+
+        for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
+            auto idx = *it;
+            auto source = idx % model.num_nodes();
+            auto dest_collapsed = idx / model.num_nodes();
+            auto dest = model.index_from_collapsed(dest_collapsed);
+
+            auto d = delta(source, dest_collapsed);
+            if(model.has_arc(source, dest)) {
+                return std::make_shared<RemoveArc>(model.name(source), model.name(dest), d);
+            }
+
+            if (model.is_interface(source)) {
+                if constexpr (limited_indegree) {
+                    if (model.num_parents(dest) >= max_indegree) {
+                        continue;
+                    }
+                }
+                // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have parents.
+                return std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+            } else {                
+                if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
+                    if constexpr (limited_indegree) {
+                        if (model.num_parents(dest) >= max_indegree) {
+                            continue;
+                        }
+                    }
+                    return std::make_shared<FlipArc>(model.name(dest), model.name(source), d);
+                } else if (model.can_add_arc(source, dest)) {
+                    if constexpr (limited_indegree) {
+                        if (model.num_parents(dest) >= max_indegree) {
+                            continue;
+                        }
+                    }
+                    return std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    template<bool limited_indegree>
     std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
         auto delta_ptr = delta.data();
 
@@ -590,6 +669,68 @@ namespace learning::operators {
         return nullptr;
     }
 
+    template<bool limited_indegree>
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
+        auto delta_ptr = delta.data();
+
+        // TODO: Not checking sorted_idx empty
+        std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+            return delta_ptr[i1] >= delta_ptr[i2];
+        });
+
+        for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
+            auto idx = *it;
+            auto source = idx % model.num_nodes();
+            auto dest_collapsed = idx / model.num_nodes();
+            auto dest = model.index_from_collapsed(dest_collapsed);
+
+            auto d = delta(source, dest_collapsed);
+
+            if(model.has_arc(source, dest)) {
+                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source), model.name(dest), d);
+
+                if (!tabu_set.contains(op))
+                    return op;
+                else continue;
+            }
+
+            if (model.is_interface(source)) {
+                if constexpr (limited_indegree) {
+                    if (model.num_parents(dest) >= max_indegree) {
+                        continue;
+                    }
+                }
+                // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have parents.
+                std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                if (!tabu_set.contains(op))
+                    return op;
+
+            } else {                
+                if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
+                    if constexpr (limited_indegree) {
+                        if (model.num_parents(dest) >= max_indegree) {
+                            continue;
+                        }
+                    }
+                    std::shared_ptr<Operator> op =  std::make_shared<FlipArc>(model.name(dest), model.name(source), d);
+                    if (!tabu_set.contains(op))
+                        return op;
+                } else if (model.can_add_arc(source, dest)) {
+                    if constexpr (limited_indegree) {
+                        if (model.num_parents(dest) >= max_indegree) {
+                            continue;
+                        }
+                    }
+                    std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                    if (!tabu_set.contains(op))
+                        return op;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
     class ChangeNodeTypeSet : public OperatorSet {
     public:
         ChangeNodeTypeSet(FactorStringTypeVector fv = FactorStringTypeVector()) : delta(),
@@ -602,6 +743,11 @@ namespace learning::operators {
         std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
         std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
         void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
+
+        void cache_scores(ConditionalBayesianNetworkBase& model, Score& score) override;
+        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model) override;
+        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        void update_scores(ConditionalBayesianNetworkBase& model, Score& score, Operator& op) override;
 
         void update_local_delta(BayesianNetworkBase& model, Score& score, const std::string& node) {
             update_local_delta(model, score, model.index(node));
@@ -675,6 +821,11 @@ namespace learning::operators {
         std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
         std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
         void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
+
+        void cache_scores(ConditionalBayesianNetworkBase& model, Score& score) override;
+        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model) override;
+        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        void update_scores(ConditionalBayesianNetworkBase& model, Score& score, Operator& op) override;
                
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
             for(auto& opset : m_op_sets) {

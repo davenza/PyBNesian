@@ -23,8 +23,8 @@ namespace models {
         virtual size_t add_interface_node(const std::string& node) = 0;
         virtual void remove_interface_node(int node_index) = 0;
         virtual void remove_interface_node(const std::string& node) = 0;
-        virtual bool is_interface(const std::string& name) const = 0;
         virtual bool is_interface(int index) const = 0;
+        virtual bool is_interface(const std::string& name) const = 0;
         using BayesianNetworkBase::sample;
         virtual DataFrame sample(const DataFrame& evidence, unsigned int seed, bool concat_evidence, bool ordered) const = 0;
     };
@@ -54,7 +54,7 @@ namespace models {
 
             g = Dag(all_nodes);
 
-            for (int i = 0; i < m_nodes.size(); ++i) {
+            for (int i = 0, end = m_nodes.size(); i < end; ++i) {
                 m_cpds_indices.insert({m_nodes[i], i});
                 m_indices.insert({m_nodes[i], g.index(m_nodes[i])});
             }
@@ -89,8 +89,7 @@ namespace models {
                                                        m_interface_nodes(interface_nodes),
                                                        m_interface_indices()
         {
-            
-            for (int i = 0; i < m_nodes.size(); ++i) {
+            for (int i = 0, end = m_nodes.size(); i < end; ++i) {
                 m_cpds_indices.insert({m_nodes[i], i});
                 m_indices.insert({m_nodes[i], g.index(m_nodes[i])});
             }
@@ -99,7 +98,7 @@ namespace models {
                 m_interface_indices.insert({n, g.index(n)});
             }
 
-            if (g.num_nodes() != (m_indices.size() + m_interface_indices.size())) {
+            if (g.num_nodes() != static_cast<int>(m_indices.size() + m_interface_indices.size())) {
                 throw std::invalid_argument("The number of nodes in the graph and "
                                 "the number of names in lists of nodes/interface nodes is different.");
             }
@@ -115,7 +114,7 @@ namespace models {
                                                   m_interface_nodes(interface_nodes),
                                                   m_interface_indices() 
         {
-            for (int i = 0; i < m_nodes.size(); ++i) {
+            for (int i = 0, end = m_nodes.size(); i < end; ++i) {
                 m_cpds_indices.insert({m_nodes[i], i});
                 m_indices.insert({m_nodes[i], g.index(m_nodes[i])});
             }
@@ -124,7 +123,7 @@ namespace models {
                 m_interface_indices.insert({n, g.index(n)});
             }
 
-            if (g.num_nodes() != (m_indices.size() + m_interface_indices.size())) {
+            if (g.num_nodes() != static_cast<int>(m_indices.size() + m_interface_indices.size())) {
                 throw std::invalid_argument("The number of nodes in the graph and "
                                 "the number of names in lists of nodes/interface nodes is different.");
             }
@@ -245,7 +244,7 @@ namespace models {
             m_cpds_indices.erase(node);
 
             // Update cpds indices if swap remove was performed.
-            if (collapsed_index < m_nodes.size()) {
+            if (collapsed_index < static_cast<int>(m_nodes.size())) {
                 m_cpds_indices[m_nodes[collapsed_index]] = collapsed_index;
             }
 
@@ -458,7 +457,7 @@ namespace models {
         }
 
         CPD& cpd(int index) {
-            cpd(name(index));
+            return cpd(name(index));
         }
 
         CPD& cpd(const std::string& node) {
@@ -530,7 +529,7 @@ namespace models {
         auto& evidence = cpd.evidence();
 
         for (auto& ev : evidence) {
-            if (!contains_all_nodes(ev)) {
+            if (!contains_all_node(ev)) {
                 throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
             }
         }
@@ -570,7 +569,7 @@ namespace models {
 
             m_cpds.reserve(num_nodes());
 
-            for (size_t i = 0; i < num_nodes(); ++i) {
+            for (int i = 0; i < num_nodes(); ++i) {
                 auto cpd_idx = map_index.find(m_nodes[i]);
 
                 if (cpd_idx != map_index.end()) {
@@ -608,13 +607,13 @@ namespace models {
         if (m_cpds.empty()) {
             m_cpds.reserve(num_nodes());
 
-            for (size_t i = 0; i < num_nodes(); ++i) {
+            for (int i = 0; i < num_nodes(); ++i) {
                 auto cpd = static_cast<Derived*>(this)->create_cpd(m_nodes[i]);
                 m_cpds.push_back(cpd);
                 m_cpds.back().fit(df);
             }
         } else {
-            for (size_t i = 0; i < num_nodes(); ++i) {
+            for (int i = 0; i < num_nodes(); ++i) {
                 if (static_cast<Derived*>(this)->must_construct_cpd(m_cpds[i])) {
                     m_cpds[i] = static_cast<Derived*>(this)->create_cpd(m_nodes[i]);
                     m_cpds[i].fit(df);
@@ -691,7 +690,7 @@ namespace models {
 
         auto top_sort = g.topological_sort();
 
-        for (auto i = 0; i < top_sort.size(); ++i) {
+        for (size_t i = 0; i < top_sort.size(); ++i) {
             if (!is_interface(top_sort[i])) {
                 auto array = m_cpds[m_cpds_indices.at(top_sort[i])].sample(evidence->num_rows(), parents, seed);
 

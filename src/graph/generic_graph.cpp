@@ -291,7 +291,8 @@ namespace graph {
         }
         return false;
     }
-
+    
+    //  This method should be const, but it has to remove and re-add an arc to check.
     bool Dag::can_flip_arc_unsafe(int source, int target) {
         if (has_arc_unsafe(source, target)) {
             if (num_parents_unsafe(target) == 1 || num_children_unsafe(source) == 1)

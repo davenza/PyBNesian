@@ -46,13 +46,12 @@ namespace factors {
             }
         }
 
-        FactorType opposite() {
+        FactorType opposite() const {
             if (value == FactorType::LinearGaussianCPD) 
                 return FactorType::CKDE;
             else
                 return FactorType::LinearGaussianCPD;
         }
-
     private:
         Value value;
     };

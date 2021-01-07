@@ -52,8 +52,8 @@ void register_OperatorTabuSet(py::module& m) {
     py::class_<OperatorTabuSet>(m, "OperatorTabuSet")
         .def(py::init<>())
         .def(py::init<const OperatorTabuSet&>())
-        .def("insert", py::overload_cast<std::shared_ptr<Operator>>(&OperatorTabuSet::insert))
-        .def("contains", py::overload_cast<std::shared_ptr<Operator>&>(&OperatorTabuSet::contains, py::const_))
+        .def("insert", py::overload_cast<const std::shared_ptr<Operator>&>(&OperatorTabuSet::insert))
+        .def("contains", py::overload_cast<const std::shared_ptr<Operator>&>(&OperatorTabuSet::contains, py::const_))
         .def("clear", &OperatorTabuSet::clear)
         .def("empty", &OperatorTabuSet::empty);
 }

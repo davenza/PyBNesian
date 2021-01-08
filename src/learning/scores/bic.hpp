@@ -62,6 +62,13 @@ namespace learning::scores {
             return ScoreType::BIC;
         }
 
+        bool compatible_bn(const BayesianNetworkBase& model) const override{
+            return m_df->num_columns() == model.num_nodes() && m_df.has_columns(model.nodes());
+        }
+
+        bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
+            return m_df->num_columns() == model.num_total_nodes() && m_df.has_columns(model.all_nodes());
+        }
     private:
         const DataFrame m_df;        
     };

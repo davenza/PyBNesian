@@ -398,11 +398,11 @@ namespace models {
             return !is_interface(target) && g.can_add_arc(source, target);
         }
 
-        bool can_flip_arc(int source_index, int target_index) override {
+        bool can_flip_arc(int source_index, int target_index) const override {
             return !is_interface(source_index) && g.can_flip_arc(source_index, target_index);
         }
 
-        bool can_flip_arc(const std::string& source, const std::string& target) override {
+        bool can_flip_arc(const std::string& source, const std::string& target) const override {
             return !is_interface(source) && g.can_flip_arc(source, target);
         }
 
@@ -684,7 +684,7 @@ namespace models {
                                                           bool concat_evidence,
                                                           bool ordered) const {
         check_fitted();
-        evidence.has_columns(m_interface_nodes);
+        evidence.raise_has_columns(m_interface_nodes);
         
         DataFrame parents(evidence);
 

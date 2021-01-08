@@ -459,14 +459,14 @@ namespace learning::operators {
     public:
         virtual ~OperatorSet() {}
         virtual void cache_scores(const BayesianNetworkBase&, const Score&) = 0;
-        virtual std::shared_ptr<Operator> find_max(BayesianNetworkBase&) = 0;
-        virtual std::shared_ptr<Operator> find_max(BayesianNetworkBase&, OperatorTabuSet&) = 0;
-        virtual void update_scores(BayesianNetworkBase&, Score&, Operator&) = 0;
+        virtual std::shared_ptr<Operator> find_max(const BayesianNetworkBase&) const = 0;
+        virtual std::shared_ptr<Operator> find_max(const BayesianNetworkBase&, const OperatorTabuSet&) const = 0;
+        virtual void update_scores(const BayesianNetworkBase&, const Score&, const Operator&) = 0;
 
         virtual void cache_scores(const ConditionalBayesianNetworkBase&, const Score&) = 0;
-        virtual std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase&) = 0;
-        virtual std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase&, OperatorTabuSet&) = 0;
-        virtual void update_scores(ConditionalBayesianNetworkBase&, Score&, Operator&) = 0;
+        virtual std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase&) const = 0;
+        virtual std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase&, const OperatorTabuSet&) const = 0;
+        virtual void update_scores(const ConditionalBayesianNetworkBase&, const Score&, const Operator&) = 0;
 
         void set_local_score_cache(std::shared_ptr<LocalScoreCache> score_cache) {
             m_local_cache = score_cache;
@@ -479,7 +479,7 @@ namespace learning::operators {
         virtual void set_max_indegree(int) = 0;
         virtual void set_type_whitelist(const FactorStringTypeVector&) = 0;
     protected:
-        bool owns_local_cache() {
+        bool owns_local_cache() const {
             return m_local_cache.use_count() == 1;
         }
 
@@ -491,7 +491,7 @@ namespace learning::operators {
             }
         }
 
-        void raise_uninitialized() {
+        void raise_uninitialized() const {
             if (m_local_cache == nullptr) {
                 throw pybind11::value_error("Local cache not initialized. Call cache_scores() before find_max()");
             }
@@ -515,28 +515,28 @@ namespace learning::operators {
                                            max_indegree(indegree) {}
 
         void cache_scores(const BayesianNetworkBase& model, const Score& score) override;
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model) const override;
+        std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override;
         template<bool limited_indigree>
-        std::shared_ptr<Operator> find_max_indegree(BayesianNetworkBase& model);
+        std::shared_ptr<Operator> find_max_indegree(const BayesianNetworkBase& model) const;
         template<bool limited_indigree>
-        std::shared_ptr<Operator> find_max_indegree(BayesianNetworkBase& model, OperatorTabuSet& tabu_set);
-        void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
+        std::shared_ptr<Operator> find_max_indegree(const BayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const;
+        void update_scores(const BayesianNetworkBase& model, const Score& score, const Operator& op) override;
         
         void cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) override;
-        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model) override;
-        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model) const override;
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override;
         template<bool limited_indigree>
-        std::shared_ptr<Operator> find_max_indegree(ConditionalBayesianNetworkBase& model);
+        std::shared_ptr<Operator> find_max_indegree(const ConditionalBayesianNetworkBase& model) const;
         template<bool limited_indigree>
-        std::shared_ptr<Operator> find_max_indegree(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set);
-        void update_scores(ConditionalBayesianNetworkBase& model, Score& score, Operator& op) override;
+        std::shared_ptr<Operator> find_max_indegree(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const;
+        void update_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const Operator& op) override;
 
-        void update_node_arcs_scores(BayesianNetworkBase& model, Score& score, const std::string& dest_node);
-        void update_node_arcs_scores(ConditionalBayesianNetworkBase& model, Score& score, const std::string& dest_node);
+        void update_incoming_arcs_scores(const BayesianNetworkBase& model, const Score& score, const std::string& dest_node);
+        void update_incoming_arcs_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& dest_node);
 
-        void update_listed_arcs(const BayesianNetworkBase& bn);
-        void update_listed_arcs(const ConditionalBayesianNetworkBase& bn);
+        void update_valid_ops(const BayesianNetworkBase& bn);
+        void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
 
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
             m_blacklist_names = blacklist;
@@ -566,7 +566,7 @@ namespace learning::operators {
     private:
         MatrixXd delta;
         MatrixXb valid_op;
-        std::vector<int> sorted_idx;
+        mutable std::vector<int> sorted_idx;
         ArcStringVector m_blacklist_names;
         ArcStringVector m_whitelist_names;
         ArcSet m_blacklist;
@@ -576,7 +576,7 @@ namespace learning::operators {
     };
 
     template<bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(BayesianNetworkBase& model) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const BayesianNetworkBase& model) const {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -618,7 +618,7 @@ namespace learning::operators {
     }
 
     template<bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(ConditionalBayesianNetworkBase& model) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBayesianNetworkBase& model) const {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -628,8 +628,8 @@ namespace learning::operators {
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
-            auto source = idx % model.num_nodes();
-            auto dest_collapsed = idx / model.num_nodes();
+            auto source = idx % model.num_total_nodes();
+            auto dest_collapsed = idx / model.num_total_nodes();
             auto dest = model.index_from_collapsed(dest_collapsed);
 
             auto d = delta(source, dest_collapsed);
@@ -668,7 +668,8 @@ namespace learning::operators {
     }
 
     template<bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const BayesianNetworkBase& model,
+                                                                const OperatorTabuSet& tabu_set) const {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -716,7 +717,8 @@ namespace learning::operators {
     }
 
     template<bool limited_indegree>
-    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBayesianNetworkBase& model,
+                                                                const OperatorTabuSet& tabu_set) const {
         auto delta_ptr = delta.data();
 
         // TODO: Not checking sorted_idx empty
@@ -726,8 +728,8 @@ namespace learning::operators {
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
-            auto source = idx % model.num_nodes();
-            auto dest_collapsed = idx / model.num_nodes();
+            auto source = idx % model.num_total_nodes();
+            auto dest_collapsed = idx / model.num_total_nodes();
             auto dest = model.index_from_collapsed(dest_collapsed);
 
             auto d = delta(source, dest_collapsed);
@@ -786,14 +788,14 @@ namespace learning::operators {
                                                                                   required_whitelist_update(true) {}
 
         void cache_scores(const BayesianNetworkBase& model, const Score& score) override;
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override;
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
-        void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override;
+        std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model) const override;
+        std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override;
+        void update_scores(const BayesianNetworkBase& model, const Score& score, const Operator& op) override;
 
         void cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) override;
-        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model) override;
-        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) override;
-        void update_scores(ConditionalBayesianNetworkBase& model, Score& score, Operator& op) override;
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model) const override;
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override;
+        void update_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const Operator& op) override;
 
         void update_local_delta(const BayesianNetworkBase& model, const Score& score, const std::string& node) {
             update_local_delta(model, score, model.index(node));
@@ -893,7 +895,7 @@ namespace learning::operators {
     private:
         VectorXd delta;
         VectorXb valid_op;
-        std::vector<int> sorted_idx;
+        mutable std::vector<int> sorted_idx;
         FactorStringTypeVector m_type_whitelist;
         bool required_whitelist_update;
     };
@@ -909,37 +911,37 @@ namespace learning::operators {
         void cache_scores(const BayesianNetworkBase& model, const Score& score) override {
             return cache_scores<BayesianNetworkBase>(model, score);
         }
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model) override {
+        std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model) const override {
             return find_max<BayesianNetworkBase>(model);
         }
-        std::shared_ptr<Operator> find_max(BayesianNetworkBase& model, OperatorTabuSet& tabu_set) override {
+        std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override {
             return find_max<BayesianNetworkBase>(model, tabu_set);
         }
-        void update_scores(BayesianNetworkBase& model, Score& score, Operator& op) override {
+        void update_scores(const BayesianNetworkBase& model, const Score& score, const Operator& op) override {
             return update_scores<BayesianNetworkBase>(model, score, op);
         }
 
         void cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) override {
             return cache_scores<ConditionalBayesianNetworkBase>(model, score);
         }
-        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model) override {
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model) const override {
             return find_max<ConditionalBayesianNetworkBase>(model);
         }
-        std::shared_ptr<Operator> find_max(ConditionalBayesianNetworkBase& model, OperatorTabuSet& tabu_set) override {
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override {
             return find_max<ConditionalBayesianNetworkBase>(model, tabu_set);
         }
-        void update_scores(ConditionalBayesianNetworkBase& model, Score& score, Operator& op) override {
+        void update_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const Operator& op) override {
             return update_scores<ConditionalBayesianNetworkBase>(model, score, op);
         }
 
         template<typename M>
         void cache_scores(const M& model, const Score& score);
         template<typename M>
-        std::shared_ptr<Operator> find_max(M& model);
+        std::shared_ptr<Operator> find_max(const M& model) const;
         template<typename M>
-        std::shared_ptr<Operator> find_max(M& model, OperatorTabuSet& tabu_set);
+        std::shared_ptr<Operator> find_max(const M& model, const OperatorTabuSet& tabu_set) const;
         template<typename M>
-        void update_scores(M& model, Score& score, Operator& op);
+        void update_scores(const M& model, const Score& score, const Operator& op);
 
                
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
@@ -992,7 +994,7 @@ namespace learning::operators {
     }
 
     template<typename M>
-    std::shared_ptr<Operator> OperatorPool::find_max(M& model) {
+    std::shared_ptr<Operator> OperatorPool::find_max(const M& model) const {
         raise_uninitialized();
 
         double max_delta = std::numeric_limits<double>::lowest();
@@ -1010,7 +1012,7 @@ namespace learning::operators {
     }
 
     template<typename M>
-    std::shared_ptr<Operator> OperatorPool::find_max(M& model, OperatorTabuSet& tabu_set) {
+    std::shared_ptr<Operator> OperatorPool::find_max(const M& model, const OperatorTabuSet& tabu_set) const {
         raise_uninitialized();
 
         if (tabu_set.empty())
@@ -1031,7 +1033,7 @@ namespace learning::operators {
     }
 
     template<typename M>
-    void OperatorPool::update_scores(M& model, Score& score, Operator& op) {
+    void OperatorPool::update_scores(const M& model, const Score& score, const Operator& op) {
         raise_uninitialized();
 
         m_local_cache->update_local_score(model, score, op);

@@ -83,6 +83,16 @@ namespace learning::scores {
         ScoreType type() const override {
             return ScoreType::HOLDOUT_LIKELIHOOD;
         }
+        
+        bool compatible_bn(const BayesianNetworkBase& model) const override{
+            return m_holdout.training_data().num_columns() == model.num_nodes() &&
+                   m_holdout.training_data().has_columns(model.nodes());
+        }
+
+        bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
+            return m_holdout.training_data().num_columns() == model.num_total_nodes() &&
+                   m_holdout.training_data().has_columns(model.all_nodes());
+        }
     private:
         HoldOut m_holdout;
     };

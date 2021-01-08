@@ -89,13 +89,24 @@ namespace dataset {
         }
 
         template<typename Index, enable_if_index_t<Index, int> = 0>
-        void has_column(const Index& index) const {
+        bool has_column(const Index& index) const {
             check_temporal_slice(index);
 
             if constexpr (util::is_stringable_v<typename Index::variable_type>) {
-                m_temporal_slices[index.temporal_slice].has_column(index.temporal_name());
+                return m_temporal_slices[index.temporal_slice].has_column(index.temporal_name());
             } else {
-                m_temporal_slices[index.temporal_slice].has_column(index.variable);
+                return m_temporal_slices[index.temporal_slice].has_column(index.variable);
+            }
+        }
+
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        void raise_has_column(const Index& index) const {
+            check_temporal_slice(index);
+
+            if constexpr (util::is_stringable_v<typename Index::variable_type>) {
+                m_temporal_slices[index.temporal_slice].raise_has_column(index.temporal_name());
+            } else {
+                m_temporal_slices[index.temporal_slice].raise_has_column(index.variable);
             }
         }
 

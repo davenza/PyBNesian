@@ -963,6 +963,7 @@ namespace graph {
         }
 
         bool has_path_unsafe(int source, int target) const;
+        bool has_path_unsafe_no_direct_arc(int source, int target) const;
 
         py::tuple __getstate__() const {
             return graph::__getstate__(*this);
@@ -1004,13 +1005,13 @@ namespace graph {
         bool can_add_arc_unsafe(int source, int target) const;
 
         template<typename V>
-        bool can_flip_arc(const V& source, const V& target) {
+        bool can_flip_arc(const V& source, const V& target) const {
             auto s = this->check_index(source);
             auto t = this->check_index(target);
             return can_flip_arc_unsafe(s, t);
         }
 
-        bool can_flip_arc_unsafe(int source, int target);
+        bool can_flip_arc_unsafe(int source, int target) const;
 
         template<typename V>
         void add_arc(const V& source, const V& target) {

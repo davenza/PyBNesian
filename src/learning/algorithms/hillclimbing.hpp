@@ -69,7 +69,6 @@ namespace learning::algorithms {
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op_set.find_max(*current_model);
-
             if (!best_op || best_op->delta() <= epsilon) {
                 break;
             }

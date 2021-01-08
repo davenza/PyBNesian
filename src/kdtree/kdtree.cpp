@@ -57,7 +57,7 @@ namespace kdtree {
             throw std::invalid_argument("\"k\" value equal or greater to training data size.");
         }
 
-        test_df.has_columns(m_column_names);
+        test_df.raise_has_columns(m_column_names);
 
         if (test_df.same_type(m_column_names) != m_datatype) {
             throw std::invalid_argument("Test data type is different from training data types.");

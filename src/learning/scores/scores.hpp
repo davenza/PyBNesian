@@ -1,11 +1,13 @@
 #ifndef PYBNESIAN_LEARNING_SCORES_SCORES_HPP
 #define PYBNESIAN_LEARNING_SCORES_SCORES_HPP
 
+#include <models/ConditionalBayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
 #include <dataset/dynamic_dataset.hpp>
 
 using models::BayesianNetworkBase, models::GaussianNetwork, models::SemiparametricBN;
+using models::ConditionalBayesianNetworkBase;
 using dataset::DynamicDataFrame, dataset::DynamicAdaptator;
 
 namespace learning::scores {
@@ -70,6 +72,15 @@ namespace learning::scores {
             return s;
         }
 
+        virtual double score(const ConditionalBayesianNetworkBase& model) const {
+            double s = 0;
+            for (auto node = 0; node < model.num_nodes(); ++node) {
+                s += local_score(model, model.index_from_collapsed(node));
+            }
+
+            return s;
+        }
+
         virtual double local_score(const BayesianNetworkBase&, int) const = 0;
         virtual double local_score(const BayesianNetworkBase&, const std::string&) const = 0;
         virtual double local_score(const BayesianNetworkBase&, int,
@@ -82,6 +93,8 @@ namespace learning::scores {
         virtual std::string ToString() const = 0;
         virtual bool is_decomposable() const = 0;
         virtual ScoreType type() const = 0;
+        virtual bool compatible_bn(const BayesianNetworkBase& model) const = 0;
+        virtual bool compatible_bn(const ConditionalBayesianNetworkBase& model) const = 0;
     };
 
     class ScoreSPBN : public Score {

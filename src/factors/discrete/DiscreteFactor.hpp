@@ -173,7 +173,8 @@ namespace factors::discrete {
     };
 
     template<typename ArrowType>
-    Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values, 
+    Array_ptr DiscreteFactor::sample_indices(int n, 
+                                             const DataFrame& evidence_values, 
                                              unsigned int seed) const {
 
         int parent_configurations = m_logprob.rows() / m_variable_values.size();
@@ -196,11 +197,8 @@ namespace factors::discrete {
         RAISE_STATUS_ERROR(builder.Resize(n));
 
         if (!m_evidence.empty()) {
-            try {
-                evidence_values.has_columns(m_evidence);
-            } catch (const std::domain_error& ex) {
-                throw std::domain_error(std::string("Evidence values not present for sampling:\n") + ex.what());
-            }
+            if (!evidence_values.has_columns(m_evidence))
+                throw std::domain_error("Evidence values not present for sampling.");
 
             VectorXi parent_offset = VectorXi::Zero(n);
             for (size_t i = 0; i < m_evidence.size(); ++i) {

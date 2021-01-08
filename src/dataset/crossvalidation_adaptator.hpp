@@ -278,7 +278,6 @@ namespace dataset {
         template<typename ...Args>
         CrossValidation loc(const Args&... args) const  { return CrossValidation(m_df.loc(args...), prop); }
 
-
         class cv_iterator_indices {
         public:
             using difference_type = std::iterator_traits<std::vector<int>::iterator>;

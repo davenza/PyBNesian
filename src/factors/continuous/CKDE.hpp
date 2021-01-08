@@ -955,11 +955,8 @@ namespace factors::continuous {
         using VectorType = Matrix<CType, Dynamic, 1>;
         using MatrixType = Matrix<CType, Dynamic, Dynamic>;
 
-        try {
-            evidence_values.has_columns(m_evidence);
-        } catch (const std::domain_error& ex) {
-            throw std::domain_error(std::string("Evidence values not present for sampling:\n") + ex.what());
-        }
+        if (!evidence_values.has_columns(m_evidence))
+            throw std::domain_error("Evidence values not present for sampling.");
 
         VectorType random_prob(n);
         std::mt19937 rng{seed};

@@ -1,5 +1,6 @@
 #include <graph/generic_graph.hpp>
 #include <boost/dynamic_bitset.hpp>
+#include <util/vector.hpp>
 
 using boost::dynamic_bitset;
 
@@ -243,6 +244,30 @@ namespace graph {
         }
     }
 
+    // Checks if there is a path between source and target without taking into account the possible arc source -> target.
+    bool DirectedGraph::has_path_unsafe_no_direct_arc(int source, int target) const {
+        const auto& children = m_nodes[source].children();
+        std::vector<int> stack {children.begin(), children.end()};
+
+        if (has_arc_unsafe(source, target))
+            util::swap_remove_v(stack, target);
+
+        while (!stack.empty()) {
+            auto v = stack.back();
+            stack.pop_back();
+
+            const auto& children = m_nodes[v].children();
+    
+            if (children.find(target) != children.end())
+                return true;
+            
+            stack.insert(stack.end(), children.begin(), children.end());
+        }
+
+        return false;
+    }
+
+
     std::vector<std::string> Dag::topological_sort() const {
         std::vector<int> incoming_edges;
         incoming_edges.reserve(m_nodes.size());
@@ -293,14 +318,12 @@ namespace graph {
     }
     
     //  This method should be const, but it has to remove and re-add an arc to check.
-    bool Dag::can_flip_arc_unsafe(int source, int target) {
+    bool Dag::can_flip_arc_unsafe(int source, int target) const {
         if (has_arc_unsafe(source, target)) {
             if (num_parents_unsafe(target) == 1 || num_children_unsafe(source) == 1)
                 return true;
 
-            remove_arc_unsafe(source, target);
-            bool thereis_path = has_path_unsafe(source, target);
-            add_arc_unsafe(source, target);
+            bool thereis_path = has_path_unsafe_no_direct_arc(source, target);
             if (thereis_path) {
                 return false;
             } else {

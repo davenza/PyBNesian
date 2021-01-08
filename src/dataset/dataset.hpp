@@ -649,17 +649,35 @@ namespace dataset {
         }
 
         template<typename Index, enable_if_index_t<Index, int> = 0>
-        void has_columns(const Index& index) const { derived().has_column(index); }
+        bool has_columns(const Index& index) const { return derived().has_column(index); }
         template<typename T, enable_if_index_container_t<T, int> = 0>
-        void has_columns(const T& cols) const { has_columns(cols.begin(), cols.end()); }
+        bool has_columns(const T& cols) const { return has_columns(cols.begin(), cols.end()); }
         template<typename V>
-        void has_columns(const std::initializer_list<V>& cols) const { has_columns(cols.begin(), cols.end()); }
+        bool has_columns(const std::initializer_list<V>& cols) const { return has_columns(cols.begin(), cols.end()); }
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
-        void has_columns(const IndexIter& begin, const IndexIter& end) const;
+        bool has_columns(const IndexIter& begin, const IndexIter& end) const;
         template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
-        void has_columns(const std::pair<IndexIter, IndexIter>& tuple) const { has_columns(tuple.first, tuple.second); }
+        bool has_columns(const std::pair<IndexIter, IndexIter>& tuple) const { return has_columns(tuple.first, tuple.second); }
         template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
-        void has_columns(const Args&... args) const;
+        bool has_columns(const Args&... args) const;
+
+        
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        void raise_has_columns(const Index& index) const { return derived().raise_has_column(index); }
+        template<typename T, enable_if_index_container_t<T, int> = 0>
+        void raise_has_columns(const T& cols) const { return raise_has_columns(cols.begin(), cols.end()); }
+        template<typename V>
+        void raise_has_columns(const std::initializer_list<V>& cols) const { 
+            return raise_has_columns(cols.begin(), cols.end());
+        }
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        void raise_has_columns(const IndexIter& begin, const IndexIter& end) const;
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        void raise_has_columns(const std::pair<IndexIter, IndexIter>& tuple) const { 
+            return raise_has_columns(tuple.first, tuple.second);
+        }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        void raise_has_columns(const Args&... args) const;
 
         template<typename Index, enable_if_index_t<Index, int> = 0>
         loc_return loc(const Index& index) const;
@@ -1235,16 +1253,33 @@ namespace dataset {
 
     template<typename Derived>
     template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
-    void DataFrameBase<Derived>::has_columns(const IndexIter& begin, const IndexIter& end) const {
+    bool DataFrameBase<Derived>::has_columns(const IndexIter& begin, const IndexIter& end) const {
         for(auto it = begin; it != end; ++it) {
-            derived().has_column(*it);
+            if (!derived().has_column(*it))
+                return false;
+        }
+
+        return true;
+    }
+
+    template<typename Derived>
+    template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+    void DataFrameBase<Derived>::raise_has_columns(const IndexIter& begin, const IndexIter& end) const {
+        for(auto it = begin; it != end; ++it) {
+            derived().raise_has_column(*it);
         }
     }
 
     template<typename Derived>
     template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int>>
-    void DataFrameBase<Derived>::has_columns(const Args&... args) const {
-        (has_columns(args),...);
+    bool DataFrameBase<Derived>::has_columns(const Args&... args) const {
+        return (has_columns(args) && ...);
+    }
+
+    template<typename Derived>
+    template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int>>
+    void DataFrameBase<Derived>::raise_has_columns(const Args&... args) const {
+        return (raise_has_columns(args), ...);
     }
 
     template<typename Derived>
@@ -1394,17 +1429,35 @@ namespace dataset {
             return m_batch->num_columns();
         }
 
-        void has_column(int index) const { 
+        bool has_column(int index) const {
             if (index < 0 || index >= m_batch->num_columns()) {
+                return false;
+            }
+
+            return true;
+        }
+
+        void raise_has_column(int index) const {
+            if (!has_column(index)) {
                 throw std::domain_error("Index " + std::to_string(index) + 
                                         " do no exist for DataFrame with " + std::to_string(m_batch->num_columns()) + " columns.");
+
             }
         }
 
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
-        void has_column(const StringType& name) const { 
+        bool has_column(const StringType& name) const {
             auto a = m_batch->GetColumnByName(name);
             if (!a) {
+                return false;
+            }
+
+            return true;
+        }
+
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        void raise_has_column(const StringType& name) const {
+            if (!has_column(name)) {
                 throw std::domain_error("Column \"" + name + "\" not found in DataFrame");
             }
         }

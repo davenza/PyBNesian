@@ -111,8 +111,8 @@ namespace models {
         virtual void flip_arc(const std::string& source, const std::string& dest) = 0;
         virtual bool can_add_arc(int source_index, int dest_index) const = 0;
         virtual bool can_add_arc(const std::string& source, const std::string& dest) const = 0;
-        virtual bool can_flip_arc(int source_index, int dest_index) = 0;
-        virtual bool can_flip_arc(const std::string& source, const std::string& dest) = 0;
+        virtual bool can_flip_arc(int source_index, int dest_index) const = 0;
+        virtual bool can_flip_arc(const std::string& source, const std::string& dest) const = 0;
         void check_blacklist(const ArcStringVector& arc_blacklist) const {
             for(const auto& arc : arc_blacklist) {
                 if (has_arc(arc.first, arc.second)) {
@@ -337,11 +337,11 @@ namespace models {
             return g.can_add_arc(source, target);
         }
 
-        bool can_flip_arc(int source_index, int target_index) override {
+        bool can_flip_arc(int source_index, int target_index) const override {
             return g.can_flip_arc(source_index, target_index);
         }
 
-        bool can_flip_arc(const std::string& source, const std::string& target) override {
+        bool can_flip_arc(const std::string& source, const std::string& target) const override {
             return g.can_flip_arc(source, target);
         }
 

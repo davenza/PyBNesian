@@ -298,11 +298,8 @@ namespace factors::continuous {
         RAISE_STATUS_ERROR(builder.Finish(&out));
 
         if (!m_evidence.empty()) {
-            try {
-                evidence_values.has_columns(m_evidence);
-            } catch (const std::domain_error& ex) {
-                throw std::domain_error(std::string("Evidence values not present for sampling:\n") + ex.what());
-            }
+            if (!evidence_values.has_columns(m_evidence))
+                throw std::domain_error("Evidence values not present for sampling.");
 
             auto out_values = reinterpret_cast<double*>(out->values()->mutable_data());
             for (size_t j = 0; j < m_evidence.size(); ++j) {

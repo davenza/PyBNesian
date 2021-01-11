@@ -152,7 +152,6 @@ namespace dataset {
 
     Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end) {
         if (null_count(begin, end) > 0) {
-
             Array_iterator first_null_col = end;
 
             for(auto it = begin; it < end; ++it) {
@@ -165,7 +164,7 @@ namespace dataset {
             auto res = Buffer::Copy((*first_null_col)->null_bitmap(), arrow::default_cpu_memory_manager());
             auto bitmap = std::move(res).ValueOrDie();
 
-            for(auto it = first_null_col + 1; it < end; ++it) {
+            for(auto it = ++first_null_col; it < end; ++it) {
                 auto col = *it;
                 if (col->null_count()) {
                     auto other_bitmap = col->null_bitmap();

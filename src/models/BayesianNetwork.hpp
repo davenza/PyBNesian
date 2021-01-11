@@ -71,7 +71,7 @@ namespace models {
         virtual ~BayesianNetworkBase() = default;
         virtual int num_nodes() const = 0;
         virtual int num_arcs() const = 0;
-        virtual std::vector<std::string> nodes() const = 0;
+        virtual const std::vector<std::string>& nodes() const = 0;
         virtual ArcStringVector arcs() const = 0;
         virtual const std::unordered_map<std::string, int>& indices() const = 0;
         virtual int index(const std::string& node) const = 0;
@@ -171,7 +171,7 @@ namespace models {
             return g.num_arcs();
         }
 
-        std::vector<std::string> nodes() const override {
+        const std::vector<std::string>& nodes() const override {
             return g.nodes();
         }
 
@@ -188,15 +188,15 @@ namespace models {
         }
 
         int collapsed_index(const std::string& node) const override {
-            return index(node);
+            return g.collapsed_index(node);
         }
 
         int index_from_collapsed(int collapsed_index) const override {
-            return collapsed_index;
+            return g.index_from_collapsed(collapsed_index);
         }
 
         int collapsed_from_index(int index) const override {
-            return index;
+            return g.collapsed_from_index(index);
         }
 
         bool is_valid(int idx) const override {
@@ -230,7 +230,7 @@ namespace models {
         }
 
         const std::string& collapsed_name(int collapsed_index) const override {
-            return g.name(collapsed_index);
+            return g.collapsed_name(collapsed_index);
         }
 
         int num_parents(int node_index) const override {

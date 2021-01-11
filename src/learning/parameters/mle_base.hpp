@@ -10,11 +10,9 @@ namespace learning::parameters {
     template<typename CPD>
     class MLE {
     public:
-        template<typename VarType, typename EvidenceIter>
         typename CPD::ParamsClass estimate(const DataFrame& df, 
-                                           const VarType& variable,
-                                           const EvidenceIter& evidence_begin,
-                                           const EvidenceIter& evidence_end);
+                                           const std::string& variable,
+                                           const std::vector<std::string>& evidence);
     };
 }
 

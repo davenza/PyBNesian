@@ -7,7 +7,7 @@
 #include <util/math_constants.hpp>
 #include <util/arrow_macros.hpp>
 #include <Eigen/Dense>
-#include <learning/parameters/mle_LinearGaussianCPD.hpp>
+#include <learning/parameters/mle_base.hpp>
 #include <boost/math/distributions/normal.hpp>
 
 #include <iostream>
@@ -60,7 +60,7 @@ namespace factors::continuous {
     void LinearGaussianCPD::fit(const DataFrame& df) {
         MLE<LinearGaussianCPD> mle;
 
-        auto params = mle.estimate(df, m_variable, m_evidence.begin(), m_evidence.end());
+        auto params = mle.estimate(df, m_variable, m_evidence);
         
         m_beta = params.beta;
         m_variance = params.variance;
@@ -338,7 +338,7 @@ namespace factors::continuous {
 
     std::string LinearGaussianCPD::ToString() const {
         std::stringstream stream;
-        stream << std::setprecision(3);
+        stream << std::fixed << std::setprecision(3);
         if (!m_evidence.empty()) {
             stream << "[LinearGaussianCPD] P(" << m_variable << " | " << m_evidence[0];
             for (size_t i = 1; i < m_evidence.size(); ++i) {

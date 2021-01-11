@@ -18,54 +18,31 @@ namespace learning::scores {
         HoldoutLikelihood(const DataFrame& df, double test_ratio, unsigned int seed) : m_holdout(df, test_ratio, seed) { }
 
         double local_score(const BayesianNetworkBase& model, int variable) const override {
-            return local_score<>(model, variable);
+            return local_score(model, model.name(variable));
         }
 
         double local_score(const BayesianNetworkBase& model, const std::string& variable) const override {
-            return local_score<>(model, variable);
+            auto parents = model.parents(variable);
+            return local_score(model, variable, parents);
         }
 
-        double local_score(const BayesianNetworkBase& model, int variable,
-                            const typename std::vector<int>::const_iterator evidence_begin, 
-                            const typename std::vector<int>::const_iterator evidence_end) const override {
-            return local_score<>(model, variable, evidence_begin, evidence_end);
+        double local_score(const BayesianNetworkBase& model, int variable, const std::vector<int>& evidence) const override {
+            std::vector<std::string> evidence_str;
+            for (auto ev : evidence) {
+                evidence_str.push_back(model.name(ev));
+            }
+
+            return local_score(model, model.name(variable), evidence_str);
         }
 
-        double local_score(const BayesianNetworkBase& model, const std::string& variable,
-                            const typename std::vector<std::string>::const_iterator evidence_begin, 
-                            const typename std::vector<std::string>::const_iterator evidence_end) const override {
-            return local_score<>(model, variable, evidence_begin, evidence_end);
-        }
-
-        template<typename VarType>
-        double local_score(const BayesianNetworkBase& model, const VarType& variable) const {
-            auto parents = model.parent_indices(variable);
-            return local_score(model, variable, parents.begin(), parents.end());
-        }
-        
-        template<typename VarType, typename EvidenceIter>
         double local_score(const BayesianNetworkBase& model,
-                           const VarType& variable, 
-                           const EvidenceIter evidence_begin, 
-                           const EvidenceIter evidence_end) const;
+                           const std::string& variable,
+                           const std::vector<std::string>& evidence) const override;
 
-        double local_score(FactorType variable_type, int variable, 
-                            const typename std::vector<int>::const_iterator evidence_begin, 
-                            const typename std::vector<int>::const_iterator evidence_end) const override {
-            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
-        }
+        double local_score(FactorType variable_type,
+                           const std::string& variable,
+                           const std::vector<std::string>& evidence) const override;
 
-        double local_score(FactorType variable_type, const std::string& variable, 
-                            const typename std::vector<std::string>::const_iterator evidence_begin, 
-                            const typename std::vector<std::string>::const_iterator evidence_end) const override {
-            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
-        }
-
-        template<typename VarType, typename EvidenceIter>
-        double local_score(FactorType variable_type, 
-                           const VarType& variable, 
-                           const EvidenceIter evidence_begin, 
-                           const EvidenceIter evidence_end) const;
 
         const DataFrame& training_data() const { return m_holdout.training_data(); }
         const DataFrame& test_data() const { return m_holdout.test_data(); }
@@ -85,57 +62,55 @@ namespace learning::scores {
         }
         
         bool compatible_bn(const BayesianNetworkBase& model) const override{
-            return m_holdout.training_data().num_columns() == model.num_nodes() &&
-                   m_holdout.training_data().has_columns(model.nodes());
+            return m_holdout.training_data().has_columns(model.nodes());
         }
 
         bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
-            return m_holdout.training_data().num_columns() == model.num_total_nodes() &&
-                   m_holdout.training_data().has_columns(model.all_nodes());
+            return m_holdout.training_data().has_columns(model.all_nodes());
         }
     private:
         HoldOut m_holdout;
     };
 
-    template<typename VarType, typename EvidenceIter>
-    double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,
-                                          const VarType& variable, 
-                                          const EvidenceIter evidence_begin, 
-                                          const EvidenceIter evidence_end) const {
-        switch (model.type()) {
-            case BayesianNetworkType::GBN: {
-                LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
-                cpd.fit(training_data());
-                return cpd.slogl(test_data());
-            }
-            case BayesianNetworkType::SPBN: {
-                const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-                FactorType variable_type = spbn.node_type(variable);
-                return local_score(variable_type, variable, evidence_begin, evidence_end);   
-            }
-            default:
-                throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
-                                                + " not valid for score HoldoutLikelihood");
-        }
+    // template<typename VarType, typename EvidenceIter>
+    // double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,
+    //                                       const VarType& variable, 
+    //                                       const EvidenceIter evidence_begin, 
+    //                                       const EvidenceIter evidence_end) const {
+    //     switch (model.type()) {
+    //         case BayesianNetworkType::GBN: {
+    //             LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
+    //             cpd.fit(training_data());
+    //             return cpd.slogl(test_data());
+    //         }
+    //         case BayesianNetworkType::SPBN: {
+    //             const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
+    //             FactorType variable_type = spbn.node_type(variable);
+    //             return local_score(variable_type, variable, evidence_begin, evidence_end);   
+    //         }
+    //         default:
+    //             throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
+    //                                             + " not valid for score HoldoutLikelihood");
+    //     }
         
 
-    }
+    // }
 
-    template<typename VarType, typename EvidenceIter>
-    double HoldoutLikelihood::local_score(FactorType variable_type,
-                                          const VarType& variable,
-                                          const EvidenceIter evidence_begin, 
-                                          const EvidenceIter evidence_end) const {
-        if (variable_type == FactorType::LinearGaussianCPD) {
-            LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
-            cpd.fit(training_data());
-            return cpd.slogl(test_data());
-        } else {
-            CKDE cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
-            cpd.fit(training_data());
-            return cpd.slogl(test_data());
-        }
-    }
+    // template<typename VarType, typename EvidenceIter>
+    // double HoldoutLikelihood::local_score(FactorType variable_type,
+    //                                       const VarType& variable,
+    //                                       const EvidenceIter evidence_begin, 
+    //                                       const EvidenceIter evidence_end) const {
+    //     if (variable_type == FactorType::LinearGaussianCPD) {
+    //         LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
+    //         cpd.fit(training_data());
+    //         return cpd.slogl(test_data());
+    //     } else {
+    //         CKDE cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
+    //         cpd.fit(training_data());
+    //         return cpd.slogl(test_data());
+    //     }
+    // }
 
     using DynamicHoldoutLikelihood = DynamicScoreAdaptator<HoldoutLikelihood>;
 }

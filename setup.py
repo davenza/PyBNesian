@@ -81,12 +81,17 @@ ext_modules = [
          'src/learning/independences/independences.cpp',
          'src/learning/independences/continuous/linearcorrelation.cpp',
          'src/learning/independences/continuous/mutual_information.cpp',
+         'src/learning/parameters/mle_LinearGaussianCPD.cpp',
+         'src/learning/parameters/mle_DiscreteFactor.cpp',
+         'src/learning/scores/bic.cpp',
+         'src/learning/scores/cv_likelihood.cpp',
+         'src/learning/scores/holdout_likelihood.cpp',
          'src/graph/generic_graph.cpp',
          'src/models/BayesianNetwork.cpp',
          'src/models/ConditionalBayesianNetwork.cpp',
          'src/models/DynamicBayesianNetwork.cpp',
          'src/models/SemiparametricBN.cpp',
-         'src/opencl/opencl_config.cpp',
+         'src/opencl/opencl_config.cpp'
          ],
         include_dirs=[
         #     # Path to pybind11 headers

@@ -65,17 +65,8 @@ namespace learning::scores {
         virtual ~Score() {}
         virtual double score(const BayesianNetworkBase& model) const {
             double s = 0;
-            for (auto node = 0; node < model.num_nodes(); ++node) {
+            for (const auto& node : model.nodes()) {
                 s += local_score(model, node);
-            }
-
-            return s;
-        }
-
-        virtual double score(const ConditionalBayesianNetworkBase& model) const {
-            double s = 0;
-            for (auto node = 0; node < model.num_nodes(); ++node) {
-                s += local_score(model, model.index_from_collapsed(node));
             }
 
             return s;
@@ -83,12 +74,8 @@ namespace learning::scores {
 
         virtual double local_score(const BayesianNetworkBase&, int) const = 0;
         virtual double local_score(const BayesianNetworkBase&, const std::string&) const = 0;
-        virtual double local_score(const BayesianNetworkBase&, int,
-                                    const typename std::vector<int>::const_iterator, 
-                                    const typename std::vector<int>::const_iterator) const = 0;
-        virtual double local_score(const BayesianNetworkBase&, const std::string&,
-                                    const typename std::vector<std::string>::const_iterator, 
-                                    const typename std::vector<std::string>::const_iterator) const = 0;
+        virtual double local_score(const BayesianNetworkBase&, int, const std::vector<int>&) const = 0;
+        virtual double local_score(const BayesianNetworkBase&, const std::string&, const std::vector<std::string>&) const = 0;
 
         virtual std::string ToString() const = 0;
         virtual bool is_decomposable() const = 0;
@@ -101,12 +88,10 @@ namespace learning::scores {
     public:
         using Score::local_score;
         virtual ~ScoreSPBN() {}
-        virtual double local_score(FactorType variable_type, int variable, 
-                                   const typename std::vector<int>::const_iterator evidence_begin, 
-                                   const typename std::vector<int>::const_iterator evidence_end) const = 0;
-        virtual double local_score(FactorType variable_type, const std::string& variable, 
-                                   const typename std::vector<std::string>::const_iterator evidence_begin, 
-                                   const typename std::vector<std::string>::const_iterator evidence_end) const = 0;
+        // virtual double local_score(FactorType variable_type, int variable, const std::vector<int>& evidence) const = 0;
+        virtual double local_score(FactorType variable_type,
+                                   const std::string& variable,
+                                   const std::vector<std::string>& evidence) const = 0;
     };
 
     class DynamicScore {

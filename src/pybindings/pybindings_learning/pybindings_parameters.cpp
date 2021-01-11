@@ -23,9 +23,6 @@ void pybindings_parameters(py::module& root) {
 
     py::class_<MLE<LinearGaussianCPD>>(parameters, "MLE<LinearGaussianCPD>")
         .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, std::string var, std::vector<std::string> evidence) {
-            return self.estimate(df, var, evidence.begin(), evidence.end());
-        }, py::return_value_policy::take_ownership)
-        .def("estimate", [](MLE<LinearGaussianCPD> self, const DataFrame& df, int idx, std::vector<int> evidence_idx) {
-            return self.estimate(df, idx, evidence_idx.begin(), evidence_idx.end());
+            return self.estimate(df, var, evidence);
         }, py::return_value_policy::take_ownership);
 }

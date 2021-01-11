@@ -5,7 +5,6 @@ namespace util {
     bool bic_compatible(const BayesianNetworkBase& bn) {
         switch(bn.type()) {
             case BayesianNetworkType::GBN:
-                return true;
             case BayesianNetworkType::DISCRETEBN:
                 return true;
             default:
@@ -16,9 +15,7 @@ namespace util {
     bool cvl_compatible(const BayesianNetworkBase& bn) {
         switch(bn.type()) {
             case BayesianNetworkType::GBN:
-                return true;
             case BayesianNetworkType::SPBN:
-                return true;
             case BayesianNetworkType::DISCRETEBN:
                 return true;
             default:
@@ -29,9 +26,7 @@ namespace util {
     bool holdout_compatible(const BayesianNetworkBase& bn) {
         switch(bn.type()) {
             case BayesianNetworkType::GBN:
-                return true;
             case BayesianNetworkType::SPBN:
-                return true;
             case BayesianNetworkType::DISCRETEBN:
                 return true;
             default:

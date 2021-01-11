@@ -1,5 +1,5 @@
 #include <factors/discrete/DiscreteFactor.hpp>
-#include <learning/parameters/mle.hpp>
+#include <learning/parameters/mle_base.hpp>
 #include <util/math_constants.hpp>
 #include <fort.hpp>
 
@@ -48,11 +48,22 @@ namespace factors::discrete {
         }
     }
 
+    VectorXi discrete_indices(const DataFrame& df, 
+                              const std::string& variable, 
+                              const std::vector<std::string>& evidence,
+                              const VectorXi& strides) {
+        if (df.null_count(variable, evidence) == 0)
+            return discrete_indices<false>(df, variable, evidence, strides);
+        else
+            return discrete_indices<true>(df, variable, evidence, strides);
+    }
+
+
     void DiscreteFactor::fit(const DataFrame& df) {
         
         MLE<DiscreteFactor> mle;
 
-        auto params = mle.estimate(df, m_variable, m_evidence.begin(), m_evidence.end());
+        auto params = mle.estimate(df, m_variable, m_evidence);
 
         m_logprob = params.logprob;
         m_cardinality = params.cardinality;

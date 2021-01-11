@@ -15,9 +15,13 @@ namespace models {
         virtual ~ConditionalBayesianNetworkBase() = default;
         virtual int num_interface_nodes() const = 0;
         virtual int num_total_nodes() const = 0;
-        virtual std::vector<std::string> interface_nodes() const = 0;
-        virtual std::vector<std::string> all_nodes() const = 0;
+        virtual const std::vector<std::string>& interface_nodes() const = 0;
+        virtual const std::vector<std::string>& all_nodes() const = 0;
         virtual const std::unordered_map<std::string, int>& interface_indices() const = 0;
+        virtual int joint_collapsed_index(const std::string& name) const = 0;
+        virtual int index_from_joint_collapsed(int joint_collapsed_index) const = 0;
+        virtual int joint_collapsed_from_index(int index) const = 0;
+        virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
         virtual bool contains_interface_node(const std::string& name) const = 0;
         virtual bool contains_all_node(const std::string& name) const = 0;
         virtual size_t add_interface_node(const std::string& node) = 0;
@@ -145,15 +149,15 @@ namespace models {
             return g.num_arcs();
         }
 
-        std::vector<std::string> nodes() const override {
+        const std::vector<std::string>& nodes() const override {
             return m_nodes;
         }
 
-        std::vector<std::string> interface_nodes() const override {
+        const std::vector<std::string>& interface_nodes() const override {
             return m_interface_nodes;
         }
 
-        std::vector<std::string> all_nodes() const override {
+        const std::vector<std::string>& all_nodes() const override {
             return g.nodes();
         }
     
@@ -177,17 +181,34 @@ namespace models {
             return m_cpds_indices.at(name);
         }
 
+        int joint_collapsed_index(const std::string& name) const override {
+            return g.collapsed_index(name);
+        }
+
         int index_from_collapsed(int collapsed_index) const override {
             if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
-                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + ")."
-                                            " It must be a number between 0 and " + std::to_string(num_nodes() - 1) + " ");
+                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
+                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
             }
 
             return g.index(m_nodes[collapsed_index]);
         }
 
+        int index_from_joint_collapsed(int joint_collapsed_index) const override {
+            if (joint_collapsed_index < 0 || joint_collapsed_index >= num_total_nodes()) {
+                throw std::invalid_argument("Wrong joint collapsed index (" + std::to_string(joint_collapsed_index) + 
+                                            ") for a graph with a total of " + std::to_string(num_total_nodes()) + " nodes");
+            }
+
+            return g.index_from_collapsed(joint_collapsed_index);
+        }
+
         int collapsed_from_index(int index) const override {
             return m_cpds_indices.at(name(index));
+        }
+
+        int joint_collapsed_from_index(int index) const override {
+            return g.collapsed_from_index(index);
         }
 
         bool is_valid(int idx) const override {
@@ -212,7 +233,7 @@ namespace models {
             m_cpds_indices.insert({node, m_nodes.size()-1});
             m_indices.insert({node, new_index});
 
-            if (m_nodes.size() >= m_cpds.size())
+            if (!m_cpds.empty() && m_nodes.size() >= m_cpds.size())
                 m_cpds.resize(m_nodes.size());
             return new_index;
         }
@@ -282,6 +303,15 @@ namespace models {
             }
 
             return m_nodes[collapsed_index];
+        }
+
+        const std::string& joint_collapsed_name(int joint_collapsed_index) const override {
+            if (joint_collapsed_index < 0 || joint_collapsed_index >= num_total_nodes()) {
+                throw std::invalid_argument("Wrong joint collapsed index (" + std::to_string(joint_collapsed_index) + 
+                                            ") for a graph with a total of " + std::to_string(num_total_nodes()) + " nodes");
+            }
+
+            return g.collapsed_name(joint_collapsed_index);
         }
         
         int num_parents(int node_index) const override {

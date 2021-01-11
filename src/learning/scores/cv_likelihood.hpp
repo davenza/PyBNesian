@@ -18,48 +18,44 @@ namespace learning::scores {
         CVLikelihood(const DataFrame& df, int k, unsigned int seed) : m_cv(df, k, seed) {}
 
         double local_score(const BayesianNetworkBase& model, int variable) const override {
-            return local_score<>(model, variable);
+            return local_score(model, model.name(variable));
         }
 
         double local_score(const BayesianNetworkBase& model, const std::string& variable) const override {
-            return local_score<>(model, variable);
+            auto parents = model.parents(variable);
+            return local_score(model, variable, parents);
         }
 
-        double local_score(const BayesianNetworkBase& model, int variable,
-                            const typename std::vector<int>::const_iterator evidence_begin, 
-                            const typename std::vector<int>::const_iterator evidence_end) const override {
-            return local_score<>(model, variable, evidence_begin, evidence_end);
+        double local_score(const BayesianNetworkBase& model,
+                           int variable,
+                           const std::vector<int>& evidence) const override {
+            std::vector<std::string> evidence_str;
+            for (auto ev : evidence) {
+                evidence_str.push_back(model.name(ev));
+            }
+
+            return local_score(model, model.name(variable), evidence_str);
         }
 
-        double local_score(const BayesianNetworkBase& model, const std::string& variable,
-                            const typename std::vector<std::string>::const_iterator evidence_begin, 
-                            const typename std::vector<std::string>::const_iterator evidence_end) const override {
-            return local_score<>(model, variable, evidence_begin, evidence_end);
-        }
+        double local_score(const BayesianNetworkBase& model,
+                           const std::string& variable,
+                           const std::vector<std::string>& evidence) const override;
 
-        template<typename VarType>
-        double local_score(const BayesianNetworkBase& model, const VarType& variable) const {
-            auto parents = model.parent_indices(variable);
-            return local_score(model, variable, parents.begin(), parents.end());
-        }
+        // template<typename VarType>
+        // double local_score(const BayesianNetworkBase& model, const VarType& variable) const {
+        //     auto parents = model.parent_indices(variable);
+        //     return local_score(model, variable, parents.begin(), parents.end());
+        // }
         
-        template<typename VarType, typename EvidenceIter>
-        double local_score(const BayesianNetworkBase& model, 
-                           const VarType& variable, 
-                           const EvidenceIter evidence_begin, 
-                           const EvidenceIter evidence_end) const;
+        // template<typename VarType, typename EvidenceIter>
+        // double local_score(const BayesianNetworkBase& model, 
+        //                    const VarType& variable, 
+        //                    const EvidenceIter evidence_begin, 
+        //                    const EvidenceIter evidence_end) const;
 
-        double local_score(FactorType variable_type, int variable, 
-                            const typename std::vector<int>::const_iterator evidence_begin, 
-                            const typename std::vector<int>::const_iterator evidence_end) const override {
-            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
-        }
-
-        double local_score(FactorType variable_type, const std::string& variable, 
-                            const typename std::vector<std::string>::const_iterator evidence_begin, 
-                            const typename std::vector<std::string>::const_iterator evidence_end) const override {
-            return local_score<>(variable_type, variable, evidence_begin, evidence_end);
-        }
+        double local_score(FactorType variable_type,
+                           const std::string& variable,
+                           const std::vector<std::string>& evidence) const override;
 
         template<typename VarType, typename EvidenceIter>
         double local_score(FactorType variable_type,
@@ -82,71 +78,71 @@ namespace learning::scores {
         }
 
         bool compatible_bn(const BayesianNetworkBase& model) const override{
-            return m_cv.data().num_columns() == model.num_nodes() && m_cv.data().has_columns(model.nodes());
+            return m_cv.data().has_columns(model.nodes());
         }
 
         bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
-            return m_cv.data().num_columns() == model.num_total_nodes() && m_cv.data().has_columns(model.all_nodes());
+            return m_cv.data().has_columns(model.all_nodes());
         }
     private:
         CrossValidation m_cv;
     };
 
-    template<typename VarType, typename EvidenceIter>
-    double CVLikelihood::local_score(const BayesianNetworkBase& model,
-                                     const VarType& variable, 
-                                     const EvidenceIter evidence_begin,
-                                     const EvidenceIter evidence_end) const {
+    // template<typename VarType, typename EvidenceIter>
+    // double CVLikelihood::local_score(const BayesianNetworkBase& model,
+    //                                  const VarType& variable, 
+    //                                  const EvidenceIter evidence_begin,
+    //                                  const EvidenceIter evidence_end) const {
 
-        switch (model.type()) {
-            case BayesianNetworkType::GBN: {
-                LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
-                double loglik = 0;
-                for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
-                    cpd.fit(train_df);
-                    loglik += cpd.slogl(test_df);
-                }
+    //     switch (model.type()) {
+    //         case BayesianNetworkType::GBN: {
+    //             LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
+    //             double loglik = 0;
+    //             for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
+    //                 cpd.fit(train_df);
+    //                 loglik += cpd.slogl(test_df);
+    //             }
 
-                return loglik;
-            }
-            case BayesianNetworkType::SPBN: {
-                const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-                FactorType variable_type = spbn.node_type(variable);
-                return local_score(variable_type, variable, evidence_begin, evidence_end);   
-            }
-            default:
-                throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
-                                                + " not valid for score CVLikelihood");
-        }
-    }
+    //             return loglik;
+    //         }
+    //         case BayesianNetworkType::SPBN: {
+    //             const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
+    //             FactorType variable_type = spbn.node_type(variable);
+    //             return local_score(variable_type, variable, evidence_begin, evidence_end);   
+    //         }
+    //         default:
+    //             throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
+    //                                             + " not valid for score CVLikelihood");
+    //     }
+    // }
 
-    template<typename VarType, typename EvidenceIter>
-    double CVLikelihood::local_score(FactorType variable_type,
-                                     const VarType& variable, 
-                                     const EvidenceIter evidence_begin, 
-                                     const EvidenceIter evidence_end) const {
-        if (variable_type == FactorType::LinearGaussianCPD) {
-            LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
+    // template<typename VarType, typename EvidenceIter>
+    // double CVLikelihood::local_score(FactorType variable_type,
+    //                                  const VarType& variable, 
+    //                                  const EvidenceIter evidence_begin, 
+    //                                  const EvidenceIter evidence_end) const {
+    //     if (variable_type == FactorType::LinearGaussianCPD) {
+    //         LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
 
-            double loglik = 0;
-            for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
-                cpd.fit(train_df);
-                loglik += cpd.slogl(test_df);
-            }
+    //         double loglik = 0;
+    //         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
+    //             cpd.fit(train_df);
+    //             loglik += cpd.slogl(test_df);
+    //         }
 
-            return loglik;
-        } else {
-            CKDE cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
+    //         return loglik;
+    //     } else {
+    //         CKDE cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
 
-            double loglik = 0;
-            for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
-                cpd.fit(train_df);
-                loglik += cpd.slogl(test_df);
-            }
+    //         double loglik = 0;
+    //         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
+    //             cpd.fit(train_df);
+    //             loglik += cpd.slogl(test_df);
+    //         }
 
-            return loglik;
-        }
-    }
+    //         return loglik;
+    //     }
+    // }
 
     using DynamicCVLikelihood = DynamicScoreAdaptator<CVLikelihood>;
 }

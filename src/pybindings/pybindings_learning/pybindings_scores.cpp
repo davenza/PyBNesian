@@ -70,9 +70,6 @@ void pybindings_scores(py::module& root) {
             else
                 throw py::value_error("Bayesian network is incompatible with the score.");
         })
-        .def("score_unsafe", [](const Score& self, const ConditionalBayesianNetworkBase& m) {
-            return self.score(m);
-        })
         .def("score", [](const Score& self, const BayesianNetworkBase& m) {
             std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
             if (self.compatible_bn(m))
@@ -83,7 +80,15 @@ void pybindings_scores(py::module& root) {
         .def("score_unsafe", [](const Score& self, const BayesianNetworkBase& m) {
             return self.score(m);
         })
+        .def("local_score", [](const Score& self, const ConditionalBayesianNetworkBase& m, const std::string& variable) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
+        })
         .def("local_score", [](const Score& self, const BayesianNetworkBase& m, const std::string& variable) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
             if (self.compatible_bn(m))
                 return self.local_score(m, variable);
             else
@@ -92,7 +97,15 @@ void pybindings_scores(py::module& root) {
         .def("local_score_unsafe", [](const Score& self, const BayesianNetworkBase& m, const std::string& variable) {
             return self.local_score(m, variable);
         })
+        .def("local_score", [](const Score& self, const ConditionalBayesianNetworkBase& m, const int variable) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
+        })
         .def("local_score", [](const Score& self, const BayesianNetworkBase& m, const int variable) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
             if (self.compatible_bn(m))
                 return self.local_score(m, variable);
             else
@@ -102,11 +115,22 @@ void pybindings_scores(py::module& root) {
             return self.local_score(m, variable);
         })
         .def("local_score", [](const Score& self,
+                               const ConditionalBayesianNetworkBase& m,
+                               const std::string& variable, 
+                               const std::vector<std::string> evidence) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable, evidence);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
+        })
+        .def("local_score", [](const Score& self,
                                const BayesianNetworkBase& m,
                                const std::string& variable, 
                                const std::vector<std::string> evidence) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
             if (self.compatible_bn(m))
-                return self.local_score(m, variable, evidence.begin(), evidence.end());
+                return self.local_score(m, variable, evidence);
             else
                 throw py::value_error("Bayesian network is incompatible with the score.");
         })
@@ -114,14 +138,25 @@ void pybindings_scores(py::module& root) {
                                       const BayesianNetworkBase& m,
                                       const std::string& variable, 
                                       const std::vector<std::string> evidence) {
-            return self.local_score(m, variable, evidence.begin(), evidence.end());
+            return self.local_score(m, variable, evidence);
+        })
+        .def("local_score", [](const Score& self,
+                               const ConditionalBayesianNetworkBase& m,
+                               const int variable, 
+                               const std::vector<int> evidence) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable, evidence);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
         })
         .def("local_score", [](const Score& self,
                                const BayesianNetworkBase& m,
                                const int variable, 
                                const std::vector<int> evidence) {
+            std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
             if (self.compatible_bn(m))
-                return self.local_score(m, variable, evidence.begin(), evidence.end());
+                return self.local_score(m, variable, evidence);
             else
                 throw py::value_error("Bayesian network is incompatible with the score.");
         })
@@ -129,7 +164,7 @@ void pybindings_scores(py::module& root) {
                                       const BayesianNetworkBase& m,
                                       const int variable, 
                                       const std::vector<int> evidence) {
-            return self.local_score(m, variable, evidence.begin(), evidence.end());
+            return self.local_score(m, variable, evidence);
         })
         .def("ToString", &Score::ToString)
         .def("is_decomposable", &Score::is_decomposable)
@@ -146,9 +181,6 @@ void pybindings_scores(py::module& root) {
             else
                 throw py::value_error("Bayesian network is incompatible with the score.");
         })
-        .def("score_unsafe", [](const ScoreSPBN& self, const ConditionalBayesianNetworkBase& m) {
-            return self.score(m);
-        })
         .def("score", [](const ScoreSPBN& self, const BayesianNetworkBase& m) {
             std::cout << __PRETTY_FUNCTION__ << " compatible score: " << self.compatible_bn(m) << std::endl;
             if (self.compatible_bn(m))
@@ -159,6 +191,12 @@ void pybindings_scores(py::module& root) {
         .def("score_unsafe", [](const ScoreSPBN& self, const BayesianNetworkBase& m) {
             return self.score(m);
         })
+        .def("local_score", [](const ScoreSPBN& self, const ConditionalBayesianNetworkBase& m, const std::string& variable) {
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
+        })
         .def("local_score", [](const ScoreSPBN& self, const BayesianNetworkBase& m, const std::string& variable) {
             if (self.compatible_bn(m))
                 return self.local_score(m, variable);
@@ -167,6 +205,12 @@ void pybindings_scores(py::module& root) {
         })
         .def("local_score_unsafe", [](const ScoreSPBN& self, const BayesianNetworkBase& m, const std::string& variable) {
             return self.local_score(m, variable);
+        })
+        .def("local_score", [](const ScoreSPBN& self, const ConditionalBayesianNetworkBase& m, const int variable) {
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
         })
         .def("local_score", [](const ScoreSPBN& self, const BayesianNetworkBase& m, const int variable) {
             if (self.compatible_bn(m))
@@ -178,11 +222,20 @@ void pybindings_scores(py::module& root) {
             return self.local_score(m, variable);
         })
         .def("local_score", [](const ScoreSPBN& self,
+                               const ConditionalBayesianNetworkBase& m,
+                               const std::string& variable, 
+                               const std::vector<std::string> evidence) {
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable, evidence);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
+        })
+        .def("local_score", [](const ScoreSPBN& self,
                                const BayesianNetworkBase& m,
                                const std::string& variable, 
                                const std::vector<std::string> evidence) {
             if (self.compatible_bn(m))
-                return self.local_score(m, variable, evidence.begin(), evidence.end());
+                return self.local_score(m, variable, evidence);
             else
                 throw py::value_error("Bayesian network is incompatible with the score.");
         })
@@ -190,14 +243,23 @@ void pybindings_scores(py::module& root) {
                                       const BayesianNetworkBase& m,
                                       const std::string& variable, 
                                       const std::vector<std::string> evidence) {
-            return self.local_score(m, variable, evidence.begin(), evidence.end());
+            return self.local_score(m, variable, evidence);
+        })
+        .def("local_score", [](const ScoreSPBN& self,
+                               const ConditionalBayesianNetworkBase& m,
+                               const int variable, 
+                               const std::vector<int> evidence) {
+            if (self.compatible_bn(m))
+                return self.local_score(m, variable, evidence);
+            else
+                throw py::value_error("Bayesian network is incompatible with the score.");
         })
         .def("local_score", [](const ScoreSPBN& self,
                                const BayesianNetworkBase& m,
                                const int variable, 
                                const std::vector<int> evidence) {
             if (self.compatible_bn(m))
-                return self.local_score(m, variable, evidence.begin(), evidence.end());
+                return self.local_score(m, variable, evidence);
             else
                 throw py::value_error("Bayesian network is incompatible with the score.");
         })
@@ -205,16 +267,12 @@ void pybindings_scores(py::module& root) {
                                       const BayesianNetworkBase& m,
                                       const int variable, 
                                       const std::vector<int> evidence) {
-            return self.local_score(m, variable, evidence.begin(), evidence.end());
+            return self.local_score(m, variable, evidence);
         })
     // SPBN methods.
         .def("local_score", [](ScoreSPBN& self, FactorType variable_type, const std::string& variable, 
                                 const std::vector<std::string> evidence) {
-            return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
-        })
-        .def("local_score", [](ScoreSPBN& self, FactorType variable_type, const int variable, 
-                                const std::vector<int> evidence) {
-            return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
+            return self.local_score(variable_type, variable, evidence);
         });
 
     py::class_<BIC, Score, std::shared_ptr<BIC>>(scores, "BIC")

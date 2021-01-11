@@ -354,60 +354,18 @@ namespace learning::operators {
                 m_local_score = VectorXd(model.num_nodes());
             }
 
-            for (int i = 0; i < model.num_nodes(); ++i) {
-                m_local_score(i) = score.local_score(model, i);
-            }
-        }
-
-        void cache_local_scores(const ConditionalBayesianNetworkBase& model,
-                                const Score& score) {
-            if (m_local_score.rows() != model.num_nodes()) {
-                m_local_score = VectorXd(model.num_nodes());
-            }
-
-            for (int i = 0; i < model.num_nodes(); ++i) {
-                m_local_score(i) = score.local_score(model, model.index_from_collapsed(i));
+            for (const auto& node : model.nodes()) {
+                m_local_score(model.collapsed_index(node)) = score.local_score(model, node);
             }
         }
 
         void update_local_score(const BayesianNetworkBase& model,
                                 const Score& score,
                                 int index) {
-            m_local_score(index) = score.local_score(model, index);
-        }
-
-        void update_local_score(const ConditionalBayesianNetworkBase& model,
-                                const Score& score,
-                                int index) {
-            auto collapsed = model.collapsed_from_index(index);
-            m_local_score(collapsed) = score.local_score(model, index);
+            m_local_score(model.collapsed_from_index(index)) = score.local_score(model, index);
         }
 
         void update_local_score(const BayesianNetworkBase& model,
-                                const Score& score,
-                                const Operator& op) {
-            switch(op.type()) {
-                case OperatorType::ADD_ARC:
-                case OperatorType::REMOVE_ARC: {
-                    auto& dwn_op = dynamic_cast<const ArcOperator&>(op);
-                    update_local_score(model, score, model.index(dwn_op.target()));
-                }
-                    break;
-                case OperatorType::FLIP_ARC: {
-                    auto& dwn_op = dynamic_cast<const ArcOperator&>(op);
-                    update_local_score(model, score, model.index(dwn_op.source()));
-                    update_local_score(model, score, model.index(dwn_op.target()));
-                }
-                    break;
-                case OperatorType::CHANGE_NODE_TYPE: {
-                    auto& dwn_op = dynamic_cast<const ChangeNodeType&>(op);
-                    update_local_score(model, score, model.index(dwn_op.node()));
-                }
-                    break;
-            }
-        }
-
-        void update_local_score(const ConditionalBayesianNetworkBase& model,
                                 const Score& score,
                                 const Operator& op) {
             switch(op.type()) {
@@ -435,22 +393,13 @@ namespace learning::operators {
             return m_local_score.sum();
         }
 
-        double local_score(const BayesianNetworkBase&, int index) {
-            return m_local_score(index);
-        }
-
-        double local_score(const ConditionalBayesianNetworkBase& model, int index) {
+        double local_score(const BayesianNetworkBase& model, int index) {
             return m_local_score(model.collapsed_from_index(index));
         }
 
         double local_score(const BayesianNetworkBase& model, const std::string& name) {
-            return m_local_score(model.index(name));
-        }
-
-        double local_score(const ConditionalBayesianNetworkBase& model, const std::string& name) {
             return m_local_score(model.collapsed_index(name));
         }
-
     private:
         VectorXd m_local_score;
     };
@@ -586,31 +535,28 @@ namespace learning::operators {
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
-            auto source = idx % model.num_nodes();
-            auto dest = idx / model.num_nodes();
+            auto source_collapsed = idx % model.num_nodes();
+            auto dest_collapsed = idx / model.num_nodes();
+
+            const auto& source = model.collapsed_name(source_collapsed);
+            const auto& dest = model.collapsed_name(dest_collapsed);
 
             if(model.has_arc(source, dest)) {
-                return std::make_shared<RemoveArc>(model.name(source),
-                                                   model.name(dest),
-                                                   delta(source, dest));
+                return std::make_shared<RemoveArc>(source, dest, delta(source_collapsed, dest_collapsed));
             } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_shared<FlipArc>(model.name(dest),
-                                                 model.name(source),
-                                                 delta(source, dest));
+                return std::make_shared<FlipArc>(dest, source, delta(source_collapsed, dest_collapsed));
             } else if (model.can_add_arc(source, dest)) {
                 if constexpr (limited_indegree) {
                     if (model.num_parents(dest) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_shared<AddArc>(model.name(source),
-                                                model.name(dest),
-                                                delta(source, dest));
+                return std::make_shared<AddArc>(source, dest, delta(source_collapsed, dest_collapsed));
             }
         }
 
@@ -628,13 +574,15 @@ namespace learning::operators {
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
-            auto source = idx % model.num_total_nodes();
+            auto source_joint_collapsed = idx % model.num_total_nodes();
             auto dest_collapsed = idx / model.num_total_nodes();
-            auto dest = model.index_from_collapsed(dest_collapsed);
 
-            auto d = delta(source, dest_collapsed);
+            const auto& source = model.joint_collapsed_name(source_joint_collapsed);
+            const auto& dest = model.collapsed_name(dest_collapsed);
+
+            auto d = delta(source_joint_collapsed, dest_collapsed);
             if(model.has_arc(source, dest)) {
-                return std::make_shared<RemoveArc>(model.name(source), model.name(dest), d);
+                return std::make_shared<RemoveArc>(source, dest, d);
             }
 
             if (model.is_interface(source)) {
@@ -644,7 +592,7 @@ namespace learning::operators {
                     }
                 }
                 // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have parents.
-                return std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                return std::make_shared<AddArc>(source, dest, d);
             } else {                
                 if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                     if constexpr (limited_indegree) {
@@ -652,14 +600,14 @@ namespace learning::operators {
                             continue;
                         }
                     }
-                    return std::make_shared<FlipArc>(model.name(dest), model.name(source), d);
+                    return std::make_shared<FlipArc>(dest, source, d);
                 } else if (model.can_add_arc(source, dest)) {
                     if constexpr (limited_indegree) {
                         if (model.num_parents(dest) >= max_indegree) {
                             continue;
                         }
                     }
-                    return std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                    return std::make_shared<AddArc>(source, dest, d);
                 }
             }
         }
@@ -679,13 +627,16 @@ namespace learning::operators {
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
-            auto source = idx % model.num_nodes();
-            auto dest = idx / model.num_nodes();
+            auto source_collapsed = idx % model.num_nodes();
+            auto dest_collapsed = idx / model.num_nodes();
+
+            const auto& source = model.collapsed_name(source_collapsed);
+            const auto& dest = model.collapsed_name(dest_collapsed);
 
             if(model.has_arc(source, dest)) {
-                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source),
-                                                                           model.name(dest),
-                                                                           delta(source, dest));
+                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(source,
+                                                                           dest,
+                                                                           delta(source_collapsed, dest_collapsed));
                 if (!tabu_set.contains(op))
                     return op;
             } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
@@ -694,9 +645,9 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(model.name(dest),
-                                                                         model.name(source),
-                                                                         delta(source, source));
+                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(dest,
+                                                                         source,
+                                                                         delta(source_collapsed, dest_collapsed));
                 if (!tabu_set.contains(op))
                     return op;
             } else if (model.can_add_arc(source, dest)) {
@@ -705,9 +656,9 @@ namespace learning::operators {
                         continue;
                     }
                 }
-                std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source),
-                                                                        model.name(dest),
-                                                                        delta(source, dest));
+                std::shared_ptr<Operator> op = std::make_shared<AddArc>(source,
+                                                                        dest,
+                                                                        delta(source_collapsed, dest_collapsed));
                 if (!tabu_set.contains(op))
                     return op;
             }
@@ -728,14 +679,16 @@ namespace learning::operators {
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
-            auto source = idx % model.num_total_nodes();
+            auto source_joint_collapsed = idx % model.num_total_nodes();
             auto dest_collapsed = idx / model.num_total_nodes();
-            auto dest = model.index_from_collapsed(dest_collapsed);
 
-            auto d = delta(source, dest_collapsed);
+            const auto& source = model.joint_collapsed_name(source_joint_collapsed);
+            const auto& dest = model.collapsed_name(dest_collapsed);
+
+            auto d = delta(source_joint_collapsed, dest_collapsed);
 
             if(model.has_arc(source, dest)) {
-                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(model.name(source), model.name(dest), d);
+                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(source, dest, d);
 
                 if (!tabu_set.contains(op))
                     return op;
@@ -749,10 +702,9 @@ namespace learning::operators {
                     }
                 }
                 // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have parents.
-                std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, dest, d);
                 if (!tabu_set.contains(op))
                     return op;
-
             } else {                
                 if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
                     if constexpr (limited_indegree) {
@@ -760,7 +712,7 @@ namespace learning::operators {
                             continue;
                         }
                     }
-                    std::shared_ptr<Operator> op =  std::make_shared<FlipArc>(model.name(dest), model.name(source), d);
+                    std::shared_ptr<Operator> op =  std::make_shared<FlipArc>(dest, source, d);
                     if (!tabu_set.contains(op))
                         return op;
                 } else if (model.can_add_arc(source, dest)) {
@@ -769,7 +721,7 @@ namespace learning::operators {
                             continue;
                         }
                     }
-                    std::shared_ptr<Operator> op = std::make_shared<AddArc>(model.name(source), model.name(dest), d);
+                    std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, dest, d);
                     if (!tabu_set.contains(op))
                         return op;
                 }
@@ -792,36 +744,44 @@ namespace learning::operators {
         std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override;
         void update_scores(const BayesianNetworkBase& model, const Score& score, const Operator& op) override;
 
-        void cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) override;
-        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model) const override;
-        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override;
-        void update_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const Operator& op) override;
+        void cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) override {
+            cache_scores(static_cast<const BayesianNetworkBase&>(model), score);
+        }
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model) const override {
+            return find_max(static_cast<const BayesianNetworkBase&>(model));
+        }
+        std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const override {
+            return find_max(static_cast<const BayesianNetworkBase&>(model), tabu_set);
+        }
+        void update_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const Operator& op) override {
+            return update_scores(static_cast<const BayesianNetworkBase&>(model), score, op);
+        }
 
         void update_local_delta(const BayesianNetworkBase& model, const Score& score, const std::string& node) {
-            update_local_delta(model, score, model.index(node));
+            const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
+            FactorType type = spbn.node_type(node);
+            auto parents = model.parents(node);
+            const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
+
+            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite(), node, parents); 
+                                                 - this->m_local_cache->local_score(model, node);
         }
 
         void update_local_delta(const BayesianNetworkBase& model, const Score& score, int node_index) {
-            auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-            FactorType type = spbn.node_type(node_index);
-            auto parents = model.parent_indices(node_index);
-            auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
-            delta(node_index) = spbn_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
-                                - this->m_local_cache->local_score(model, node_index);
+            update_local_delta(model, score, model.name(node_index));
         }
 
         void update_local_delta(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& node) {
-            update_local_delta(model, score, model.index(node));
+            const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
+            FactorType type = spbn.node_type(node);
+            auto parents = model.parents(node);
+            const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
+            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite(), node, parents) 
+                                                 - this->m_local_cache->local_score(model, node);
         }
 
         void update_local_delta(const ConditionalBayesianNetworkBase& model, const Score& score, int node_index) {
-            auto collapsed = model.collapsed_from_index(node_index);
-            auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-            FactorType type = spbn.node_type(node_index);
-            auto parents = model.parent_indices(node_index);
-            auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
-            delta(collapsed) = spbn_score.local_score(type.opposite(), node_index, parents.begin(), parents.end()) 
-                                - this->m_local_cache->local_score(model, node_index);
+            update_local_delta(model, score, model.name(node_index));
         }
 
         void update_whitelisted(const BayesianNetworkBase& model) {
@@ -835,37 +795,7 @@ namespace learning::operators {
                 auto val_ptr = valid_op.data();
                 std::fill(val_ptr, val_ptr + model.num_nodes(), true);
 
-                for (auto &node : m_type_whitelist) {
-                    auto index = model.index(node.first);
-                    delta(index) = std::numeric_limits<double>::lowest();;
-                    valid_op(index) = false;
-                }
-
-                auto valid_ops = model.num_nodes() - m_type_whitelist.size();
-                sorted_idx.clear();
-                sorted_idx.reserve(valid_ops);
-                for (auto i = 0; i < model.num_nodes(); ++i) {
-                    if(valid_op(i))
-                        sorted_idx.push_back(i);
-                }
-                required_whitelist_update = false;
-            }
-        }
-
-        void update_whitelisted(const ConditionalBayesianNetworkBase& model) {
-            if (required_whitelist_update) {
-                auto num_nodes = model.num_nodes();
-                if (delta.rows() != num_nodes) {
-                    delta = VectorXd(num_nodes);
-                    valid_op = VectorXb(num_nodes);
-                }
-
-                auto val_ptr = valid_op.data();
-                std::fill(val_ptr, val_ptr + model.num_nodes(), true);
-
-                auto indices = model.indices();
-
-                for (auto &node : m_type_whitelist) {
+                for (auto& node : m_type_whitelist) {
                     auto index = model.collapsed_index(node.first);
                     delta(index) = std::numeric_limits<double>::lowest();
                     valid_op(index) = false;

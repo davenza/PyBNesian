@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
+#include <util/vector.hpp>
 
 namespace py = pybind11;
 
@@ -73,14 +74,23 @@ namespace graph {
         friend class Graph;
         friend class Dag;
         
-        GraphBase() : m_nodes(), m_indices(), m_free_indices() {}
-        GraphBase(const std::vector<std::string>& nodes) : m_nodes(), m_indices(), m_free_indices() {
+        GraphBase() : m_nodes(), m_indices(), m_string_nodes(), m_collapsed_indices(), m_free_indices() {}
+        GraphBase(const std::vector<std::string>& nodes) : m_nodes(),
+                                                           m_indices(),
+                                                           m_string_nodes(nodes),
+                                                           m_collapsed_indices(),
+                                                           m_free_indices() {
             m_nodes.reserve(nodes.size());
 
             for (size_t i = 0; i < nodes.size(); ++i) {
-                NodeType n (i, nodes[i]);
+                NodeType n(i, nodes[i]);
                 m_nodes.push_back(n);
                 m_indices.insert(std::make_pair(nodes[i], i));
+                m_collapsed_indices.insert(std::make_pair(nodes[i], i));
+            }
+
+            if (m_indices.size() != m_nodes.size()) {
+                throw std::invalid_argument("Graph cannot be created with repeated names.");
             }
         }
 
@@ -93,7 +103,7 @@ namespace graph {
             return m_nodes[check_index(idx)]; 
         }
 
-        std::vector<std::string> nodes() const;
+        const std::vector<std::string>& nodes() const;
         const std::vector<NodeType>& node_indices() const { return m_nodes; }
 
         bool contains_node(const std::string& name) const {
@@ -115,6 +125,37 @@ namespace graph {
 
         int index(const std::string& node) const {
             return check_index(node);
+        }
+
+        int collapsed_index(const std::string& node) const {
+            auto f = m_collapsed_indices.find(node);
+            if (f == m_collapsed_indices.end()) {
+                throw std::invalid_argument("Node " + node + " not present in the graph.");
+            }
+
+            return f->second;
+        }
+
+        int index_from_collapsed(int collapsed_index) const {
+            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
+                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
+                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
+            }
+
+            return index(m_string_nodes[collapsed_index]);
+        }
+
+        int collapsed_from_index(int index) const {
+            return collapsed_index(m_nodes[check_index(index)].name());
+        }
+
+        const std::string& collapsed_name(int collapsed_index) const {
+            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
+                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
+                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
+            }
+
+            return m_string_nodes[collapsed_index];
         }
 
         const std::unordered_map<std::string, int>& indices() const {
@@ -148,26 +189,22 @@ namespace graph {
 
         std::vector<NodeType> m_nodes;
         std::unordered_map<std::string, int> m_indices;
+        std::vector<std::string> m_string_nodes;
+        std::unordered_map<std::string, int> m_collapsed_indices;
         std::vector<size_t> m_free_indices;
     };
 
     template<typename Derived>
-    std::vector<std::string> GraphBase<Derived>::nodes() const {
-        int visited_nodes = 0;
-        std::vector<std::string> res;
-        res.reserve(num_nodes());
-        for (auto it = m_nodes.begin(); visited_nodes < num_nodes(); ++it) {
-            if (it->is_valid()) {
-                res.push_back(it->name());
-                ++visited_nodes;
-            }
-        }
-
-        return res;
+    const std::vector<std::string>& GraphBase<Derived>::nodes() const {
+        return m_string_nodes;
     }
 
     template<typename Derived>
     size_t GraphBase<Derived>::add_node(const std::string& node) {
+        if (m_indices.find(node) != m_indices.end()) {
+            throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
+        }
+
         size_t idx = [this, &node]() {
             if (!m_free_indices.empty()) {
                 size_t idx = m_free_indices.back();
@@ -185,6 +222,8 @@ namespace graph {
         }();
 
         m_indices.insert(std::make_pair(node, idx));
+        m_string_nodes.push_back(node);
+        m_collapsed_indices.insert(std::make_pair(node, m_string_nodes.size()-1));
 
         if constexpr (GraphTraits<Derived>::has_arcs) {
             auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
@@ -197,7 +236,6 @@ namespace graph {
 
     template<typename Derived>
     void GraphBase<Derived>::remove_node_unsafe(int index) {
-        
         if constexpr (GraphTraits<Derived>::has_edges) {
             auto& derived = static_cast<Derived&>(*this);
             for (auto neighbor : derived.neighbor_indices(index)) {
@@ -227,6 +265,12 @@ namespace graph {
         }
 
         m_indices.erase(m_nodes[index].name());
+
+        auto collapsed = m_collapsed_indices.extract(m_nodes[index].name());
+        auto collapsed_index = collapsed.mapped();
+        util::swap_remove(m_string_nodes, collapsed_index);
+        m_collapsed_indices[m_string_nodes[collapsed_index]] = collapsed_index;
+
         m_nodes[index].invalidate();
         m_free_indices.push_back(index);
     }
@@ -243,8 +287,8 @@ namespace graph {
 
         ArcGraph() = default;
         ArcGraph(const std::vector<std::string>& nodes) : m_arcs(),
-                                                           m_roots(),
-                                                           m_leaves() {
+                                                          m_roots(),
+                                                          m_leaves() {
             for (size_t i = 0; i < nodes.size(); ++i) {
                 m_roots.insert(i);
                 m_leaves.insert(i);

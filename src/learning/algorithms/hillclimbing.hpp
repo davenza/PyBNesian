@@ -22,7 +22,6 @@ using util::ArcStringVector;
 
 namespace learning::algorithms {
 
-    // TODO: Include start graph.
     std::unique_ptr<BayesianNetworkBase> hc(const DataFrame& df, 
                                             const BayesianNetworkBase* start,
                                             const std::string& bn_str, 

@@ -8,23 +8,21 @@ using factors::continuous::LinearGaussianCPD;
 
 namespace learning::parameters {
 
-    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceIter>
+    template<typename ArrowType, bool contains_null>
     typename LinearGaussianCPD::ParamsClass _fit_1parent(const DataFrame& df,
-                                                         const VarType& variable,  
-                                                         EvidenceIter evidence_begin) {
+                                                         const std::string& variable,  
+                                                         const std::string& evidence) {
         
-        auto [y, x] = [&df, &variable, &evidence_begin]() {
+        auto [y, x] = [&df, &variable, &evidence]() {
            if constexpr(contains_null) {
-               auto y_bitmap = df.combined_bitmap(variable);
-               auto x_bitmap = df.combined_bitmap(*evidence_begin);
                auto rows = df->num_rows();
-               auto combined_bitmap = util::bit_util::combined_bitmap(y_bitmap, x_bitmap, rows);
+               auto combined_bitmap = df.combined_bitmap(variable, evidence);
                auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
-               auto x = df.to_eigen<false, ArrowType>(combined_bitmap, *evidence_begin);
+               auto x = df.to_eigen<false, ArrowType>(combined_bitmap, evidence);
                return std::make_tuple(std::move(y), std::move(x));
            } else {
                auto y = df.to_eigen<false, ArrowType, contains_null>(variable);
-               auto x = df.to_eigen<false, ArrowType, contains_null>(*evidence_begin);
+               auto x = df.to_eigen<false, ArrowType, contains_null>(evidence);
                return std::make_tuple(std::move(y), std::move(x));
            }
        }();
@@ -52,23 +50,21 @@ namespace learning::parameters {
         };
     }
 
-    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceIter>
+    template<typename ArrowType, bool contains_null>
     typename LinearGaussianCPD::ParamsClass _fit_2parent(const DataFrame& df,
-                                                         const VarType& variable,  
-                                                         EvidenceIter evidence_begin,
-                                                         EvidenceIter evidence_end) {
-        auto [y, x1, x2] = [&df, &variable, &evidence_begin, &evidence_end]() {
+                                                         const std::string& variable,  
+                                                         const std::vector<std::string>& evidence) {
+        auto [y, x1, x2] = [&df, &variable, &evidence]() {
            if constexpr(contains_null) {
-               auto combined_bitmap = df.combined_bitmap(variable, std::make_pair(evidence_begin, evidence_end));
+               auto combined_bitmap = df.combined_bitmap(variable, evidence);
                auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
-               auto x1 = df.to_eigen<false, ArrowType>(combined_bitmap, *evidence_begin);
-               auto x2 = df.to_eigen<false, ArrowType>(combined_bitmap, *(evidence_begin + 1));
+               auto x1 = df.to_eigen<false, ArrowType>(combined_bitmap, evidence[0]);
+               auto x2 = df.to_eigen<false, ArrowType>(combined_bitmap, evidence[1]);
                return std::make_tuple(std::move(y), std::move(x1), std::move(x2));
            } else {
-               static_cast<void>(evidence_end);
                auto y = df.to_eigen<false, ArrowType, contains_null>(variable);
-               auto x1 = df.to_eigen<false, ArrowType, contains_null>(*evidence_begin);
-               auto x2 = df.to_eigen<false, ArrowType, contains_null>(*(evidence_begin + 1));
+               auto x1 = df.to_eigen<false, ArrowType, contains_null>(evidence[0]);
+               auto x2 = df.to_eigen<false, ArrowType, contains_null>(evidence[1]);
                return std::make_tuple(std::move(y), std::move(x1), std::move(x2));
            }
        }();
@@ -106,24 +102,20 @@ namespace learning::parameters {
         };
     }
 
-    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceIter>
+    template<typename ArrowType, bool contains_null>
     typename LinearGaussianCPD::ParamsClass _fit_nparent(const DataFrame& df,
-                                                         const VarType& variable,  
-                                                         EvidenceIter evidence_begin,
-                                                         EvidenceIter evidence_end) {
+                                                         const std::string& variable,  
+                                                         const std::vector<std::string>& evidence) {
         
-        auto [y, X] = [&df, &variable, &evidence_begin, &evidence_end]() {    
+        auto [y, X] = [&df, &variable, &evidence]() {    
             if constexpr(contains_null) {
-                auto y_bitmap = df.combined_bitmap(variable);
-                auto X_bitmap = df.combined_bitmap(evidence_begin, evidence_end);
-                auto rows = df->num_rows();
-                auto combined_bitmap = util::bit_util::combined_bitmap(y_bitmap, X_bitmap, rows);
+                auto combined_bitmap = df.combined_bitmap(variable, evidence);
                 auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
-                auto X = df.to_eigen<true, ArrowType>(combined_bitmap, evidence_begin, evidence_end);
+                auto X = df.to_eigen<true, ArrowType>(combined_bitmap, evidence);
                 return std::make_tuple(std::move(y), std::move(X));
             } else {
                 auto y = df.to_eigen<false, ArrowType, contains_null>(variable);
-                auto X = df.to_eigen<true, ArrowType, contains_null>(evidence_begin, evidence_end);
+                auto X = df.to_eigen<true, ArrowType, contains_null>(evidence);
                 return std::make_tuple(std::move(y), std::move(X));
             }
         }();
@@ -147,13 +139,11 @@ namespace learning::parameters {
         }
     }
 
-    template<typename ArrowType, bool contains_null, typename VarType, typename EvidenceIter>
+    template<typename ArrowType, bool contains_null>
     typename LinearGaussianCPD::ParamsClass _fit(const DataFrame& df,
-                                                 const VarType& variable,  
-                                                 const EvidenceIter evidence_begin,
-                                                 const EvidenceIter evidence_end) {
-        auto evidence_size = std::distance(evidence_begin, evidence_end);
-        if (evidence_size == 0) {
+                                                 const std::string& variable,  
+                                                 const std::vector<std::string>& evidence) {
+        if (evidence.size() == 0) {
             auto v = df.to_eigen<false, ArrowType, contains_null>(variable);
             auto mean = v->mean();
             auto var = (v->array() - mean).matrix().squaredNorm();
@@ -164,45 +154,14 @@ namespace learning::parameters {
                 .beta = b,
                 .variance = var / (v->rows() - 1)
             };
-        } else if (evidence_size == 1) {
-            return _fit_1parent<ArrowType, contains_null>(df, variable, evidence_begin);
-        } else if (evidence_size == 2) {
-            return _fit_2parent<ArrowType, contains_null>(df, variable, evidence_begin, evidence_end);
+        } else if (evidence.size() == 1) {
+            return _fit_1parent<ArrowType, contains_null>(df, variable, evidence[0]);
+        } else if (evidence.size() == 2) {
+            return _fit_2parent<ArrowType, contains_null>(df, variable, evidence);
         } else {
-            return _fit_nparent<ArrowType, contains_null>(df, variable, evidence_begin, evidence_end);
+            return _fit_nparent<ArrowType, contains_null>(df, variable, evidence);
         }
     }
-
-    template<>
-    template<typename VarType, typename EvidenceIter>
-    typename LinearGaussianCPD::ParamsClass MLE<LinearGaussianCPD>::estimate(const DataFrame& df, 
-                                                                             const VarType& variable,  
-                                                                             const EvidenceIter& evidence_begin,
-                                                                             const EvidenceIter& evidence_end) {
-        auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
-        auto type_id = df.same_type(variable, evidence_pair);
-        bool contains_null = df.null_count(variable, evidence_pair) > 0;
-
-        switch(type_id) {
-            case Type::DOUBLE: {
-                if (contains_null)
-                    return _fit<DoubleType, true>(df, variable, evidence_begin, evidence_end);
-                else
-                    return _fit<DoubleType, false>(df, variable, evidence_begin, evidence_end);
-                break;
-            }
-            case Type::FLOAT: {
-                if (contains_null)
-                    return _fit<FloatType, true>(df, variable, evidence_begin, evidence_end);
-                else
-                    return _fit<FloatType, false>(df, variable, evidence_begin, evidence_end);
-                break;
-            }
-            default:
-                throw std::invalid_argument("Wrong data type to fit the linear regression. \"double\" or \"float\" data is expected.");
-        }
-    }
-
 }
 
 #endif //PYBNESIAN_LEARNING_PARAMETERS_MLE_LINEARGAUSSIANCPD_HPP

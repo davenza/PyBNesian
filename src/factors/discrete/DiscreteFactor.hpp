@@ -39,16 +39,14 @@ namespace factors::discrete {
 
     void sum_to_discrete_indices(VectorXi& accum_indices, Array_ptr& indices, int stride);
 
-    template<bool contains_null, typename VarType, typename EvidenceIter>
+    template<bool contains_null>
     VectorXi discrete_indices(const DataFrame& df, 
-                                const VarType& variable, 
-                                EvidenceIter evidence_begin,
-                                EvidenceIter evidence_end,
-                                const VectorXi& strides) {
+                              const std::string& variable, 
+                              const std::vector<std::string>& evidence,
+                              const VectorXi& strides) {
         
         if constexpr(contains_null) {
-            auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
-            auto combined_bitmap = df.combined_bitmap(variable, evidence_pair);
+            auto combined_bitmap = df.combined_bitmap(variable, evidence);
 
             auto valid_rows = util::bit_util::non_null_count(combined_bitmap, df->num_rows());
 
@@ -60,7 +58,7 @@ namespace factors::discrete {
             sum_to_discrete_indices_null(indices, variable_indices, strides(0), combined_bitmap);
 
             int i = 1;
-            for (auto it = evidence_begin; it != evidence_end; ++it, ++i) {
+            for (auto it = evidence.begin(), end = evidence.end(); it != end; ++it, ++i) {
                 auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
                 auto evidence_indices = dict_evidence->indices();
                 sum_to_discrete_indices_null(indices, evidence_indices, strides(i), combined_bitmap);
@@ -76,7 +74,7 @@ namespace factors::discrete {
             sum_to_discrete_indices(indices, variable_indices, strides(0));
 
             int i = 1;
-            for (auto it = evidence_begin; it != evidence_end; ++it, ++i) {
+            for (auto it = evidence.begin(), end = evidence.end(); it != end; ++it, ++i) {
                 auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
                 auto evidence_indices = dict_evidence->indices();
                 sum_to_discrete_indices(indices, evidence_indices, strides(i));
@@ -86,19 +84,10 @@ namespace factors::discrete {
         }
     }
 
-    template<typename VarType, typename EvidenceIter>
     VectorXi discrete_indices(const DataFrame& df, 
-                                const VarType& variable, 
-                                EvidenceIter evidence_begin,
-                                EvidenceIter evidence_end,
-                                const VectorXi& strides) {
-        auto evidence_pair = std::make_pair(evidence_begin, evidence_end);
-        if (df.null_count(variable, evidence_pair) == 0)
-            return discrete_indices<false>(df, variable, evidence_begin, evidence_end, strides);
-        else
-            return discrete_indices<true>(df, variable, evidence_begin, evidence_end, strides);
-    }
-
+                              const std::string& variable, 
+                              const std::vector<std::string>& evidence,
+                              const VectorXi& strides);
 
     struct DiscreteFactor_Params {
         VectorXd logprob;
@@ -133,14 +122,12 @@ namespace factors::discrete {
         std::string ToString() const;
 
         VectorXi discrete_indices(const DataFrame& df) const {
-            return factors::discrete::discrete_indices(df, m_variable, 
-                                        m_evidence.begin(), m_evidence.end(), m_strides);
+            return factors::discrete::discrete_indices(df, m_variable, m_evidence, m_strides);
         }
 
         template<bool contains_null>
         VectorXi discrete_indices(const DataFrame& df) const {
-            return factors::discrete::discrete_indices<contains_null>(df, m_variable, 
-                                        m_evidence.begin(), m_evidence.end(), m_strides);
+            return factors::discrete::discrete_indices<contains_null>(df, m_variable, m_evidence, m_strides);
         }
 
         Array_ptr sample(int n, const DataFrame& evidence_values, 

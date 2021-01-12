@@ -6,6 +6,8 @@
 #include <util/util_types.hpp>
 #include <util/vector.hpp>
 
+#include <iostream>
+
 namespace py = pybind11;
 
 using graph::DNode, graph::UNode, graph::PDNode;
@@ -133,21 +135,11 @@ namespace graph {
         }
 
         int collapsed_index(const std::string& node) const {
-            auto f = m_collapsed_indices.find(node);
-            if (f == m_collapsed_indices.end()) {
-                throw std::invalid_argument("Node " + node + " not present in the graph.");
-            }
-
-            return f->second;
+            return check_collapsed_index(node);
         }
 
         int index_from_collapsed(int collapsed_index) const {
-            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
-                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
-                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
-            }
-
-            return index(m_string_nodes[collapsed_index]);
+            return index(m_string_nodes[check_collapsed_index(collapsed_index)]);
         }
 
         int collapsed_from_index(int index) const {
@@ -159,12 +151,7 @@ namespace graph {
         }
 
         const std::string& collapsed_name(int collapsed_index) const {
-            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
-                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
-                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
-            }
-
-            return m_string_nodes[collapsed_index];
+            return m_string_nodes[check_collapsed_index(collapsed_index)];
         }
 
         const std::vector<size_t>& free_indices() const {
@@ -186,6 +173,24 @@ namespace graph {
         int check_index(const std::string& name) const {
             auto f = m_indices.find(name);
             if (f == m_indices.end()) {
+                throw std::invalid_argument("Node " + name + " not present in the graph.");
+            }
+
+            return f->second;
+        }
+
+        int check_collapsed_index(int idx) const {
+            if (idx < 0 || idx >= num_nodes()) {
+                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(idx) + 
+                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
+            }
+
+            return idx;
+        }
+
+        int check_collapsed_index(const std::string& name) const {
+            auto f = m_collapsed_indices.find(name);
+            if (f == m_collapsed_indices.end()) {
                 throw std::invalid_argument("Node " + name + " not present in the graph.");
             }
 
@@ -271,8 +276,8 @@ namespace graph {
 
         m_indices.erase(m_nodes[index].name());
 
-        auto collapsed = m_collapsed_indices.extract(m_nodes[index].name());
-        auto collapsed_index = collapsed.mapped();
+        auto collapsed_index = check_collapsed_index(m_nodes[index].name());
+        m_collapsed_indices.erase(m_nodes[index].name());
         util::swap_remove(m_string_nodes, collapsed_index);
         m_collapsed_indices[m_string_nodes[collapsed_index]] = collapsed_index;
 

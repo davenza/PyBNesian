@@ -7,7 +7,6 @@
 
 using util::abstract_class, util::clone_inherit;
 
-
 namespace models {
 
     class ConditionalBayesianNetworkBase : public clone_inherit<abstract_class<ConditionalBayesianNetworkBase>, BayesianNetworkBase>  {
@@ -187,7 +186,7 @@ namespace models {
         }
 
         int collapsed_index(const std::string& name) const override {
-            return m_cpds_indices.at(name);
+            return check_collapsed_index(name);
         }
 
         int joint_collapsed_index(const std::string& name) const override {
@@ -195,25 +194,15 @@ namespace models {
         }
 
         int index_from_collapsed(int collapsed_index) const override {
-            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
-                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
-                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
-            }
-
-            return g.index(m_nodes[collapsed_index]);
+            return g.index(m_nodes[check_collapsed_index(collapsed_index)]);
         }
 
         int index_from_joint_collapsed(int joint_collapsed_index) const override {
-            if (joint_collapsed_index < 0 || joint_collapsed_index >= num_total_nodes()) {
-                throw std::invalid_argument("Wrong joint collapsed index (" + std::to_string(joint_collapsed_index) + 
-                                            ") for a graph with a total of " + std::to_string(num_total_nodes()) + " nodes");
-            }
-
             return g.index_from_collapsed(joint_collapsed_index);
         }
 
         int collapsed_from_index(int index) const override {
-            return m_cpds_indices.at(name(index));
+            return check_collapsed_index(name(index));
         }
 
         int joint_collapsed_from_index(int index) const override {
@@ -307,19 +296,10 @@ namespace models {
         }
 
         const std::string& collapsed_name(int collapsed_index) const override {
-            if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
-                throw std::invalid_argument("Wrong collapsed index. The collapsed index should be a number between 0 and num_nodes().");
-            }
-
-            return m_nodes[collapsed_index];
+            return m_nodes[check_collapsed_index(collapsed_index)];
         }
 
         const std::string& joint_collapsed_name(int joint_collapsed_index) const override {
-            if (joint_collapsed_index < 0 || joint_collapsed_index >= num_total_nodes()) {
-                throw std::invalid_argument("Wrong joint collapsed index (" + std::to_string(joint_collapsed_index) + 
-                                            ") for a graph with a total of " + std::to_string(num_total_nodes()) + " nodes");
-            }
-
             return g.collapsed_name(joint_collapsed_index);
         }
         
@@ -505,7 +485,7 @@ namespace models {
             }
 
             if (!m_cpds.empty()) {
-                return m_cpds[m_cpds_indices.at(node)];
+                return m_cpds[check_collapsed_index(node)];
             } else {
                 throw py::value_error("CPD of variable \"" + node + "\" not added. Call add_cpds() or fit() to add the CPD.");
             }
@@ -532,6 +512,24 @@ namespace models {
 
         void __setstate_extra__(py::tuple&) const { }
         void __setstate_extra__(py::tuple&&) const { }
+
+        int check_collapsed_index(int idx) const {
+            if (idx < 0 || idx >= num_nodes()) {
+                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(idx) + 
+                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
+            }
+
+            return idx;
+        }
+
+        int check_collapsed_index(const std::string& name) const {
+            auto f = m_cpds_indices.find(name);
+            if (f == m_indices.end()) {
+                throw std::invalid_argument("Node " + name + " not present in the graph.");
+            }
+
+            return f->second;
+        }
 
         Dag g;
         std::vector<CPD> m_cpds;
@@ -782,7 +780,7 @@ namespace models {
 
         auto extra_info = static_cast<const Derived&>(*this).__getstate_extra__();
 
-        if (m_include_cpd && !m_cpds.empty()) {
+        if (m_include_cpd && fitted()) {
             std::vector<py::tuple> cpds;
             cpds.reserve(num_nodes());
 

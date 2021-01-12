@@ -66,11 +66,9 @@ def test_check_max_score():
     arc_op.cache_scores(gbn, bic)
     op = arc_op.find_max(gbn)
 
-    # assert op.delta == (bic.local_score_unsafe(test, 'b', ['a']) - bic.local_score_unsafe(test, 'b'))
-    # assert (bic.local_score_unsafe(test, 'c', ['d']) - bic.local_score_unsafe(test, 'c')) == (bic.local_score_unsafe(gbn, 'c', ['d']) - bic.local_score_unsafe(gbn, ''))
     assert op.delta == (bic.local_score_unsafe(gbn, 'd', ['c']) - bic.local_score_unsafe(gbn, 'd'))
 
-    # arc_gbn_bic = ArcOperatorSet( bic, [(op.source, op.target)], [], 0)
+    # BIC is decomposable so the best operation is the arc in reverse direction.
     arc_op.set_arc_blacklist([(op.source, op.target)])
     arc_op.cache_scores(gbn, bic)
     

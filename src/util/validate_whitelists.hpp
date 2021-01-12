@@ -4,6 +4,7 @@
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
 #include <util/util_types.hpp>
+#include <util/bn_traits.hpp>
 
 using dataset::DataFrame;
 using util::ArcSet, util::EdgeSet;
@@ -18,8 +19,8 @@ namespace util {
         EdgeSet edge_whitelist;
     };
 
-    template<typename GraphType>
-    void check_arc_list(const GraphType& g, const ArcStringVector& list) {
+    template<typename Model, util::enable_if_not_conditionalbn_t<Model, int> = 0>
+    void check_arc_list(const Model& g, const ArcStringVector& list) {
         for (auto pair : list) {
             if(!g.contains_node(pair.first))
                 throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
@@ -28,13 +29,36 @@ namespace util {
                 throw std::invalid_argument("Node " + pair.second + " not present in the graph.");
         }
     }
-    template<typename GraphType>
-    void check_edge_list(const GraphType& g, const EdgeStringVector& list) {
+
+    template<typename Model, util::enable_if_conditionalbn_t<Model, int> = 0>
+    void check_arc_list(const Model& g, const ArcStringVector& list) {
+        for (auto pair : list) {
+            if(!g.contains_all_node(pair.first))
+                throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
+
+            if(!g.contains_node(pair.second))
+                throw std::invalid_argument("Node " + pair.second + " not present in the graph.");
+        }
+    }
+
+    template<typename Model, util::enable_if_not_conditionalbn_t<Model, int> = 0>
+    void check_edge_list(const Model& g, const EdgeStringVector& list) {
         return check_arc_list(g, list);
     }
 
-    template<typename GraphType>
-    void check_node_type_list(const GraphType& g, const FactorStringTypeVector& list) {
+    template<typename Model, util::enable_if_conditionalbn_t<Model, int> = 0>
+    void check_edge_list(const Model& g, const EdgeStringVector& list) {
+        for (auto pair : list) {
+            if(!g.contains_all_node(pair.first))
+                throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
+
+            if(!g.contains_all_node(pair.second))
+                throw std::invalid_argument("Node " + pair.second + " not present in the graph.");
+        }
+    }
+
+    template<typename Model>
+    void check_node_type_list(const Model& g, const FactorStringTypeVector& list) {
         for (auto pair : list) {
             if(!g.contains_node(pair.first))
                 throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
@@ -45,8 +69,8 @@ namespace util {
     void check_edge_list(const DataFrame& df, const EdgeStringVector& list);
     void check_node_type_list(const DataFrame& df, const FactorStringTypeVector& list);
 
-    template<typename GraphType>
-    ListRestrictions validate_restrictions(const GraphType& g,
+    template<typename Model>
+    ListRestrictions validate_restrictions(const Model& g,
                                            const ArcStringVector& varc_blacklist, 
                                            const ArcStringVector& varc_whitelist,
                                            const EdgeStringVector& vedge_blacklist,
@@ -131,8 +155,8 @@ namespace util {
         return r;
     }
 
-    template<typename GraphType>
-    ListRestrictions validate_restrictions(const GraphType& g,
+    template<typename Model>
+    ListRestrictions validate_restrictions(const Model& g,
                                            const ArcStringVector& varc_blacklist, 
                                            const ArcStringVector& varc_whitelist) {
         check_arc_list(g, varc_blacklist);

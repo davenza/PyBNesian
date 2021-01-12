@@ -485,7 +485,8 @@ namespace learning::operators {
         void update_incoming_arcs_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& target_node);
 
         void update_valid_ops(const BayesianNetworkBase& bn);
-        void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
+        void update_vali
+d_ops(const ConditionalBayesianNetworkBase& bn);
 
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
             m_blacklist_names = blacklist;

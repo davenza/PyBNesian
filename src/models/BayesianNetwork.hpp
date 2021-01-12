@@ -215,14 +215,16 @@ namespace models {
         size_t add_node(const std::string& node) override {
             size_t idx = g.add_node(node);
 
-            if (idx >= m_cpds.size())
-                m_cpds.resize(idx);
+            if (!m_cpds.empty() && idx >= m_cpds.size())
+                m_cpds.resize(idx + 1);
             return idx;
         }
 
         void remove_node(int node_index) override {
             g.remove_node(node_index);
-            m_cpds[node_index] = CPD();
+            if (!m_cpds.empty()) {
+                m_cpds[node_index] = CPD();
+            }
         }
 
         void remove_node(const std::string& node) override {
@@ -664,7 +666,7 @@ namespace models {
 
         auto extra_info = static_cast<const Derived&>(*this).__getstate_extra__();
 
-        if (m_include_cpd && !m_cpds.empty()) {
+        if (m_include_cpd && fitted()) {
             std::vector<py::tuple> cpds;
             cpds.reserve(g.num_nodes());
 

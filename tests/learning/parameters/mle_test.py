@@ -55,23 +55,3 @@ def test_mle_lg():
     np_beta, np_var = numpy_fit_mle_lg(df, "d", ["a", "b", "c"])
     assert np.all(np.isclose(p.beta, np_beta))
     assert np.isclose(p.variance, np_var)
-
-    p = mle.estimate(df, 0, [])
-    np_beta, np_var = numpy_fit_mle_lg(df, 0, [])
-    assert np.all(np.isclose(p.beta, np_beta))
-    assert np.isclose(p.variance, np_var)
-
-    p = mle.estimate(df, 1, [0])
-    np_beta, np_var = numpy_fit_mle_lg(df, 1, [0])
-    assert np.all(np.isclose(p.beta, np_beta))
-    assert np.isclose(p.variance, np_var)
-
-    p = mle.estimate(df, 2, [0, 1])
-    np_beta, np_var = numpy_fit_mle_lg(df, 2, [0, 1])
-    assert np.all(np.isclose(p.beta, np_beta))
-    assert np.isclose(p.variance, np_var)
-
-    p = mle.estimate(df, 3, [0, 1, 2])
-    np_beta, np_var = numpy_fit_mle_lg(df, 3, [0, 1, 2])
-    assert np.all(np.isclose(p.beta, np_beta))
-    assert np.isclose(p.variance, np_var)

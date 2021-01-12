@@ -209,17 +209,6 @@ def test_local_score_spbn():
     assert np.isclose(cvl.local_score(FactorType.CKDE, 'd', ['a', 'b', 'c']),
                       numpy_local_score(FactorType.CKDE, df, 'd', ['b', 'c', 'a']))
 
-    assert np.isclose(cvl.local_score(FactorType.LinearGaussianCPD, 0, []), 
-                      numpy_local_score(FactorType.LinearGaussianCPD, df, 0, []))
-    assert np.isclose(cvl.local_score(FactorType.CKDE, 1, [0]), 
-                      numpy_local_score(FactorType.CKDE, df, 1, [0]))
-    assert np.isclose(cvl.local_score(FactorType.LinearGaussianCPD, 2, [0, 1]),
-                      numpy_local_score(FactorType.LinearGaussianCPD, df, 2, [0, 1]))
-    assert np.isclose(cvl.local_score(FactorType.CKDE, 3, [0, 1, 2]), 
-                      numpy_local_score(FactorType.CKDE, df, 3, [0, 1, 2]))
-    assert np.isclose(cvl.local_score(FactorType.CKDE, 3, [0, 1, 2]), 
-                      numpy_local_score(FactorType.CKDE, df, 3, [1, 2, 0]))
-
 
 def test_local_score_null_spbn():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')],
@@ -281,17 +270,6 @@ def test_local_score_null_spbn():
                       numpy_local_score(FactorType.CKDE, df_null, 'd', ['a', 'b', 'c']))
     assert np.isclose(cvl.local_score(FactorType.CKDE, 'd', ['a', 'b', 'c']),
                       numpy_local_score(FactorType.CKDE, df_null, 'd', ['b', 'c', 'a']))
-
-    assert np.isclose(cvl.local_score(FactorType.LinearGaussianCPD, 0, []), 
-                      numpy_local_score(FactorType.LinearGaussianCPD, df_null, 0, []))
-    assert np.isclose(cvl.local_score(FactorType.CKDE, 1, [0]), 
-                      numpy_local_score(FactorType.CKDE, df_null, 1, [0]))
-    assert np.isclose(cvl.local_score(FactorType.LinearGaussianCPD, 2, [0, 1]),
-                      numpy_local_score(FactorType.LinearGaussianCPD, df_null, 2, [0, 1]))
-    assert np.isclose(cvl.local_score(FactorType.CKDE, 3, [0, 1, 2]), 
-                      numpy_local_score(FactorType.CKDE, df_null, 3, [0, 1, 2]))
-    assert np.isclose(cvl.local_score(FactorType.CKDE, 3, [0, 1, 2]), 
-                      numpy_local_score(FactorType.CKDE, df_null, 3, [1, 2, 0]))
 
 def test_score():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])

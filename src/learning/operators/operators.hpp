@@ -481,8 +481,8 @@ namespace learning::operators {
         std::shared_ptr<Operator> find_max_indegree(const ConditionalBayesianNetworkBase& model, const OperatorTabuSet& tabu_set) const;
         void update_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const Operator& op) override;
 
-        void update_incoming_arcs_scores(const BayesianNetworkBase& model, const Score& score, const std::string& dest_node);
-        void update_incoming_arcs_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& dest_node);
+        void update_incoming_arcs_scores(const BayesianNetworkBase& model, const Score& score, const std::string& target_node);
+        void update_incoming_arcs_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& target_node);
 
         void update_valid_ops(const BayesianNetworkBase& bn);
         void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
@@ -536,27 +536,27 @@ namespace learning::operators {
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
             auto source_collapsed = idx % model.num_nodes();
-            auto dest_collapsed = idx / model.num_nodes();
+            auto target_collapsed = idx / model.num_nodes();
 
             const auto& source = model.collapsed_name(source_collapsed);
-            const auto& dest = model.collapsed_name(dest_collapsed);
+            const auto& target = model.collapsed_name(target_collapsed);
 
-            if(model.has_arc(source, dest)) {
-                return std::make_shared<RemoveArc>(source, dest, delta(source_collapsed, dest_collapsed));
-            } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
+            if(model.has_arc(source, target)) {
+                return std::make_shared<RemoveArc>(source, target, delta(source_collapsed, target_collapsed));
+            } else if (model.has_arc(target, source) && model.can_flip_arc(target, source)) {
                 if constexpr (limited_indegree) {
-                    if (model.num_parents(dest) >= max_indegree) {
+                    if (model.num_parents(target) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_shared<FlipArc>(dest, source, delta(source_collapsed, dest_collapsed));
-            } else if (model.can_add_arc(source, dest)) {
+                return std::make_shared<FlipArc>(target, source, delta(source_collapsed, target_collapsed));
+            } else if (model.can_add_arc(source, target)) {
                 if constexpr (limited_indegree) {
-                    if (model.num_parents(dest) >= max_indegree) {
+                    if (model.num_parents(target) >= max_indegree) {
                         continue;
                     }
                 }
-                return std::make_shared<AddArc>(source, dest, delta(source_collapsed, dest_collapsed));
+                return std::make_shared<AddArc>(source, target, delta(source_collapsed, target_collapsed));
             }
         }
 
@@ -575,39 +575,39 @@ namespace learning::operators {
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
             auto source_joint_collapsed = idx % model.num_total_nodes();
-            auto dest_collapsed = idx / model.num_total_nodes();
+            auto target_collapsed = idx / model.num_total_nodes();
 
             const auto& source = model.joint_collapsed_name(source_joint_collapsed);
-            const auto& dest = model.collapsed_name(dest_collapsed);
+            const auto& target = model.collapsed_name(target_collapsed);
 
-            auto d = delta(source_joint_collapsed, dest_collapsed);
-            if(model.has_arc(source, dest)) {
-                return std::make_shared<RemoveArc>(source, dest, d);
+            auto d = delta(source_joint_collapsed, target_collapsed);
+            if(model.has_arc(source, target)) {
+                return std::make_shared<RemoveArc>(source, target, d);
             }
 
             if (model.is_interface(source)) {
                 if constexpr (limited_indegree) {
-                    if (model.num_parents(dest) >= max_indegree) {
+                    if (model.num_parents(target) >= max_indegree) {
                         continue;
                     }
                 }
                 // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have parents.
-                return std::make_shared<AddArc>(source, dest, d);
+                return std::make_shared<AddArc>(source, target, d);
             } else {                
-                if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
+                if (model.has_arc(target, source) && model.can_flip_arc(target, source)) {
                     if constexpr (limited_indegree) {
-                        if (model.num_parents(dest) >= max_indegree) {
+                        if (model.num_parents(target) >= max_indegree) {
                             continue;
                         }
                     }
-                    return std::make_shared<FlipArc>(dest, source, d);
-                } else if (model.can_add_arc(source, dest)) {
+                    return std::make_shared<FlipArc>(target, source, d);
+                } else if (model.can_add_arc(source, target)) {
                     if constexpr (limited_indegree) {
-                        if (model.num_parents(dest) >= max_indegree) {
+                        if (model.num_parents(target) >= max_indegree) {
                             continue;
                         }
                     }
-                    return std::make_shared<AddArc>(source, dest, d);
+                    return std::make_shared<AddArc>(source, target, d);
                 }
             }
         }
@@ -628,37 +628,37 @@ namespace learning::operators {
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
             auto source_collapsed = idx % model.num_nodes();
-            auto dest_collapsed = idx / model.num_nodes();
+            auto target_collapsed = idx / model.num_nodes();
 
             const auto& source = model.collapsed_name(source_collapsed);
-            const auto& dest = model.collapsed_name(dest_collapsed);
+            const auto& target = model.collapsed_name(target_collapsed);
 
-            if(model.has_arc(source, dest)) {
+            if(model.has_arc(source, target)) {
                 std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(source,
-                                                                           dest,
-                                                                           delta(source_collapsed, dest_collapsed));
+                                                                           target,
+                                                                           delta(source_collapsed, target_collapsed));
                 if (!tabu_set.contains(op))
                     return op;
-            } else if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
+            } else if (model.has_arc(target, source) && model.can_flip_arc(target, source)) {
                 if constexpr (limited_indegree) {
-                    if (model.num_parents(dest) >= max_indegree) {
+                    if (model.num_parents(target) >= max_indegree) {
                         continue;
                     }
                 }
-                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(dest,
+                std::shared_ptr<Operator> op = std::make_shared<FlipArc>(target,
                                                                          source,
-                                                                         delta(source_collapsed, dest_collapsed));
+                                                                         delta(source_collapsed, target_collapsed));
                 if (!tabu_set.contains(op))
                     return op;
-            } else if (model.can_add_arc(source, dest)) {
+            } else if (model.can_add_arc(source, target)) {
                 if constexpr (limited_indegree) {
-                    if (model.num_parents(dest) >= max_indegree) {
+                    if (model.num_parents(target) >= max_indegree) {
                         continue;
                     }
                 }
                 std::shared_ptr<Operator> op = std::make_shared<AddArc>(source,
-                                                                        dest,
-                                                                        delta(source_collapsed, dest_collapsed));
+                                                                        target,
+                                                                        delta(source_collapsed, target_collapsed));
                 if (!tabu_set.contains(op))
                     return op;
             }
@@ -680,15 +680,15 @@ namespace learning::operators {
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
             auto idx = *it;
             auto source_joint_collapsed = idx % model.num_total_nodes();
-            auto dest_collapsed = idx / model.num_total_nodes();
+            auto target_collapsed = idx / model.num_total_nodes();
 
             const auto& source = model.joint_collapsed_name(source_joint_collapsed);
-            const auto& dest = model.collapsed_name(dest_collapsed);
+            const auto& target = model.collapsed_name(target_collapsed);
 
-            auto d = delta(source_joint_collapsed, dest_collapsed);
+            auto d = delta(source_joint_collapsed, target_collapsed);
 
-            if(model.has_arc(source, dest)) {
-                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(source, dest, d);
+            if(model.has_arc(source, target)) {
+                std::shared_ptr<Operator> op = std::make_shared<RemoveArc>(source, target, d);
 
                 if (!tabu_set.contains(op))
                     return op;
@@ -697,31 +697,31 @@ namespace learning::operators {
 
             if (model.is_interface(source)) {
                 if constexpr (limited_indegree) {
-                    if (model.num_parents(dest) >= max_indegree) {
+                    if (model.num_parents(target) >= max_indegree) {
                         continue;
                     }
                 }
                 // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have parents.
-                std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, dest, d);
+                std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, target, d);
                 if (!tabu_set.contains(op))
                     return op;
             } else {                
-                if (model.has_arc(dest, source) && model.can_flip_arc(dest, source)) {
+                if (model.has_arc(target, source) && model.can_flip_arc(target, source)) {
                     if constexpr (limited_indegree) {
-                        if (model.num_parents(dest) >= max_indegree) {
+                        if (model.num_parents(target) >= max_indegree) {
                             continue;
                         }
                     }
-                    std::shared_ptr<Operator> op =  std::make_shared<FlipArc>(dest, source, d);
+                    std::shared_ptr<Operator> op =  std::make_shared<FlipArc>(target, source, d);
                     if (!tabu_set.contains(op))
                         return op;
-                } else if (model.can_add_arc(source, dest)) {
+                } else if (model.can_add_arc(source, target)) {
                     if constexpr (limited_indegree) {
-                        if (model.num_parents(dest) >= max_indegree) {
+                        if (model.num_parents(target) >= max_indegree) {
                             continue;
                         }
                     }
-                    std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, dest, d);
+                    std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, target, d);
                     if (!tabu_set.contains(op))
                         return op;
                 }

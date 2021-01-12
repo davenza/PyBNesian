@@ -19,6 +19,7 @@ namespace models {
         virtual const std::vector<std::string>& all_nodes() const = 0;
         virtual const std::unordered_map<std::string, int>& interface_indices() const = 0;
         virtual int joint_collapsed_index(const std::string& name) const = 0;
+        virtual const std::unordered_map<std::string, int>& joint_collapsed_indices() const = 0;
         virtual int index_from_joint_collapsed(int joint_collapsed_index) const = 0;
         virtual int joint_collapsed_from_index(int index) const = 0;
         virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
@@ -171,6 +172,14 @@ namespace models {
 
         const std::unordered_map<std::string, int>& interface_indices() const override {
             return m_interface_indices;
+        }
+
+        const std::unordered_map<std::string, int>& collapsed_indices() const override {
+            return m_cpds_indices;
+        }
+
+        const std::unordered_map<std::string, int>& joint_collapsed_indices() const override {
+            return g.collapsed_indices();
         }
 
         int index(const std::string& node) const override {

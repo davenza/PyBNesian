@@ -438,15 +438,18 @@ namespace learning::operators {
                     parents.push_back(source_node);
                     delta(source_joint_collapsed, dest_collapsed) = d;
 
-                    // Update flip arc: source_node -> dest_node
-                    int dest_joint_collapsed = model.joint_collapsed_index(dest_node);
-                    int source_collapsed = model.collapsed_index(source_node);
-                    if (!model.is_interface(source_node) && valid_op(dest_joint_collapsed, source_collapsed)) {                       
-                        auto parents_source = model.parents(source_node);
-                        parents_source.push_back(dest_node);
+                    if (!model.is_interface(source_node)) {
+                        // Update flip arc: source_node -> dest_node
+                        int dest_joint_collapsed = model.joint_collapsed_index(dest_node);
+                        int source_collapsed = model.collapsed_index(source_node);
 
-                        delta(dest_joint_collapsed, source_collapsed) = d + score.local_score(model, source_node, parents_source)
-                                                                          - this->m_local_cache->local_score(model, source_node);
+                        if (valid_op(dest_joint_collapsed, source_collapsed)) {                       
+                            auto parents_source = model.parents(source_node);
+                            parents_source.push_back(dest_node);
+
+                            delta(dest_joint_collapsed, source_collapsed) = d + score.local_score(model, source_node, parents_source)
+                                                                            - this->m_local_cache->local_score(model, source_node);
+                        }
                     }
                 } else if (!model.is_interface(source_node) && model.has_arc(dest_node, source_node)) {
                     // Update flip arc: dest_node -> source_node

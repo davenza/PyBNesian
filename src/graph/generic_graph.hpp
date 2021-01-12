@@ -106,6 +106,11 @@ namespace graph {
         const std::vector<std::string>& nodes() const;
         const std::vector<NodeType>& node_indices() const { return m_nodes; }
 
+
+        const std::unordered_map<std::string, int>& indices() const {
+            return m_indices;
+        }
+
         bool contains_node(const std::string& name) const {
             return m_indices.count(name) > 0;
         }
@@ -149,6 +154,10 @@ namespace graph {
             return collapsed_index(m_nodes[check_index(index)].name());
         }
 
+        const std::unordered_map<std::string, int>& collapsed_indices() const {
+            return m_collapsed_indices;
+        }
+
         const std::string& collapsed_name(int collapsed_index) const {
             if (collapsed_index < 0 || collapsed_index >= num_nodes()) {
                 throw std::invalid_argument("Wrong collapsed index (" + std::to_string(collapsed_index) + 
@@ -156,10 +165,6 @@ namespace graph {
             }
 
             return m_string_nodes[collapsed_index];
-        }
-
-        const std::unordered_map<std::string, int>& indices() const {
-            return m_indices;
         }
 
         const std::vector<size_t>& free_indices() const {

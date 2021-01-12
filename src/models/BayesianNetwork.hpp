@@ -78,6 +78,7 @@ namespace models {
         virtual int collapsed_index(const std::string& node) const = 0;
         virtual int index_from_collapsed(int collapsed_index) const = 0;
         virtual int collapsed_from_index(int index) const = 0;
+        virtual const std::unordered_map<std::string, int>& collapsed_indices() const = 0;
         virtual bool is_valid(int idx) const = 0;
         virtual bool contains_node(const std::string& name) const = 0;
         virtual size_t add_node(const std::string& node) = 0;
@@ -197,6 +198,10 @@ namespace models {
 
         int collapsed_from_index(int index) const override {
             return g.collapsed_from_index(index);
+        }
+
+        const std::unordered_map<std::string, int>& collapsed_indices() const override {
+            return g.collapsed_indices();
         }
 
         bool is_valid(int idx) const override {

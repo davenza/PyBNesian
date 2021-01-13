@@ -15,7 +15,6 @@ namespace learning::parameters {
         
         auto [y, x] = [&df, &variable, &evidence]() {
            if constexpr(contains_null) {
-               auto rows = df->num_rows();
                auto combined_bitmap = df.combined_bitmap(variable, evidence);
                auto y = df.to_eigen<false, ArrowType>(combined_bitmap, variable);
                auto x = df.to_eigen<false, ArrowType>(combined_bitmap, evidence);

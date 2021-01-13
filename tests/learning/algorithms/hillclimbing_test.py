@@ -48,6 +48,10 @@ def test_hc_estimate():
     res_removed = hc.estimate(arc_set, bic, start_removed_nodes, epsilon=(op_delta + 0.01))
     assert res_removed.num_arcs() == start_removed_nodes.num_arcs()
 
+    res = hc.estimate(arc_set, bic, start, verbose=False)
+    res_removed = hc.estimate(arc_set, bic, start_removed_nodes, verbose=False)
+    assert set(res.arcs()) == set(res_removed.arcs())
+
 def test_hc_conditional_estimate():
     bic = BIC(df)
     column_names = list(df.columns.values)
@@ -89,7 +93,14 @@ def test_hc_conditional_estimate():
     assert set(res.arcs()) == set(res_removed.arcs())
 
 def test_hc_estimate_validation():
-    start = GaussianNetwork(df.columns.values)
+    column_names = list(df.columns.values)
+    start = GaussianNetwork(column_names)
+
+    column_names.insert(1, 'e')
+    column_names.insert(4, 'f')
+    start_removed_nodes = GaussianNetwork(column_names)
+    start_removed_nodes.remove_node('e')
+    start_removed_nodes.remove_node('f')
     
     holdout = HoldoutLikelihood(df)
     cv = CVLikelihood(holdout.training_data())
@@ -102,11 +113,27 @@ def test_hc_estimate_validation():
     added_edge = res.arcs()[0]
     op_delta = cv.score(res) - cv.score(start)
 
+    res_removed = hc.estimate_validation(arc_set, cv, holdout, start_removed_nodes, max_iters=1)
+    assert res_removed.num_arcs() == 1
+    assert added_edge == res.arcs()[0]
+    assert op_delta == cv.score(res_removed) - cv.score(start_removed_nodes)
+
     # CV is score equivalent for GBNs, so if we blacklist the added_edge, its reverse will be added.
     res = hc.estimate_validation(arc_set, cv, holdout, start, max_iters=1, arc_blacklist=[added_edge])
     assert res.num_arcs() == 1
     reversed_edge = res.arcs()[0]
     assert added_edge == reversed_edge[::-1]
 
+    res_removed = hc.estimate_validation(arc_set, cv, holdout, start_removed_nodes, max_iters=1, arc_blacklist=[added_edge])
+    assert res_removed.num_arcs() == 1
+    assert reversed_edge == res_removed.arcs()[0]
+    
     res = hc.estimate_validation(arc_set, cv, holdout, start, epsilon=(op_delta + 0.01))
     assert res.num_arcs() == start.num_arcs()
+
+    res_removed = hc.estimate_validation(arc_set, cv, holdout, start_removed_nodes, epsilon=(op_delta + 0.01))
+    assert res_removed.num_arcs() == start_removed_nodes.num_arcs()
+
+    res = hc.estimate_validation(arc_set, cv, holdout, start, verbose=False)
+    res_removed = hc.estimate_validation(arc_set, cv, holdout, start_removed_nodes, verbose=False)
+    assert set(res.arcs()) == set(res_removed.arcs())

@@ -485,8 +485,7 @@ namespace learning::operators {
         void update_incoming_arcs_scores(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& target_node);
 
         void update_valid_ops(const BayesianNetworkBase& bn);
-        void update_vali
-d_ops(const ConditionalBayesianNetworkBase& bn);
+        void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
 
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
             m_blacklist_names = blacklist;
@@ -764,7 +763,7 @@ d_ops(const ConditionalBayesianNetworkBase& bn);
             auto parents = model.parents(node);
             const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
 
-            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite(), node, parents); 
+            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite(), node, parents)
                                                  - this->m_local_cache->local_score(model, node);
         }
 

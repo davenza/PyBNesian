@@ -81,7 +81,7 @@ namespace models {
         virtual const std::unordered_map<std::string, int>& collapsed_indices() const = 0;
         virtual bool is_valid(int idx) const = 0;
         virtual bool contains_node(const std::string& name) const = 0;
-        virtual size_t add_node(const std::string& node) = 0;
+        virtual int add_node(const std::string& node) = 0;
         virtual void remove_node(int node_index) = 0;
         virtual void remove_node(const std::string& node) = 0;
         virtual const std::string& name(int node_index) const = 0;
@@ -212,7 +212,7 @@ namespace models {
             return g.contains_node(name);
         }
 
-        size_t add_node(const std::string& node) override {
+        int add_node(const std::string& node) override {
             size_t idx = g.add_node(node);
 
             if (!m_cpds.empty() && idx >= m_cpds.size())

@@ -4,14 +4,16 @@
 #include <pybind11/pybind11.h>
 #include <graph/graph_types.hpp>
 #include <util/util_types.hpp>
+#include <util/bidirectionalmap_index.hpp>
 #include <util/vector.hpp>
+
 
 #include <iostream>
 
 namespace py = pybind11;
 
 using graph::DNode, graph::UNode, graph::PDNode;
-using util::ArcStringVector, util::EdgeStringVector, util::ArcSet, util::EdgeSet;
+using util::ArcStringVector, util::EdgeStringVector, util::ArcSet, util::EdgeSet, util::BidirectionalMapIndex;
 
 namespace graph {
 
@@ -23,17 +25,25 @@ namespace graph {
 
     template<GraphType Type>
     class Graph;
+    template<GraphType Type>
+    class ConditionalGraph;
+
     class Dag;
+    class ConditionalDag;
 
     using DirectedGraph = Graph<Directed>;
     using UndirectedGraph = Graph<Undirected>;
     using PartiallyDirectedGraph = Graph<PartiallyDirected>;
 
+    using ConditionalDirectedGraph = ConditionalGraph<Directed>;
+    using ConditionalUndirectedGraph = ConditionalGraph<Undirected>;
+    using ConditionalPartiallyDirectedGraph = ConditionalGraph<PartiallyDirected>;
+
     template<typename G>
     struct GraphTraits;
 
-    template<>
-    struct GraphTraits<DirectedGraph> {
+    template<template<GraphType> typename T>
+    struct GraphTraits<T<Directed>> {
         using NodeType = DNode;
         inline static constexpr bool has_arcs = true;
         inline static constexpr bool has_edges = false;
@@ -47,14 +57,21 @@ namespace graph {
     };
 
     template<>
-    struct GraphTraits<UndirectedGraph> {
+    struct GraphTraits<ConditionalDag> {
+        using NodeType = DNode;
+        inline static constexpr bool has_arcs = true;
+        inline static constexpr bool has_edges = false;
+    };
+
+    template<template<GraphType> typename T>
+    struct GraphTraits<T<Undirected>> {
         using NodeType = UNode;
         inline static constexpr bool has_arcs = false;
         inline static constexpr bool has_edges = true;
     };
 
-    template<>
-    struct GraphTraits<PartiallyDirectedGraph> {
+    template<template<GraphType> typename T>
+    struct GraphTraits<T<PartiallyDirected>> {
         using NodeType = PDNode;
         inline static constexpr bool has_arcs = true;
         inline static constexpr bool has_edges = true;
@@ -105,9 +122,10 @@ namespace graph {
             return m_nodes[check_index(idx)]; 
         }
 
-        const std::vector<std::string>& nodes() const;
+        const std::vector<std::string>& nodes() const {
+            return m_string_nodes;
+        }
         const std::vector<NodeType>& node_indices() const { return m_nodes; }
-
 
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
@@ -117,7 +135,7 @@ namespace graph {
             return m_indices.count(name) > 0;
         }
         
-        size_t add_node(const std::string& node);
+        int add_node(const std::string& node);
 
         template<typename V>
         void remove_node(const V& idx) {
@@ -154,7 +172,7 @@ namespace graph {
             return m_string_nodes[check_collapsed_index(collapsed_index)];
         }
 
-        const std::vector<size_t>& free_indices() const {
+        const std::vector<int>& free_indices() const {
             return m_free_indices;
         }
 
@@ -201,30 +219,25 @@ namespace graph {
         std::unordered_map<std::string, int> m_indices;
         std::vector<std::string> m_string_nodes;
         std::unordered_map<std::string, int> m_collapsed_indices;
-        std::vector<size_t> m_free_indices;
+        std::vector<int> m_free_indices;
     };
 
     template<typename Derived>
-    const std::vector<std::string>& GraphBase<Derived>::nodes() const {
-        return m_string_nodes;
-    }
-
-    template<typename Derived>
-    size_t GraphBase<Derived>::add_node(const std::string& node) {
+    int GraphBase<Derived>::add_node(const std::string& node) {
         if (m_indices.find(node) != m_indices.end()) {
             throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
         }
 
-        size_t idx = [this, &node]() {
+        int idx = [this, &node]() {
             if (!m_free_indices.empty()) {
-                size_t idx = m_free_indices.back();
+                int idx = m_free_indices.back();
                 m_free_indices.pop_back();
                 NodeType n(idx, node);
                 m_nodes[idx] = n;
                 return idx;
             }
             else {
-                size_t idx = m_nodes.size();
+                int idx = m_nodes.size();
                 NodeType n(idx, node);
                 m_nodes.push_back(n);
                 return idx;
@@ -284,6 +297,322 @@ namespace graph {
         m_nodes[index].invalidate();
         m_free_indices.push_back(index);
     }
+
+    template<typename Derived>
+    class ConditionalGraphBase {
+    public:
+        using NodeType = typename GraphTraits<Derived>::NodeType;
+
+        template<typename G>
+        friend class ArcGraph;
+        template<typename G>
+        friend class EdgeGraph;
+        template<GraphType Type>
+        friend class Graph;
+        friend class ConditionalDag;
+
+        ConditionalGraphBase() = default;
+        ConditionalGraphBase(const std::vector<std::string>& nodes,
+                             const std::vector<std::string>& interface_nodes) : m_nodes(),
+                                                                                m_string_nodes(nodes),
+                                                                                m_interface_nodes(interface_nodes),
+                                                                                m_total_nodes(),
+                                                                                m_indices(),
+                                                                                m_free_indices() {
+            if (nodes.empty())
+                throw std::invalid_argument("Nodes can not be empty.");
+
+            m_total_nodes.reserve(nodes.size() + interface_nodes.size());
+            m_total_nodes.insert(m_string_nodes.begin(), m_string_nodes.end());
+            m_total_nodes.insert(m_interface_nodes.begin(), m_interface_nodes.end());
+
+            m_nodes.reserve(m_total_nodes.size());
+            for (size_t i = 0; i < m_total_nodes.size(); ++i) {
+                NodeType n(i, m_total_nodes[i]);
+                m_nodes.push_back(n);
+                
+                m_indices.insert({m_total_nodes[i], i});
+            }
+
+            if (m_indices.size() != (nodes.size() + interface_nodes.size()))
+                throw std::invalid_argument("Nodes and interface nodes contain repeated names.");
+        }
+
+        int num_nodes() const {
+            return m_string_nodes.size();
+        }
+
+        int num_interface_nodes() const {
+            return m_interface_nodes.size();
+        }
+
+        int num_total_nodes() const {
+            return m_total_nodes.size();
+        }
+
+        template<typename V>
+        const NodeType& node(const V& idx) const {
+            return m_nodes[check_index(idx)]; 
+        }
+
+        const std::vector<std::string>& nodes() const {
+            return m_string_nodes.elements();
+        }
+
+        const std::vector<std::string>& interface_nodes() const {
+            return m_interface_nodes;
+        }
+
+        const std::vector<std::string>& all_nodes() const {
+            return m_total_nodes.elements();
+        }
+
+        const std::vector<NodeType>& node_indices() const { return m_nodes; }
+
+        const std::unordered_map<std::string, int>& indices() const {
+            return m_indices;
+        }
+
+        const std::unordered_map<std::string, int>& collapsed_indices() const {
+            return m_string_nodes.indices();
+        }
+
+        const std::unordered_map<std::string, int>& joint_collapsed_indices() const {
+            return m_total_nodes.indices();
+        }
+
+        bool contains_node(const std::string& name) const {
+            return m_string_nodes.contains(name);
+        }
+
+        bool contains_interface_node(const std::string& name) const {
+            return contains_total_node(name) && !contains_node(name);   
+        }
+
+        bool contains_total_node(const std::string& name) const {
+            return m_total_nodes.contains(name);
+        }
+
+        int add_node(const std::string& node);
+        int add_interface_node(const std::string& node);
+
+        template<typename V>
+        void remove_node(const V& idx) {
+            remove_node_unsafe(check_index(idx));
+        }
+
+        void remove_node_unsafe(int index);
+
+        template<typename V>
+        void remove_interface_node(const V& idx) {
+            remove_interface_node_unsafe(check_index(idx));
+        }
+
+        void remove_interface_node_unsafe(int index);
+
+        const std::string& name(int idx) const {
+            return m_nodes[check_index(idx)].name();
+        }
+
+        const std::string& collapsed_name(int collapsed_index) const {
+            return m_string_nodes.element(collapsed_index);
+        }
+
+        const std::string& joint_collapsed_name(int joint_collapsed_index) const {
+            return m_total_nodes.element(joint_collapsed_index);
+        }
+
+        int index(const std::string& node) const {
+            return check_index(node);
+        }
+
+        int collapsed_index(const std::string& node) const {
+            return m_total_nodes.index(node);
+        }
+
+        int joint_collapsed_index(const std::string& node) const {
+            return m_total_nodes.index(node);
+        }
+
+        int index_from_collapsed(int collapsed_index) {
+            return index(m_string_nodes.element(collapsed_index));
+        }
+
+        int index_from_joint_collapsed(int joint_collapsed_index) {
+            return index(m_string_nodes.element(joint_collapsed_index));
+        }
+
+        int collapsed_from_index(int index) {
+            return m_string_nodes[name(index)];
+        }
+
+        int joint_collapsed_from_index(int index)  {
+            return m_total_nodes[name(index)];
+        }
+
+        bool is_interface(int index) const {
+            return is_interface(name(index));
+        }
+        
+        bool is_interface(const std::string& name) const {
+            return contains_interface_node(m_nodes[check_index(name)].name());
+        }
+
+        const std::vector<int> free_indices() const {
+            return m_free_indices;
+        }
+
+        bool is_valid(int idx) const {
+            return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
+        }
+    private:
+        int create_node(const std::string& node);
+        void remove_node_arcs_edges(int index);
+
+        int check_index(int idx) const {
+            if (!is_valid(idx)) {
+                throw std::invalid_argument("Node index " + std::to_string(idx) + " invalid.");
+            }
+
+            return idx;
+        }
+
+        int check_index(const std::string& name) const {
+            auto f = m_indices.find(name);
+            if (f == m_indices.end()) {
+                throw std::invalid_argument("Node " + name + " not present in the graph.");
+            }
+
+            return f->second;
+        }
+
+        std::vector<NodeType> m_nodes;
+        // std::vector<std::string> m_string_nodes;
+        BidirectionalMapIndex<std::string> m_string_nodes;
+        std::vector<std::string> m_interface_nodes;
+        BidirectionalMapIndex<std::string> m_total_nodes;
+        
+        // all nodes -> index
+        std::unordered_map<std::string, int> m_indices;
+        std::vector<int> m_free_indices;
+    };
+
+    template<typename Derived>
+    int ConditionalGraphBase<Derived>::create_node(const std::string& node) {
+        if (!m_free_indices.empty()) {
+            int idx = m_free_indices.back();
+            m_free_indices.pop_back();
+            NodeType n(idx, node);
+            m_nodes[idx] = n;
+            return idx;
+        }
+        else {
+            int idx = m_nodes.size();
+            NodeType n(idx, node);
+            m_nodes.push_back(n);
+            return idx;
+        }
+    }
+
+    template<typename Derived>
+    int ConditionalGraphBase<Derived>::add_node(const std::string& node) {
+        if (contains_total_node(node)) {
+            throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
+        }
+
+        int idx = create_node(node);
+        m_indices.insert({node, idx});
+
+        m_string_nodes.insert(node);
+        m_total_nodes.insert(node);
+
+        if constexpr (GraphTraits<Derived>::has_arcs) {
+            auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+            arcg.add_root(idx);
+            arcg.add_leaf(idx);
+        }
+
+        return idx;
+    }
+
+    template<typename Derived>
+    int ConditionalGraphBase<Derived>::add_interface_node(const std::string& node) {
+        if (contains_total_node(node)) {
+            throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
+        }
+
+        int idx = create_node(node);
+        m_indices.insert({node, idx});
+        m_interface_nodes.push_back(node);
+        
+        m_total_nodes.insert(node);
+
+        if constexpr (GraphTraits<Derived>::has_arcs) {
+            auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+            arcg.add_root(idx);
+            arcg.add_leaf(idx);
+        }
+
+        return idx;
+    }
+
+    template<typename Derived>
+    void ConditionalGraphBase<Derived>::remove_node_arcs_edges(int index) {
+        if constexpr (GraphTraits<Derived>::has_edges) {
+            auto& derived = static_cast<Derived&>(*this);
+            for (auto neighbor : derived.neighbor_indices(index)) {
+                derived.remove_edge_unsafe(index, neighbor);
+            }
+        }
+
+        if constexpr (GraphTraits<Derived>::has_arcs) {
+            if (m_nodes[index].is_root()) {
+                auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+                arcg.remove_root(index);
+            }
+
+            if (m_nodes[index].is_leaf()) {
+                auto& arcg = static_cast<ArcGraph<Derived>&>(static_cast<Derived&>(*this));
+                arcg.remove_leaf(index);
+            }
+
+            auto& derived = static_cast<Derived&>(*this);
+            for (auto p : derived.parent_indices(index)) {
+                derived.remove_arc_unsafe(p, index);
+            }
+
+            for (auto ch : derived.children_indices(index)) {
+                derived.remove_arc_unsafe(index, ch);
+            }
+        }
+    }
+
+    template<typename Derived>
+    void ConditionalGraphBase<Derived>::remove_node_unsafe(int index) {
+        remove_node_arcs_edges(index);
+
+        m_indices.erase(m_nodes[index].name());
+        
+        m_string_nodes.remove(m_nodes[index].name());
+        m_total_nodes.remove(m_nodes[index].name());
+
+        m_nodes[index].invalidate();
+        m_free_indices.push_back(index);
+    }
+
+    template<typename Derived>
+    void ConditionalGraphBase<Derived>::remove_interface_node_unsafe(int index) {
+        remove_node_arcs_edges(index);
+
+        m_indices.erase(m_nodes[index].name());
+        
+        util::swap_remove_v(m_interface_nodes, m_nodes[index].name());
+        m_total_nodes.remove(m_nodes[index].name());
+
+        m_nodes[index].invalidate();
+        m_free_indices.push_back(index);
+    }
+
 
     template<typename Derived>
     class ArcGraph {
@@ -421,7 +750,7 @@ namespace graph {
             return m_leaves;
         }
     private:
-        friend size_t GraphBase<Derived>::add_node(const std::string& node);
+        friend int GraphBase<Derived>::add_node(const std::string& node);
         friend void GraphBase<Derived>::remove_node_unsafe(int index);
 
         void add_root(int idx) {
@@ -784,6 +1113,63 @@ namespace graph {
     }
 
     py::object load_graph(const std::string& name);
+
+    template<typename Derived, template<typename> typename BaseClass>
+    class PartiallyDirectedImpl : public BaseClass<Derived>,
+                                  public ArcGraph<Derived>,
+                                  public EdgeGraph<Derived> {
+    public:
+        static Derived CompleteUndirected(const std::vector<std::string>& nodes);
+
+        template<typename V>
+        void direct(const V& source, const V& target) {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
+            direct_unsafe(s, t);
+        }
+
+        void direct_unsafe(int source, int target);
+
+        template<typename V>
+        void undirect(const V& source, const V& target) {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
+            undirect_unsafe(s, t);
+        }
+
+        void undirect_unsafe(int source, int target);
+
+        template<typename V>
+        bool has_connection(const V& source, const V& target) const {
+            auto s = this->check_index(source);
+            auto t = this->check_index(target);
+            return has_connection_unsafe(s, t);
+        }
+
+        bool has_connection_unsafe(int source, int target) const {
+            return this->has_edge_unsafe(source, target) || 
+                   this->has_arc_unsafe(source, target) || 
+                   this->has_arc_unsafe(target, source);
+        }
+
+        Dag to_dag() const;
+
+        py::tuple __getstate__() const {
+            return graph::__getstate__(*this);
+        }
+
+        static Derived __setstate__(py::tuple& t) {
+            return graph::__setstate__<Derived>(t);
+        }
+
+        static Derived __setstate__(py::tuple&& t) {
+            return graph::__setstate__<Derived>(t);
+        }
+
+        void save(const std::string& name) const {
+            save_graph(*this, name);
+        }
+    };
 
     template<>
     class Graph<PartiallyDirected> : public GraphBase<PartiallyDirectedGraph>,

@@ -1,3 +1,4 @@
+import numpy as np
 from pybnesian.learning.algorithms import GreedyHillClimbing, hc
 from pybnesian.learning.operators import ArcOperatorSet, OperatorPool
 from pybnesian.learning.scores import BIC, HoldoutLikelihood, CVLikelihood
@@ -30,7 +31,7 @@ def test_hc_estimate():
     res_removed = hc.estimate(arc_set, bic, start_removed_nodes, max_iters=1)
     assert res.num_arcs() == 1
     assert added_arc == res_removed.arcs()[0]
-    assert op_delta == bic.score(res_removed) - bic.score(start_removed_nodes)
+    assert np.isclose(op_delta, bic.score(res_removed) - bic.score(start_removed_nodes))
 
     # BIC is score equivalent, so if we blacklist the added_arc, its reverse will be added.
     res = hc.estimate(arc_set, bic, start, max_iters=1, arc_blacklist=[added_arc])
@@ -77,9 +78,9 @@ def test_hc_conditional_estimate():
     res_removed = hc.estimate(arc_set, bic, start_removed_nodes, max_iters=1, verbose=False)
     assert res_removed.num_arcs() == 1
     assert added_edge == res_removed.arcs()[0]
-    assert op_delta == bic.score(res_removed) - bic.score(start_removed_nodes)
+    assert np.isclose(op_delta, bic.score(res_removed) - bic.score(start_removed_nodes))
 
-    assert op_delta == bic.local_score(res, added_edge[1], [added_edge[0]]) - bic.local_score(res, added_edge[1], [])
+    assert np.isclose(op_delta, bic.local_score(res, added_edge[1], [added_edge[0]]) - bic.local_score(res, added_edge[1], []))
 
     res = hc.estimate(arc_set, bic, start, epsilon=(op_delta + 0.01))
     assert res.num_arcs() == start.num_arcs()
@@ -116,7 +117,7 @@ def test_hc_estimate_validation():
     res_removed = hc.estimate_validation(arc_set, cv, holdout, start_removed_nodes, max_iters=1)
     assert res_removed.num_arcs() == 1
     assert added_edge == res.arcs()[0]
-    assert op_delta == cv.score(res_removed) - cv.score(start_removed_nodes)
+    assert np.isclose(op_delta, cv.score(res_removed) - cv.score(start_removed_nodes))
 
     # CV is score equivalent for GBNs, so if we blacklist the added_edge, its reverse will be added.
     res = hc.estimate_validation(arc_set, cv, holdout, start, max_iters=1, arc_blacklist=[added_edge])

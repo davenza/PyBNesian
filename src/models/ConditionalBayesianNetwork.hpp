@@ -24,7 +24,7 @@ namespace models {
         virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
         virtual bool contains_interface_node(const std::string& name) const = 0;
         virtual bool contains_all_node(const std::string& name) const = 0;
-        virtual size_t add_interface_node(const std::string& node) = 0;
+        virtual int add_interface_node(const std::string& node) = 0;
         virtual void remove_interface_node(int node_index) = 0;
         virtual void remove_interface_node(const std::string& node) = 0;
         virtual bool is_interface(int index) const = 0;
@@ -225,7 +225,7 @@ namespace models {
             return g.contains_node(name);
         }
 
-        size_t add_node(const std::string& node) override {
+        int add_node(const std::string& node) override {
             auto new_index = g.add_node(node);
             m_nodes.push_back(node);
             m_cpds_indices.insert({node, m_nodes.size()-1});
@@ -236,7 +236,7 @@ namespace models {
             return new_index;
         }
 
-        size_t add_interface_node(const std::string& node) override {
+        int add_interface_node(const std::string& node) override {
             auto new_index = g.add_node(node);
             m_interface_indices.insert({node, new_index});
             return new_index;

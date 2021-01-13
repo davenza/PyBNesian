@@ -331,6 +331,37 @@ namespace learning::algorithms {
         return cpc;
     }
 
+    std::pair<std::vector<std::unordered_set<int>>,
+              std::vector<std::unordered_set<int>>> generate_cpcs(int num_variables,
+                                                                  const ArcSet& arc_whitelist,
+                                                                  const EdgeSet& edge_blacklist,
+                                                                  const EdgeSet& edge_whitelist) {
+        std::vector<std::unordered_set<int>> cpcs(num_variables);
+        std::vector<std::unordered_set<int>> to_be_checked(num_variables);
+
+        // Add whitelisted CPCs
+        for (const auto& edge : edge_whitelist) {
+            cpcs[edge.first].insert(edge.second);
+            cpcs[edge.second].insert(edge.first);
+        }
+
+        for (const auto& arc : arc_whitelist) {
+            cpcs[arc.first].insert(arc.second);
+            cpcs[arc.second].insert(arc.first);
+        }
+
+        // Generate to_be_checked indices for whitelisted CPCs
+        for (int i = 0; i < num_variables; ++i) {
+            for (int j = 0; j < num_variables; ++j) {
+                if (j != i && edge_blacklist.count({i,j}) == 0 && cpcs[i].count(j) == 0) {
+                    to_be_checked[i].insert(j);
+                }
+            }
+        }
+
+        return std::make_pair(cpcs, to_be_checked);
+    }
+
     void marginal_cpcs_all_variables(const IndependenceTest& test,
                                      double alpha,
                                      std::vector<std::unordered_set<int>>& cpcs,
@@ -352,7 +383,6 @@ namespace learning::algorithms {
                     if (pvalue < alpha) {
                         if (cpcs[i].empty()) {
                             min_assoc(j, i) = pvalue;
-                            to_be_checked[i].insert(j);
                             if (min_assoc(j, i) < maxmin_assoc(i)) {
                                 maxmin_assoc(i) = min_assoc(j, i);
                                 maxmin_index(i) = j;
@@ -361,12 +391,14 @@ namespace learning::algorithms {
                         
                         if (cpcs[j].empty()) {
                             min_assoc(i, j) = pvalue;
-                            to_be_checked[j].insert(i);
                             if (min_assoc(i, j) < maxmin_assoc(j)) {
                                 maxmin_assoc(j) = min_assoc(i, j);
                                 maxmin_index(j) = i;
                             }
                         }
+                    } else {
+                        to_be_checked[i].erase(j);
+                        to_be_checked[j].erase(i);
                     }
                 }
 
@@ -393,9 +425,10 @@ namespace learning::algorithms {
                 int cpc_variable = *cpcs[i].begin();
                 for (auto it = to_be_checked[i].begin(), end = to_be_checked[i].end(); it != end;) {
                     auto p = *it;
-                    bool repeated_test = cpcs[p].size() == 1 && cpc_variable == *cpcs[p].begin();
+                    bool repeated_test = cpcs[p].size() == 1 && cpc_variable == *cpcs[p].begin() 
+                                         && to_be_checked[p].count(i) > 0;
 
-                    if (i < p || !repeated_test) {
+                    if (!repeated_test || i < p) {
                         double pvalue = test.pvalue(i, p, cpc_variable);
 
                         min_assoc(p, i) = std::max(min_assoc(p, i), pvalue);
@@ -428,41 +461,39 @@ namespace learning::algorithms {
         }
     }
 
-    std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& test, 
+    std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& test,
                                                             double alpha,
                                                             const ArcSet& arc_whitelist,
                                                             const EdgeSet& edge_blacklist,
                                                             const EdgeSet& edge_whitelist,
                                                             util::BaseProgressBar& progress) {
-        std::vector<std::unordered_set<int>> cpcs(test.num_variables());
-        std::vector<std::unordered_set<int>> to_be_checked(test.num_variables());
 
-        // Add whitelisted CPCs
-        for (const auto& edge : edge_whitelist) {
-            cpcs[edge.first].insert(edge.second);
-            cpcs[edge.second].insert(edge.first);
-        }
+        auto [cpcs, to_be_checked] = generate_cpcs(test.num_variables(),
+                                                   arc_whitelist,
+                                                   edge_blacklist,
+                                                   edge_whitelist);
+        
+        mmpc_all_variables(test, cpcs, to_be_checked, alpha, 
+                           arc_whitelist, edge_blacklist, edge_whitelist, progress);
+        
+        return cpcs;
+    }
 
-        for (const auto& arc : arc_whitelist) {
-            cpcs[arc.first].insert(arc.second);
-            cpcs[arc.second].insert(arc.first);
-        }
-
-        // Generate to_be_checked indices for whitelisted CPCs
-        for (int i = 0; i < test.num_variables(); ++i) {
-            if (!cpcs[i].empty()) {
-                for (int j = 0; j < test.num_variables(); ++j) {
-                    if (j != i && edge_blacklist.count({i,j}) == 0 && cpcs[i].count(j) == 0) {
-                        to_be_checked[i].insert(j);
-                    }
-                }
-            }
-        }
-
+    void mmpc_all_variables(const IndependenceTest& test, 
+                            std::vector<std::unordered_set<int>>& cpcs,
+                            std::vector<std::unordered_set<int>>& to_be_checked,
+                            double alpha,
+                            const ArcSet& arc_whitelist,
+                            const EdgeSet& edge_blacklist,
+                            const EdgeSet& edge_whitelist,
+                            util::BaseProgressBar& progress) {
+    
         MatrixXd min_assoc = MatrixXd::Zero(test.num_variables(), test.num_variables());
         VectorXd maxmin_assoc = VectorXd::Constant(test.num_variables(), std::numeric_limits<double>::infinity());
         VectorXi maxmin_index = VectorXi::Constant(test.num_variables(), MMPC_FORWARD_PHASE_STOP);
-        marginal_cpcs_all_variables(test, alpha, cpcs, to_be_checked, edge_blacklist, min_assoc, maxmin_assoc, maxmin_index, progress);
+
+        marginal_cpcs_all_variables(test, alpha, cpcs, to_be_checked, 
+                            edge_blacklist, min_assoc, maxmin_assoc, maxmin_index, progress);
 
         bool all_finished = true;
         for (int i = 0; i < test.num_variables(); ++i) {
@@ -498,19 +529,17 @@ namespace learning::algorithms {
                 mmpc_backward_phase(test, i, alpha, cpcs[i], arc_whitelist, edge_whitelist, progress);
             }
         }
-
-        return cpcs;
     }
 
     PartiallyDirectedGraph MMPC::estimate(const IndependenceTest& test,
-                    const ArcStringVector& varc_blacklist, 
-                    const ArcStringVector& varc_whitelist,
-                    const EdgeStringVector& vedge_blacklist,
-                    const EdgeStringVector& vedge_whitelist,
-                    double alpha,
-                    double ambiguous_threshold,
-                    bool allow_bidirected,
-                    int verbose) const {
+                                          const ArcStringVector& varc_blacklist,
+                                          const ArcStringVector& varc_whitelist,
+                                          const EdgeStringVector& vedge_blacklist,
+                                          const EdgeStringVector& vedge_whitelist,
+                                          double alpha,
+                                          double ambiguous_threshold,
+                                          bool allow_bidirected,
+                                          int verbose) const {
         PartiallyDirectedGraph skeleton(test.variable_names());
 
         auto restrictions = util::validate_restrictions(skeleton, 
@@ -537,7 +566,6 @@ namespace learning::algorithms {
             }
         }
 
-
         direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
         direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist, 
                                   alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
@@ -562,5 +590,35 @@ namespace learning::algorithms {
 
         indicators::show_console_cursor(true);
         return skeleton;
+    }
+
+
+
+    PartiallyDirectedGraph MMPC::estimate_conditional(const IndependenceTest& test,
+                                                      const std::vector<std::string>& nodes,
+                                                      const std::vector<std::string>& interface_nodes,
+                                                      const ArcStringVector& varc_blacklist, 
+                                                      const ArcStringVector& varc_whitelist,
+                                                      const EdgeStringVector& vedge_blacklist,
+                                                      const EdgeStringVector& vedge_whitelist,
+                                                      double alpha,
+                                                      double ambiguous_threshold,
+                                                      bool allow_bidirected,
+                                                      int verbose) const {
+        PartiallyDirectedGraph skeleton(test.variable_names());
+
+        // std::unordered_set<std::string> set_nodes {nodes.begin(), nodes.end()};
+        // std::unordered_set<std::string> set_interface_nodes {interface_nodes.begin(), interface_nodes.end()};
+
+        // auto restrictions = util::validate_restrictions(skeleton, 
+        //                                                 varc_blacklist,
+        //                                                 varc_whitelist,
+        //                                                 vedge_blacklist,
+        //                                                 vedge_whitelist);
+
+        // for (const auto& a : restrictions.arc_whitelist) {
+        //     skeleton.add_arc(a.first, a.second);
+        // }
+                            
     }
 }

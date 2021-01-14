@@ -1,117 +1,7 @@
 #include <graph/generic_graph.hpp>
-#include <boost/dynamic_bitset.hpp>
 #include <util/vector.hpp>
 
-using boost::dynamic_bitset;
-
 namespace graph {
-
-    UndirectedGraph UndirectedGraph::Complete(const std::vector<std::string>& nodes) {
-        UndirectedGraph un;
-
-        std::unordered_set<int> neighbors;
-        for(int i = 0, size = nodes.size(); i < size; ++i) {
-            neighbors.insert(i);
-        }
-
-        un.m_nodes.reserve(nodes.size());
-        for (int i = 0, size = nodes.size(); i < size; ++i) {
-            neighbors.erase(i);
-            UNode n(i, nodes[i], neighbors);
-            un.m_nodes.push_back(n);
-            un.m_indices.insert(std::make_pair(nodes[i], i));
-            neighbors.insert(i);
-        }
-
-        for (int i = 0, limit = nodes.size() - 1; i < limit; ++i) {
-            for (int j = i + 1, size = nodes.size(); j < size; ++j) {
-                un.m_edges.insert({i, j});
-            }
-        }
-
-        return un;
-    }
-
-    bool UndirectedGraph::has_path_unsafe(int source, int target) const {
-        if (has_edge_unsafe(source, target)) {
-            return true;
-        } else {
-            dynamic_bitset in_stack(m_nodes.size());
-            in_stack.reset(0, m_nodes.size());
-
-            for (auto free : m_free_indices) {
-                in_stack.set(free);
-            }
-
-            in_stack.set(source);
-
-            const auto& neighbors = m_nodes[source].neighbors();
-            std::vector<int> stack {neighbors.begin(), neighbors.end()};
-
-            for (auto neighbor : neighbors) {
-                in_stack.set(neighbor);
-            }
-
-            while(!stack.empty()) {
-                auto v = stack.back();
-                stack.pop_back();
-
-                const auto& neighbors = m_nodes[v].neighbors();
-
-                if (neighbors.find(target) != neighbors.end())
-                    return true;
-
-                for (auto neighbor : neighbors) {
-                    if (!in_stack[neighbor]) {
-                        stack.push_back(neighbor);
-                        in_stack.set(neighbor);
-                    }
-                }
-            }
-
-            return false;
-        }
-    }
-
-    PartiallyDirectedGraph::Graph(Graph<Undirected>&& g) : GraphBase<PartiallyDirectedGraph>(),
-                                                           ArcGraph<PartiallyDirectedGraph>(), 
-                                                           EdgeGraph<PartiallyDirectedGraph>() {
-        m_nodes.reserve(g.m_nodes.size());
-
-        for (auto& unnode : g.m_nodes) {
-            m_nodes.push_back(std::move(unnode));
-        }
-
-        m_edges = std::move(g.m_edges);
-        m_roots = std::unordered_set<int>();
-        m_leaves = std::unordered_set<int>();
-
-        for (size_t i = 0; i < g.m_nodes.size(); ++i) {
-            if (g.is_valid(i)) {
-                m_roots.insert(i);
-                m_leaves.insert(i);
-            }
-        }
-
-        m_indices = std::move(g.m_indices);
-        m_free_indices = std::move(g.m_free_indices);
-    }
-
-    PartiallyDirectedGraph::Graph(Graph<Directed>&& g) : GraphBase<PartiallyDirectedGraph>(),
-                            ArcGraph<PartiallyDirectedGraph>(), 
-                            EdgeGraph<PartiallyDirectedGraph>() {    
-        m_nodes.reserve(g.m_nodes.size());
-
-        for (auto& dnode : g.m_nodes) {
-            m_nodes.push_back(std::move(dnode));
-        }
-
-        m_arcs = std::move(g.m_arcs);
-        m_roots = std::move(g.m_roots);
-        m_leaves = std::move(g.m_leaves);
-        m_indices = std::move(g.m_indices);
-        m_free_indices = std::move(g.m_free_indices);
-    }
 
     PartiallyDirectedGraph PartiallyDirectedGraph::CompleteUndirected(const std::vector<std::string>& nodes) {
         PartiallyDirectedGraph pdag;
@@ -142,131 +32,44 @@ namespace graph {
         return pdag;
     }
 
-    void PartiallyDirectedGraph::direct_unsafe(int source, int target) {
-        if (has_edge_unsafe(source, target)) {
-            remove_edge_unsafe(source, target);
-            add_arc_unsafe(source, target);
-        } else if (has_arc_unsafe(target, source)) {
-            add_arc_unsafe(source, target);
+    ArcStringVector ConditionalPartiallyDirectedGraph::compelled_arcs() const {
+        ArcStringVector res;
+
+        for (const auto& edge : edge_indices()) {
+            if (is_interface(edge.first))
+                res.push_back({name(edge.first), name(edge.second)});
+            else if (is_interface(edge.second))
+                res.push_back({name(edge.second), name(edge.first)});
         }
+
+        return res;
     }
 
-    void PartiallyDirectedGraph::undirect_unsafe(int source, int target) {
-        if (has_arc_unsafe(source, target))
-            remove_arc_unsafe(source, target);
+    UndirectedGraph UndirectedGraph::Complete(const std::vector<std::string>& nodes) {
+        UndirectedGraph un;
 
-        if (!has_arc_unsafe(target, source))
-            add_edge_unsafe(source, target);
-    }
-
-    bool pdag2dag_adjacent_node(const PartiallyDirectedGraph& g,
-                                const std::vector<int>& x_neighbors, 
-                                const std::vector<int>& x_parents) {
-                               
-        for (auto y : x_neighbors) {
-            for (auto x_adj : x_neighbors) {
-                if (y != x_adj && !g.has_connection_unsafe(y, x_adj))
-                    return false;
-            }
-
-            for (auto x_adj : x_parents) {
-                if (y != x_adj && !g.has_connection_unsafe(y, x_adj))
-                    return false;
-            }
+        std::unordered_set<int> neighbors;
+        for(int i = 0, size = nodes.size(); i < size; ++i) {
+            neighbors.insert(i);
         }
 
-        return true;
-    }
-
-    Dag PartiallyDirectedGraph::to_dag() const {
-        // PDAG-TO-DAG by D.Dor, M.Tarsi (1992). A simple algorithm to construct a consistent extension of a partially oriented graph.
-        Dag directed(nodes());
-
-        for (const auto& arc : arcs()) {
-            directed.add_arc_unsafe(directed.index(arc.first), 
-                                    directed.index(arc.second));
+        un.m_nodes.reserve(nodes.size());
+        for (int i = 0, size = nodes.size(); i < size; ++i) {
+            neighbors.erase(i);
+            UNode n(i, nodes[i], neighbors);
+            un.m_nodes.push_back(n);
+            un.m_indices.insert(std::make_pair(nodes[i], i));
+            neighbors.insert(i);
         }
 
-        if (!directed.is_dag()) {
-            throw std::invalid_argument("PDAG contains directed cycles.");
-        }
-        
-        if (num_edges() > 0) {
-            PartiallyDirectedGraph copy(*this);
-
-            while (copy.num_edges() > 0) {
-                bool ok = false;
-                for (auto x : copy.leaves()) {
-                    auto x_neighbors = copy.neighbor_indices(x);
-                    auto x_parents = copy.parent_indices(x);
-
-                    if (pdag2dag_adjacent_node(copy, x_neighbors, x_parents)) {
-                        for (auto neighbor : x_neighbors) {
-                            // Use names because pdag could have removed/invalidated nodes.
-                            directed.add_arc(copy.name(neighbor), copy.name(x));
-                        }
-
-                        copy.remove_node(x);
-                        ok = true;
-                        break;
-                    }
-                }
-
-                if (!ok) {
-                    throw std::invalid_argument("PDAG do not allow a valid DAG extension.");
-                }
+        for (int i = 0, limit = nodes.size() - 1; i < limit; ++i) {
+            for (int j = i + 1, size = nodes.size(); j < size; ++j) {
+                un.m_edges.insert({i, j});
             }
         }
 
-        return directed;
+        return un;
     }
-
-    bool DirectedGraph::has_path_unsafe(int source, int target) const {
-        if (has_arc_unsafe(source, target))
-            return true;
-        else {
-            const auto& children = m_nodes[source].children();
-            std::vector<int> stack {children.begin(), children.end()};
-
-            while (!stack.empty()) {
-                auto v = stack.back();
-                stack.pop_back();
-
-                const auto& children = m_nodes[v].children();
-        
-                if (children.find(target) != children.end())
-                    return true;
-                
-                stack.insert(stack.end(), children.begin(), children.end());
-            }
-
-            return false;
-        }
-    }
-
-    // Checks if there is a path between source and target without taking into account the possible arc source -> target.
-    bool DirectedGraph::has_path_unsafe_no_direct_arc(int source, int target) const {
-        const auto& children = m_nodes[source].children();
-        std::vector<int> stack {children.begin(), children.end()};
-
-        if (has_arc_unsafe(source, target))
-            util::swap_remove_v(stack, target);
-
-        while (!stack.empty()) {
-            auto v = stack.back();
-            stack.pop_back();
-
-            const auto& children = m_nodes[v].children();
-    
-            if (children.find(target) != children.end())
-                return true;
-            
-            stack.insert(stack.end(), children.begin(), children.end());
-        }
-
-        return false;
-    }
-
 
     std::vector<std::string> Dag::topological_sort() const {
         std::vector<int> incoming_edges;

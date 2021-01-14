@@ -50,7 +50,7 @@ def numpy_local_score(node_type, data, variable, evidence):
 
     return loglik
 
-def test_create():
+def test_cvl_create():
     s = CVLikelihood(df)
     assert len(list(s.cv)) == 10
     s = CVLikelihood(df, 5)
@@ -69,7 +69,7 @@ def test_create():
         s = CVLikelihood(df, SIZE+1)
     assert "Cannot split" in str(ex.value)
 
-def test_local_score_gbn():
+def test_cvl_local_score_gbn():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     cvl = CVLikelihood(df, 10, seed)
@@ -110,7 +110,7 @@ def test_local_score_gbn():
     assert cvl.local_score(gbn, 2) == cvl.local_score(gbn, 2, gbn.parent_indices(2))
     assert cvl.local_score(gbn, 3) == cvl.local_score(gbn, 3, gbn.parent_indices(3))
 
-def test_local_score_gbn_null():
+def test_cvl_local_score_gbn_null():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     np.random.seed(0)
@@ -160,7 +160,7 @@ def test_local_score_gbn_null():
     assert cvl.local_score(gbn, 3) == cvl.local_score(gbn, 3, gbn.parent_indices(3))
 
 
-def test_local_score_spbn():
+def test_cvl_local_score_spbn():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')],
                             [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     
@@ -210,7 +210,7 @@ def test_local_score_spbn():
                       numpy_local_score(FactorType.CKDE, df, 'd', ['b', 'c', 'a']))
 
 
-def test_local_score_null_spbn():
+def test_cvl_local_score_null_spbn():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')],
                             [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     
@@ -271,7 +271,7 @@ def test_local_score_null_spbn():
     assert np.isclose(cvl.local_score(FactorType.CKDE, 'd', ['a', 'b', 'c']),
                       numpy_local_score(FactorType.CKDE, df_null, 'd', ['b', 'c', 'a']))
 
-def test_score():
+def test_cvl_score():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     cv = CVLikelihood(df, 10, 0)

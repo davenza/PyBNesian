@@ -43,7 +43,7 @@ def numpy_local_score(node_type, training_data, test_data, variable, evidence):
         else:
             return np.sum(k_joint.logpdf(test_node_data.to_numpy().T))
 
-def test_create():
+def test_holdout_create():
     s = HoldoutLikelihood(df)
     assert s.training_data().num_rows == 0.8 * SIZE
     assert s.test_data().num_rows == 0.2 * SIZE
@@ -67,7 +67,7 @@ def test_create():
     assert "test_ratio must be a number"  in str(ex.value)
 
 
-def test_local_score_gbn():
+def test_holdout_local_score_gbn():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     hl = HoldoutLikelihood(df, 0.2, seed)
@@ -104,7 +104,7 @@ def test_local_score_gbn():
     assert hl.local_score(gbn, 2) == hl.local_score(gbn, 2, gbn.parent_indices(2))
     assert hl.local_score(gbn, 3) == hl.local_score(gbn, 3, gbn.parent_indices(3))
 
-def test_local_score_gbn_null():
+def test_holdout_local_score_gbn_null():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     np.random.seed(0)
@@ -153,7 +153,7 @@ def test_local_score_gbn_null():
     assert hl.local_score(gbn, 2) == hl.local_score(gbn, 2, gbn.parent_indices(2))
     assert hl.local_score(gbn, 3) == hl.local_score(gbn, 3, gbn.parent_indices(3))
 
-def test_local_score_spbn():
+def test_holdout_local_score_spbn():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')],
                             [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     
@@ -191,7 +191,7 @@ def test_local_score_spbn():
     assert hl.local_score(spbn, 2) == hl.local_score(spbn, 2, spbn.parent_indices(2))
     assert hl.local_score(spbn, 3) == hl.local_score(spbn, 3, spbn.parent_indices(3))
 
-def test_local_score_null_spbn():
+def test_holdout_local_score_null_spbn():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')],
                             [('a', FactorType.CKDE), ('c', FactorType.CKDE)])
     
@@ -241,7 +241,7 @@ def test_local_score_null_spbn():
     assert hl.local_score(spbn, 2) == hl.local_score(spbn, 2, spbn.parent_indices(2))
     assert hl.local_score(spbn, 3) == hl.local_score(spbn, 3, spbn.parent_indices(3))
 
-def test_score():
+def test_holdout_score():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     hl = HoldoutLikelihood(df, 0.2, 0)

@@ -39,7 +39,7 @@ namespace util {
         }
 
         const T& element(int index) const {
-            if (index < 0 || index >= m_elems.size())
+            if (index < 0 || static_cast<size_t>(index) >= m_elems.size())
                 throw std::out_of_range("Index " + std::to_string(index) + " not valid for map with " 
                                         + std::to_string(size()) + " elements.");
             return m_elems[index];
@@ -50,10 +50,11 @@ namespace util {
         }
 
         int index(const T& elem) const {
-            if (!contains(elem))
+            auto it = m_indices.find(elem);
+            if (it == m_indices.end())
                 throw std::out_of_range("Element " + elem + " not present in map");
 
-            return m_indices.at(elem);
+            return it->second;
         }
 
         void insert(T elem) {
@@ -71,10 +72,10 @@ namespace util {
         }
 
         void remove(int index) {
-            if (index >= 0 && index < m_elems.size()) {
+            if (index >= 0 && static_cast<size_t>(index) < m_elems.size()) {
                 m_indices.erase(m_elems[index]);
                 util::swap_remove(m_elems, index);
-                if (index < m_elems.size())
+                if (static_cast<size_t>(index) < m_elems.size())
                     m_indices[m_elems[index]] = index;
             }
         }

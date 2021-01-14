@@ -31,7 +31,7 @@ def numpy_local_score(data, variable, evidence):
 
     return loglik.sum() - np.log(N) * 0.5 * (d + 2)
 
-def test_local_score():
+def test_bic_local_score():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     bic = BIC(df)
@@ -58,7 +58,7 @@ def test_local_score():
     assert bic.local_score(gbn, 2) == bic.local_score(gbn, 2, gbn.parent_indices(2))
     assert bic.local_score(gbn, 3) == bic.local_score(gbn, 3, gbn.parent_indices(3))
 
-def test_local_score_null():
+def test_bic_local_score_null():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     np.random.seed(0)
@@ -98,7 +98,7 @@ def test_local_score_null():
     assert bic.local_score(gbn, 3) == bic.local_score(gbn, 3, gbn.parent_indices(3))
 
 
-def test_score():
+def test_bic_score():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     bic = BIC(df)

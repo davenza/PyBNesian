@@ -12,12 +12,12 @@ namespace graph {
     class DNode {
     public:
         DNode(int idx,
-             std::string name,
-             std::unordered_set<int> parents = {}, 
-             std::unordered_set<int> children = {}) : m_idx(idx), 
-                                                m_name(name), 
-                                                m_parents(parents), 
-                                                m_children(children) {}
+              std::string name,
+              std::unordered_set<int> parents = {},
+              std::unordered_set<int> children = {}) : m_idx(idx),
+                                                       m_name(name),
+                                                       m_parents(parents),
+                                                       m_children(children) {}
         friend class PDNode;
 
         int index() const {
@@ -93,10 +93,10 @@ namespace graph {
     class UNode {
     public:
         UNode(int idx,
-             std::string name,
-             std::unordered_set<int> neighbors = {}) : m_idx(idx), 
-                                                m_name(name), 
-                                                m_neighbors(neighbors) {} 
+              std::string name,
+              std::unordered_set<int> neighbors = {}) : m_idx(idx),
+                                                        m_name(name),
+                                                        m_neighbors(neighbors) {}
 
         friend class PDNode;
 
@@ -164,14 +164,14 @@ namespace graph {
     class PDNode {
     public:
         PDNode(int idx,
-                std::string name,
-                std::unordered_set<int> parents = {}, 
-                std::unordered_set<int> children = {},
-                std::unordered_set<int> neighbors = {}) : m_idx(idx), 
-                                                            m_name(name), 
-                                                            m_neighbors(neighbors),
-                                                            m_parents(parents), 
-                                                            m_children(children) {}
+               std::string name,
+               std::unordered_set<int> parents = {},
+               std::unordered_set<int> children = {},
+               std::unordered_set<int> neighbors = {}) : m_idx(idx),
+                                                         m_name(name), 
+                                                         m_neighbors(neighbors),
+                                                         m_parents(parents),
+                                                         m_children(children) {}
 
         PDNode(DNode&& dn) : m_idx(dn.m_idx),
                              m_name(std::move(dn.m_name)),

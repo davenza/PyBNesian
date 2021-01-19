@@ -113,7 +113,6 @@ py::class_<DerivedBN, ConditionalBayesianNetwork<DerivedBN>> register_Conditiona
         .def("all_nodes", &BaseClass::all_nodes, py::return_value_policy::reference_internal)
         .def("arcs", &BaseClass::arcs, py::return_value_policy::take_ownership)
         .def("indices", &BaseClass::indices, py::return_value_policy::reference_internal)
-        .def("interface_indices", &BaseClass::interface_indices, py::return_value_policy::reference_internal)
         .def("joint_collapsed_index", &BaseClass::joint_collapsed_index)
         .def("joint_collapsed_indices", &BaseClass::joint_collapsed_indices, py::return_value_policy::reference_internal)
         .def("index_from_joint_collapsed", &BaseClass::index_from_joint_collapsed)
@@ -128,7 +127,7 @@ py::class_<DerivedBN, ConditionalBayesianNetwork<DerivedBN>> register_Conditiona
         .def("is_interface", py::overload_cast<const std::string&>(&BaseClass::is_interface, py::const_))
         .def("contains_node", &BaseClass::contains_node)
         .def("contains_interface_node", &BaseClass::contains_interface_node)
-        .def("contains_all_node", &BaseClass::contains_all_node)
+        .def("contains_total_node", &BaseClass::contains_total_node)
         .def("add_node", &BaseClass::add_node)
         .def("add_interface_node", &BaseClass::add_interface_node)
         .def("remove_node", py::overload_cast<int>(&BaseClass::remove_node))
@@ -205,7 +204,7 @@ py::class_<DerivedBN, ConditionalBayesianNetwork<DerivedBN>> register_Conditiona
     return py::class_<DerivedBN, BaseClass>(m, derivedbn_name)
         .def(py::init<const std::vector<std::string>&, const std::vector<std::string>&>())
         .def(py::init<const std::vector<std::string>&, const std::vector<std::string>&, const ArcStringVector&>())
-        .def(py::init<const std::vector<std::string>&, const std::vector<std::string>&, const Dag&>())
+        .def(py::init<const ConditionalDag&>())
         .def(py::pickle(
             [](const DerivedBN& self) {
                 return self.__getstate__();
@@ -304,14 +303,13 @@ void pybindings_models(py::module& root) {
         .def("num_total_nodes", &ConditionalBayesianNetworkBase::num_total_nodes)
         .def("interface_nodes", &ConditionalBayesianNetworkBase::interface_nodes, py::return_value_policy::reference_internal)
         .def("all_nodes", &ConditionalBayesianNetworkBase::all_nodes, py::return_value_policy::reference_internal)
-        .def("interface_indices", &ConditionalBayesianNetworkBase::interface_indices, py::return_value_policy::reference_internal)
         .def("joint_collapsed_index", &ConditionalBayesianNetworkBase::joint_collapsed_index)
         .def("joint_collapsed_indices", &ConditionalBayesianNetworkBase::joint_collapsed_indices, py::return_value_policy::reference_internal)
         .def("index_from_joint_collapsed", &ConditionalBayesianNetworkBase::index_from_joint_collapsed)
         .def("joint_collapsed_from_index", &ConditionalBayesianNetworkBase::joint_collapsed_from_index)
         .def("joint_collapsed_name", &ConditionalBayesianNetworkBase::joint_collapsed_name)
         .def("contains_interface_node", &ConditionalBayesianNetworkBase::contains_interface_node)
-        .def("contains_all_node", &ConditionalBayesianNetworkBase::contains_all_node)
+        .def("contains_total_node", &ConditionalBayesianNetworkBase::contains_total_node)
         .def("add_interface_node", &ConditionalBayesianNetworkBase::add_interface_node)
         .def("remove_interface_node", py::overload_cast<int>(&ConditionalBayesianNetworkBase::remove_interface_node))
         .def("remove_interface_node", py::overload_cast<const std::string&>(&ConditionalBayesianNetworkBase::remove_interface_node))
@@ -364,9 +362,7 @@ void pybindings_models(py::module& root) {
                                   const std::vector<std::string>&,
                                   const ArcStringVector&,
                                   FactorStringTypeVector&>())
-                    .def(py::init<const std::vector<std::string>&,
-                                  const std::vector<std::string>&,
-                                  const Dag&,
+                    .def(py::init<const ConditionalDag&,
                                   FactorStringTypeVector&>())
                     .def("node_type", py::overload_cast<const std::string&>(&ConditionalSemiparametricBN::node_type, py::const_))
                     .def("node_type", py::overload_cast<int>(&ConditionalSemiparametricBN::node_type, py::const_))

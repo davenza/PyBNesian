@@ -5,7 +5,7 @@ namespace models {
     py::tuple SemiparametricBN::__getstate_extra__() const {
         std::vector<int> state;
 
-        for (size_t i = 0; i < this->physical_num_nodes(); ++i) {
+        for (int i = 0; i < this->num_raw_nodes(); ++i) {
             if (is_valid(i))
                 state.push_back(static_cast<int>(this->node_type(i)));
         }

@@ -32,9 +32,6 @@ namespace graph {
     template<GraphType Type>
     class ConditionalGraph;
 
-    // class Dag;
-    // class ConditionalDag;
-
     using DirectedGraph = Graph<Directed>;
     using Dag = Graph<DirectedAcyclic>;
     using UndirectedGraph = Graph<Undirected>;
@@ -83,6 +80,42 @@ namespace graph {
         inline static constexpr bool has_arcs = true;
         inline static constexpr bool has_edges = true;
     };
+
+    template<typename G, typename _ = void>
+    struct is_unconditional_graph : public std::false_type {};
+
+    template<typename G>
+    struct is_unconditional_graph<G,
+                                std::void_t<
+                                    util::GenericInstantation<GraphType>::enable_if_template_instantation_t<Graph, G>
+                                >
+    > : public std::true_type {};
+
+    template<typename G>
+    inline constexpr auto is_unconditional_graph_v = is_unconditional_graph<G>::value;
+
+    template<typename G, typename R = void>
+    using enable_if_unconditional_graph_t = std::enable_if_t<is_unconditional_graph_v<G>, R>;
+
+    template<typename G, typename _ = void>
+    struct is_conditional_graph : public std::false_type {};
+
+    template<typename G>
+    struct is_conditional_graph<G,
+                                std::void_t<
+                                    util::GenericInstantation<GraphType>::enable_if_template_instantation_t<ConditionalGraph, G>
+                                >
+    > : public std::true_type {};
+
+    template<typename G>
+    inline constexpr auto is_conditional_graph_v = is_conditional_graph<G>::value;
+
+    template<typename G, typename R = void>
+    using enable_if_conditional_graph_t = std::enable_if_t<is_conditional_graph_v<G>, R>;
+
+    static_assert(util::GenericInstantation<GraphType>::is_template_instantation_v<Graph, Dag>,
+                    "GenericInstantation failed for Graph, Dag.");
+    static_assert(is_unconditional_graph_v<Dag>, "Dag is not unconditional graph");
 
     template<GraphType Type>
     ConditionalGraph<Type> to_conditional_graph(const Graph<Type>& g,
@@ -146,7 +179,7 @@ namespace graph {
         return graph;
     }
 
-    template<typename G>
+    template<typename G, enable_if_unconditional_graph_t<G, int> = 0>
     py::tuple __getstate__(const G& g) {
         std::vector<std::string> nodes;
         nodes.reserve(g.num_nodes());
@@ -157,7 +190,7 @@ namespace graph {
 
 
         if (g.free_indices().empty()) {
-            for (auto& n : g.node_indices()) {
+            for (auto& n : g.raw_nodes()) {
                 nodes.push_back(n.name());
             }
 
@@ -175,7 +208,7 @@ namespace graph {
         } else {
             std::unordered_map<int, int> new_indices;
 
-            for (int i = 0, j = 0; i < g.num_nodes(); ++i) {
+            for (int i = 0, j = 0; i < g.num_raw_nodes(); ++i) {
                 if (g.node(i).is_valid()) {
                     nodes.push_back(g.name(i));
                     new_indices.insert({i, j++});
@@ -206,12 +239,68 @@ namespace graph {
         }
     }
 
-    template<typename G>
-    py::tuple __getstate__(const G&& g) {
+    template<typename G, enable_if_unconditional_graph_t<G, int> = 0>
+    py::tuple __getstate__(G&& g) {
         return graph::__getstate__(g);
     }
 
-    template<typename G>
+    template<typename G, enable_if_conditional_graph_t<G, int> = 0>
+    py::tuple __getstate__(const G& g) {
+        std::vector<std::string> nodes;
+        std::vector<std::string> interface_nodes;
+        nodes.reserve(g.num_nodes());
+        interface_nodes.reserve(g.num_interface_nodes());
+
+        ArcStringVector arcs;
+        if constexpr (GraphTraits<G>::has_arcs) arcs.reserve(g.num_arcs());
+    
+        EdgeStringVector edges;
+        if constexpr (GraphTraits<G>::has_edges) edges.reserve(g.num_edges());
+
+        if (g.free_indices().empty()) {
+            for (auto& n : g.raw_nodes()) {
+                const auto& name  = n.name();
+                if (g.is_interface(name))
+                    interface_nodes.push_back(name);
+                else
+                    nodes.push_back(name);
+            }
+        } else {
+            for (int i = 0; i < g.num_raw_nodes(); ++i) {
+                if (g.is_valid(i)) {
+                    if (g.is_interface(i))
+                        interface_nodes.push_back(g.name(i));
+                    else
+                        nodes.push_back(g.name(i));
+                }
+            }
+        }
+
+        if constexpr (GraphTraits<G>::has_arcs) {
+            arcs = g.arcs();
+        }
+
+        if constexpr (GraphTraits<G>::has_edges) {
+            edges = g.edges();
+        }
+
+        if constexpr (GraphTraits<G>::has_arcs) {
+            if constexpr (GraphTraits<G>::has_edges) {
+                return py::make_tuple(nodes, interface_nodes, arcs, edges);
+            } else {
+                return py::make_tuple(nodes, interface_nodes, arcs);
+            }
+        } else {
+            return py::make_tuple(nodes, interface_nodes, edges);
+        }
+    }
+
+    template<typename G, enable_if_conditional_graph_t<G, int> = 0>
+    py::tuple __getstate__(G&& g) {
+        return graph::__getstate__(g);
+    }
+
+    template<typename G, enable_if_unconditional_graph_t<G, int> = 0>
     G __setstate__(py::tuple& t) {
         if (t.size() != (1 + GraphTraits<G>::has_arcs + GraphTraits<G>::has_edges))
             throw std::runtime_error("Not valid Graph.");
@@ -243,10 +332,48 @@ namespace graph {
         return g;
     }
 
-    template<typename G>
+    template<typename G, enable_if_unconditional_graph_t<G, int> = 0>
     G __setstate__(py::tuple&& t) {
         return graph::__setstate__<G>(t);
     }
+
+    template<typename G, enable_if_conditional_graph_t<G, int> = 0>
+    G __setstate__(py::tuple& t) {
+        if (t.size() != (2 + GraphTraits<G>::has_arcs + GraphTraits<G>::has_edges))
+            throw std::runtime_error("Not valid Graph.");
+
+        G g(t[0].cast<std::vector<std::string>>(), t[1].cast<std::vector<std::string>>());
+
+        if constexpr (GraphTraits<G>::has_arcs) {
+            auto arcs = t[2].cast<std::vector<Arc>>();
+
+            for (auto& arc : arcs) {
+                g.add_arc(arc.first, arc.second);
+            }
+
+            if constexpr (GraphTraits<G>::has_edges) {
+                auto edges = t[3].cast<std::vector<Edge>>();
+
+                for (auto& edge : edges) {
+                    g.add_edge(edge.first, edge.second);
+                }
+            }
+        } else {
+            auto edges = t[2].cast<std::vector<Edge>>();
+
+            for (auto& edge : edges) {
+                g.add_edge(edge.first, edge.second);
+            }
+        }
+        
+        return g;
+    }
+
+    template<typename G, enable_if_conditional_graph_t<G, int> = 0>
+    G __setstate__(py::tuple&& t) {
+        return graph::__setstate__<G>(t);
+    }
+
 
     template<typename G>
     void save_graph(G& graph, const std::string& name) {
@@ -308,6 +435,10 @@ namespace graph {
             return m_string_nodes.size();
         }
 
+        int num_raw_nodes() const {
+            return m_nodes.size();
+        }
+
         template<typename V>
         const NodeType& node(const V& idx) const {
             return m_nodes[check_index(idx)]; 
@@ -317,7 +448,7 @@ namespace graph {
             return m_string_nodes.elements();
         }
         
-        const std::vector<NodeType>& node_indices() const { return m_nodes; }
+        const std::vector<NodeType>& raw_nodes() const { return m_nodes; }
 
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
@@ -483,7 +614,16 @@ namespace graph {
         using NodeType = typename GraphTraits<Derived>::NodeType;
 
         template<typename G, template<typename> typename BaseClass>
+        friend class ArcGraph;
+
+        template<typename G, template<typename> typename BaseClass>
         friend class EdgeGraph;
+
+
+        template<typename _Derived, template<typename> typename BaseClass>
+        friend class DirectedImpl;
+        template<typename _Derived, typename BaseClass>
+        friend class DagImpl;
 
 
         ConditionalGraphBase() = default;
@@ -517,6 +657,10 @@ namespace graph {
             return m_string_nodes.size();
         }
 
+        int num_raw_nodes() const {
+            return m_free_indices.size();
+        }
+
         int num_interface_nodes() const {
             return m_interface_nodes.size();
         }
@@ -542,7 +686,7 @@ namespace graph {
             return m_total_nodes.elements();
         }
 
-        const std::vector<NodeType>& node_indices() const { return m_nodes; }
+        const std::vector<NodeType>& raw_nodes() const { return m_nodes; }
 
         const std::unordered_map<std::string, int>& indices() const {
             return m_indices;
@@ -602,26 +746,26 @@ namespace graph {
         }
 
         int collapsed_index(const std::string& node) const {
-            return m_total_nodes.index(node);
+            return m_string_nodes.index(node);
         }
 
         int joint_collapsed_index(const std::string& node) const {
             return m_total_nodes.index(node);
         }
 
-        int index_from_collapsed(int collapsed_index) {
-            return index(m_string_nodes.element(collapsed_index));
+        int index_from_collapsed(int collapsed_index) const {
+            return index(collapsed_name(collapsed_index));
         }
 
-        int index_from_joint_collapsed(int joint_collapsed_index) {
-            return index(m_string_nodes.element(joint_collapsed_index));
+        int index_from_joint_collapsed(int joint_collapsed_index) const {
+            return index(joint_collapsed_name(joint_collapsed_index));
         }
 
-        int collapsed_from_index(int index) {
+        int collapsed_from_index(int index) const {
             return m_string_nodes[name(index)];
         }
 
-        int joint_collapsed_from_index(int index)  {
+        int joint_collapsed_from_index(int index) const {
             return m_total_nodes[name(index)];
         }
 
@@ -669,9 +813,6 @@ namespace graph {
         bool is_valid(int idx) const {
             return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
         }
-    private:
-        int create_node(const std::string& node);
-        void remove_node_arcs_edges(int index);
 
         int check_index(int idx) const {
             if (!is_valid(idx)) {
@@ -689,6 +830,10 @@ namespace graph {
 
             return f->second;
         }
+    private:
+        int create_node(const std::string& node);
+        void remove_node_arcs_edges(int index);
+
 
         std::vector<NodeType> m_nodes;
         // std::vector<std::string> m_string_nodes;
@@ -903,7 +1048,7 @@ namespace graph {
         }
 
         int num_children_unsafe(int idx) const {
-            return base().node_indices()[idx].children().size();
+            return base().raw_nodes()[idx].children().size();
         }
 
         ArcStringVector arcs() const;
@@ -1336,7 +1481,7 @@ namespace graph {
         PartiallyDirectedImpl(Graph<Directed>&& g);
 
         // /////////////////////////////////////
-        // ConditionalBayesianNetwork constructors
+        // ConditionalGraphBase constructors
         // /////////////////////////////////////
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int> = 0>
         PartiallyDirectedImpl(const std::vector<std::string>& nodes,
@@ -1741,7 +1886,7 @@ namespace graph {
                 throw std::runtime_error("Arc " + this->name(s) + " -> " + this->name(t) + " addition would break acyclity.");
             }
 
-            ArcGraph<DirectedGraph, GraphBase>::add_arc_unsafe(s, t);
+            BaseClass::add_arc_unsafe(s, t);
         }
 
         template<typename V>
@@ -1753,7 +1898,7 @@ namespace graph {
                 throw std::runtime_error("Arc " + this->name(s) + " -> " + this->name(t) + " flip would break acyclity.");
             }
 
-            ArcGraph<DirectedGraph, GraphBase>::flip_arc_unsafe(s, t);
+            BaseClass::flip_arc_unsafe(s, t);
         }
 
         GraphClass<PartiallyDirected> to_pdag() const;

@@ -168,6 +168,8 @@ namespace models {
             return g.num_nodes();
         }
 
+        int num_raw_nodes() const { return g.num_raw_nodes(); }
+
         int num_arcs() const override {
             return g.num_arcs();
         }
@@ -213,9 +215,9 @@ namespace models {
         }
 
         int add_node(const std::string& node) override {
-            size_t idx = g.add_node(node);
+            int idx = g.add_node(node);
 
-            if (!m_cpds.empty() && idx >= m_cpds.size())
+            if (!m_cpds.empty() && static_cast<size_t>(idx) >= m_cpds.size())
                 m_cpds.resize(idx + 1);
             return idx;
         }
@@ -390,7 +392,7 @@ namespace models {
         bool must_construct_cpd(const CPD& node) const;
         void fit(const DataFrame& df) override;
 
-        CPD create_cpd(const std::string& node) {
+        CPD create_cpd(const std::string& node) const {
             auto pa = parents(node);
             return CPD(node, pa);
         }
@@ -420,7 +422,6 @@ namespace models {
         friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
     protected:
         void check_fitted() const;
-        size_t physical_num_nodes() const { return g.node_indices().size(); }
     private:
         py::tuple __getstate_extra__() const {
             return py::make_tuple();
@@ -476,7 +477,7 @@ namespace models {
         for (auto& parent : pa) {
             if (evidence_set.find(parent) == evidence_set.end()) {
                 std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
-                                    + "\nParents: [";
+                                    + "\nParents: " + parents_to_string(cpd.variable());
                 throw std::invalid_argument(err);
             }
         }
@@ -497,17 +498,17 @@ namespace models {
                 map_index[it->variable()] = it;
             }
 
-            m_cpds.reserve(physical_num_nodes());
+            m_cpds.reserve(num_raw_nodes());
 
-            for (size_t i = 0; i < physical_num_nodes(); ++i) {
+            for (int i = 0; i < num_raw_nodes(); ++i) {
                 if (is_valid(i)) {
-                    auto cpd_idx = map_index.find(name(i));
+                    const auto& node_name = name(i);
+                    auto cpd_idx = map_index.find(node_name);
 
                     if (cpd_idx != map_index.end()) {
-                        auto cpd = *(cpd_idx->second);
-                        m_cpds.push_back(cpd);
+                        m_cpds.push_back(*(cpd_idx->second));
                     } else {
-                        m_cpds.push_back(static_cast<Derived*>(this)->create_cpd(name(i)));
+                        m_cpds.push_back(static_cast<Derived&>(*this).create_cpd(node_name));
                     }
                 } else {
                     m_cpds.push_back(CPD());
@@ -523,8 +524,8 @@ namespace models {
 
     template<typename Derived>
     bool BayesianNetwork<Derived>::must_construct_cpd(const CPD& cpd) const {
-        auto& node = cpd.variable();
-        auto& cpd_evidence = cpd.evidence();
+        const auto& node = cpd.variable();
+        const auto& cpd_evidence = cpd.evidence();
         auto parents = this->parents(node);
         
         if (cpd_evidence.size() != parents.size())
@@ -539,23 +540,24 @@ namespace models {
 
     template<typename Derived>
     void BayesianNetwork<Derived>::fit(const DataFrame& df) {
+        auto nraw_nodes = num_raw_nodes();
         if (m_cpds.empty()) {
-            m_cpds.reserve(physical_num_nodes());
+            m_cpds.reserve(nraw_nodes);
 
-            for (size_t i = 0; i < physical_num_nodes(); ++i) {
+            for (int i = 0; i < nraw_nodes; ++i) {
                 if (is_valid(i)) {
-                    auto cpd = static_cast<Derived*>(this)->create_cpd(name(i));
-                    m_cpds.push_back(cpd);
+                    auto cpd = static_cast<Derived&>(*this).create_cpd(name(i));
+                    m_cpds.push_back(std::move(cpd));
                     m_cpds.back().fit(df);
                 } else {
                     m_cpds.push_back(CPD());
                 }
             }
         } else {
-            for (size_t i = 0; i < physical_num_nodes(); ++i) {
+            for (int i = 0; i < nraw_nodes; ++i) {
                 if (is_valid(i)) {
-                    if (static_cast<Derived*>(this)->must_construct_cpd(m_cpds[i])) {
-                        m_cpds[i] = static_cast<Derived*>(this)->create_cpd(name(i));
+                    if (static_cast<const Derived&>(*this).must_construct_cpd(m_cpds[i])) {
+                        m_cpds[i] = static_cast<Derived&>(*this).create_cpd(name(i));
                         m_cpds[i].fit(df);
                     } else if (!m_cpds[i].fitted()) {
                         m_cpds[i].fit(df);
@@ -622,14 +624,13 @@ namespace models {
 
         DataFrame parents(n);
 
-        int i = 0;
-        for (auto& name : g.topological_sort()) {
-            auto index = g.index(name);
-            auto array = m_cpds[index].sample(n, parents, seed);
+        auto top_sort = g.topological_sort();
+        for (size_t i = 0; i < top_sort.size(); ++i) {
+            auto idx = index(top_sort[i]);
+            auto array = m_cpds[idx].sample(n, parents, seed);
             
-            auto res = parents->AddColumn(i, name, array);
+            auto res = parents->AddColumn(i, top_sort[i], array);
             parents = DataFrame(std::move(res).ValueOrDie());
-            ++i;
         }
 
         if (ordered) {
@@ -643,7 +644,6 @@ namespace models {
             }
 
             auto new_schema = std::make_shared<arrow::Schema>(fields);
-
             auto new_rb = arrow::RecordBatch::Make(new_schema, n, columns);
             return DataFrame(new_rb);
         } else {

@@ -20,6 +20,59 @@ using util::ArcStringVector, util::FactorStringTypeVector;
 
 namespace learning::operators {
 
+    template<typename T1, typename T2>
+    std::ostream& operator<<(std::ostream &os, const std::pair<T1, T2>& p) {
+        os << "(" << p.first << ", " << p.second << ")";
+        return os;
+    }
+
+    template<typename T, typename HashType, typename EqualType>
+    std::ostream& operator<<(std::ostream &os, const std::unordered_set<T, HashType, EqualType>& set) {
+        os << "{";
+        
+        std::vector<T> v {set.begin(), set.end()};
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "}";
+        return os;
+    }
+
+    template<typename Key, typename T, typename HashType, typename EqualType>
+    std::ostream& operator<<(std::ostream &os, const std::unordered_map<Key, T, HashType, EqualType>& map) {
+        os << "{";
+        
+        std::vector<std::pair<Key, T>> v {map.begin(), map.end()};
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "}";
+        return os;
+    }
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream &os, const std::vector<T>& v) {
+        os << "[";
+        
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "]";
+        return os;
+    }
+
     class OperatorType {
     public:
         enum Value : uint8_t

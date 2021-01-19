@@ -4,60 +4,6 @@ using learning::operators::AddArc;
 
 namespace learning::operators {
 
-    template<typename T1, typename T2>
-    std::ostream& operator<<(std::ostream &os, const std::pair<T1, T2>& p) {
-        os << "(" << p.first << ", " << p.second << ")";
-        return os;
-    }
-
-    template<typename T, typename HashType, typename EqualType>
-    std::ostream& operator<<(std::ostream &os, const std::unordered_set<T, HashType, EqualType>& set) {
-        os << "{";
-        
-        std::vector<T> v {set.begin(), set.end()};
-        if (!v.empty()) {
-            os << v[0];
-            for (size_t i = 1; i < v.size(); ++i) {
-                os << ", " << v[i];
-            }
-        }
-
-        os << "}";
-        return os;
-    }
-
-    template<typename Key, typename T, typename HashType, typename EqualType>
-    std::ostream& operator<<(std::ostream &os, const std::unordered_map<Key, T, HashType, EqualType>& map) {
-        os << "{";
-        
-        std::vector<std::pair<Key, T>> v {map.begin(), map.end()};
-        if (!v.empty()) {
-            os << v[0];
-            for (size_t i = 1; i < v.size(); ++i) {
-                os << ", " << v[i];
-            }
-        }
-
-        os << "}";
-        return os;
-    }
-
-    template<typename T>
-    std::ostream& operator<<(std::ostream &os, const std::vector<T>& v) {
-        os << "[";
-        
-        if (!v.empty()) {
-            os << v[0];
-            for (size_t i = 1; i < v.size(); ++i) {
-                os << ", " << v[i];
-            }
-        }
-
-        os << "]";
-        return os;
-    }
-
-
     bool Operator::operator==(const Operator& a) const {
         if (m_type == a.m_type) {
             switch(m_type) {
@@ -156,14 +102,15 @@ namespace learning::operators {
                                  std::vector<std::string>& parents_target,
                                  double source_cached_score,
                                  double target_cached_score) {
-        if (model.has_arc(source, target)) {            
+        if (model.has_arc(source, target)) {    
             util::swap_remove_v(parents_target, source);
-            return score.local_score(model, target, parents_target) - target_cached_score;
+            auto d = score.local_score(model, target, parents_target) - target_cached_score;
             parents_target.push_back(source);
+            return d;
         } else if (model.has_arc(target, source)) {
             auto new_parents_source = model.parents(source);
             util::swap_remove_v(new_parents_source, target);
-            
+
             parents_target.push_back(source);
             double d = score.local_score(model, source, new_parents_source) + 
                        score.local_score(model, target, parents_target) 
@@ -217,8 +164,9 @@ namespace learning::operators {
                                  double target_cached_score) {
         if (model.has_arc(source, target)) {            
             util::swap_remove_v(parents_target, source);
-            return score.local_score(model, target, parents_target) - target_cached_score;
+            double d = score.local_score(model, target, parents_target) - target_cached_score;
             parents_target.push_back(source);
+            return d;
         } else {
             parents_target.push_back(source);
             double d = score.local_score(model, target, parents_target) - target_cached_score;
@@ -327,20 +275,22 @@ namespace learning::operators {
                 int source_joint_collapsed = model.joint_collapsed_index(source_node);
                 if(valid_op(source_joint_collapsed, target_collapsed)) {
                     if (model.is_interface(source_node)) {
-                        delta(source_joint_collapsed, target_collapsed) = cache_score_interface(model,
-                                                                                              score,
-                                                                                              source_node,
-                                                                                              target_node,
-                                                                                              new_parents_target,
-                                                                                              m_local_cache->local_score(model, target_node));
+                        delta(source_joint_collapsed, target_collapsed) =
+                                cache_score_interface(model,
+                                                      score,
+                                                      source_node,
+                                                      target_node,
+                                                      new_parents_target,
+                                                      m_local_cache->local_score(model, target_node));
                     } else {
-                        delta(source_joint_collapsed, target_collapsed) = cache_score_operation(model,
-                                                                                              score,
-                                                                                              source_node,
-                                                                                              target_node,
-                                                                                              new_parents_target,
-                                                                                              m_local_cache->local_score(model, source_node),
-                                                                                              m_local_cache->local_score(model, target_node));
+                        delta(source_joint_collapsed, target_collapsed) =
+                                cache_score_operation(model,
+                                                      score,
+                                                      source_node,
+                                                      target_node,
+                                                      new_parents_target,
+                                                      m_local_cache->local_score(model, source_node),
+                                                      m_local_cache->local_score(model, target_node));
                     }
                 }
             }

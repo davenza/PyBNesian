@@ -130,23 +130,19 @@ namespace models {
         }
         
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalBayesianNetwork, BNType<D>, int> = 0>
-        SemiparametricBNImpl(const std::vector<std::string>& nodes,
-                             const std::vector<std::string>& interface_nodes,
-                             const Dag& graph,
-                             FactorStringTypeVector& node_types) : BNType<Derived>(nodes, interface_nodes, graph),
-                                                                   m_factor_types(nodes.size()) {
+        SemiparametricBNImpl(const ConditionalDag& graph,
+                             FactorStringTypeVector& node_types) : BNType<Derived>(graph),
+                                                                   m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
                 m_factor_types[this->collapsed_index(p.first)] = p.second;
             }
         }
 
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalBayesianNetwork, BNType<D>, int> = 0>
-        SemiparametricBNImpl(const std::vector<std::string>& nodes,
-                             const std::vector<std::string>& interface_nodes,
-                             Dag&& graph,
+        SemiparametricBNImpl(ConditionalDag&& graph,
                              FactorStringTypeVector& node_types) :
-                                                    BNType<Derived>(nodes, interface_nodes, std::move(graph)),
-                                                    m_factor_types(nodes.size()) {
+                                                    BNType<Derived>(std::move(graph)),
+                                                    m_factor_types(this->num_nodes()) {
             for(auto& p : node_types) {
                 m_factor_types[this->collapsed_index(p.first)] = p.second;
             }
@@ -166,16 +162,12 @@ namespace models {
                                                     m_factor_types(nodes.size()) {}
 
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalBayesianNetwork, BNType<D>, int> = 0>
-        SemiparametricBNImpl(const std::vector<std::string>& nodes,
-                             const std::vector<std::string>& interface_nodes,
-                             const Dag& graph) : BNType<Derived>(nodes, interface_nodes, graph),
-                                                    m_factor_types(nodes.size()) {}
+        SemiparametricBNImpl(const ConditionalDag& graph) : BNType<Derived>(graph),
+                                                            m_factor_types(this->num_nodes()) {}
 
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalBayesianNetwork, BNType<D>>>
-        SemiparametricBNImpl(const std::vector<std::string>& nodes,
-                             const std::vector<std::string>& interface_nodes,
-                             Dag&& graph) : BNType<Derived>(nodes, interface_nodes, std::move(graph)),
-                                            m_factor_types(nodes.size()) {}
+        SemiparametricBNImpl(ConditionalDag&& graph) : BNType<Derived>(std::move(graph)),
+                                                       m_factor_types(this->num_nodes()) {}
 
         FactorType node_type(int node_index) const override {
             return node_type(this->name(node_index));
@@ -201,6 +193,27 @@ namespace models {
             }
 
             return res; 
+        }
+
+        int add_node(const std::string& node) override {
+            auto new_index = BNType<Derived>::add_node(node);
+            // Update factor type size.
+            if (static_cast<size_t>(new_index) >= m_factor_types.size())
+                m_factor_types.resize(new_index + 1);
+            return new_index;
+        }
+
+        template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalBayesianNetwork, BNType<D>>>
+        void set_node(int index) {
+            BNType<Derived>::set_node(index);
+            m_factor_types[index] = FactorType::LinearGaussianCPD;
+        }
+
+        template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalBayesianNetwork, BNType<D>>>
+        void set_node(const std::string& name) {
+            BNType<Derived>::set_node(name);
+            m_factor_types[this->index(name)] = FactorType::LinearGaussianCPD;
+            
         }
 
         void force_type_whitelist(const FactorStringTypeVector& type_whitelist) {
@@ -241,10 +254,6 @@ namespace models {
         BayesianNetworkType type() const override {
             return BayesianNetworkType::SPBN;
         }
-
-        // std::unique_ptr<BayesianNetworkBase> clone() const override {
-        //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
-        // }
 
         py::tuple __getstate__() const {
             return BNType<Derived>::__getstate__();

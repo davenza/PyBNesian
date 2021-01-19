@@ -1,10 +1,12 @@
 #ifndef PYBNESIAN_MODELS_CONDITIONALBAYESIANNETWORK_HPP
 #define PYBNESIAN_MODELS_CONDITIONALBAYESIANNETWORK_HPP
 
+#include <graph/generic_graph.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <util/vector.hpp>
 #include <util/virtual_clone.hpp>
 
+using graph::ConditionalDag;
 using util::abstract_class, util::clone_inherit;
 
 namespace models {
@@ -16,23 +18,25 @@ namespace models {
         virtual int num_total_nodes() const = 0;
         virtual const std::vector<std::string>& interface_nodes() const = 0;
         virtual const std::vector<std::string>& all_nodes() const = 0;
-        virtual const std::unordered_map<std::string, int>& interface_indices() const = 0;
         virtual int joint_collapsed_index(const std::string& name) const = 0;
         virtual const std::unordered_map<std::string, int>& joint_collapsed_indices() const = 0;
         virtual int index_from_joint_collapsed(int joint_collapsed_index) const = 0;
         virtual int joint_collapsed_from_index(int index) const = 0;
         virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
         virtual bool contains_interface_node(const std::string& name) const = 0;
-        virtual bool contains_all_node(const std::string& name) const = 0;
+        virtual bool contains_total_node(const std::string& name) const = 0;
         virtual int add_interface_node(const std::string& node) = 0;
         virtual void remove_interface_node(int node_index) = 0;
         virtual void remove_interface_node(const std::string& node) = 0;
         virtual bool is_interface(int index) const = 0;
         virtual bool is_interface(const std::string& name) const = 0;
+        virtual void set_interface(int index) = 0;
+        virtual void set_interface(const std::string& name) = 0;
+        virtual void set_node(int index) = 0;
+        virtual void set_node(const std::string& name) = 0;
         using BayesianNetworkBase::sample;
         virtual DataFrame sample(const DataFrame& evidence, unsigned int seed, bool concat_evidence, bool ordered) const = 0;
     };
-
 
     template<typename Derived>
     class ConditionalBayesianNetwork : public ConditionalBayesianNetworkBase {
@@ -40,109 +44,33 @@ namespace models {
         using CPD = typename BN_traits<Derived>::CPD;
 
         ConditionalBayesianNetwork(const std::vector<std::string>& nodes, 
-                                   const std::vector<std::string>& interface_nodes) : g(),
-                                                                                      m_cpds(),
-                                                                                      m_cpds_indices(),
-                                                                                      m_nodes(nodes),
-                                                                                      m_indices(),
-                                                                                      m_interface_nodes(interface_nodes),
-                                                                                      m_interface_indices()
-        {
-            if (nodes.empty()) {
-                throw std::invalid_argument("Nodes can not be empty.");
-            }
-
-            std::vector<std::string> all_nodes (nodes);
-            all_nodes.reserve(nodes.size() + interface_nodes.size());
-            all_nodes.insert(all_nodes.end(), interface_nodes.begin(), interface_nodes.end());
-
-            g = Dag(all_nodes);
-
-            for (int i = 0, end = m_nodes.size(); i < end; ++i) {
-                m_cpds_indices.insert({m_nodes[i], i});
-                m_indices.insert({m_nodes[i], g.index(m_nodes[i])});
-            }
-
-            for (const auto& n : m_interface_nodes) {
-                m_interface_indices.insert({n, g.index(n)});
-            }
-        }
-
+                                   const std::vector<std::string>& interface_nodes) : g(nodes, interface_nodes),
+                                                                                      m_cpds() {}
         ConditionalBayesianNetwork(const std::vector<std::string>& nodes, 
                                    const std::vector<std::string>& interface_nodes,
-                                   const ArcStringVector& arcs) :
-                                            ConditionalBayesianNetwork<Derived>(nodes, interface_nodes) 
-        {    
-            for (const auto& arc : arcs) {
-                if (is_interface(arc.second)) {
-                    throw std::invalid_argument("Interface can not have parents. "
-                                            "Error in arc: (" + arc.first + ", " + arc.second + ")");
-                }
+                                   const ArcStringVector& arcs) : g(nodes, interface_nodes, arcs),
+                                                                  m_cpds() {}
 
-                g.add_arc(arc.first, arc.second);
-            }
-        }
+        ConditionalBayesianNetwork(const ConditionalDag& graph) : g(graph),
+                                                                  m_cpds() {}
 
-        ConditionalBayesianNetwork(const std::vector<std::string>& nodes, 
-                                   const std::vector<std::string>& interface_nodes,
-                                   const Dag& graph) : g(graph),
-                                                       m_cpds(),
-                                                       m_cpds_indices(),
-                                                       m_nodes(nodes),
-                                                       m_indices(),
-                                                       m_interface_nodes(interface_nodes),
-                                                       m_interface_indices()
-        {
-            for (int i = 0, end = m_nodes.size(); i < end; ++i) {
-                m_cpds_indices.insert({m_nodes[i], i});
-                m_indices.insert({m_nodes[i], g.index(m_nodes[i])});
-            }
-
-            for (const auto& n : m_interface_nodes) {
-                m_interface_indices.insert({n, g.index(n)});
-            }
-
-            if (g.num_nodes() != static_cast<int>(m_indices.size() + m_interface_indices.size())) {
-                throw std::invalid_argument("The number of nodes in the graph and "
-                                "the number of names in lists of nodes/interface nodes is different.");
-            }
-        }
-
-        ConditionalBayesianNetwork(const std::vector<std::string>& nodes, 
-                                   const std::vector<std::string>& interface_nodes,
-                                   Dag&& graph) : g(std::move(graph)),
-                                                  m_cpds(),
-                                                  m_cpds_indices(),
-                                                  m_nodes(nodes),
-                                                  m_indices(),
-                                                  m_interface_nodes(interface_nodes),
-                                                  m_interface_indices() 
-        {
-            for (int i = 0, end = m_nodes.size(); i < end; ++i) {
-                m_cpds_indices.insert({m_nodes[i], i});
-                m_indices.insert({m_nodes[i], g.index(m_nodes[i])});
-            }
-
-            for (const auto& n : m_interface_nodes) {
-                m_interface_indices.insert({n, g.index(n)});
-            }
-
-            if (g.num_nodes() != static_cast<int>(m_indices.size() + m_interface_indices.size())) {
-                throw std::invalid_argument("The number of nodes in the graph and "
-                                "the number of names in lists of nodes/interface nodes is different.");
-            }
-        }
+        ConditionalBayesianNetwork(ConditionalDag&& graph) : g(std::move(graph)),
+                                                             m_cpds() {}
 
         int num_nodes() const override {
-            return m_nodes.size();
+            return g.num_nodes();
+        }
+
+        int num_raw_nodes() const {
+            return g.num_raw_nodes();
         }
 
         int num_interface_nodes() const override {
-            return m_interface_nodes.size();
+            return g.num_interface_nodes();
         }
 
         int num_total_nodes() const override {
-            return g.num_nodes();
+            return g.num_total_nodes();
         }
 
         int num_arcs() const override {
@@ -150,15 +78,15 @@ namespace models {
         }
 
         const std::vector<std::string>& nodes() const override {
-            return m_nodes;
+            return g.nodes();
         }
 
         const std::vector<std::string>& interface_nodes() const override {
-            return m_interface_nodes;
+            return g.interface_nodes();
         }
 
         const std::vector<std::string>& all_nodes() const override {
-            return g.nodes();
+            return g.all_nodes();
         }
     
         ArcStringVector arcs() const override {
@@ -166,19 +94,15 @@ namespace models {
         }
 
         const std::unordered_map<std::string, int>& indices() const override {
-            return m_indices;
-        }
-
-        const std::unordered_map<std::string, int>& interface_indices() const override {
-            return m_interface_indices;
+            return g.indices();
         }
 
         const std::unordered_map<std::string, int>& collapsed_indices() const override {
-            return m_cpds_indices;
+            return g.collapsed_indices();
         }
 
         const std::unordered_map<std::string, int>& joint_collapsed_indices() const override {
-            return g.collapsed_indices();
+            return g.joint_collapsed_indices();
         }
 
         int index(const std::string& node) const override {
@@ -186,27 +110,27 @@ namespace models {
         }
 
         int collapsed_index(const std::string& name) const override {
-            return check_collapsed_index(name);
-        }
-
-        int joint_collapsed_index(const std::string& name) const override {
             return g.collapsed_index(name);
         }
 
+        int joint_collapsed_index(const std::string& name) const override {
+            return g.joint_collapsed_index(name);
+        }
+
         int index_from_collapsed(int collapsed_index) const override {
-            return g.index(m_nodes[check_collapsed_index(collapsed_index)]);
+            return g.index_from_collapsed(collapsed_index);
         }
 
         int index_from_joint_collapsed(int joint_collapsed_index) const override {
-            return g.index_from_collapsed(joint_collapsed_index);
+            return g.index_from_joint_collapsed(joint_collapsed_index);
         }
 
         int collapsed_from_index(int index) const override {
-            return check_collapsed_index(name(index));
+            return g.collapsed_from_index(index);
         }
 
         int joint_collapsed_from_index(int index) const override {
-            return g.collapsed_from_index(index);
+            return g.joint_collapsed_from_index(index);
         }
 
         bool is_valid(int idx) const override {
@@ -214,81 +138,88 @@ namespace models {
         }
 
         bool contains_node(const std::string& name) const override {
-            return m_indices.count(name) > 0;
+            return g.contains_node(name);
         }
 
         bool contains_interface_node(const std::string& name) const override {
-            return m_interface_indices.count(name) > 0;
+            return g.contains_interface_node(name);
         };
 
-        bool contains_all_node(const std::string& name) const override {
-            return g.contains_node(name);
+        bool contains_total_node(const std::string& name) const override {
+            return g.contains_total_node(name);
         }
 
         int add_node(const std::string& node) override {
             auto new_index = g.add_node(node);
-            m_nodes.push_back(node);
-            m_cpds_indices.insert({node, m_nodes.size()-1});
-            m_indices.insert({node, new_index});
 
-            if (!m_cpds.empty() && m_nodes.size() >= m_cpds.size())
-                m_cpds.resize(m_nodes.size());
+            if (!m_cpds.empty() && static_cast<size_t>(new_index) >= m_cpds.size())
+                m_cpds.resize(new_index + 1);
             return new_index;
         }
 
         int add_interface_node(const std::string& node) override {
-            auto new_index = g.add_node(node);
-            m_interface_indices.insert({node, new_index});
-            return new_index;
+            return g.add_interface_node(node);
         }
 
         void remove_node(int node_index) override {
-            remove_node(name(node_index));
-        }
+            g.remove_node(node_index);
 
-        void remove_interface_node(int node_index) override {
-            remove_interface_node(name(node_index));
+            if (!m_cpds.empty()) {
+                m_cpds[node_index] = CPD();
+            }
+
         }
 
         void remove_node(const std::string& node) override {
-            if (!contains_node(node)) {
-                throw std::invalid_argument("ConditionalBayesianNetwork does not contain node " + node);
-            }
-
             g.remove_node(node);
 
-            auto collapsed_index = m_cpds_indices.at(node);
-            util::swap_remove(m_nodes, collapsed_index);
-            m_indices.erase(node);
-            m_cpds_indices.erase(node);
-
-            // Update cpds indices if swap remove was performed.
-            if (collapsed_index < static_cast<int>(m_nodes.size())) {
-                m_cpds_indices[m_nodes[collapsed_index]] = collapsed_index;
-            }
-
             if (!m_cpds.empty()) {
-                util::swap_remove(m_cpds, collapsed_index);
+                m_cpds[g.index(node)] = CPD();
             }
+        }
+
+        void remove_interface_node(int node_index) override {
+            g.remove_interface_node(node_index);
         }
 
         void remove_interface_node(const std::string& node) override {
-            if (!contains_interface_node(node)) {
-                throw std::invalid_argument("ConditionalBayesianNetwork does not contain interface node " + node);
-            }
-
-            g.remove_node(node);
-
-            util::swap_remove_v(m_interface_nodes, node);
-            m_interface_indices.erase(node);
+            g.remove_interface_node(node);
         }
         
-        bool is_interface(const std::string& name) const override {
-            return m_interface_indices.count(name) > 0;
+        bool is_interface(int index) const override {
+            return g.is_interface(index);
         }
 
-        bool is_interface(int index) const override {
-            return is_interface(name(index));
+        bool is_interface(const std::string& name) const override {
+            return g.is_interface(name);
+        }
+
+        void set_interface(int index) override {
+            g.set_interface(index);
+            if (!m_cpds.empty()) {
+                m_cpds[index] = CPD();
+            }
+        }
+
+        void set_interface(const std::string& name) override {
+            g.set_interface(name);
+            if (!m_cpds.empty()) {
+                m_cpds[g.index(name)] = CPD();
+            }
+        }
+
+        void set_node(int index) override {
+            g.set_node(index);
+            if (!m_cpds.empty()) {
+                m_cpds[index] = static_cast<Derived&>(*this).create_cpd(g.name(index));
+            }
+        }
+
+        void set_node(const std::string& name) override {
+            g.set_node(name);
+            if (!m_cpds.empty()) {
+                m_cpds[g.index(name)] = static_cast<Derived&>(*this).create_cpd(name);
+            }
         }
 
         const std::string& name(int node_index) const override {
@@ -296,11 +227,11 @@ namespace models {
         }
 
         const std::string& collapsed_name(int collapsed_index) const override {
-            return m_nodes[check_collapsed_index(collapsed_index)];
+            return g.collapsed_name(collapsed_index);
         }
 
         const std::string& joint_collapsed_name(int joint_collapsed_index) const override {
-            return g.collapsed_name(joint_collapsed_index);
+            return g.joint_collapsed_name(joint_collapsed_index);
         }
         
         int num_parents(int node_index) const override {
@@ -376,14 +307,10 @@ namespace models {
         }
 
         void add_arc(int source, int target) override {
-            if (is_interface(target))
-                throw std::invalid_argument("Interface node " + std::to_string(target) + " cannot have parents.");
             g.add_arc(source, target);
         }
 
         void add_arc(const std::string& source, const std::string& target) override {
-            if (is_interface(target))
-                throw std::invalid_argument("Interface node " + target + " cannot have parents.");
             g.add_arc(source, target);
         }
 
@@ -395,42 +322,32 @@ namespace models {
             g.remove_arc(source, target);
         }
 
-        void flip_arc(int source, int target) override {
-            if (is_interface(source))
-                throw std::invalid_argument("Interface node " + std::to_string(source) + " cannot have parents.");
-            
+        void flip_arc(int source, int target) override {           
             g.flip_arc(source, target);
         }
 
         void flip_arc(const std::string& source, const std::string& target) override {
-            if (is_interface(source))
-                throw std::invalid_argument("Interface node " + source + " cannot have parents.");
-            
             g.flip_arc(source, target);
         }
 
         bool can_add_arc(int source_index, int target_index) const override {
-            return !is_interface(target_index) && g.can_add_arc(source_index, target_index);
+            return g.can_add_arc(source_index, target_index);
         }
 
         bool can_add_arc(const std::string& source, const std::string& target) const override {
-            return !is_interface(target) && g.can_add_arc(source, target);
+            return g.can_add_arc(source, target);
         }
 
         bool can_flip_arc(int source_index, int target_index) const override {
-            return !is_interface(source_index) && g.can_flip_arc(source_index, target_index);
+            return g.can_flip_arc(source_index, target_index);
         }
 
         bool can_flip_arc(const std::string& source, const std::string& target) const override {
-            return !is_interface(source) && g.can_flip_arc(source, target);
+            return g.can_flip_arc(source, target);
         }
 
         void force_whitelist(const ArcStringVector& arc_whitelist) override {
-            for(const auto& arc : arc_whitelist) {
-                if (is_interface(arc.second))
-                    throw std::invalid_argument("Interface node " + arc.second + " cannot have parents.");
-
-
+            for (const auto& arc : arc_whitelist) {
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {
                         throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second + " in whitelist,"
@@ -447,9 +364,6 @@ namespace models {
 
         void force_whitelist(const ArcSet& arc_whitelist) override {
             for(const auto& arc : arc_whitelist) {
-                if (is_interface(arc.second))
-                    throw std::invalid_argument("Interface node " + name(arc.second) + " cannot have parents.");
-
                 if (!has_arc(arc.first, arc.second)) {
                     if (has_arc(arc.second, arc.first)) {
                         throw std::invalid_argument("Arc " + name(arc.first) + " -> " + name(arc.second) + " in whitelist,"
@@ -470,7 +384,7 @@ namespace models {
         bool must_construct_cpd(const CPD& node) const;
         void fit(const DataFrame& df) override;
 
-        CPD create_cpd(const std::string& node) {
+        CPD create_cpd(const std::string& node) const {
             auto pa = parents(node);
             return CPD(node, pa);
         }
@@ -485,7 +399,7 @@ namespace models {
             }
 
             if (!m_cpds.empty()) {
-                return m_cpds[check_collapsed_index(node)];
+                return m_cpds[g.index(node)];
             } else {
                 throw py::value_error("CPD of variable \"" + node + "\" not added. Call add_cpds() or fit() to add the CPD.");
             }
@@ -513,31 +427,8 @@ namespace models {
         void __setstate_extra__(py::tuple&) const { }
         void __setstate_extra__(py::tuple&&) const { }
 
-        int check_collapsed_index(int idx) const {
-            if (idx < 0 || idx >= num_nodes()) {
-                throw std::invalid_argument("Wrong collapsed index (" + std::to_string(idx) + 
-                                            ") for a graph with " + std::to_string(num_nodes()) + " nodes");
-            }
-
-            return idx;
-        }
-
-        int check_collapsed_index(const std::string& name) const {
-            auto f = m_cpds_indices.find(name);
-            if (f == m_indices.end()) {
-                throw std::invalid_argument("Node " + name + " not present in the graph.");
-            }
-
-            return f->second;
-        }
-
-        Dag g;
+        ConditionalDag g;
         std::vector<CPD> m_cpds;
-        std::unordered_map<std::string, int> m_cpds_indices;
-        std::vector<std::string> m_nodes;
-        std::unordered_map<std::string, int> m_indices;
-        std::vector<std::string> m_interface_nodes;
-        std::unordered_map<std::string, int> m_interface_indices;
         // This is necessary because __getstate__() do not admit parameters.
         mutable bool m_include_cpd;
     };
@@ -547,10 +438,9 @@ namespace models {
         if (m_cpds.empty()) {
             return false;
         } else {
-            for (const auto& cpd : m_cpds) {
-                if (!cpd.fitted()) {
+            for (size_t i = 0; i < m_cpds.size(); ++i) {
+                if (is_valid(i) && !is_interface(i) && !m_cpds[i].fitted())
                     return false;
-                }
             }
 
             return true;
@@ -566,7 +456,7 @@ namespace models {
         auto& evidence = cpd.evidence();
 
         for (auto& ev : evidence) {
-            if (!contains_all_node(ev)) {
+            if (!contains_total_node(ev)) {
                 throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
             }
         }
@@ -583,7 +473,7 @@ namespace models {
         for (auto& parent : pa) {
             if (evidence_set.find(parent) == evidence_set.end()) {
                 std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() 
-                                    + "\nParents: [";
+                                    + "\nParents: " + parents_to_string(cpd.variable());
                 throw std::invalid_argument(err);
             }
         }
@@ -604,20 +494,25 @@ namespace models {
                 map_index[it->variable()] = it;
             }
 
-            m_cpds.reserve(num_nodes());
+            m_cpds.reserve(num_raw_nodes());
 
-            for (int i = 0; i < num_nodes(); ++i) {
-                auto cpd_idx = map_index.find(m_nodes[i]);
+            for (int i = 0; i < num_raw_nodes(); ++i) {
+                if (is_valid(i) && !is_interface(i)) {
+                    const auto& node_name = name(i);
+                    auto cpd_idx = map_index.find(node_name);
 
-                if (cpd_idx != map_index.end()) {
-                    m_cpds.push_back(*(cpd_idx->second));
+                    if (cpd_idx != map_index.end()) {
+                        m_cpds.push_back(*(cpd_idx->second));
+                    } else {
+                        m_cpds.push_back(static_cast<Derived&>(*this).create_cpd(node_name));
+                    }
                 } else {
-                    m_cpds.push_back(static_cast<Derived*>(this)->create_cpd(m_nodes[i]));
+                    m_cpds.push_back(CPD());
                 }
             }
         } else {
             for(auto& cpd : cpds) {
-                auto idx = m_cpds_indices.at(cpd.variable());
+                auto idx = index(cpd.variable());
                 m_cpds[idx] = cpd;
             }
         }
@@ -625,8 +520,8 @@ namespace models {
 
     template<typename Derived>
     bool ConditionalBayesianNetwork<Derived>::must_construct_cpd(const CPD& cpd) const {
-        auto& node = cpd.variable();
-        auto& cpd_evidence = cpd.evidence();
+        const auto& node = cpd.variable();
+        const auto& cpd_evidence = cpd.evidence();
         auto parents = this->parents(node);
         
         if (cpd_evidence.size() != parents.size())
@@ -641,21 +536,28 @@ namespace models {
 
     template<typename Derived>
     void ConditionalBayesianNetwork<Derived>::fit(const DataFrame& df) {
+        auto nraw_nodes = num_raw_nodes();
         if (m_cpds.empty()) {
-            m_cpds.reserve(num_nodes());
+            m_cpds.reserve(nraw_nodes);
 
-            for (int i = 0; i < num_nodes(); ++i) {
-                auto cpd = static_cast<Derived*>(this)->create_cpd(m_nodes[i]);
-                m_cpds.push_back(cpd);
-                m_cpds.back().fit(df);
+            for (int i = 0; i < nraw_nodes; ++i) {
+                if (is_valid(i) && !is_interface(i)) {
+                    auto cpd = static_cast<Derived&>(*this).create_cpd(name(i));
+                    m_cpds.push_back(cpd);
+                    m_cpds.back().fit(df);
+                } else {
+                    m_cpds.push_back(CPD());
+                }
             }
         } else {
-            for (int i = 0; i < num_nodes(); ++i) {
-                if (static_cast<Derived*>(this)->must_construct_cpd(m_cpds[i])) {
-                    m_cpds[i] = static_cast<Derived*>(this)->create_cpd(m_nodes[i]);
-                    m_cpds[i].fit(df);
-                } else if (!m_cpds[i].fitted()) {
-                    m_cpds[i].fit(df);
+            for (int i = 0; i < nraw_nodes; ++i) {
+                if (is_valid(i) && !is_interface(i)) {
+                    if (static_cast<const Derived&>(*this).must_construct_cpd(m_cpds[i])) {
+                        m_cpds[i] = static_cast<Derived&>(*this).create_cpd(name(i));
+                        m_cpds[i].fit(df);
+                    } else if (!m_cpds[i].fitted()) {
+                        m_cpds[i].fit(df);
+                    }
                 }
             }
         }
@@ -669,7 +571,7 @@ namespace models {
             bool all_fitted = true;
             std::string err;
             for (size_t i = 0; i < m_cpds.size(); ++i) {
-                if (!m_cpds[i].fitted()) {
+                if (is_valid(i) && !is_interface(i) && !m_cpds[i].fitted()) {
                     if (all_fitted) {
                         err += "Some CPDs are not fitted:\n";
                         all_fitted = false;
@@ -687,10 +589,14 @@ namespace models {
     VectorXd ConditionalBayesianNetwork<Derived>::logl(const DataFrame& df) const {
         check_fitted();
 
-        VectorXd accum = m_cpds[0].logl(df);
+        size_t i = 0;
+        for (size_t i = 0; i < m_cpds.size() && (!is_valid(i) || is_interface(i)); ++i);
 
-        for (size_t i = 1; i < m_cpds.size(); ++i) {
-            accum += m_cpds[i].logl(df);
+        VectorXd accum = m_cpds[i].logl(df);
+
+        for (++i; i < m_cpds.size(); ++i) {
+            if (is_valid(i) && !is_interface(i))
+                accum += m_cpds[i].logl(df);
         }
 
         return accum;
@@ -703,16 +609,51 @@ namespace models {
         
         double accum = 0;
         for (size_t i = 0; i < m_cpds.size(); ++i) {
-            accum += m_cpds[i].slogl(df);
+            if (is_valid(i) && !is_interface(i))
+                accum += m_cpds[i].slogl(df);
         }
 
         return accum;
     }
 
     template<typename Derived>
-    DataFrame ConditionalBayesianNetwork<Derived>::sample(int, unsigned int, bool) const {
-        throw std::runtime_error("Can not sample from ConditionalBayesianNetwork "
-                                 "if evidence is not provided for the interface nodes.");
+    DataFrame ConditionalBayesianNetwork<Derived>::sample(int n, unsigned int seed, bool ordered) const {
+        if (num_interface_nodes() > 0)
+            throw std::runtime_error("Can not sample from ConditionalBayesianNetwork "
+                                     "if evidence is not provided for the interface nodes.");
+        else {
+            check_fitted();
+
+            DataFrame parents(n);
+
+            int i = 0;
+            for (auto& name : g.topological_sort()) {
+                auto idx = index(name);
+                auto array = m_cpds[idx].sample(n, parents, seed);
+            
+                auto res = parents->AddColumn(i, name, array);
+                parents = DataFrame(std::move(res).ValueOrDie());
+                ++i;
+            }
+
+            if (ordered) {
+                std::vector<Field_ptr> fields;
+                std::vector<Array_ptr> columns;
+                
+                auto schema = parents->schema();
+                for (auto& name : nodes()) {
+                    fields.push_back(schema->GetFieldByName(name));
+                    columns.push_back(parents->GetColumnByName(name));
+                }
+
+                auto new_schema = std::make_shared<arrow::Schema>(fields);
+
+                auto new_rb = arrow::RecordBatch::Make(new_schema, n, columns);
+                return DataFrame(new_rb);
+            } else {
+                return parents;
+            }
+        }
     }
 
     template<typename Derived>
@@ -721,15 +662,15 @@ namespace models {
                                                           bool concat_evidence,
                                                           bool ordered) const {
         check_fitted();
-        evidence.raise_has_columns(m_interface_nodes);
+        evidence.raise_has_columns(interface_nodes());
         
         DataFrame parents(evidence);
 
         auto top_sort = g.topological_sort();
-
         for (size_t i = 0; i < top_sort.size(); ++i) {
             if (!is_interface(top_sort[i])) {
-                auto array = m_cpds[m_cpds_indices.at(top_sort[i])].sample(evidence->num_rows(), parents, seed);
+                auto idx = index(top_sort[i]);
+                auto array = m_cpds[idx].sample(evidence->num_rows(), parents, seed);
 
                 auto res = parents->AddColumn(evidence->num_columns() + i, top_sort[i], array);
                 parents = DataFrame(std::move(res).ValueOrDie());
@@ -741,7 +682,7 @@ namespace models {
 
         auto schema = parents->schema();
         if (ordered) {
-            for (const auto& name : m_nodes) {
+            for (const auto& name : nodes()) {
                 fields.push_back(schema->GetFieldByName(name));
                 columns.push_back(parents.col(name));
             }
@@ -785,26 +726,24 @@ namespace models {
             cpds.reserve(num_nodes());
 
             for (size_t i = 0; i < m_cpds.size(); ++i) {
-                cpds.push_back(m_cpds[i].__getstate__());
+                if (is_valid(i) && !is_interface(i))
+                    cpds.push_back(m_cpds[i].__getstate__());
             }
 
-            return py::make_tuple(g_tuple, true, cpds, m_nodes, m_interface_nodes, extra_info);
+            return py::make_tuple(g_tuple, true, cpds, extra_info);
         } {
-            return py::make_tuple(g_tuple, false, py::make_tuple(), m_nodes, m_interface_nodes, extra_info);
+            return py::make_tuple(g_tuple, false, py::make_tuple(), extra_info);
         }
     }
 
     template<typename Derived>
     Derived ConditionalBayesianNetwork<Derived>::__setstate__(py::tuple& t) {
-        if (t.size() != 6)
+        if (t.size() != 4)
             throw std::runtime_error("Not valid ConditionalBayesianNetwork.");
         
-        auto nodes = t[3].cast<std::vector<std::string>>();
-        auto interface_nodes = t[4].cast<std::vector<std::string>>();
+        auto bn = Derived(ConditionalDag::__setstate__(t[0].cast<py::tuple>()));
 
-        auto bn = Derived(nodes, interface_nodes, Dag::__setstate__(t[0].cast<py::tuple>()));
-
-        bn.__setstate_extra__(t[5].cast<py::tuple>());
+        bn.__setstate_extra__(t[3].cast<py::tuple>());
 
         if (t[1].cast<bool>()) {
             auto py_cpds = t[2].cast<std::vector<py::tuple>>();

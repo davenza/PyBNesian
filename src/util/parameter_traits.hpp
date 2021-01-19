@@ -198,6 +198,24 @@ namespace util {
     template<template <typename...> typename TemplatedClass, typename Derived, typename R = void>
     using enable_if_template_instantation_t = std::enable_if_t<is_template_instantation_v<TemplatedClass, Derived>, R>;
 
+    // Implement is_template_instantation for non-type templates. Based on:
+    // https://stackoverflow.com/questions/22674347/c-variadic-template-with-non-type-parameters-of-different-types/22675220
+    template<typename... Types>
+    struct GenericInstantation {
+        template<template <Types...> typename U, typename... Ts>
+        struct is_template_instantation : public std::false_type {};
+
+        template<template <Types...> typename U, Types... Ts>
+        struct is_template_instantation<U, U<Ts...>> : public std::true_type {};
+
+        template<template <Types...> typename U, typename... Ts>
+        inline static constexpr bool is_template_instantation_v = is_template_instantation<U, Ts...>::value;
+
+        template<template <Types...> typename TemplatedClass, typename Derived, typename R = void>
+        using enable_if_template_instantation_t = std::enable_if_t<is_template_instantation_v<TemplatedClass, Derived>, R>; 
+    };
+
+
     template<typename T, typename = void>
     struct is_dynamic_index : public std::false_type {};
 

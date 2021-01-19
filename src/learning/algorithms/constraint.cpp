@@ -261,7 +261,7 @@ namespace learning::algorithms {
         progress.set_text("Finding v-structures");
         progress.set_progress(0);
 
-        for (const auto& node : pdag.node_indices()) {
+        for (const auto& node : pdag.raw_nodes()) {
             if (node.neighbors().size() >= 1 && (node.parents().size() + node.neighbors().size()) >= 2) {
                 auto tmp = evaluate_vstructures_at_node(pdag, node, test, alpha, sepset, use_sepsets, ambiguous_threshold);
                 vs.insert(vs.end(), tmp.begin(), tmp.end());
@@ -415,7 +415,7 @@ namespace learning::algorithms {
     bool MeekRules::rule3(PartiallyDirectedGraph& pdag) {
         bool changed = false;
 
-        for (const auto& node : pdag.node_indices()) {
+        for (const auto& node : pdag.raw_nodes()) {
             if (node.parents().size() >= 2 && node.neighbors().size() >= 1) {
                 changed |= rule3_at_node(pdag, node);
             }

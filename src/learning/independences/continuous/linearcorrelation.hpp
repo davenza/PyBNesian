@@ -127,6 +127,8 @@ namespace learning::independences::continuous {
                 return pvalue_impl(v1, v2, evidence_begin, evidence_end);
         }
 
+        int num_variables() const override { return m_df->num_columns(); }
+       
         std::vector<std::string> variable_names() const override {
             return m_df.column_names();
         }
@@ -135,7 +137,22 @@ namespace learning::independences::continuous {
             return m_df.name(i);
         }
 
-        int num_variables() const override { return m_df->num_columns(); }
+        bool has_variables(int index) const override {
+            return m_df.has_columns(index);
+        }
+
+        bool has_variables(const std::string& name) const override {
+            return m_df.has_columns(name);
+        }
+
+        bool has_variables(const std::vector<int>& cols) const override {
+            return m_df.has_columns(cols);
+        }
+
+        bool has_variables(const std::vector<std::string>& cols) const override {
+            return m_df.has_columns(cols);
+        }
+
     private:
         int cached_index(int v) const {
             return m_indices.at(m_df->column_name(v)); 

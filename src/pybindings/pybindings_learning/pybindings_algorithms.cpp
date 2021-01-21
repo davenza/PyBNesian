@@ -147,6 +147,7 @@ void pybindings_algorithms(py::module& root) {
         .def(py::init<>())
         .def("estimate", &MMPC::estimate, 
             py::arg("hypot_test"),
+            py::arg("nodes") = std::vector<std::string>(),
             py::arg("arc_blacklist") = ArcStringVector(),
             py::arg("arc_whitelist") = ArcStringVector(),
             py::arg("edge_blacklist") = EdgeStringVector(),

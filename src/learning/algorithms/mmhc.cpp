@@ -51,64 +51,64 @@ namespace learning::algorithms {
                                                         double alpha,
                                                         int verbose) {
 
-        auto bn_type = util::check_valid_bn_string(bn_str);
-        std::unique_ptr<BayesianNetworkBase> skeleton = [bn_type, &test]() -> std::unique_ptr<BayesianNetworkBase> {
-            switch (bn_type) {
-                case BayesianNetworkType::GBN:
-                    return std::make_unique<GaussianNetwork>(test.variable_names());
-                case BayesianNetworkType::SPBN:
-                    return std::make_unique<SemiparametricBN>(test.variable_names());
-                default:
-                    throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
-            }
-        }();
+        // auto bn_type = util::check_valid_bn_string(bn_str);
+        // std::unique_ptr<BayesianNetworkBase> skeleton = [bn_type, &test]() -> std::unique_ptr<BayesianNetworkBase> {
+        //     switch (bn_type) {
+        //         case BayesianNetworkType::GBN:
+        //             return std::make_unique<GaussianNetwork>(test.variable_names());
+        //         case BayesianNetworkType::SPBN:
+        //             return std::make_unique<SemiparametricBN>(test.variable_names());
+        //         default:
+        //             throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
+        //     }
+        // }();
         
-        auto restrictions = util::validate_restrictions(*skeleton, 
-                                                        varc_blacklist,
-                                                        varc_whitelist,
-                                                        vedge_blacklist,
-                                                        vedge_whitelist);
+        // auto restrictions = util::validate_restrictions(*skeleton, 
+        //                                                 varc_blacklist,
+        //                                                 varc_whitelist,
+        //                                                 vedge_blacklist,
+        //                                                 vedge_whitelist);
 
-        indicators::show_console_cursor(false);
-        auto progress = util::progress_bar(verbose);
+        // indicators::show_console_cursor(false);
+        // auto progress = util::progress_bar(verbose);
     
-        auto cpcs = mmpc_all_variables(test, alpha, restrictions.arc_whitelist, 
-                                restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
+        // auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
+        //                         restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
         
-        remove_asymmetries(cpcs);
+        // remove_asymmetries(cpcs);
 
-        auto hc_blacklist = create_hc_blacklist(cpcs);
+        // auto hc_blacklist = create_hc_blacklist(cpcs);
 
-        auto score_type = score.type();
+        // auto score_type = score.type();
 
-        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
-            if (!validation_score)
-                throw std::invalid_argument("A validation score is needed if predictive likelihood is used as score.");
-            return learning::algorithms::estimate_validation_hc(op_set,
-                                                                score,
-                                                                *validation_score,
-                                                                *skeleton,
-                                                                hc_blacklist,
-                                                                restrictions.arc_whitelist,
-                                                                type_whitelist,
-                                                                max_indegree,
-                                                                max_iters,
-                                                                epsilon,
-                                                                patience,
-                                                                verbose);
-        } else {
-            return learning::algorithms::estimate_hc(op_set,
-                                                     score,
-                                                     *skeleton,
-                                                     hc_blacklist,
-                                                     restrictions.arc_whitelist,
-                                                     max_indegree,
-                                                     max_iters,
-                                                     epsilon,
-                                                     verbose);
-        }
+        // if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
+        //     if (!validation_score)
+        //         throw std::invalid_argument("A validation score is needed if predictive likelihood is used as score.");
+        //     return learning::algorithms::estimate_validation_hc(op_set,
+        //                                                         score,
+        //                                                         *validation_score,
+        //                                                         *skeleton,
+        //                                                         hc_blacklist,
+        //                                                         restrictions.arc_whitelist,
+        //                                                         type_whitelist,
+        //                                                         max_indegree,
+        //                                                         max_iters,
+        //                                                         epsilon,
+        //                                                         patience,
+        //                                                         verbose);
+        // } else {
+        //     return learning::algorithms::estimate_hc(op_set,
+        //                                              score,
+        //                                              *skeleton,
+        //                                              hc_blacklist,
+        //                                              restrictions.arc_whitelist,
+        //                                              max_indegree,
+        //                                              max_iters,
+        //                                              epsilon,
+        //                                              verbose);
+        // }
 
-        indicators::show_console_cursor(true);
+        // indicators::show_console_cursor(true);
 
     }
 }

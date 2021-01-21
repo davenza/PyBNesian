@@ -137,6 +137,8 @@ namespace learning::independences::continuous {
         template<typename VarType, typename Iter>
         double mi(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
 
+        int num_variables() const override { return m_df->num_columns(); }
+
         std::vector<std::string> variable_names() const override {
             return m_df.column_names();
         }
@@ -145,7 +147,21 @@ namespace learning::independences::continuous {
             return m_df.name(i);
         }
 
-        int num_variables() const override { return m_df->num_columns(); }
+        bool has_variables(int index) const override {
+            return m_df.has_columns(index);
+        }
+
+        bool has_variables(const std::string& name) const override {
+            return m_df.has_columns(name);
+        }
+
+        bool has_variables(const std::vector<int>& cols) const override {
+            return m_df.has_columns(cols);
+        }
+
+        bool has_variables(const std::vector<std::string>& cols) const override {
+            return m_df.has_columns(cols);
+        }
     private:
         DataFrame m_df;
         DataFrame m_ranked_df;

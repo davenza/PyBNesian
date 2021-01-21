@@ -679,7 +679,7 @@ namespace graph {
         }
 
         const std::vector<std::string>& interface_nodes() const {
-            return m_interface_nodes;
+            return m_interface_nodes.elements();
         }
 
         const std::vector<std::string>& all_nodes() const {
@@ -694,6 +694,10 @@ namespace graph {
 
         const std::unordered_map<std::string, int>& collapsed_indices() const {
             return m_string_nodes.indices();
+        }
+
+        const std::unordered_map<std::string, int>& interface_collapsed_indices() const {
+            return m_interface_nodes.indices();
         }
 
         const std::unordered_map<std::string, int>& joint_collapsed_indices() const {
@@ -737,6 +741,10 @@ namespace graph {
             return m_string_nodes.element(collapsed_index);
         }
 
+        const std::string& interface_collapsed_name(int interface_collapsed_index) const {
+            return m_interface_nodes.element(interface_collapsed_index);
+        }
+
         const std::string& joint_collapsed_name(int joint_collapsed_index) const {
             return m_total_nodes.element(joint_collapsed_index);
         }
@@ -749,6 +757,10 @@ namespace graph {
             return m_string_nodes.index(node);
         }
 
+        int interface_collapsed_index(const std::string& node) const {
+            return m_interface_nodes.index(node);
+        }
+
         int joint_collapsed_index(const std::string& node) const {
             return m_total_nodes.index(node);
         }
@@ -757,12 +769,20 @@ namespace graph {
             return index(collapsed_name(collapsed_index));
         }
 
+        int index_from_interface_collapsed(int interface_collapsed_index) const {
+            return index(interface_collapsed_name(interface_collapsed_index));
+        }
+
         int index_from_joint_collapsed(int joint_collapsed_index) const {
             return index(joint_collapsed_name(joint_collapsed_index));
         }
 
         int collapsed_from_index(int index) const {
             return m_string_nodes[name(index)];
+        }
+
+        int interface_collapsed_from_index(int index) const {
+            return m_interface_nodes[name(index)];
         }
 
         int joint_collapsed_from_index(int index) const {
@@ -780,14 +800,14 @@ namespace graph {
         void set_interface(int index) {
             if (!is_interface(index)) {
                 m_string_nodes.remove(m_nodes[index].name());
-                m_interface_nodes.push_back(m_nodes[index].name());
+                m_interface_nodes.insert(m_nodes[index].name());
             }
         }
 
         void set_interface(const std::string& node) {
             if (!is_interface(node)) {
                 m_string_nodes.remove(node);
-                m_interface_nodes.push_back(node);
+                m_interface_nodes.insert(node);
             }
         }
 
@@ -795,14 +815,14 @@ namespace graph {
             if (is_interface(index)) {
                 const auto& node_name = name(index);
                 m_string_nodes.insert(node_name);
-                util::swap_remove_v(m_interface_nodes, node_name);
+                m_interface_nodes.remove(node_name);
             }
         }
 
         void set_node(const std::string& node) {
             if (is_interface(node)) {
                 m_string_nodes.insert(node);
-                util::swap_remove_v(m_interface_nodes, node);
+                m_interface_nodes.remove(node);
             }
         }
 
@@ -838,7 +858,7 @@ namespace graph {
         std::vector<NodeType> m_nodes;
         // std::vector<std::string> m_string_nodes;
         BidirectionalMapIndex<std::string> m_string_nodes;
-        std::vector<std::string> m_interface_nodes;
+        BidirectionalMapIndex<std::string> m_interface_nodes;
         BidirectionalMapIndex<std::string> m_total_nodes;
         
         // all nodes -> index
@@ -892,8 +912,7 @@ namespace graph {
 
         int idx = create_node(node);
         m_indices.insert({node, idx});
-        m_interface_nodes.push_back(node);
-        
+        m_interface_nodes.insert(node);
         m_total_nodes.insert(node);
 
         if constexpr (GraphTraits<Derived>::has_arcs) {
@@ -955,7 +974,7 @@ namespace graph {
 
         m_indices.erase(m_nodes[index].name());
         
-        util::swap_remove_v(m_interface_nodes, m_nodes[index].name());
+        m_interface_nodes.remove(m_nodes[index].name());
         m_total_nodes.remove(m_nodes[index].name());
 
         m_nodes[index].invalidate();
@@ -2111,7 +2130,7 @@ namespace graph {
     inline ConditionalGraph<PartiallyDirected>
     PartiallyDirectedImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                                  const std::vector<std::string>& interface_nodes) const {
-        return to_conditional_graph(*this, nodes, interface_nodes);
+        return to_conditional_graph(static_cast<const Derived&>(*this), nodes, interface_nodes);
     }
 
     template<typename Derived, template<typename> typename BaseClass>
@@ -2119,14 +2138,14 @@ namespace graph {
     inline ConditionalGraph<PartiallyDirected>
     PartiallyDirectedImpl<Derived, BaseClass>::conditional_graph() const {
         std::vector<std::string> v;
-        return to_conditional_graph(*this, this->nodes(), v);
+        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
     }
 
     template<typename Derived, template<typename> typename BaseClass>
     template<typename D, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int>>
     inline Graph<PartiallyDirected>
     PartiallyDirectedImpl<Derived, BaseClass>::unconditional_graph() const {
-        return to_unconditional_graph(*this);
+        return to_unconditional_graph(static_cast<const Derived&>(*this));
     }
 
     template<typename Derived, template<typename> typename BaseClass>
@@ -2176,7 +2195,7 @@ namespace graph {
     inline ConditionalGraph<Undirected>
     UndirectedImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                           const std::vector<std::string>& interface_nodes) const {
-        return to_conditional_graph(*this, nodes, interface_nodes);
+        return to_conditional_graph(static_cast<const Derived&>(*this), nodes, interface_nodes);
     }
 
     template<typename Derived, template<typename> typename BaseClass>
@@ -2184,14 +2203,14 @@ namespace graph {
     inline ConditionalGraph<Undirected>
     UndirectedImpl<Derived, BaseClass>::conditional_graph() const {
         std::vector<std::string> v;
-        return to_conditional_graph(*this, this->nodes(), v);
+        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
     }
 
     template<typename Derived, template<typename> typename BaseClass>
     template<typename D, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int>>
     inline Graph<Undirected>
     UndirectedImpl<Derived, BaseClass>::unconditional_graph() const {
-        return to_unconditional_graph(*this);
+        return to_unconditional_graph(static_cast<const Derived&>(*this));
     }
 
     template<typename Derived, template<typename> typename BaseClass>
@@ -2247,7 +2266,7 @@ namespace graph {
     inline ConditionalGraph<Directed>
     DirectedImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                         const std::vector<std::string>& interface_nodes) const {
-        return to_conditional_graph(*this, nodes, interface_nodes);
+        return to_conditional_graph(static_cast<const Derived&>(*this), nodes, interface_nodes);
     }
 
     template<typename Derived, template<typename> typename BaseClass>
@@ -2255,14 +2274,14 @@ namespace graph {
     inline ConditionalGraph<Directed>
     DirectedImpl<Derived, BaseClass>::conditional_graph() const {
         std::vector<std::string> v;
-        return to_conditional_graph(*this, this->nodes(), v);
+        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
     }
 
     template<typename Derived, template<typename> typename BaseClass>
     template<typename D, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int>>
     inline Graph<Directed>
     DirectedImpl<Derived, BaseClass>::unconditional_graph() const {
-        return to_unconditional_graph(*this);
+        return to_unconditional_graph(static_cast<const Derived&>(*this));
     }
 
     template<typename Derived, typename BaseClass>
@@ -2444,7 +2463,7 @@ namespace graph {
     inline ConditionalGraph<DirectedAcyclic>
     DagImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                    const std::vector<std::string>& interface_nodes) const {
-        return to_conditional_graph(*this, nodes, interface_nodes);
+        return to_conditional_graph(static_cast<const Derived&>(*this), nodes, interface_nodes);
     }
 
     template<typename Derived, typename BaseClass>
@@ -2452,14 +2471,14 @@ namespace graph {
     inline ConditionalGraph<DirectedAcyclic>
     DagImpl<Derived, BaseClass>::conditional_graph() const {
         std::vector<std::string> v;
-        return to_conditional_graph(*this, this->nodes(), v);
+        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
     }
 
     template<typename Derived, typename BaseClass>
     template<typename B, std::enable_if_t<std::is_same_v<B, ConditionalDirectedGraph>, int>>
     inline Graph<DirectedAcyclic>
     DagImpl<Derived, BaseClass>::unconditional_graph() const {
-        return to_unconditional_graph(*this);
+        return to_unconditional_graph(static_cast<const Derived&>(*this));
     }
 
 }

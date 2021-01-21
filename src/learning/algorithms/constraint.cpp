@@ -27,7 +27,10 @@ namespace learning::algorithms {
         int indep_sepsets = 0;
         int children_in_sepsets = 0;
 
-        if (test.pvalue(vs.p1, vs.p2, vs.children) > alpha) {
+        const auto& p1_name = g.name(vs.p1);
+        const auto& p2_name = g.name(vs.p2);
+
+        if (test.pvalue(p1_name, p2_name, g.name(vs.children)) > alpha) {
             ++indep_sepsets;
             ++children_in_sepsets;
         }
@@ -43,7 +46,7 @@ namespace learning::algorithms {
         possible_sepset.erase(vs.children);
 
         for (auto sp : possible_sepset) {
-            if (test.pvalue(vs.p1, vs.p2, sp) > alpha) {
+            if (test.pvalue(p1_name, p2_name, g.name(sp)) > alpha) {
                 ++indep_sepsets;
             }
         }
@@ -52,7 +55,8 @@ namespace learning::algorithms {
     }
 
     template<typename Comb>
-    std::pair<int, int> count_multivariate_sepsets(const vstructure& vs,
+    std::pair<int, int> count_multivariate_sepsets(const PartiallyDirectedGraph& g,
+                                                   const vstructure& vs,
                                                    Comb& comb,
                                                    const IndependenceTest& test,
                                                    double alpha) {
@@ -60,11 +64,14 @@ namespace learning::algorithms {
         int indep_sepsets = 0;
         int children_in_sepsets = 0;
 
-        for (auto& sepset : comb) {
-            double pvalue = test.pvalue(vs.p1, vs.p2, sepset.begin(), sepset.end());
+        const auto& p1_name = g.name(vs.p1);
+        const auto& p2_name = g.name(vs.p2);
+
+        for (const auto& sepset : comb) {
+            double pvalue = test.pvalue(p1_name, p2_name, sepset.begin(), sepset.end());
             if (pvalue > alpha) {
                 ++indep_sepsets;
-                if(std::find(sepset.begin(), sepset.end(), vs.children) != sepset.end()) {
+                if(std::find(sepset.begin(), sepset.end(), g.name(vs.children)) != sepset.end()) {
                     ++children_in_sepsets;
                 }
             }
@@ -82,7 +89,7 @@ namespace learning::algorithms {
         size_t max_sepset = std::max(g.num_neighbors(vs.p1) + g.num_parents(vs.p1), 
                                      g.num_neighbors(vs.p2) + g.num_parents(vs.p2));
 
-        double marg_pvalue = test.pvalue(vs.p1, vs.p2);
+        double marg_pvalue = test.pvalue(g.name(vs.p1), g.name(vs.p2));
 
         int indep_sepsets = 0;
         int children_in_sepsets = 0;
@@ -105,18 +112,22 @@ namespace learning::algorithms {
             const auto& nbr2 = g.neighbor_set(vs.p2);
             const auto& pa2 = g.parent_set(vs.p2);
 
-            std::vector<int> u1;
+            std::vector<std::string> u1;
             if ((nbr1.size() + pa1.size()) >= 2) {
                 u1.reserve(nbr1.size() + pa1.size());
-                u1.insert(u1.end(), nbr1.begin(), nbr1.end());
-                u1.insert(u1.end(), pa1.begin(), pa1.end());
+                for (auto nbr : nbr1)
+                    u1.push_back(g.name(nbr));
+                for (auto pa : pa1)
+                    u1.push_back(g.name(pa));
             }
 
-            std::vector<int> u2;
+            std::vector<std::string> u2;
             if ((nbr2.size() + pa2.size()) >= 2) {
                 u2.reserve(nbr2.size() + pa2.size());
-                u2.insert(u2.end(), nbr2.begin(), nbr2.end());
-                u2.insert(u2.end(), pa2.begin(), pa2.end());
+                for (auto nbr : nbr2)
+                    u2.push_back(g.name(nbr));
+                for (auto pa : pa2)
+                    u2.push_back(g.name(pa));
             }
             
             for (size_t i = 2; i <= max_sepset; ++i) {
@@ -125,15 +136,15 @@ namespace learning::algorithms {
 
                 if (set1_valid) {
                     if (set2_valid) {
-                        Combinations2Sets comb(u1.begin(), u1.end(), u2.begin(), u2.end(), i);
-                        multivariate_counts = count_multivariate_sepsets(vs, comb, test, alpha);
+                        Combinations2Sets comb(u1, u2, i);
+                        multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
                     } else {
-                        Combinations comb(u1.begin(), u1.end(), i);
-                        multivariate_counts = count_multivariate_sepsets(vs, comb, test, alpha);
+                        Combinations comb(u1, i);
+                        multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
                     }
                 } else {
-                    Combinations comb(u2.begin(), u2.end(), i);
-                    multivariate_counts = count_multivariate_sepsets(vs, comb, test, alpha);
+                    Combinations comb(u2, i);
+                    multivariate_counts = count_multivariate_sepsets(g, vs, comb, test, alpha);
                 }
 
                 indep_sepsets += multivariate_counts.first;

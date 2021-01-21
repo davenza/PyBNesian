@@ -661,7 +661,6 @@ namespace dataset {
         template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         bool has_columns(const Args&... args) const;
 
-        
         template<typename Index, enable_if_index_t<Index, int> = 0>
         void raise_has_columns(const Index& index) const { return derived().raise_has_column(index); }
         template<typename T, enable_if_index_container_t<T, int> = 0>

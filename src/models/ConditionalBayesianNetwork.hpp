@@ -18,10 +18,15 @@ namespace models {
         virtual int num_total_nodes() const = 0;
         virtual const std::vector<std::string>& interface_nodes() const = 0;
         virtual const std::vector<std::string>& all_nodes() const = 0;
+        virtual int interface_collapsed_index(const std::string& name) const = 0;
         virtual int joint_collapsed_index(const std::string& name) const = 0;
+        virtual const std::unordered_map<std::string, int>& interface_collapsed_indices() const = 0;
         virtual const std::unordered_map<std::string, int>& joint_collapsed_indices() const = 0;
+        virtual int index_from_interface_collapsed(int interface_collapsed_index) const = 0;
         virtual int index_from_joint_collapsed(int joint_collapsed_index) const = 0;
+        virtual int interface_collapsed_from_index(int index) const = 0;
         virtual int joint_collapsed_from_index(int index) const = 0;
+        virtual const std::string& interface_collapsed_name(int interface_collapsed_index) const = 0;
         virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
         virtual bool contains_interface_node(const std::string& name) const = 0;
         virtual bool contains_total_node(const std::string& name) const = 0;
@@ -97,6 +102,10 @@ namespace models {
             return g.indices();
         }
 
+        const std::unordered_map<std::string, int>& interface_collapsed_indices() const override {
+            return g.interface_collapsed_indices();
+        }
+
         const std::unordered_map<std::string, int>& collapsed_indices() const override {
             return g.collapsed_indices();
         }
@@ -113,6 +122,10 @@ namespace models {
             return g.collapsed_index(name);
         }
 
+        int interface_collapsed_index(const std::string& name) const override {
+            return g.interface_collapsed_index(name);
+        }
+
         int joint_collapsed_index(const std::string& name) const override {
             return g.joint_collapsed_index(name);
         }
@@ -121,12 +134,20 @@ namespace models {
             return g.index_from_collapsed(collapsed_index);
         }
 
+        int index_from_interface_collapsed(int interface_collapsed_index) const override {
+            return g.index_from_interface_collapsed(interface_collapsed_index);
+        }
+
         int index_from_joint_collapsed(int joint_collapsed_index) const override {
             return g.index_from_joint_collapsed(joint_collapsed_index);
         }
 
         int collapsed_from_index(int index) const override {
             return g.collapsed_from_index(index);
+        }
+
+        int interface_collapsed_from_index(int index) const override {
+            return g.interface_collapsed_from_index(index);
         }
 
         int joint_collapsed_from_index(int index) const override {
@@ -228,6 +249,10 @@ namespace models {
 
         const std::string& collapsed_name(int collapsed_index) const override {
             return g.collapsed_name(collapsed_index);
+        }
+
+        const std::string& interface_collapsed_name(int interface_collapsed_index) const override {
+            return g.interface_collapsed_name(interface_collapsed_index);
         }
 
         const std::string& joint_collapsed_name(int joint_collapsed_index) const override {

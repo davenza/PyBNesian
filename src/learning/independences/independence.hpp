@@ -32,9 +32,14 @@ namespace learning::independences {
                               const string_iterator evidence_begin, 
                               const string_iterator evidence_end) const = 0;
         
+        virtual int num_variables() const = 0;
         virtual std::vector<std::string> variable_names() const = 0;
         virtual const std::string& name(int i) const = 0;
-        virtual int num_variables() const = 0;
+        virtual bool has_variables(int index) const = 0;
+        virtual bool has_variables(const std::string& name) const = 0;
+        virtual bool has_variables(const std::vector<int>& cols) const = 0;
+        virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
+
     };
 
     class DynamicIndependenceTest {

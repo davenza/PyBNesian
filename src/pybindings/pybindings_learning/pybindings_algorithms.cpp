@@ -139,9 +139,24 @@ void pybindings_algorithms(py::module& root) {
             py::arg("verbose") = 0);
 
     py::class_<MeekRules>(algorithms, "MeekRules")
-        .def_static("rule1", &MeekRules::rule1)
-        .def_static("rule2", &MeekRules::rule2)
-        .def_static("rule3", &MeekRules::rule3);
+        .def_static("rule1", [](PartiallyDirectedGraph& graph) {
+            return MeekRules::rule1(graph);
+        })
+        .def_static("rule1", [](ConditionalPartiallyDirectedGraph& graph) {
+            return MeekRules::rule1(graph);
+        })
+        .def_static("rule2", [](PartiallyDirectedGraph& graph) {
+            return MeekRules::rule2(graph);
+        })
+        .def_static("rule2", [](ConditionalPartiallyDirectedGraph& graph) {
+            return MeekRules::rule2(graph);
+        })
+        .def_static("rule3", [](PartiallyDirectedGraph& graph) {
+            return MeekRules::rule3(graph);
+        })
+        .def_static("rule3", [](ConditionalPartiallyDirectedGraph& graph) {
+            return MeekRules::rule3(graph);
+        });
     
     py::class_<MMPC>(algorithms, "MMPC")
         .def(py::init<>())
@@ -155,7 +170,20 @@ void pybindings_algorithms(py::module& root) {
             py::arg("alpha") = 0.05,
             py::arg("ambiguous_threshold") = 0.5,
             py::arg("allow_bidirected") = true,
+            py::arg("verbose") = 0)
+        .def("estimate_conditional", &MMPC::estimate_conditional, 
+            py::arg("hypot_test"),
+            py::arg("nodes"),
+            py::arg("interface_nodes") = std::vector<std::string>(),
+            py::arg("arc_blacklist") = ArcStringVector(),
+            py::arg("arc_whitelist") = ArcStringVector(),
+            py::arg("edge_blacklist") = EdgeStringVector(),
+            py::arg("edge_whitelist") = EdgeStringVector(),
+            py::arg("alpha") = 0.05,
+            py::arg("ambiguous_threshold") = 0.5,
+            py::arg("allow_bidirected") = true,
             py::arg("verbose") = 0);
+
 
     py::class_<MMHC>(algorithms, "MMHC")
         .def(py::init<>())

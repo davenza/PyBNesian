@@ -14,6 +14,59 @@ using util::Combinations, util::AllSubsets;
 
 namespace learning::algorithms {
 
+    template<typename T1, typename T2>
+    std::ostream& operator<<(std::ostream &os, const std::pair<T1, T2>& p) {
+        os << "(" << p.first << ", " << p.second << ")";
+        return os;
+    }
+
+    template<typename T, typename HashType, typename EqualType>
+    std::ostream& operator<<(std::ostream &os, const std::unordered_set<T, HashType, EqualType>& set) {
+        os << "{";
+        
+        std::vector<T> v {set.begin(), set.end()};
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "}";
+        return os;
+    }
+
+    template<typename Key, typename T, typename HashType, typename EqualType>
+    std::ostream& operator<<(std::ostream &os, const std::unordered_map<Key, T, HashType, EqualType>& map) {
+        os << "{";
+        
+        std::vector<std::pair<Key, T>> v {map.begin(), map.end()};
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "}";
+        return os;
+    }
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream &os, const std::vector<T>& v) {
+        os << "[";
+        
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "]";
+        return os;
+    }
+
     enum MMPC_Progress {
         MMPC_FORWARD_PHASE_STOP = -1,
         MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC = -2
@@ -28,16 +81,167 @@ namespace learning::algorithms {
     template<typename BN>
     class BNCPCAssoc;
 
+    template<typename BN>
+    class BNCPCAssocCol {
+    public:
+        BNCPCAssocCol(BNCPCAssoc<BN>& self, int col) : m_self(self),
+                                                       m_col(col) {}
+
+        void fill(double v) {
+            m_self.fill_col(m_col, v);
+        }
+
+        void reset_maxmin() {
+            maxmin_assoc() = m_self.alpha();
+            maxmin_index() = MMPC_FORWARD_PHASE_STOP;
+        }
+        
+        double& min_assoc(int index) {
+            return m_self.min_assoc(index, m_col);
+        }
+
+        double min_assoc(int index) const {
+            return m_self.min_assoc(index, m_col);
+        }
+
+        double& maxmin_assoc() {
+            return m_self.maxmin_assoc(m_col);
+        }
+
+        double maxmin_assoc() const {
+            return m_self.maxmin_assoc(m_col);
+        }
+
+        int& maxmin_index() {
+            return m_self.maxmin_index(m_col);
+        }
+
+        int maxmin_index() const {
+            return m_self.maxmin_index(m_col);
+        }
+
+        void initialize_assoc(int index, double pvalue) {
+            min_assoc(index) = pvalue;
+
+            if (pvalue < maxmin_assoc()) {
+                maxmin_assoc() = pvalue;
+                maxmin_index() = index;
+            }
+        }
+
+        void update_assoc(int index, double pvalue) {
+            double new_max = min_assoc(index) = std::max(min_assoc(index), pvalue);
+
+            if (new_max < maxmin_assoc()) {
+                maxmin_assoc() = new_max;
+                maxmin_index() = index;
+            }
+        }
+    private:
+        BNCPCAssoc<BN>& m_self;
+        int m_col;
+    };
+
+    template<typename BN>
+    BNCPCAssocCol(BNCPCAssoc<BN>&, int) -> BNCPCAssocCol<BN>;
+
+    template<>
+    class BNCPCAssocCol<VectorXd> {
+    public:
+        BNCPCAssocCol(VectorXd& col, double alpha) : m_col(col),
+                                                     m_maxmin_assoc(alpha),
+                                                     m_maxmin_index(MMPC_FORWARD_PHASE_STOP),
+                                                     m_alpha(alpha) {}
+
+        void fill(double v) {
+            m_col.fill(v);
+        }
+
+        void reset_maxmin() {
+            m_maxmin_assoc = m_alpha;
+            m_maxmin_index = MMPC_FORWARD_PHASE_STOP;
+        }
+        
+        double& min_assoc(int index) {
+            return m_col(index);
+        }
+
+        double min_assoc(int index) const {
+            return m_col(index);
+        }
+
+        double& maxmin_assoc() {
+            return m_maxmin_assoc;
+        }
+
+        double maxmin_assoc() const {
+            return m_maxmin_assoc;
+        }
+
+        int& maxmin_index() {
+            return m_maxmin_index;
+        }
+
+        int maxmin_index() const {
+            return m_maxmin_index;
+        }
+
+        void initialize_assoc(int index, double pvalue) {
+            m_col(index) = pvalue;
+
+            if (pvalue < m_maxmin_assoc) {
+                m_maxmin_assoc = pvalue;
+                m_maxmin_index = index;
+            }
+        }
+
+        void update_assoc(int index, double pvalue) {
+            double new_max = min_assoc(index) = std::max(min_assoc(index), pvalue);
+
+            if (new_max < m_maxmin_assoc) {
+                m_maxmin_assoc = new_max;
+                m_maxmin_index = index;
+            }
+        }
+    private:
+        VectorXd& m_col;
+        double m_maxmin_assoc;
+        int m_maxmin_index;
+        double m_alpha;
+    };
+
     template<>
     class BNCPCAssoc<PartiallyDirectedGraph> {
-
-        BNCPCAssoc(const PartiallyDirectedGraph& g) : m_graph(g),
-                                                      m_assoc() {
+    public:
+        BNCPCAssoc(const PartiallyDirectedGraph& g, double alpha) : m_graph(g),
+                                                                    m_assoc(),
+                                                                    m_alpha(alpha) {
             m_assoc = CPCAssoc {
                 .min_assoc = MatrixXd::Zero(g.num_nodes(), g.num_nodes()),
-                .maxmin_assoc = VectorXd::Constant(g.num_nodes(), std::numeric_limits<double>::infinity()),
+                .maxmin_assoc = VectorXd::Constant(g.num_nodes(), m_alpha),
                 .maxmin_index = VectorXi::Constant(g.num_nodes(), MMPC_FORWARD_PHASE_STOP)
             };
+        }
+
+        const PartiallyDirectedGraph& graph() {
+            return m_graph;
+        }
+
+        CPCAssoc& raw_assoc() {
+            return m_assoc;
+        }
+
+        double alpha() {
+            return m_alpha;
+        }
+
+        void reset_maxmin(int index) {
+            maxmin_assoc(index) = m_alpha;
+            maxmin_index(index) = MMPC_FORWARD_PHASE_STOP;
+        }
+
+        void fill_col(int col_index, double v) {
+            m_assoc.min_assoc.col(col_index).fill(v);
         }
 
         double& min_assoc(int row_index, int col_index) {
@@ -46,6 +250,10 @@ namespace learning::algorithms {
 
         double min_assoc(int row_index, int col_index) const {
             return m_assoc.min_assoc(row_index, col_index);
+        }
+
+        BNCPCAssocCol<PartiallyDirectedGraph> min_assoc_col(int col_index) {
+            return BNCPCAssocCol(*this, col_index);
         }
 
         double& maxmin_assoc(int index) {
@@ -63,29 +271,79 @@ namespace learning::algorithms {
         int maxmin_index(int index) const {
             return m_assoc.maxmin_index(index);
         }
+
+        void initialize_assoc(int row_index, int col_index, double pvalue) {
+            min_assoc(row_index, col_index) = pvalue;
+            if (pvalue < m_assoc.maxmin_assoc(col_index)) {
+                maxmin_assoc(col_index) = pvalue;
+                maxmin_index(col_index) = row_index;
+            }
+        }
+
+        void update_assoc(int row_index, int col_index, double pvalue) {
+            double new_max = min_assoc(row_index, col_index) 
+                           = std::max(min_assoc(row_index, col_index), pvalue);
+            if (new_max < m_assoc.maxmin_assoc(col_index)) {
+                maxmin_assoc(col_index) = new_max;
+                maxmin_index(col_index) = row_index;
+            }
+        }
     private:
         const PartiallyDirectedGraph& m_graph;
         CPCAssoc m_assoc;
+        double m_alpha;
     };
 
     template<>
     class BNCPCAssoc<ConditionalPartiallyDirectedGraph> {
     public:
-        BNCPCAssoc(const ConditionalPartiallyDirectedGraph& g) : m_graph(g),
-                                                                 m_assoc(),
-                                                                 m_interface_assoc() {
+        BNCPCAssoc(const ConditionalPartiallyDirectedGraph& g, double alpha) : m_graph(g),
+                                                                               m_assoc(),
+                                                                               m_interface_assoc(),
+                                                                               m_alpha(alpha) {
             m_assoc = CPCAssoc {
                 .min_assoc = MatrixXd::Zero(g.num_total_nodes(), g.num_nodes()),
-                .maxmin_assoc = VectorXd::Constant(g.num_nodes(), std::numeric_limits<double>::infinity()),
+                .maxmin_assoc = VectorXd::Constant(g.num_nodes(), m_alpha),
                 .maxmin_index = VectorXi::Constant(g.num_nodes(), MMPC_FORWARD_PHASE_STOP)
             };
 
             m_interface_assoc = CPCAssoc {
                 .min_assoc = MatrixXd::Zero(g.num_nodes(), g.num_interface_nodes()),
-                .maxmin_assoc = VectorXd::Constant(g.num_interface_nodes(), std::numeric_limits<double>::infinity()),
+                .maxmin_assoc = VectorXd::Constant(g.num_interface_nodes(), m_alpha),
                 .maxmin_index = VectorXi::Constant(g.num_interface_nodes(), MMPC_FORWARD_PHASE_STOP)
             };
         }
+
+        const ConditionalPartiallyDirectedGraph& graph() {
+            return m_graph;
+        }
+
+        CPCAssoc& raw_assoc() {
+            return m_assoc;
+        }
+
+        CPCAssoc& raw_interface_assoc() {
+            return m_interface_assoc;
+        }
+
+        void reset_maxmin(int index) {
+            maxmin_assoc(index) = m_alpha;
+            maxmin_index(index) = MMPC_FORWARD_PHASE_STOP;
+        }
+
+        double alpha() {
+            return m_alpha;
+        }
+
+        void fill_col(int col_index, double v) {
+            if (m_graph.is_interface(col_index)) {
+                m_interface_assoc.min_assoc.col(m_graph.interface_collapsed_from_index(col_index)).fill(v);
+            }
+            else {
+                m_assoc.min_assoc.col(m_graph.collapsed_from_index(col_index)).fill(v);
+            }
+        }
+
 
         double& min_assoc_node(int row_index, int col_index) {
             return m_assoc.min_assoc(m_graph.joint_collapsed_from_index(row_index), 
@@ -121,6 +379,9 @@ namespace learning::algorithms {
                 return min_assoc_node(row_index, col_index);
         }
 
+        BNCPCAssocCol<ConditionalPartiallyDirectedGraph> min_assoc_col(int col_index) {
+            return BNCPCAssocCol(*this, col_index);
+        }
 
         double& maxmin_assoc_node(int index) {
             return m_assoc.maxmin_assoc(m_graph.collapsed_from_index(index));
@@ -139,14 +400,14 @@ namespace learning::algorithms {
         }
 
         double& maxmin_assoc(int index) {
-            if (g.is_interface(index))
+            if (m_graph.is_interface(index))
                 return maxmin_assoc_interface(index);
             else
                 return maxmin_assoc_node(index);
         }
 
         double maxmin_assoc(int index) const {
-            if (g.is_interface(index))
+            if (m_graph.is_interface(index))
                 return maxmin_assoc_interface(index);
             else
                 return maxmin_assoc_node(index);
@@ -169,31 +430,71 @@ namespace learning::algorithms {
         }
 
         int& maxmin_index(int index) {
-            if (g.is_interface(index))
+            if (m_graph.is_interface(index))
                 return maxmin_index_interface(index);
             else
                 return maxmin_index_node(index);
         }
 
         int maxmin_index(int index) const {
-            if (g.is_interface(index))
+            if (m_graph.is_interface(index))
                 return maxmin_index_interface(index);
             else
                 return maxmin_index_node(index);
+        }
+
+        void initialize_assoc(int row_index, int col_index, double pvalue) {
+            if (m_graph.is_interface(col_index)) {
+                min_assoc_interface(row_index, col_index) = pvalue;
+                if (pvalue < maxmin_assoc_interface(col_index)) {
+                    maxmin_assoc_interface(col_index) = pvalue;
+                    maxmin_index_interface(col_index) = row_index;
+                }
+
+            } else {
+                min_assoc_node(row_index, col_index) = pvalue;
+                if (pvalue < maxmin_assoc_node(col_index)) {
+                    maxmin_assoc_node(col_index) = pvalue;
+                    maxmin_index_node(col_index) = row_index;
+                }
+            }
+        }
+
+        void update_assoc(int row_index, int col_index, double pvalue) {
+            if (m_graph.is_interface(col_index)) {
+                double new_max = min_assoc_interface(row_index, col_index) 
+                               = std::max(min_assoc_interface(row_index, col_index), pvalue);
+                if (new_max < maxmin_assoc_interface(col_index)) {
+                    maxmin_assoc_interface(col_index) = new_max;
+                    maxmin_index_interface(col_index) = row_index;
+                }
+            } else {
+                double new_max = min_assoc_node(row_index, col_index) 
+                               = std::max(min_assoc_node(row_index, col_index), pvalue);
+                if (new_max < maxmin_assoc_node(col_index)) {
+                    maxmin_assoc_node(col_index) = new_max;
+                    maxmin_index_node(col_index) = row_index;
+                }
+            }
         }
     private:
         const ConditionalPartiallyDirectedGraph& m_graph;
         CPCAssoc m_assoc;
         CPCAssoc m_interface_assoc;
+        double m_alpha;
     };
 
-    template<typename VectorType>
+    template<typename G>
+    BNCPCAssoc(const G&, double) -> BNCPCAssoc<G>;
+
+
+    template<typename G, typename ColAssoc>
     void recompute_assoc(const IndependenceTest& test,
-                         const PartiallyDirectedGraph& g,
+                         const G& g,
                          int variable,
                          const std::unordered_set<int>& cpc,
-                         const std::unordered_set<int>& to_be_checked,
-                         VectorType& min_assoc,
+                         std::unordered_set<int>& to_be_checked,
+                         ColAssoc& assoc,
                          util::BaseProgressBar& progress) {
 
         const auto& variable_name = g.name(variable);
@@ -208,23 +509,28 @@ namespace learning::algorithms {
             cpc_vec.push_back(g.name(c));
         }
 
-        for (auto other : to_be_checked) {
-            min_assoc(other) = test.pvalue(variable_name, g.name(other), cpc_vec.begin(), cpc_vec.end());
+        assoc.reset_maxmin();
+
+        for (auto it = to_be_checked.begin(); it != to_be_checked.end();) {
+            double pvalue = test.pvalue(variable_name, g.name(*it), cpc_vec.begin(), cpc_vec.end());
+            assoc.initialize_assoc(*it, pvalue);
             progress.tick();
         }
     }
 
-    template<typename VectorType>
+    template<typename G, typename ColAssoc>
     void update_min_assoc(const IndependenceTest& test,
-                          const PartiallyDirectedGraph& g,
+                          const G& g,
                           int variable,
                           const std::unordered_set<int>& to_be_checked,
                           const std::unordered_set<int>& cpc,
-                          VectorType& min_assoc,
+                          ColAssoc& assoc,
                           int last_added_cpc,
                           util::BaseProgressBar& progress) {
                 
         const auto& variable_name = g.name(variable);
+
+        assoc.reset_maxmin();
 
         if (cpc.empty()) {
             progress.set_text("MMPC Forward: no sepset for " + variable_name);
@@ -232,7 +538,8 @@ namespace learning::algorithms {
             progress.set_progress(0);
 
             for (auto v : to_be_checked) {
-                min_assoc(v) = test.pvalue(variable_name, g.name(v));
+                double pvalue = test.pvalue(variable_name, g.name(v));
+                assoc.initialize_assoc(v, pvalue);
                 progress.tick();
             }
         } else if (cpc.size() == 1) {
@@ -243,7 +550,7 @@ namespace learning::algorithms {
             const auto& last_added_name = g.name(last_added_cpc);
             for (auto v : to_be_checked) {
                 double pvalue = test.pvalue(variable_name, g.name(v), last_added_name);
-                min_assoc(v) = std::max(min_assoc(v), pvalue);
+                assoc.update_assoc(v, pvalue);
                 progress.tick();
             }
         } else if (cpc.size() == 2) {
@@ -263,10 +570,10 @@ namespace learning::algorithms {
                 const auto& v_name = g.name(v);
 
                 double pvalue = test.pvalue(variable_name, v_name, last_added_name);
-                min_assoc(v) = std::max(min_assoc(v), pvalue);
+                assoc.update_assoc(v, pvalue);
 
                 pvalue = test.pvalue(variable_name, v_name, cond.begin(), cond.end());
-                min_assoc(v) = std::max(min_assoc(v), pvalue);
+                assoc.update_assoc(v, pvalue);
 
                 progress.tick();
             }
@@ -300,26 +607,26 @@ namespace learning::algorithms {
                 const auto& v_name = g.name(v);
                 // Conditioning in just the last variable added.
                 double pvalue = test.pvalue(variable_name, v_name, last_added_name);
-                min_assoc(v) = std::max(min_assoc(v), pvalue);
+                assoc.update_assoc(v, pvalue);
 
                 // Conditioning in the last variable and another variable added.
                 for (const auto& pc : old_cpc) {
                     cond[0] = pc;
                     pvalue = test.pvalue(variable_name, v_name, cond.begin(), cond.end());
-                    min_assoc(v) = std::max(min_assoc(v), pvalue);
+                    assoc.update_assoc(v, pvalue);
                 }
                 
                 if (cpc.size() > 3) {
                     for (const auto& subset : comb) {
                         pvalue = test.pvalue(variable_name, v_name, subset.begin(), subset.end());
-                        min_assoc(v) = std::max(min_assoc(v), pvalue);
+                        assoc.update_assoc(v, pvalue);
                     }
                 }
 
                 // Conditioning in all the variables.
                 old_cpc.push_back(last_added_name);
                 pvalue = test.pvalue(variable_name, v_name, old_cpc.begin(), old_cpc.end());
-                min_assoc(v) = std::max(min_assoc(v), pvalue);
+                assoc.update_assoc(v, pvalue);
                 old_cpc.pop_back();
             }
 
@@ -327,94 +634,62 @@ namespace learning::algorithms {
         }
     }
 
-    int find_maxmin_assoc(const VectorXd& min_assoc, std::unordered_set<int>& to_be_checked, double alpha) {
-        int to_add = MMPC_FORWARD_PHASE_STOP;
-        double to_add_pvalue = std::numeric_limits<double>::infinity();
-
+    template<typename ColAssoc>
+    void update_to_be_checked(const ColAssoc& assoc, std::unordered_set<int>& to_be_checked, double alpha) {
         for (auto it = to_be_checked.begin(), end = to_be_checked.end(); it != end;) {
-            if (min_assoc(*it) > alpha) {
+            if (assoc.min_assoc(*it) > alpha) {
                 it = to_be_checked.erase(it);
             } else {
-                if (min_assoc(*it) < to_add_pvalue) {
-                    to_add = *it;
-                    to_add_pvalue = min_assoc(*it);
-                }
                 ++it;
             }
         }
-
-        return to_add;
     }
 
-    template<typename G, typename VectorType>
-    std::unordered_set<int> mmpc_forward_phase(const IndependenceTest& test,
-                                               const G& g,
-                                               int variable,
-                                               double alpha,
-                                               std::unordered_set<int>& cpc,
-                                               std::unordered_set<int>& to_be_checked,
-                                               VectorType& min_assoc,
-                                               int last_added,
-                                               util::BaseProgressBar& progress) {
+    template<typename G, typename ColAssoc>
+    void mmpc_forward_phase(const IndependenceTest& test,
+                            const G& g,
+                            int variable,
+                            double alpha,
+                            std::unordered_set<int>& cpc,
+                            std::unordered_set<int>& to_be_checked,
+                            ColAssoc& assoc,
+                            int last_added,
+                            util::BaseProgressBar& progress) {
         bool changed_cpc = true;
-
+        
         if (cpc.empty()) {
-            min_assoc.fill(0);
+            assoc.fill(0);
         } else if (last_added == MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC) {
             // The CPC is not empty because of whitelists, so we compute the association of the selected CPC.
-            recompute_assoc(test, g, variable, cpc, to_be_checked, min_assoc, progress);
-            int to_add = find_maxmin_assoc(min_assoc, to_be_checked, alpha);
+            recompute_assoc(test, g, variable, cpc, to_be_checked, assoc, progress);
+            
+            int to_add = assoc.maxmin_index();
 
             if (to_add != MMPC_FORWARD_PHASE_STOP) {
                 cpc.insert(to_add);
                 to_be_checked.erase(to_add);
                 last_added = to_add;
+                update_to_be_checked(assoc, to_be_checked, alpha);
             } else {
                 changed_cpc = false;
             }
         }
 
         while (changed_cpc && !to_be_checked.empty()) {
-            update_min_assoc(test, g, variable, to_be_checked, cpc, min_assoc, last_added, progress);
-            int to_add = find_maxmin_assoc(min_assoc, to_be_checked, alpha);
+            update_min_assoc(test, g, variable, to_be_checked, cpc, assoc, last_added, progress);
+            // int to_add = find_maxmin_assoc(assoc, to_be_checked, alpha);
+            int to_add = assoc.maxmin_index();
 
             if (to_add != MMPC_FORWARD_PHASE_STOP) {
                 cpc.insert(to_add);
                 to_be_checked.erase(to_add);
                 last_added = to_add;
+                update_to_be_checked(assoc, to_be_checked, alpha);
             } else {
                 changed_cpc = false;
             }
         }
-
-        return cpc;
     }
-
-    // template<typename VectorType>
-    // std::unordered_set<int> mmpc_forward_phase_node(const IndependenceTest& test,
-    //                                            const ConditionalPartiallyDirectedGraph& g,
-    //                                            int variable,
-    //                                            double alpha,
-    //                                            std::unordered_set<int>& cpc,
-    //                                            std::unordered_set<int>& to_be_checked,
-    //                                            VectorType& min_assoc,
-    //                                            int last_added,
-    //                                            util::BaseProgressBar& progress) {
-    
-    // }
-
-    // template<typename VectorType>
-    // std::unordered_set<int> mmpc_forward_phase_interface(const IndependenceTest& test,
-    //                                            const ConditionalPartiallyDirectedGraph& g,
-    //                                            int variable,
-    //                                            double alpha,
-    //                                            std::unordered_set<int>& cpc,
-    //                                            std::unordered_set<int>& to_be_checked,
-    //                                            VectorType& min_assoc,
-    //                                            int last_added,
-    //                                            util::BaseProgressBar& progress) {
-    
-    // }
 
     bool is_whitelisted_pc(int variable, int candidate_pc, const ArcSet& arc_whitelist, const EdgeSet& edge_whitelist) {
         return edge_whitelist.count({variable, candidate_pc}) > 0 || 
@@ -422,8 +697,9 @@ namespace learning::algorithms {
                arc_whitelist.count({candidate_pc, variable}) > 0;
     }
 
+    template<typename G>
     void mmpc_backward_phase(const IndependenceTest& test,
-                             const PartiallyDirectedGraph& g,
+                             const G& g,
                              int variable,
                              double alpha,
                              std::unordered_set<int>& cpc,
@@ -548,22 +824,24 @@ namespace learning::algorithms {
         }
 
         VectorXd min_assoc(g.num_nodes());
+        BNCPCAssocCol<VectorXd> assoc_col(min_assoc, alpha);
 
         int last_added = 0;
         if (!cpc.empty()) last_added = MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC;
 
-        mmpc_forward_phase(test, g, variable, alpha, cpc, to_be_checked, min_assoc, last_added, progress);
+        mmpc_forward_phase(test, g, variable, alpha, cpc, to_be_checked, assoc_col, last_added, progress);
         mmpc_backward_phase(test, g, variable, alpha, cpc, arc_whitelist, edge_whitelist, progress);
         return cpc;
     }
 
+    template<typename G>
     void marginal_cpcs_all_variables(const IndependenceTest& test,
-                                     const PartiallyDirectedGraph& g,
+                                     const G& g,
                                      double alpha,
                                      std::vector<std::unordered_set<int>>& cpcs,
                                      std::vector<std::unordered_set<int>>& to_be_checked,
                                      const EdgeSet& edge_blacklist,
-                                     CPCAssoc& cpc_assoc,
+                                     BNCPCAssoc<G>& assoc,
                                      util::BaseProgressBar& progress) {
         auto nnodes = g.num_nodes();
 
@@ -572,28 +850,24 @@ namespace learning::algorithms {
         progress.set_progress(0);
 
         for (int i = 0, i_end = nnodes-1; i < i_end; ++i) {
+            const auto& i_name = g.collapsed_name(i);
+            auto i_index = g.index(i_name);
             for (int j = i+1; j < nnodes; ++j) {
-                if ((cpcs[i].empty() || cpcs[j].empty()) && edge_blacklist.count({i,j}) == 0) {
-                    double pvalue = test.pvalue(g.name(i), g.name(j));
+                const auto& j_name = g.collapsed_name(j);
+                auto j_index = g.index(j_name);
+                if ((cpcs[i_index].empty() || cpcs[j_index].empty()) && edge_blacklist.count({i_index, j_index}) == 0) {
+                    double pvalue = test.pvalue(i_name, j_name);
                     if (pvalue < alpha) {
-                        if (cpcs[i].empty()) {
-                            cpc_assoc.min_assoc(j, i) = pvalue;
-                            if (cpc_assoc.min_assoc(j, i) < cpc_assoc.maxmin_assoc(i)) {
-                                cpc_assoc.maxmin_assoc(i) = cpc_assoc.min_assoc(j, i);
-                                cpc_assoc.maxmin_index(i) = j;
-                            }
+                        if (cpcs[i_index].empty()) {
+                            assoc.initialize_assoc(j_index, i_index, pvalue);
                         }
                         
-                        if (cpcs[j].empty()) {
-                            cpc_assoc.min_assoc(i, j) = pvalue;
-                            if (cpc_assoc.min_assoc(i, j) < cpc_assoc.maxmin_assoc(j)) {
-                                cpc_assoc.maxmin_assoc(j) = cpc_assoc.min_assoc(i, j);
-                                cpc_assoc.maxmin_index(j) = i;
-                            }
+                        if (cpcs[j_index].empty()) {
+                            assoc.initialize_assoc(i_index, j_index, pvalue);
                         }
                     } else {
-                        to_be_checked[i].erase(j);
-                        to_be_checked[j].erase(i);
+                        to_be_checked[i_index].erase(j_index);
+                        to_be_checked[j_index].erase(i_index);
                     }
                 }
 
@@ -608,8 +882,7 @@ namespace learning::algorithms {
                                      std::vector<std::unordered_set<int>>& cpcs,
                                      std::vector<std::unordered_set<int>>& to_be_checked,
                                      const EdgeSet& edge_blacklist,
-                                     CPCAssoc& node_assoc,
-                                     CPCAssoc& interface_assoc,
+                                     BNCPCAssoc<ConditionalPartiallyDirectedGraph>& assoc,
                                      util::BaseProgressBar& progress) {
         auto nnodes = g.num_nodes();
         auto inodes = g.num_interface_nodes();
@@ -619,47 +892,12 @@ namespace learning::algorithms {
         progress.set_progress(0);
 
         // Cache marginal between nodes
-        for (int i = 0, i_end = nnodes-1; i < i_end; ++i) {
-            const auto& i_name = g.collapsed_name(i);
-            auto i_index = g.index(i_name);
-            auto i_jcindex = g.joint_collapsed_index(i_name);
-            for (int j = i+1; j < nnodes; ++j) {
-                const auto& j_name = g.collapsed_name(j);
-                auto j_index = g.index(j_name);
-
-                if ((cpcs[i_index].empty() || cpcs[j_index].empty()) && edge_blacklist.count({i_index, j_index}) == 0) {
-                    double pvalue = test.pvalue(i_name, j_name);
-                    if (pvalue < alpha) {
-                        if (cpcs[i_index].empty()) {
-                            auto j_jcindex = g.joint_collapsed_index(j_name);
-                            node_assoc.min_assoc(j_jcindex, i) = pvalue;
-                            if (pvalue < node_assoc.maxmin_assoc(i)) {
-                                node_assoc.maxmin_assoc(i) = pvalue;
-                                node_assoc.maxmin_index(i) = j;
-                            }
-                        }
-
-                        if (cpcs[j_index].empty()) {
-                            node_assoc.min_assoc(i_jcindex, j) = pvalue;
-                            if (pvalue < node_assoc.maxmin_assoc(j)) {
-                                node_assoc.maxmin_assoc(j) = pvalue;
-                                node_assoc.maxmin_index(j) = i;
-                            }
-                        }
-                    } else {
-                        to_be_checked[i_index].erase(j_index);
-                        to_be_checked[j_index].erase(i_index);
-                    }
-                }
-
-                progress.tick();
-            }
-        }
+        marginal_cpcs_all_variables<ConditionalPartiallyDirectedGraph>(test, g, alpha, cpcs, to_be_checked, 
+                                                                        edge_blacklist, assoc, progress);
 
         // Cache between nodes and interface_nodes
         for (const auto& node : g.nodes()) {
             auto nindex = g.index(node);
-            auto ncollapsed = g.collapsed_index(node);
             for (const auto& inode : g.interface_nodes()) {
                 auto iindex = g.index(inode);
 
@@ -667,23 +905,11 @@ namespace learning::algorithms {
                     double pvalue = test.pvalue(node, inode);
                     if (pvalue < alpha) {
                         if (cpcs[nindex].empty()) {
-                            auto i_jcindex = g.joint_collapsed_index(inode);
-
-                            node_assoc.min_assoc(i_jcindex, ncollapsed) = pvalue;
-                            if (pvalue < node_assoc.maxmin_assoc(ncollapsed)) {
-                                node_assoc.maxmin_assoc(ncollapsed) = pvalue;
-                                node_assoc.maxmin_index(ncollapsed) = iindex;
-                            }
+                            assoc.initialize_assoc(iindex, nindex, pvalue);
                         }
 
                         if (cpcs[iindex].empty()) {
-                            auto icollapsed = g.interface_collapsed_index(inode);
-
-                            interface_assoc.min_assoc(ncollapsed, icollapsed) = pvalue;
-                            if (pvalue < interface_assoc.maxmin_assoc(icollapsed)) {
-                                interface_assoc.maxmin_assoc(icollapsed) = pvalue;
-                                interface_assoc.maxmin_index(icollapsed) = nindex;
-                            }
+                            assoc.initialize_assoc(nindex, iindex, pvalue);
                         }
                     } else {
                         to_be_checked[nindex].erase(iindex);
@@ -696,35 +922,15 @@ namespace learning::algorithms {
         }
     }
 
-    bool update_univariate_assoc(const PartiallyDirectedGraph& g,
-                                double pvalue,
-                                int node,
-                                int other_node,
-                                double alpha,
-                                CPCAssoc& node_assoc) {
-        
-
-        double new_max = node_assoc.min_assoc(other_node, node) =
-                std::max(node_assoc.min_assoc(other_node, node), pvalue);
-
-        if (new_max > alpha) {
-            return true;
-        } else if (new_max < node_assoc.maxmin_assoc(node)) {
-            node_assoc.maxmin_assoc(node) = new_max;
-            node_assoc.maxmin_index(node) = other_node;
-        }
-
-        return false;
-    }
-
-    void univariate_cpcs_all_variables(const IndependenceTest& test,
-                                       const PartiallyDirectedGraph& g,
+    template<typename G>
+    void univariate_cpcs_all_variables(int nnodes,
+                                       const IndependenceTest& test,
+                                       const G& g,
                                        double alpha,
                                        std::vector<std::unordered_set<int>>& cpcs,
                                        std::vector<std::unordered_set<int>>& to_be_checked,
-                                       CPCAssoc& cpc_assoc,
+                                       BNCPCAssoc<G>& assoc,
                                        util::BaseProgressBar& progress) {
-        auto nnodes = g.num_nodes();
         progress.set_text("MMPC Forward: sepset order 1");
         progress.set_max_progress(nnodes);
         progress.set_progress(0);
@@ -743,97 +949,16 @@ namespace learning::algorithms {
                         const auto& p_name = g.name(p);
                         double pvalue = test.pvalue(i_name, p_name, cpc_name);
 
-                        if (update_univariate_assoc(g, pvalue, i, p, alpha, cpc_assoc))
+                        assoc.update_assoc(p, i, pvalue);
+                        if (assoc.min_assoc(p, i) > alpha)
                             it = to_be_checked[i].erase(it);
                         else
                             ++it;
 
-                        if (repeated_test && update_univariate_assoc(g, pvalue, p, i, alpha, cpc_assoc))
-                            to_be_checked[p].erase(i);
-                    } else {
-                        ++it;
-                    }
-                }
-            }
-
-            progress.tick();
-        }
-    }
-
-    bool update_univariate_assoc(const ConditionalPartiallyDirectedGraph& g,
-                                double pvalue,
-                                int node,
-                                int other_node,
-                                double alpha,
-                                CPCAssoc& node_assoc,
-                                CPCAssoc& interface_assoc) {
-        
-        if (g.is_interface(node)) {
-            auto node_ifcollapsed = g.interface_collapsed_from_index(node);
-            auto other_collapsed = g.collapsed_from_index(other_node);
-            double new_max = 
-                interface_assoc.min_assoc(other_collapsed, node_ifcollapsed) =
-                std::max(interface_assoc.min_assoc(other_collapsed, node_ifcollapsed), pvalue);
-
-            if (new_max > alpha) {
-                return true;
-            } else if (new_max < interface_assoc.maxmin_assoc(node_ifcollapsed)) {
-                interface_assoc.maxmin_assoc(node_ifcollapsed) = new_max;
-                interface_assoc.maxmin_index(node_ifcollapsed) = other_node;
-            }
-        } else {
-            auto node_collapsed = g.collapsed_from_index(node);
-            auto other_jc = g.joint_collapsed_from_index(other_node);
-            double new_max = 
-                node_assoc.min_assoc(other_jc, node_collapsed) =
-                std::max(node_assoc.min_assoc(other_jc, node_collapsed), pvalue);
-
-            if (new_max > alpha) {
-                return true;
-            } else if (new_max < node_assoc.maxmin_assoc(node_collapsed)) {
-                node_assoc.maxmin_assoc(node_collapsed) = new_max;
-                node_assoc.maxmin_index(node_collapsed) = other_node;
-            }
-        }
-
-        return false;
-    }
-
-    void univariate_cpcs_all_variables(const IndependenceTest& test,
-                                       const ConditionalPartiallyDirectedGraph& g,
-                                       double alpha,
-                                       std::vector<std::unordered_set<int>>& cpcs,
-                                       std::vector<std::unordered_set<int>>& to_be_checked,
-                                       CPCAssoc& node_assoc,
-                                       CPCAssoc& interface_assoc,
-                                       util::BaseProgressBar& progress) {
-        auto nnodes = g.num_total_nodes();
-        progress.set_text("MMPC Forward: sepset order 1");
-        progress.set_max_progress(nnodes);
-        progress.set_progress(0);
-        
-        for (int i = 0; i < nnodes; ++i) {
-            const auto& node = g.name(i);
-
-            if (cpcs[i].size() == 1) {
-                int cpc_variable = *cpcs[i].begin();
-                const auto& cpc_name = g.name(cpc_variable);
-                for (auto it = to_be_checked[i].begin(), end = to_be_checked[i].end(); it != end;) {
-                    auto p = *it;
-                    bool repeated_test = cpcs[p].size() == 1 && cpc_variable == *cpcs[p].begin()
-                                         && to_be_checked[p].count(i) > 0;
-
-                    if (!repeated_test || i < p) {
-                        const auto& p_name = g.name(p);
-                        double pvalue = test.pvalue(node, p_name, cpc_name);
-
-                        if (update_univariate_assoc(g, pvalue, i, p, alpha, node_assoc, interface_assoc))
-                            it = to_be_checked[i].erase(it);
-                        else
-                            ++it;
-
-                        if (repeated_test && update_univariate_assoc(g, pvalue, p, i, alpha, node_assoc, interface_assoc)) {
-                            to_be_checked[p].erase(i);
+                        if (repeated_test) {
+                            assoc.update_assoc(i, p, pvalue);
+                            if (assoc.min_assoc(i, p) > alpha)
+                                to_be_checked[p].erase(i);
                         }
                     } else {
                         ++it;
@@ -843,6 +968,28 @@ namespace learning::algorithms {
 
             progress.tick();
         }
+    }
+
+    void univariate_cpcs_all_variables(const IndependenceTest& test,
+                                       const PartiallyDirectedGraph& g,
+                                       double alpha,
+                                       std::vector<std::unordered_set<int>>& cpcs,
+                                       std::vector<std::unordered_set<int>>& to_be_checked,
+                                       BNCPCAssoc<PartiallyDirectedGraph>& assoc,
+                                       util::BaseProgressBar& progress) {
+        auto nnodes = g.num_nodes();
+        univariate_cpcs_all_variables(nnodes, test, g, alpha, cpcs, to_be_checked, assoc, progress);
+    }
+
+    void univariate_cpcs_all_variables(const IndependenceTest& test,
+                                       const ConditionalPartiallyDirectedGraph& g,
+                                       double alpha,
+                                       std::vector<std::unordered_set<int>>& cpcs,
+                                       std::vector<std::unordered_set<int>>& to_be_checked,
+                                       BNCPCAssoc<ConditionalPartiallyDirectedGraph>& assoc,
+                                       util::BaseProgressBar& progress) {
+        auto nnodes = g.num_total_nodes();
+        univariate_cpcs_all_variables(nnodes, test, g, alpha, cpcs, to_be_checked, assoc, progress);
     }
 
     std::pair<std::vector<std::unordered_set<int>>,
@@ -922,6 +1069,59 @@ namespace learning::algorithms {
         return std::make_pair(cpcs, to_be_checked);
     }
 
+    template<typename G>
+    std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& test,
+                                                            const G& g,
+                                                            int num_total_nodes,
+                                                            double alpha,
+                                                            const ArcSet& arc_whitelist,
+                                                            const EdgeSet& edge_blacklist,
+                                                            const EdgeSet& edge_whitelist,
+                                                            util::BaseProgressBar& progress) {
+
+        auto [cpcs, to_be_checked] = generate_cpcs(g, arc_whitelist, edge_blacklist, edge_whitelist);
+
+        BNCPCAssoc assoc(g, alpha);
+
+        marginal_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, 
+                                    edge_blacklist, assoc, progress);
+
+        bool all_finished = true;
+        for (int i = 0; i < num_total_nodes; ++i) {
+            if (assoc.maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
+                all_finished = false;
+                cpcs[i].insert(assoc.maxmin_index(i));
+                to_be_checked[i].erase(assoc.maxmin_index(i));
+            }
+
+            if (cpcs[i].size() == 1) {
+                assoc.reset_maxmin(i);
+            }
+        }
+
+        if (!all_finished) {
+            univariate_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, assoc, progress);
+
+            for (int i = 0; i < num_total_nodes; ++i) {
+                auto col_min_assoc = assoc.min_assoc_col(i);
+                // The cpc is whitelisted.
+                if (cpcs[i].size() > 1) {
+                    mmpc_forward_phase(test, g, i, alpha, cpcs[i], to_be_checked[i], 
+                                    col_min_assoc, MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC, progress);
+                } else if (assoc.maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
+                    cpcs[i].insert(assoc.maxmin_index(i));
+                    to_be_checked[i].erase(assoc.maxmin_index(i));
+                    mmpc_forward_phase(test, g, i, alpha, cpcs[i], to_be_checked[i], col_min_assoc, 
+                                        assoc.maxmin_index(i), progress);
+                }
+
+                mmpc_backward_phase(test, g, i, alpha, cpcs[i], arc_whitelist, edge_whitelist, progress);
+            }
+        }
+
+        return cpcs;
+    }
+
     // 
     // WARNING!: This method should be called with a Graph without removed nodes.
     // 
@@ -933,52 +1133,8 @@ namespace learning::algorithms {
                                                             const EdgeSet& edge_whitelist,
                                                             util::BaseProgressBar& progress) {
 
-        auto [cpcs, to_be_checked] = generate_cpcs(g, arc_whitelist, edge_blacklist, edge_whitelist);
-    
-        auto cpc_assoc = CPCAssoc {
-            .min_assoc = MatrixXd::Zero(g.num_nodes(), g.num_nodes()),
-            .maxmin_assoc = VectorXd::Constant(g.num_nodes(), std::numeric_limits<double>::infinity()),
-            .maxmin_index = VectorXi::Constant(g.num_nodes(), MMPC_FORWARD_PHASE_STOP)
-        };
-
-        marginal_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, 
-                                    edge_blacklist, cpc_assoc, progress);
-
-        bool all_finished = true;
-        for (int i = 0; i < g.num_nodes(); ++i) {
-            if (cpc_assoc.maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
-                all_finished = false;
-                cpcs[i].insert(cpc_assoc.maxmin_index(i));
-                to_be_checked[i].erase(cpc_assoc.maxmin_index(i));
-            }
-
-            if (cpcs[i].size() == 1) {
-                cpc_assoc.maxmin_assoc(i) = std::numeric_limits<double>::infinity();
-                cpc_assoc.maxmin_index(i) = MMPC_FORWARD_PHASE_STOP;
-            }
-        }
-
-        if (!all_finished) {
-            univariate_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, cpc_assoc, progress);
-
-            for (int i = 0; i < g.num_nodes(); ++i) {
-                auto col_min_assoc = cpc_assoc.min_assoc.col(i);
-                // The cpc is whitelisted.
-                if (cpcs[i].size() > 1) {
-                    mmpc_forward_phase(test, g, i, alpha, cpcs[i], to_be_checked[i], 
-                                    col_min_assoc, MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC, progress);
-                } else if (cpc_assoc.maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
-                    cpcs[i].insert(cpc_assoc.maxmin_index(i));
-                    to_be_checked[i].erase(cpc_assoc.maxmin_index(i));
-                    mmpc_forward_phase(test, g, i, alpha, cpcs[i], to_be_checked[i], col_min_assoc, 
-                                        cpc_assoc.maxmin_index(i), progress);
-                }
-
-                mmpc_backward_phase(test, g, i, alpha, cpcs[i], arc_whitelist, edge_whitelist, progress);
-            }
-        }
-
-        return cpcs;
+        return mmpc_all_variables(test, g, g.num_nodes(), alpha,
+                                  arc_whitelist, edge_blacklist, edge_whitelist, progress);
     }
 
     std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& test,
@@ -988,79 +1144,8 @@ namespace learning::algorithms {
                                                             const EdgeSet& edge_blacklist,
                                                             const EdgeSet& edge_whitelist,
                                                             util::BaseProgressBar& progress) {
-        auto [cpcs, to_be_checked] = generate_cpcs(g, arc_whitelist, edge_blacklist, edge_whitelist);
-
-        auto node_assoc = CPCAssoc {
-            .min_assoc = MatrixXd::Zero(g.num_total_nodes(), g.num_nodes()),
-            .maxmin_assoc = VectorXd::Constant(g.num_nodes(), std::numeric_limits<double>::infinity()),
-            .maxmin_index = VectorXi::Constant(g.num_nodes(), MMPC_FORWARD_PHASE_STOP)
-        };
-
-        auto interface_assoc = CPCAssoc {
-            .min_assoc = MatrixXd::Zero(g.num_nodes(), g.num_interface_nodes()),
-            .maxmin_assoc = VectorXd::Constant(g.num_interface_nodes(), std::numeric_limits<double>::infinity()),
-            .maxmin_index = VectorXi::Constant(g.num_interface_nodes(), MMPC_FORWARD_PHASE_STOP)
-        };
-
-        marginal_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, 
-                            edge_blacklist, node_assoc, interface_assoc, progress);
-
-        bool all_finished = true;
-
-        for (int i = 0; i < g.num_nodes(); ++i) {
-            auto index = g.index_from_collapsed(i);
-            if (node_assoc.maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
-                all_finished = false;
-                cpcs[index].insert(node_assoc.maxmin_index(i));
-                to_be_checked[index].erase(node_assoc.maxmin_index(i));
-            }
-
-            if (cpcs[index].size() == 1) {
-                node_assoc.maxmin_assoc(i) = std::numeric_limits<double>::infinity();
-                node_assoc.maxmin_index(i) = MMPC_FORWARD_PHASE_STOP;
-            }
-        }
-
-        for (int i = 0; i < g.num_interface_nodes(); ++i) {
-            auto index = g.index_from_interface_collapsed(i);
-            if (interface_assoc.maxmin_index(i) != MMPC_FORWARD_PHASE_STOP) {
-                all_finished = false;
-                cpcs[index].insert(interface_assoc.maxmin_index(i));
-                to_be_checked[index].erase(interface_assoc.maxmin_index(i));
-            }
-
-            if (cpcs[index].size() == 1) {
-                interface_assoc.maxmin_assoc(i) = std::numeric_limits<double>::infinity();
-                interface_assoc.maxmin_index(i) = MMPC_FORWARD_PHASE_STOP;
-            }
-        }
-
-        if (!all_finished) {
-            univariate_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, 
-                                          node_assoc, interface_assoc, progress);
-
-            for (int i = 0; i < g.num_nodes(); ++i) {
-                auto col_min_assoc = node_assoc.min_assoc.col(i);
-                auto index = g.index_from_collapsed(i);
-
-                // if (cpcs[index].size() > 1) {
-                //     mmpc_forward_phase_node(test, g, i, alpha, cpcs[index], to_be_checked[index], 
-                //                         col_min_assoc, MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC, progress);
-                // } else if (node_assoc.maxmin_index(index) != MMPC_FORWARD_PHASE_STOP) {
-                //     cpcs[index].insert(node_assoc.maxmin_index(index));
-                //     to_be_checked[index].erase(node_assoc.maxmin_index(index));
-
-                //     mmpc_forward_phase_node(test, g, i, alpha, cpcs[index], to_be_checked[index], col_min_assoc, 
-                //                         node_assoc.maxmin_index(index), progress);
-
-                // }
-
-                // mmpc_backward_phase(test, g, i, alpha, cpcs[index], arc_whitelist, edge_whitelist, progress);
-            }
-
-        }
-
-        return cpcs;
+        return mmpc_all_variables(test, g, g.num_total_nodes(), alpha,
+                                  arc_whitelist, edge_blacklist, edge_whitelist, progress);
     }
 
     PartiallyDirectedGraph MMPC::estimate(const IndependenceTest& test,
@@ -1158,6 +1243,11 @@ namespace learning::algorithms {
             throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes/interface_nodes lists.");
 
         ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
+        std::cout << "Starting skeleton indices: " << skeleton.indices() << std::endl;
+        std::cout << "Starting skeleton arcs: " << skeleton.arcs() << std::endl;
+        std::cout << "Starting skeleton edges: " << skeleton.edges() << std::endl;
+        std::cout << "Starting skeleton roots: " << skeleton.roots() << std::endl;
+        std::cout << "Starting skeleton leaves: " << skeleton.leaves() << std::endl;
 
         auto restrictions = util::validate_restrictions(skeleton, 
                                                         varc_blacklist,
@@ -1169,25 +1259,80 @@ namespace learning::algorithms {
             skeleton.add_arc(a.first, a.second);
         }
 
+        std::cout << "Whitelist skeleton indices: " << skeleton.indices() << std::endl;
+        std::cout << "Whitelist skeleton arcs: " << skeleton.arcs() << std::endl;
+        std::cout << "Whitelist skeleton edges: " << skeleton.edges() << std::endl;
+        std::cout << "Whitelist skeleton roots: " << skeleton.roots() << std::endl;
+        std::cout << "Whitelist skeleton leaves: " << skeleton.leaves() << std::endl;
+
         auto progress = util::progress_bar(verbose);
 
-        // auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
-        //                             restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
+        auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
+                                       restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
+
+        for (auto i = 0; i < skeleton.num_nodes(); ++i) {
+            for (auto p : cpcs[i]) {
+                if (i < p && cpcs[p].count(i) > 0 && !skeleton.has_arc(i, p) && !skeleton.has_arc(p, i)) {
+                    if (skeleton.is_interface(i))
+                        skeleton.add_arc(i, p);
+                    else if (skeleton.is_interface(p))
+                        skeleton.add_arc(p, i);
+                    else
+                        skeleton.add_edge(i, p);
+                }
+            }
+        }
+
+        std::cout << "MMPC skeleton indices: " << skeleton.indices() << std::endl;
+        std::cout << "MMPC skeleton arcs: " << skeleton.arcs() << std::endl;
+        std::cout << "MMPC skeleton edges: " << skeleton.edges() << std::endl;
+        std::cout << "MMPC skeleton roots: " << skeleton.roots() << std::endl;
+        std::cout << "MMPC skeleton leaves: " << skeleton.leaves() << std::endl;
 
 
+        direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
 
-        // std::unordered_set<std::string> set_nodes {nodes.begin(), nodes.end()};
-        // std::unordered_set<std::string> set_interface_nodes {interface_nodes.begin(), interface_nodes.end()};
+        std::cout << "Arc blacklist skeleton indices: " << skeleton.indices() << std::endl;
+        std::cout << "Arc blacklist skeleton arcs: " << skeleton.arcs() << std::endl;
+        std::cout << "Arc blacklist skeleton edges: " << skeleton.edges() << std::endl;
+        std::cout << "Arc blacklist skeleton roots: " << skeleton.roots() << std::endl;
+        std::cout << "Arc blacklist skeleton leaves: " << skeleton.leaves() << std::endl;
 
-        // auto restrictions = util::validate_restrictions(skeleton, 
-        //                                                 varc_blacklist,
-        //                                                 varc_whitelist,
-        //                                                 vedge_blacklist,
-        //                                                 vedge_whitelist);
+        direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist, 
+                                  alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
 
-        // for (const auto& a : restrictions.arc_whitelist) {
-        //     skeleton.add_arc(a.first, a.second);
-        // }
-                            
+        std::cout << "v structure skeleton indices: " << skeleton.indices() << std::endl;
+        std::cout << "v structure skeleton arcs: " << skeleton.arcs() << std::endl;
+        std::cout << "v structure skeleton edges: " << skeleton.edges() << std::endl;
+        std::cout << "v structure skeleton roots: " << skeleton.roots() << std::endl;
+        std::cout << "v structure skeleton leaves: " << skeleton.leaves() << std::endl;
+
+        progress->set_max_progress(3);
+        progress->set_text("Applying Meek rules");
+
+        bool changed = true;
+        while(changed) {
+            changed = false;
+            progress->set_progress(0);
+
+            changed |= MeekRules::rule1(skeleton);
+            progress->tick();
+            changed |= MeekRules::rule2(skeleton);
+            progress->tick();
+            changed |= MeekRules::rule3(skeleton);
+            progress->tick();
+        }
+
+        progress->mark_as_completed("Finished MMPC!");
+
+        indicators::show_console_cursor(true);
+
+        std::cout << "End skeleton indices: " << skeleton.indices() << std::endl;
+        std::cout << "End skeleton arcs: " << skeleton.arcs() << std::endl;
+        std::cout << "End skeleton edges: " << skeleton.edges() << std::endl;
+        std::cout << "End skeleton roots: " << skeleton.roots() << std::endl;
+        std::cout << "End skeleton leaves: " << skeleton.leaves() << std::endl;
+
+        return skeleton;
     }
 }

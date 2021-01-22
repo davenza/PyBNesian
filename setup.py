@@ -73,7 +73,7 @@ ext_modules = [
          'src/kdtree/kdtree.cpp',
          'src/learning/operators/operators.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
-         'src/learning/algorithms/constraint.cpp',
+        #  'src/learning/algorithms/constraint.cpp',
          'src/learning/algorithms/pc.cpp',
          'src/learning/algorithms/mmpc.cpp',
          'src/learning/algorithms/mmhc.cpp',

@@ -30,7 +30,7 @@ namespace learning::algorithms {
                                                             
     std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& test,
                                                             const ConditionalPartiallyDirectedGraph& g,
-                                                        double alpha,
+                                                            double alpha,
                                                             const ArcSet& arc_whitelist,
                                                             const EdgeSet& edge_blacklist,
                                                             const EdgeSet& edge_whitelist,

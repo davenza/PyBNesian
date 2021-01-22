@@ -20,6 +20,80 @@ using util::ArcStringVector, util::EdgeStringVector, util::ArcSet, util::EdgeSet
 
 namespace graph {
 
+    template<typename T1, typename T2>
+    std::ostream& operator<<(std::ostream &os, const std::pair<T1, T2>& p) {
+        os << "(" << p.first << ", " << p.second << ")";
+        return os;
+    }
+
+    template<typename T, typename HashType, typename EqualType>
+    std::ostream& operator<<(std::ostream &os, const std::unordered_set<T, HashType, EqualType>& set) {
+        os << "{";
+        
+        std::vector<T> v {set.begin(), set.end()};
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "}";
+        return os;
+    }
+
+    template<typename Key, typename T, typename HashType, typename EqualType>
+    std::ostream& operator<<(std::ostream &os, const std::unordered_map<Key, T, HashType, EqualType>& map) {
+        os << "{";
+        
+        std::vector<std::pair<Key, T>> v {map.begin(), map.end()};
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "}";
+        return os;
+    }
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream &os, const std::vector<T>& v) {
+        os << "[";
+        
+        if (!v.empty()) {
+            os << v[0];
+            for (size_t i = 1; i < v.size(); ++i) {
+                os << ", " << v[i];
+            }
+        }
+
+        os << "]";
+        return os;
+    }
+    
+    template<typename T>
+    std::ostream& operator<<(std::ostream &os, const UNode& v) {
+        os << v.name();
+        return os;
+    }
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream &os, const DNode& v) {
+        os << v.name();
+        return os;
+    }
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream &os, const PDNode& v) {
+        os << v.name();
+        return os;
+    }
+
+
+
+
     enum GraphType {
         Directed,
         DirectedAcyclic,
@@ -388,6 +462,9 @@ namespace graph {
     template<typename Derived, template<typename> typename BaseClass>
     class ArcGraph;
 
+    template<typename _Derived, template<typename> typename BaseClass>
+    class PartiallyDirectedImpl;
+
     template<typename Derived>
     class GraphBase {
     public:
@@ -400,18 +477,6 @@ namespace graph {
         friend class ArcGraph;
         template<typename G, template<typename> typename BaseClass>
         friend class EdgeGraph;
-
-        template<typename _Derived, template<typename> typename BaseClass>
-        friend class PartiallyDirectedImpl;
-        template<typename _Derived, template<typename> typename BaseClass>
-        friend class UndirectedImpl;
-        template<typename _Derived, template<typename> typename BaseClass>
-        friend class DirectedImpl;
-        template<typename _Derived, typename BaseClass>
-        friend class DagImpl;
-
-        template<GraphType Type>
-        friend class Graph;
         
         GraphBase() = default;
         GraphBase(const std::vector<std::string>& nodes) : m_nodes(),
@@ -613,18 +678,13 @@ namespace graph {
     public:
         using NodeType = typename GraphTraits<Derived>::NodeType;
 
+        inline Derived& derived() { return static_cast<Derived&>(*this); }
+        inline const Derived& derived() const { return static_cast<const Derived&>(*this); }
+
         template<typename G, template<typename> typename BaseClass>
         friend class ArcGraph;
-
         template<typename G, template<typename> typename BaseClass>
         friend class EdgeGraph;
-
-
-        template<typename _Derived, template<typename> typename BaseClass>
-        friend class DirectedImpl;
-        template<typename _Derived, typename BaseClass>
-        friend class DagImpl;
-
 
         ConditionalGraphBase() = default;
         ConditionalGraphBase(const std::vector<std::string>& nodes,
@@ -1030,23 +1090,18 @@ namespace graph {
         inline ArcGraph<Derived, BaseClass>& arc_base() { return *this; }
         inline const ArcGraph<Derived, BaseClass>& arc_base() const { return *this; }
 
+        friend class BaseClass<Derived>;
+
         ArcGraph() = default;
         ArcGraph(const std::vector<std::string>& nodes) : m_arcs(),
                                                           m_roots(),
                                                           m_leaves() {
-            for (int i = 0, size = nodes.size(); i < size; ++i) {
-                m_roots.insert(i);
-                m_leaves.insert(i);
+            for (const auto& name : nodes) {
+                m_roots.insert(base().index(name));
+                m_leaves.insert(base().index(name));
             }
         }
 
-        friend class BaseClass<Derived>;
-        // friend class Graph<Directed>;
-        friend class Graph<PartiallyDirected>;
-        // friend class Dag;
-
-        template<typename _Derived, template<typename> typename _BaseClass>
-        friend class PartiallyDirectedImpl;
 
         int num_arcs() const {
             return m_arcs.size();
@@ -1293,14 +1348,6 @@ namespace graph {
         inline const Base& base() const { return static_cast<const Base&>(static_cast<const Derived&>(*this)); }
         inline EdgeGraph<Derived, BaseClass>& edge_base() { return *this; }
         inline const EdgeGraph<Derived, BaseClass>& edge_base() const { return *this; }
-        // template<typename T>
-        // friend class GraphBase;
-        friend class Graph<Undirected>;
-
-        template<typename _Derived, template<typename> typename _BaseClass>
-        friend class PartiallyDirectedImpl;
-        friend class Graph<PartiallyDirected>;
-
 
         int num_edges() const {
             return m_edges.size();
@@ -1506,7 +1553,7 @@ namespace graph {
         PartiallyDirectedImpl(const std::vector<std::string>& nodes,
                               const std::vector<std::string>& interface_nodes) 
                                     : BaseClass<Derived>(nodes, interface_nodes),
-                                      ArcGraph<Derived, BaseClass>(this->nodes()),
+                                      ArcGraph<Derived, BaseClass>(this->all_nodes()),
                                       EdgeGraph<Derived, BaseClass>() {}
 
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int> = 0>
@@ -1515,7 +1562,7 @@ namespace graph {
                               const ArcStringVector& arcs,
                               const EdgeStringVector& edges) 
                                     : BaseClass<Derived>(nodes, interface_nodes),
-                                      ArcGraph<Derived, BaseClass>(this->nodes()),
+                                      ArcGraph<Derived, BaseClass>(this->all_nodes()),
                                       EdgeGraph<Derived, BaseClass>() {
 
             for (auto& arc : arcs) {
@@ -1778,14 +1825,14 @@ namespace graph {
         DirectedImpl(const std::vector<std::string>& nodes,
                      const std::vector<std::string>& interface_nodes) 
                                     : BaseClass<Derived>(nodes, interface_nodes),
-                                      ArcGraph<Derived, BaseClass>(this->nodes()) {}
+                                      ArcGraph<Derived, BaseClass>(this->all_nodes()) {}
 
         template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int> = 0>
         DirectedImpl(const std::vector<std::string>& nodes,
                      const std::vector<std::string>& interface_nodes,
                      const ArcStringVector& arcs) 
                                     : BaseClass<Derived>(nodes, interface_nodes),
-                                      ArcGraph<Derived, BaseClass>(this->nodes()) {
+                                      ArcGraph<Derived, BaseClass>(this->all_nodes()) {
             for (auto& arc : arcs) {
                 this->add_arc(arc.first, arc.second);
             }
@@ -1875,7 +1922,6 @@ namespace graph {
             topological_sort();
         }
 
-
         std::vector<std::string> topological_sort() const;
 
         template<typename V>
@@ -1949,7 +1995,7 @@ namespace graph {
 
         template<typename B = BaseClass, std::enable_if_t<std::is_same_v<B, DirectedGraph>, int> = 0>
         ConditionalGraph<DirectedAcyclic> conditional_graph(const std::vector<std::string>& nodes,
-                                                    const std::vector<std::string>& interface_nodes) const;
+                                                            const std::vector<std::string>& interface_nodes) const;
 
         template<typename B = BaseClass, std::enable_if_t<std::is_same_v<B, DirectedGraph>, int> = 0>
         ConditionalGraph<DirectedAcyclic> conditional_graph() const;
@@ -1973,48 +2019,16 @@ namespace graph {
     template<typename Derived, template<typename> typename BaseClass>
     template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     PartiallyDirectedImpl<Derived, BaseClass>::PartiallyDirectedImpl(Graph<Undirected>&& g) 
-                                                : GraphBase<PartiallyDirectedGraph>(),
-                                                  ArcGraph<PartiallyDirectedGraph, BaseClass>(), 
-                                                  EdgeGraph<PartiallyDirectedGraph, BaseClass>() {
-        this->m_nodes.reserve(g.m_nodes.size());
-
-        for (auto& unnode : g.m_nodes) {
-            this->m_nodes.push_back(std::move(unnode));
-        }
-
-        this->m_edges = std::move(g.m_edges);
-        this->m_roots = std::unordered_set<int>();
-        this->m_leaves = std::unordered_set<int>();
-
-        for (size_t i = 0; i < g.m_nodes.size(); ++i) {
-            if (g.is_valid(i)) {
-                this->m_roots.insert(i);
-                this->m_leaves.insert(i);
-            }
-        }
-
-        this->m_indices = std::move(g.m_indices);
-        this->m_free_indices = std::move(g.m_free_indices);
-    }
+                                                : GraphBase<PartiallyDirectedGraph>(std::move(g)),
+                                                  ArcGraph<PartiallyDirectedGraph, BaseClass>(this->nodes()), 
+                                                  EdgeGraph<PartiallyDirectedGraph, BaseClass>(std::move(g)) {}
 
     template<typename Derived, template<typename> typename BaseClass>
     template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     PartiallyDirectedImpl<Derived, BaseClass>::PartiallyDirectedImpl(Graph<Directed>&& g)
-                                                : GraphBase<PartiallyDirectedGraph>(),
-                                                  ArcGraph<PartiallyDirectedGraph, GraphBase>(),
-                                                  EdgeGraph<PartiallyDirectedGraph, GraphBase>() {    
-        this->m_nodes.reserve(g.m_nodes.size());
-
-        for (auto& dnode : g.m_nodes) {
-            this->m_nodes.push_back(std::move(dnode));
-        }
-
-        this->m_arcs = std::move(g.m_arcs);
-        this->m_roots = std::move(g.m_roots);
-        this->m_leaves = std::move(g.m_leaves);
-        this->m_indices = std::move(g.m_indices);
-        this->m_free_indices = std::move(g.m_free_indices);
-    }
+                                                : GraphBase<PartiallyDirectedGraph>(std::move(g)),
+                                                  ArcGraph<PartiallyDirectedGraph, GraphBase>(std::move(g)),
+                                                  EdgeGraph<PartiallyDirectedGraph, GraphBase>() {}
 
     template<typename Derived, template<typename> typename BaseClass>
     void PartiallyDirectedImpl<Derived, BaseClass>::direct_unsafe(int source, int target) {
@@ -2060,6 +2074,14 @@ namespace graph {
     typename PartiallyDirectedImpl<Derived, BaseClass>::template GraphClass<DirectedAcyclic> 
     PartiallyDirectedImpl<Derived, BaseClass>::to_dag() const {
         // PDAG-TO-DAG by D.Dor, M.Tarsi (1992). A simple algorithm to construct a consistent extension of a partially oriented graph.
+
+        std::cout << "Starting indices: " << this->indices() << std::endl;
+        std::cout << "Starting arcs: " << this->arcs() << std::endl;
+        std::cout << "Starting edges: " << this->edges() << std::endl;
+        std::cout << "Starting roots: " << this->roots() << std::endl;
+        std::cout << "Starting leaves: " << this->leaves() << std::endl;
+
+
         GraphClass<DirectedAcyclic> directed;
 
         if constexpr (util::is_template_instantation_v<GraphBase, BaseClass<Derived>>)
@@ -2074,6 +2096,11 @@ namespace graph {
                                     directed.index(arc.second));
         }
 
+        std::cout << "Directed indices: " << directed.indices() << std::endl;
+        std::cout << "Directed arcs: " << directed.arcs() << std::endl;
+        std::cout << "Directed roots: " << directed.roots() << std::endl;
+        std::cout << "Directed leaves: " << directed.leaves() << std::endl;
+
         ArcStringVector compelled_arcs;
         if constexpr (util::is_template_instantation_v<ConditionalGraphBase, BaseClass<Derived>>) {
             compelled_arcs = this->derived().compelled_arcs();
@@ -2082,6 +2109,12 @@ namespace graph {
                                         directed.index(arc.second));
             }
         }
+
+        std::cout << "Compelled indices " << directed.indices() << std::endl;
+        std::cout << "Compelled arcs: " << directed.arcs() << std::endl;
+        std::cout << "Compelled roots: " << directed.roots() << std::endl;
+        std::cout << "Compelled leaves: " << directed.leaves() << std::endl;
+
 
         if (!directed.is_dag()) {
             throw std::invalid_argument("PDAG contains directed cycles.");
@@ -2153,16 +2186,16 @@ namespace graph {
         if (this->has_edge_unsafe(source, target)) {
             return true;
         } else {
-            dynamic_bitset in_stack(this->m_nodes.size());
-            in_stack.reset(0, this->m_nodes.size());
+            dynamic_bitset in_stack(static_cast<size_t>(this->num_raw_nodes()));
+            in_stack.reset(0, this->num_raw_nodes());
 
-            for (auto free : this->m_free_indices) {
+            for (auto free : this->free_indices()) {
                 in_stack.set(free);
             }
 
             in_stack.set(source);
 
-            const auto& neighbors = this->m_nodes[source].neighbors();
+            const auto& neighbors = this->neighbor_set(source);
             std::vector<int> stack {neighbors.begin(), neighbors.end()};
 
             for (auto neighbor : neighbors) {
@@ -2173,7 +2206,7 @@ namespace graph {
                 auto v = stack.back();
                 stack.pop_back();
 
-                const auto& neighbors = this->m_nodes[v].neighbors();
+                const auto& neighbors = this->neighbor_set(v);
 
                 if (neighbors.find(target) != neighbors.end())
                     return true;
@@ -2218,14 +2251,14 @@ namespace graph {
         if (this->has_arc_unsafe(source, target))
             return true;
         else {
-            const auto& children = this->m_nodes[source].children();
+            const auto& children = this->children_set(source);
             std::vector<int> stack {children.begin(), children.end()};
 
             while (!stack.empty()) {
                 auto v = stack.back();
                 stack.pop_back();
 
-                const auto& children = this->m_nodes[v].children();
+                const auto& children = this->children_set(v);
         
                 if (children.find(target) != children.end())
                     return true;
@@ -2240,7 +2273,7 @@ namespace graph {
     // Checks if there is a path between source and target without taking into account the possible arc source -> target.
     template<typename Derived, template<typename> typename BaseClass>
     bool DirectedImpl<Derived, BaseClass>::has_path_unsafe_no_direct_arc(int source, int target) const {
-        const auto& children = this->m_nodes[source].children();
+        const auto& children = this->children_set(source);
         std::vector<int> stack {children.begin(), children.end()};
 
         if (this->has_arc_unsafe(source, target))
@@ -2250,7 +2283,7 @@ namespace graph {
             auto v = stack.back();
             stack.pop_back();
 
-            const auto& children = this->m_nodes[v].children();
+            const auto& children = this->children_set(v);
     
             if (children.find(target) != children.end())
                 return true;
@@ -2286,21 +2319,28 @@ namespace graph {
 
     template<typename Derived, typename BaseClass>
     std::vector<std::string> DagImpl<Derived, BaseClass>::topological_sort() const {
-        std::vector<int> incoming_edges;
-        incoming_edges.reserve(this->m_nodes.size());
+        std::cout << "Topological sort" << std::endl;
 
-        for (auto it = this->m_nodes.begin(); it != this->m_nodes.end(); ++it) {
-            if (it->is_valid()) {
-                incoming_edges.push_back(it->parents().size());
+        std::vector<int> incoming_edges;
+        incoming_edges.reserve(this->num_raw_nodes());
+
+        for (const auto& raw_node : this->raw_nodes()) {
+            if (raw_node.is_valid()) {
+                incoming_edges.push_back(raw_node.parents().size());
             } else {
                 incoming_edges.push_back(-1);
             }
         }
 
+        std::cout << "Indices: " << this->indices() << std::endl;
+        std::cout << "Incoming edges: " << incoming_edges << std::endl;
+
         std::vector<std::string> top_sort;
         top_sort.reserve(this->num_nodes());
 
         std::vector<int> stack{this->roots().begin(), this->roots().end()};
+
+        std::cout << "Roots: " << stack << std::endl;
 
         while (!stack.empty()) {
             auto idx = stack.back();
@@ -2308,7 +2348,7 @@ namespace graph {
 
             top_sort.push_back(this->name(idx));
             
-            for (const auto& children : this->m_nodes[idx].children()) {
+            for (const auto& children : this->children_set(idx)) {
                 --incoming_edges[children];
                 if (incoming_edges[children] == 0) {
                     stack.push_back(children);

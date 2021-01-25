@@ -39,19 +39,6 @@ namespace graph {
         return cpdag;
     }
 
-    ArcStringVector ConditionalPartiallyDirectedGraph::compelled_arcs() const {
-        ArcStringVector res;
-
-        for (const auto& edge : edge_indices()) {
-            if (is_interface(edge.first))
-                res.push_back({name(edge.first), name(edge.second)});
-            else if (is_interface(edge.second))
-                res.push_back({name(edge.second), name(edge.first)});
-        }
-
-        return res;
-    }
-
     UndirectedGraph UndirectedGraph::Complete(const std::vector<std::string>& nodes) {
         UndirectedGraph un(nodes);
 
@@ -86,7 +73,7 @@ namespace graph {
 
         return un;
     }
-    
+
     py::object load_graph(const std::string& name) {
         auto open = py::module::import("io").attr("open");
         auto file = open(name, "rb");

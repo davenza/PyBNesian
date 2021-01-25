@@ -166,6 +166,11 @@ void add_arcgraph_methods(PyClass& c) {
         }
         return leaves;
     });
+
+    if constexpr (graph::is_conditional_graph_v<CppClass>) {
+        c
+        .def("interface_arcs", &CppClass::template interface_arcs<>);
+    }
 }
 
 template<typename CppClass, typename PyClass>
@@ -203,6 +208,11 @@ void add_edgegraph_methods(PyClass& c) {
     .def("remove_edge", [](CppClass& self, const std::string& source, const std::string& target) {
         self.remove_edge(source, target);
     });
+
+    if constexpr (graph::is_conditional_graph_v<CppClass>) {
+        c
+        .def("interface_edges", &CppClass::template interface_edges<>);
+    }
 }
 
 template<typename CppClass, typename PyClass>
@@ -433,8 +443,7 @@ void pybindings_conditional_graph(py::module& graph) {
                   const std::vector<std::string>&,
                   const ArcStringVector&,
                   const EdgeStringVector&>())
-    .def_static("CompleteUndirected", &ConditionalPartiallyDirectedGraph::CompleteUndirected)
-    .def("compelled_arcs", &ConditionalPartiallyDirectedGraph::compelled_arcs);
+    .def_static("CompleteUndirected", &ConditionalPartiallyDirectedGraph::CompleteUndirected);
 
     add_conditionalgraphbase_methods<ConditionalPartiallyDirectedGraph>(cpdag);
     add_arcgraph_methods<ConditionalPartiallyDirectedGraph>(cpdag);

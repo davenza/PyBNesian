@@ -14,59 +14,6 @@ using util::Combinations, util::AllSubsets;
 
 namespace learning::algorithms {
 
-    template<typename T1, typename T2>
-    std::ostream& operator<<(std::ostream &os, const std::pair<T1, T2>& p) {
-        os << "(" << p.first << ", " << p.second << ")";
-        return os;
-    }
-
-    template<typename T, typename HashType, typename EqualType>
-    std::ostream& operator<<(std::ostream &os, const std::unordered_set<T, HashType, EqualType>& set) {
-        os << "{";
-        
-        std::vector<T> v {set.begin(), set.end()};
-        if (!v.empty()) {
-            os << v[0];
-            for (size_t i = 1; i < v.size(); ++i) {
-                os << ", " << v[i];
-            }
-        }
-
-        os << "}";
-        return os;
-    }
-
-    template<typename Key, typename T, typename HashType, typename EqualType>
-    std::ostream& operator<<(std::ostream &os, const std::unordered_map<Key, T, HashType, EqualType>& map) {
-        os << "{";
-        
-        std::vector<std::pair<Key, T>> v {map.begin(), map.end()};
-        if (!v.empty()) {
-            os << v[0];
-            for (size_t i = 1; i < v.size(); ++i) {
-                os << ", " << v[i];
-            }
-        }
-
-        os << "}";
-        return os;
-    }
-
-    template<typename T>
-    std::ostream& operator<<(std::ostream &os, const std::vector<T>& v) {
-        os << "[";
-        
-        if (!v.empty()) {
-            os << v[0];
-            for (size_t i = 1; i < v.size(); ++i) {
-                os << ", " << v[i];
-            }
-        }
-
-        os << "]";
-        return os;
-    }
-
     enum MMPC_Progress {
         MMPC_FORWARD_PHASE_STOP = -1,
         MMPC_FORWARD_PHASE_RECOMPUTE_ASSOC = -2
@@ -1243,11 +1190,6 @@ namespace learning::algorithms {
             throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes/interface_nodes lists.");
 
         ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
-        std::cout << "Starting skeleton indices: " << skeleton.indices() << std::endl;
-        std::cout << "Starting skeleton arcs: " << skeleton.arcs() << std::endl;
-        std::cout << "Starting skeleton edges: " << skeleton.edges() << std::endl;
-        std::cout << "Starting skeleton roots: " << skeleton.roots() << std::endl;
-        std::cout << "Starting skeleton leaves: " << skeleton.leaves() << std::endl;
 
         auto restrictions = util::validate_restrictions(skeleton, 
                                                         varc_blacklist,
@@ -1258,12 +1200,6 @@ namespace learning::algorithms {
         for (const auto& a : restrictions.arc_whitelist) {
             skeleton.add_arc(a.first, a.second);
         }
-
-        std::cout << "Whitelist skeleton indices: " << skeleton.indices() << std::endl;
-        std::cout << "Whitelist skeleton arcs: " << skeleton.arcs() << std::endl;
-        std::cout << "Whitelist skeleton edges: " << skeleton.edges() << std::endl;
-        std::cout << "Whitelist skeleton roots: " << skeleton.roots() << std::endl;
-        std::cout << "Whitelist skeleton leaves: " << skeleton.leaves() << std::endl;
 
         auto progress = util::progress_bar(verbose);
 
@@ -1283,29 +1219,10 @@ namespace learning::algorithms {
             }
         }
 
-        std::cout << "MMPC skeleton indices: " << skeleton.indices() << std::endl;
-        std::cout << "MMPC skeleton arcs: " << skeleton.arcs() << std::endl;
-        std::cout << "MMPC skeleton edges: " << skeleton.edges() << std::endl;
-        std::cout << "MMPC skeleton roots: " << skeleton.roots() << std::endl;
-        std::cout << "MMPC skeleton leaves: " << skeleton.leaves() << std::endl;
-
-
         direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
-
-        std::cout << "Arc blacklist skeleton indices: " << skeleton.indices() << std::endl;
-        std::cout << "Arc blacklist skeleton arcs: " << skeleton.arcs() << std::endl;
-        std::cout << "Arc blacklist skeleton edges: " << skeleton.edges() << std::endl;
-        std::cout << "Arc blacklist skeleton roots: " << skeleton.roots() << std::endl;
-        std::cout << "Arc blacklist skeleton leaves: " << skeleton.leaves() << std::endl;
 
         direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist, 
                                   alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
-
-        std::cout << "v structure skeleton indices: " << skeleton.indices() << std::endl;
-        std::cout << "v structure skeleton arcs: " << skeleton.arcs() << std::endl;
-        std::cout << "v structure skeleton edges: " << skeleton.edges() << std::endl;
-        std::cout << "v structure skeleton roots: " << skeleton.roots() << std::endl;
-        std::cout << "v structure skeleton leaves: " << skeleton.leaves() << std::endl;
 
         progress->set_max_progress(3);
         progress->set_text("Applying Meek rules");
@@ -1326,12 +1243,6 @@ namespace learning::algorithms {
         progress->mark_as_completed("Finished MMPC!");
 
         indicators::show_console_cursor(true);
-
-        std::cout << "End skeleton indices: " << skeleton.indices() << std::endl;
-        std::cout << "End skeleton arcs: " << skeleton.arcs() << std::endl;
-        std::cout << "End skeleton edges: " << skeleton.edges() << std::endl;
-        std::cout << "End skeleton roots: " << skeleton.roots() << std::endl;
-        std::cout << "End skeleton leaves: " << skeleton.leaves() << std::endl;
 
         return skeleton;
     }

@@ -870,19 +870,19 @@ namespace learning::algorithms {
     }
 
     template<typename G>
-    void univariate_cpcs_all_variables(int nnodes,
-                                       const IndependenceTest& test,
+    void univariate_cpcs_all_variables(const IndependenceTest& test,
                                        const G& g,
+                                       int num_total_nodes,
                                        double alpha,
                                        std::vector<std::unordered_set<int>>& cpcs,
                                        std::vector<std::unordered_set<int>>& to_be_checked,
                                        BNCPCAssoc<G>& assoc,
                                        util::BaseProgressBar& progress) {
         progress.set_text("MMPC Forward: sepset order 1");
-        progress.set_max_progress(nnodes);
+        progress.set_max_progress(num_total_nodes);
         progress.set_progress(0);
         
-        for (int i = 0; i < nnodes; ++i) {
+        for (int i = 0; i < num_total_nodes; ++i) {
             if (cpcs[i].size() == 1) {
                 int cpc_variable = *cpcs[i].begin();
                 const auto& i_name = g.name(i);
@@ -917,28 +917,6 @@ namespace learning::algorithms {
         }
     }
 
-    void univariate_cpcs_all_variables(const IndependenceTest& test,
-                                       const PartiallyDirectedGraph& g,
-                                       double alpha,
-                                       std::vector<std::unordered_set<int>>& cpcs,
-                                       std::vector<std::unordered_set<int>>& to_be_checked,
-                                       BNCPCAssoc<PartiallyDirectedGraph>& assoc,
-                                       util::BaseProgressBar& progress) {
-        auto nnodes = g.num_nodes();
-        univariate_cpcs_all_variables(nnodes, test, g, alpha, cpcs, to_be_checked, assoc, progress);
-    }
-
-    void univariate_cpcs_all_variables(const IndependenceTest& test,
-                                       const ConditionalPartiallyDirectedGraph& g,
-                                       double alpha,
-                                       std::vector<std::unordered_set<int>>& cpcs,
-                                       std::vector<std::unordered_set<int>>& to_be_checked,
-                                       BNCPCAssoc<ConditionalPartiallyDirectedGraph>& assoc,
-                                       util::BaseProgressBar& progress) {
-        auto nnodes = g.num_total_nodes();
-        univariate_cpcs_all_variables(nnodes, test, g, alpha, cpcs, to_be_checked, assoc, progress);
-    }
-
     std::pair<std::vector<std::unordered_set<int>>,
               std::vector<std::unordered_set<int>>> generate_cpcs(const PartiallyDirectedGraph& g,
                                                                   const ArcSet& arc_whitelist,
@@ -958,11 +936,22 @@ namespace learning::algorithms {
             cpcs[arc.second].insert(arc.first);
         }
 
-        // Generate to_be_checked indices for whitelisted CPCs
-        for (int i = 0; i < g.num_nodes(); ++i) {
-            for (int j = 0; j < g.num_nodes(); ++j) {
-                if (j != i && edge_blacklist.count({i,j}) == 0 && cpcs[i].count(j) == 0) {
-                    to_be_checked[i].insert(j);
+        // Generate to_be_checked indices
+        for (int i = 0, i_end = g.num_nodes()-1; i < i_end; ++i) {
+            const auto& x_name = g.collapsed_name(i);
+            auto x_index = g.index(x_name);
+            for (int j = i+1; j < g.num_nodes(); ++j) {
+                const auto& y_name = g.collapsed_name(j);
+                auto y_index = g.index(y_name);
+
+                if (edge_blacklist.count({x_index, y_index}) == 0) {
+                    if (cpcs[x_index].count(y_index) == 0) {
+                        to_be_checked[x_index].insert(y_index);
+                    }
+
+                    if (cpcs[y_index].count(x_index) == 0) {
+                        to_be_checked[y_index].insert(x_index);
+                    }
                 }
             }
         }
@@ -989,27 +978,18 @@ namespace learning::algorithms {
             cpcs[arc.second].insert(arc.first);
         }
 
-        // Generate to_be_checked indices for nodes
+        // Generate to_be_checked indices
         for (const auto& node : g.nodes()) {
             auto index = g.index(node);
             for (const auto& other : g.all_nodes()) {
                 auto other_index = g.index(other);
                 
-                if (index != other_index && edge_blacklist.count({index, other_index}) == 0 && cpcs[index].count(other_index) == 0) {
-                    to_be_checked[index].insert(other_index);
+                if (index != other_index && edge_blacklist.count({index, other_index}) == 0) {
+                    if (cpcs[index].count(other_index) == 0)
+                        to_be_checked[index].insert(other_index);
+                    if (cpcs[other_index].count(index) == 0)
+                        to_be_checked[other_index].insert(index);
                 }
-            }
-        }
-
-        // Generate to_be_checked indices for interface_nodes
-        for (const auto& inode : g.interface_nodes()) {
-            auto iindex = g.index(inode);
-            for (const auto& other : g.nodes()) {
-                auto other_index = g.index(other);
-
-                if (edge_blacklist.count({iindex, other_index}) == 0 && cpcs[iindex].count(other_index) == 0)
-                    to_be_checked[iindex].insert(other_index);
-
             }
         }
 
@@ -1047,7 +1027,7 @@ namespace learning::algorithms {
         }
 
         if (!all_finished) {
-            univariate_cpcs_all_variables(test, g, alpha, cpcs, to_be_checked, assoc, progress);
+            univariate_cpcs_all_variables(test, g, num_total_nodes, alpha, cpcs, to_be_checked, assoc, progress);
 
             for (int i = 0; i < num_total_nodes; ++i) {
                 auto col_min_assoc = assoc.min_assoc_col(i);
@@ -1084,6 +1064,9 @@ namespace learning::algorithms {
                                   arc_whitelist, edge_blacklist, edge_whitelist, progress);
     }
 
+    // 
+    // WARNING!: This method should be called with a Graph without removed nodes.
+    // 
     std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& test,
                                                             const ConditionalPartiallyDirectedGraph& g,
                                                             double alpha,
@@ -1166,8 +1149,6 @@ namespace learning::algorithms {
         return skeleton;
     }
 
-
-
     ConditionalPartiallyDirectedGraph MMPC::estimate_conditional(const IndependenceTest& test,
                                                                  const std::vector<std::string>& nodes,
                                                                  const std::vector<std::string>& interface_nodes,
@@ -1201,6 +1182,7 @@ namespace learning::algorithms {
             skeleton.add_arc(a.first, a.second);
         }
 
+        indicators::show_console_cursor(false);
         auto progress = util::progress_bar(verbose);
 
         auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 

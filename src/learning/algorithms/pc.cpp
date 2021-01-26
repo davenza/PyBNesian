@@ -47,8 +47,8 @@ namespace learning::algorithms {
             progress.set_max_progress((nnodes*(nnodes-1) / 2) +
                                        nnodes*skeleton.num_interface_nodes() - edge_whitelist.size());
         }
-        // else
-        //     static_assert(false, "Wrong graph class")
+        else
+            static_assert(util::always_false<G>, "Wrong graph class");
 
         progress.set_text("No sepset");
         progress.set_progress(0);

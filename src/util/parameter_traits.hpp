@@ -5,6 +5,9 @@
 
 namespace util {
 
+    template <class...> 
+    constexpr std::false_type always_false{};
+
     template<typename T>
     using is_string_cvref = std::is_same<std::string, std::remove_cv_t<std::remove_reference_t<T>>>;
 

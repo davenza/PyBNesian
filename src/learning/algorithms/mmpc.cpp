@@ -1120,10 +1120,9 @@ namespace learning::algorithms {
                             skeleton.add_arc(p, i);
                         else
                             skeleton.add_edge(i, p);
-                    } 
-                    // else {
-                    //     static_assert(false, "Wrong graph type");
-                    // }
+                    } else {
+                        static_assert(util::always_false<G>, "Wrong graph type");
+                    }
                 }
             }
         }

@@ -2045,8 +2045,8 @@ namespace graph {
             directed = GraphClass<DirectedAcyclic>(this->nodes());
         else if constexpr (util::is_template_instantation_v<ConditionalGraphBase, BaseClass<Derived>>)
             directed = GraphClass<DirectedAcyclic>(this->nodes(), this->interface_nodes());
-        // else
-        //     static_assert(false, "Wrong BaseClass for PartiallyDirectedImpl");
+        else
+            static_assert(util::always_false<Derived>, "Wrong BaseClass for PartiallyDirectedImpl");
         
         for (const auto& arc : this->arcs()) {
             directed.add_arc_unsafe(directed.index(arc.first), 
@@ -2399,8 +2399,8 @@ namespace graph {
                 pdag.add_arc(compelled.first, compelled.second);
             }
         }
-        // else
-        //     static_assert(false, "Wrong BaseClass for DagImpl");
+        else
+            static_assert(util::always_false<Derived>, "Wrong BaseClass for DagImpl");
 
         for (size_t i = 0; i < sorted_arcs.size() && (pdag.num_arcs() + pdag.num_edges()) < this->num_arcs(); ++i) {
             auto x = sorted_arcs[i].first;

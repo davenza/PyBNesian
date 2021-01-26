@@ -209,7 +209,7 @@ namespace graph {
             std::unordered_map<int, int> new_indices;
 
             for (int i = 0, j = 0; i < g.num_raw_nodes(); ++i) {
-                if (g.node(i).is_valid()) {
+                if (g.is_valid(i)) {
                     nodes.push_back(g.name(i));
                     new_indices.insert({i, j++});
                 }
@@ -431,7 +431,7 @@ namespace graph {
         }
 
         template<typename V>
-        const NodeType& node(const V& idx) const {
+        const NodeType& raw_node(const V& idx) const {
             return m_nodes[check_index(idx)]; 
         }
 
@@ -656,7 +656,7 @@ namespace graph {
         }
 
         template<typename V>
-        const NodeType& node(const V& idx) const {
+        const NodeType& raw_node(const V& idx) const {
             return m_nodes[check_index(idx)]; 
         }
 
@@ -1060,33 +1060,33 @@ namespace graph {
 
         template<typename V>
         std::vector<std::string> parents(const V& idx) const {
-            return parents(base().node(idx));
+            return parents(base().raw_node(idx));
         }
 
         template<typename V>
         std::vector<int> parent_indices(const V& idx) const {
-            auto& p = base().node(idx).parents();
+            auto& p = base().raw_node(idx).parents();
             return { p.begin(), p.end() };
         }
 
         template<typename V>
         const std::unordered_set<int>& parent_set(const V& idx) const {
-            return base().node(idx).parents();
+            return base().raw_node(idx).parents();
         }
 
         template<typename V>
         std::string parents_to_string(const V& idx) const {
-            return parents_to_string(base().node(idx));
+            return parents_to_string(base().raw_node(idx));
         }
 
         template<typename V>
         std::vector<std::string> children(const V& idx) const {
-            return children(base().node(idx));
+            return children(base().raw_node(idx));
         }
 
         template<typename V>
         std::vector<int> children_indices(const V& idx) const {
-            auto& p = base().node(idx).children();
+            auto& p = base().raw_node(idx).children();
             return { p.begin(), p.end() };
         }
 
@@ -1315,18 +1315,18 @@ namespace graph {
 
         template<typename V>
         std::vector<std::string> neighbors(const V& idx) const {
-            return neighbors(base().node(idx));
+            return neighbors(base().raw_node(idx));
         }
 
         template<typename V>
         std::vector<int> neighbor_indices(const V& idx) const {
-            const auto& n = base().node(idx).neighbors();
+            const auto& n = base().raw_node(idx).neighbors();
             return { n.begin(), n.end() };
         }
 
         template<typename V>
         const std::unordered_set<int>& neighbor_set(const V& idx) const {
-            return base().node(idx).neighbors();
+            return base().raw_node(idx).neighbors();
         }
 
         template<typename V>
@@ -1617,6 +1617,8 @@ namespace graph {
         
         static ConditionalPartiallyDirectedGraph CompleteUndirected(const std::vector<std::string>& nodes,
                                                                     const std::vector<std::string>& interface_nodes);
+
+        void direct_interface_edges();
     };
 
     template<typename Derived, template<typename> typename BaseClass>

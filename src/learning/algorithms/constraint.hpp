@@ -49,6 +49,15 @@ namespace learning::algorithms {
         }
     }
 
+    template<typename G>
+    void remove_interface_arcs_blacklist(G& g, const ArcSet& arc_blacklist) {
+        for (const auto& arc : arc_blacklist) {
+            if (g.has_arc_unsafe(arc.first, arc.second)) {
+                g.remove_arc_unsafe(arc.first, arc.second);
+            }
+        }
+    }
+
     struct vstructure {
         int p1;
         int p2;
@@ -73,8 +82,8 @@ namespace learning::algorithms {
         }
         
         std::unordered_set<int> possible_sepset;
-        const auto& np1 = g.node(vs.p1);
-        const auto& np2 = g.node(vs.p2);
+        const auto& np1 = g.raw_node(vs.p1);
+        const auto& np2 = g.raw_node(vs.p2);
 
         possible_sepset.insert(np1.neighbors().begin(), np1.neighbors().end());
         possible_sepset.insert(np1.parents().begin(), np1.parents().end());
@@ -428,8 +437,8 @@ namespace learning::algorithms {
         // Iterate over a copy because we are making changes.
         std::vector<Edge> edge_indices(pdag.edge_indices().begin(), pdag.edge_indices().end());
         for (const auto& edge : edge_indices) {
-            const auto& n1 = pdag.node(edge.first);
-            const auto& n2 = pdag.node(edge.second);
+            const auto& n1 = pdag.raw_node(edge.first);
+            const auto& n2 = pdag.raw_node(edge.second);
 
             const auto& children1 = n1.children();
             const auto& parents2 = n2.parents();

@@ -39,6 +39,18 @@ namespace graph {
         return cpdag;
     }
 
+    void ConditionalPartiallyDirectedGraph::direct_interface_edges() {
+        for (const auto& inode : this->interface_nodes()) {
+            auto iindex = this->index(inode);
+
+            auto nbr_set = this->neighbor_set(iindex);
+
+            for (auto nbr : nbr_set) {
+                this->direct_unsafe(iindex, nbr);
+            }
+        }
+    }
+
     UndirectedGraph UndirectedGraph::Complete(const std::vector<std::string>& nodes) {
         UndirectedGraph un(nodes);
 

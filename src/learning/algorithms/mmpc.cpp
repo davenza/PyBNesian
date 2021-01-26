@@ -1078,6 +1078,80 @@ namespace learning::algorithms {
                                   arc_whitelist, edge_blacklist, edge_whitelist, progress);
     }
 
+    template<typename G>
+    void estimate(G& skeleton,
+                  const IndependenceTest& test,
+                  const std::vector<std::string>& nodes,
+                  const ArcStringVector& varc_blacklist,
+                  const ArcStringVector& varc_whitelist,
+                  const EdgeStringVector& vedge_blacklist,
+                  const EdgeStringVector& vedge_whitelist,
+                  double alpha,
+                  double ambiguous_threshold,
+                  bool allow_bidirected,
+                  int verbose) {
+
+        auto restrictions = util::validate_restrictions(skeleton, 
+                                                        varc_blacklist,
+                                                        varc_whitelist,
+                                                        vedge_blacklist,
+                                                        vedge_whitelist);
+
+        for (const auto& a : restrictions.arc_whitelist) {
+            skeleton.add_arc(a.first, a.second);
+        }
+
+        indicators::show_console_cursor(false);
+        auto progress = util::progress_bar(verbose);
+
+        auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
+                                       restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
+
+        for (auto i = 0; i < skeleton.num_nodes(); ++i) {
+            for (auto p : cpcs[i]) {
+                if (i < p && cpcs[p].count(i) > 0 && !skeleton.has_arc(i, p) && !skeleton.has_arc(p, i)) {
+                    if constexpr (graph::is_unconditional_graph_v<G>) {
+                        skeleton.add_edge(i, p);
+                    }
+                    else if constexpr (graph::is_conditional_graph_v<G>) {
+                        if (skeleton.is_interface(i))
+                            skeleton.add_arc(i, p);
+                        else if (skeleton.is_interface(p))
+                            skeleton.add_arc(p, i);
+                        else
+                            skeleton.add_edge(i, p);
+                    } 
+                    // else {
+                    //     static_assert(false, "Wrong graph type");
+                    // }
+                }
+            }
+        }
+
+        direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
+        direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist,
+                                  alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
+
+        progress->set_max_progress(3);
+        progress->set_text("Applying Meek rules");
+
+        bool changed = true;
+        while(changed) {
+            changed = false;
+            progress->set_progress(0);
+
+            changed |= MeekRules::rule1(skeleton);
+            progress->tick();
+            changed |= MeekRules::rule2(skeleton);
+            progress->tick();
+            changed |= MeekRules::rule3(skeleton);
+            progress->tick();
+        }
+
+        progress->mark_as_completed("Finished MMPC!");
+        indicators::show_console_cursor(true);
+    }
+
     PartiallyDirectedGraph MMPC::estimate(const IndependenceTest& test,
                                           const std::vector<std::string>& nodes,
                                           const ArcStringVector& varc_blacklist,
@@ -1099,53 +1173,10 @@ namespace learning::algorithms {
             skeleton = PartiallyDirectedGraph(nodes);
         }
 
-        auto restrictions = util::validate_restrictions(skeleton, 
-                                                        varc_blacklist,
-                                                        varc_whitelist,
-                                                        vedge_blacklist,
-                                                        vedge_whitelist);
+        learning::algorithms::estimate(skeleton, test, nodes, varc_blacklist, varc_whitelist,
+                                       vedge_blacklist, vedge_whitelist, alpha, ambiguous_threshold, allow_bidirected,
+                                       verbose);
 
-        for (const auto& a : restrictions.arc_whitelist) {
-            skeleton.add_arc(a.first, a.second);
-        }
-
-        indicators::show_console_cursor(false);
-        auto progress = util::progress_bar(verbose);
-
-        auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
-                                        restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
-
-        for (auto i = 0; i < skeleton.num_nodes(); ++i) {
-            for (auto p : cpcs[i]) {
-                if (i < p && cpcs[p].count(i) > 0 && !skeleton.has_arc(i, p) && !skeleton.has_arc(p, i)) {
-                    skeleton.add_edge(i, p);
-                }
-            }
-        }
-
-        direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
-        direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist, 
-                                  alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
-
-        progress->set_max_progress(3);
-        progress->set_text("Applying Meek rules");
-
-        bool changed = true;
-        while(changed) {
-            changed = false;
-            progress->set_progress(0);
-
-            changed |= MeekRules::rule1(skeleton);
-            progress->tick();
-            changed |= MeekRules::rule2(skeleton);
-            progress->tick();
-            changed |= MeekRules::rule3(skeleton);
-            progress->tick();
-        }
-
-        progress->mark_as_completed("Finished MMPC!");
-
-        indicators::show_console_cursor(true);
         return skeleton;
     }
 
@@ -1172,60 +1203,9 @@ namespace learning::algorithms {
 
         ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
 
-        auto restrictions = util::validate_restrictions(skeleton, 
-                                                        varc_blacklist,
-                                                        varc_whitelist,
-                                                        vedge_blacklist,
-                                                        vedge_whitelist);
-
-        for (const auto& a : restrictions.arc_whitelist) {
-            skeleton.add_arc(a.first, a.second);
-        }
-
-        indicators::show_console_cursor(false);
-        auto progress = util::progress_bar(verbose);
-
-        auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
-                                       restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
-
-        for (auto i = 0; i < skeleton.num_nodes(); ++i) {
-            for (auto p : cpcs[i]) {
-                if (i < p && cpcs[p].count(i) > 0 && !skeleton.has_arc(i, p) && !skeleton.has_arc(p, i)) {
-                    if (skeleton.is_interface(i))
-                        skeleton.add_arc(i, p);
-                    else if (skeleton.is_interface(p))
-                        skeleton.add_arc(p, i);
-                    else
-                        skeleton.add_edge(i, p);
-                }
-            }
-        }
-
-        direct_arc_blacklist(skeleton, restrictions.arc_blacklist);
-
-        direct_unshielded_triples(skeleton, test, restrictions.arc_blacklist, restrictions.arc_whitelist, 
-                                  alpha, std::nullopt, true, ambiguous_threshold, allow_bidirected, *progress);
-
-        progress->set_max_progress(3);
-        progress->set_text("Applying Meek rules");
-
-        bool changed = true;
-        while(changed) {
-            changed = false;
-            progress->set_progress(0);
-
-            changed |= MeekRules::rule1(skeleton);
-            progress->tick();
-            changed |= MeekRules::rule2(skeleton);
-            progress->tick();
-            changed |= MeekRules::rule3(skeleton);
-            progress->tick();
-        }
-
-        progress->mark_as_completed("Finished MMPC!");
-
-        indicators::show_console_cursor(true);
-
+        learning::algorithms::estimate(skeleton, test, nodes, varc_blacklist, varc_whitelist,
+                                       vedge_blacklist, vedge_whitelist, alpha, ambiguous_threshold, allow_bidirected,
+                                       verbose);
         return skeleton;
     }
 }

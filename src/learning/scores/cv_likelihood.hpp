@@ -88,62 +88,6 @@ namespace learning::scores {
         CrossValidation m_cv;
     };
 
-    // template<typename VarType, typename EvidenceIter>
-    // double CVLikelihood::local_score(const BayesianNetworkBase& model,
-    //                                  const VarType& variable, 
-    //                                  const EvidenceIter evidence_begin,
-    //                                  const EvidenceIter evidence_end) const {
-
-    //     switch (model.type()) {
-    //         case BayesianNetworkType::GBN: {
-    //             LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
-    //             double loglik = 0;
-    //             for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
-    //                 cpd.fit(train_df);
-    //                 loglik += cpd.slogl(test_df);
-    //             }
-
-    //             return loglik;
-    //         }
-    //         case BayesianNetworkType::SPBN: {
-    //             const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-    //             FactorType variable_type = spbn.node_type(variable);
-    //             return local_score(variable_type, variable, evidence_begin, evidence_end);   
-    //         }
-    //         default:
-    //             throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
-    //                                             + " not valid for score CVLikelihood");
-    //     }
-    // }
-
-    // template<typename VarType, typename EvidenceIter>
-    // double CVLikelihood::local_score(FactorType variable_type,
-    //                                  const VarType& variable, 
-    //                                  const EvidenceIter evidence_begin, 
-    //                                  const EvidenceIter evidence_end) const {
-    //     if (variable_type == FactorType::LinearGaussianCPD) {
-    //         LinearGaussianCPD cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
-
-    //         double loglik = 0;
-    //         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
-    //             cpd.fit(train_df);
-    //             loglik += cpd.slogl(test_df);
-    //         }
-
-    //         return loglik;
-    //     } else {
-    //         CKDE cpd(m_cv.data().name(variable), m_cv.data().names(evidence_begin, evidence_end));
-
-    //         double loglik = 0;
-    //         for (auto [train_df, test_df] : m_cv.loc(variable, std::make_pair(evidence_begin, evidence_end))) {
-    //             cpd.fit(train_df);
-    //             loglik += cpd.slogl(test_df);
-    //         }
-
-    //         return loglik;
-    //     }
-    // }
-
     using DynamicCVLikelihood = DynamicScoreAdaptator<CVLikelihood>;
 }
 

@@ -72,46 +72,6 @@ namespace learning::scores {
         HoldOut m_holdout;
     };
 
-    // template<typename VarType, typename EvidenceIter>
-    // double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,
-    //                                       const VarType& variable, 
-    //                                       const EvidenceIter evidence_begin, 
-    //                                       const EvidenceIter evidence_end) const {
-    //     switch (model.type()) {
-    //         case BayesianNetworkType::GBN: {
-    //             LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
-    //             cpd.fit(training_data());
-    //             return cpd.slogl(test_data());
-    //         }
-    //         case BayesianNetworkType::SPBN: {
-    //             const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-    //             FactorType variable_type = spbn.node_type(variable);
-    //             return local_score(variable_type, variable, evidence_begin, evidence_end);   
-    //         }
-    //         default:
-    //             throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
-    //                                             + " not valid for score HoldoutLikelihood");
-    //     }
-        
-
-    // }
-
-    // template<typename VarType, typename EvidenceIter>
-    // double HoldoutLikelihood::local_score(FactorType variable_type,
-    //                                       const VarType& variable,
-    //                                       const EvidenceIter evidence_begin, 
-    //                                       const EvidenceIter evidence_end) const {
-    //     if (variable_type == FactorType::LinearGaussianCPD) {
-    //         LinearGaussianCPD cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
-    //         cpd.fit(training_data());
-    //         return cpd.slogl(test_data());
-    //     } else {
-    //         CKDE cpd(training_data().name(variable), training_data().names(evidence_begin, evidence_end));
-    //         cpd.fit(training_data());
-    //         return cpd.slogl(test_data());
-    //     }
-    // }
-
     using DynamicHoldoutLikelihood = DynamicScoreAdaptator<HoldoutLikelihood>;
 }
 

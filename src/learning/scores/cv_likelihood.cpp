@@ -7,7 +7,7 @@ namespace learning::scores {
                                      const std::string& variable,
                                      const std::vector<std::string>& evidence) const {
         switch (model.type()) {
-            case BayesianNetworkType::GBN: {
+            case BayesianNetworkType::Gaussian: {
                 LinearGaussianCPD cpd(variable, evidence);
                 double loglik = 0;
                 for (auto [train_df, test_df] : m_cv.loc(variable, evidence)) {
@@ -17,13 +17,14 @@ namespace learning::scores {
 
                 return loglik;
             }
-            case BayesianNetworkType::SPBN: {
+            case BayesianNetworkType::Semiparametric: {
                 const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
                 FactorType variable_type = spbn.node_type(variable);
                 return local_score(variable_type, variable, evidence);   
             }
             default:
-                throw std::invalid_argument("Bayesian network type " + model.type().ToString() 
+                throw std::invalid_argument("Bayesian network type " + 
+                                            models::BayesianNetworkType_ToString(model.type()) 
                                                 + " not valid for score CVLikelihood");
         }                  
     }

@@ -1,7 +1,7 @@
 #ifndef PYBNESIAN_LEARNING_SCORES_SCORES_HPP
 #define PYBNESIAN_LEARNING_SCORES_SCORES_HPP
 
-#include <models/ConditionalBayesianNetwork.hpp>
+// #include <models/ConditionalBayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
 #include <dataset/dynamic_dataset.hpp>

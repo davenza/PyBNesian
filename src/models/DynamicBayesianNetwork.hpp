@@ -2,7 +2,7 @@
 #define PYBNESIAN_MODELS_DYNAMICBAYESIANNETWORK_HPP
 
 #include <models/BayesianNetwork.hpp>
-#include <models/ConditionalBayesianNetwork.hpp>
+// #include <models/ConditionalBayesianNetwork.hpp>
 
 using models::BayesianNetworkBase;
 

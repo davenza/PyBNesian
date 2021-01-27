@@ -117,27 +117,48 @@ namespace graph {
                     "GenericInstantation failed for Graph, Dag.");
     static_assert(is_unconditional_graph_v<Dag>, "Dag is not unconditional graph");
 
-    template<GraphType Type>
-    ConditionalGraph<Type> to_conditional_graph(const Graph<Type>& g,
+    template<GraphType Type, template<GraphType> typename GraphClass>
+    ConditionalGraph<Type> to_conditional_graph(const GraphClass<Type>& g,
                                                 const std::vector<std::string>& nodes,
                                                 const std::vector<std::string>& interface_nodes) {
 
         ConditionalGraph<Type> cgraph(nodes, interface_nodes);
 
-        if (cgraph.num_total_nodes() != g.num_nodes()) {
+        int num_total_nodes;
+        if constexpr (is_unconditional_graph_v<GraphClass<Type>>) {
+            num_total_nodes = g.num_nodes();
+        } else if constexpr (is_conditional_graph_v<GraphClass<Type>>) {
+            num_total_nodes = g.num_total_nodes();
+        }
+
+        if (cgraph.num_total_nodes() != num_total_nodes) {
             throw std::invalid_argument("The graph has " + std::to_string(g.num_nodes()) + " nodes, but " + 
                                         std::to_string(cgraph.num_total_nodes()) + 
                                         " nodes have been specified in the nodes/interface_nodes lists.");
         }
 
         for (const auto& node : cgraph.nodes()) {
-            if (!g.contains_node(node))
-                throw std::invalid_argument("Node " + node + "in node list, not present in the graph");
+            if constexpr (is_unconditional_graph_v<GraphClass<Type>>) {
+                if (!g.contains_node(node))
+                    throw std::invalid_argument("Node " + node + "in node list, not present in the graph");
+
+            } else if constexpr (is_conditional_graph_v<GraphClass<Type>>) {
+                if (!g.contains_total_node(node))
+                    throw std::invalid_argument("Node " + node + "in node list, not present in the graph");
+            } else
+                static_assert(util::always_false<GraphClass<Type>>, "Wrong GraphType.");
         }
 
         for (const auto& node : cgraph.interface_nodes()) {
-            if (!g.contains_node(node))
-                throw std::invalid_argument("Node " + node + "in interface_node list, not present in the graph");
+            if constexpr (is_unconditional_graph_v<GraphClass<Type>>) {
+                if (!g.contains_node(node))
+                    throw std::invalid_argument("Node " + node + "in interface_node list, not present in the graph");
+
+            } else if constexpr (is_conditional_graph_v<GraphClass<Type>>) {
+                if (!g.contains_total_node(node))
+                    throw std::invalid_argument("Node " + node + "in interface_node list, not present in the graph");
+            } else
+                static_assert(util::always_false<GraphClass<Type>>, "Wrong GraphType.");
         }
 
         if constexpr (GraphTraits<Graph<Type>>::has_arcs) {
@@ -155,28 +176,32 @@ namespace graph {
         return cgraph;
     }
 
-    template<GraphType Type>
-    Graph<Type> to_unconditional_graph(const ConditionalGraph<Type>& g) {
+    template<GraphType Type, template<GraphType> typename GraphClass>
+    Graph<Type> to_unconditional_graph(const GraphClass<Type>& g) {
+        if constexpr (is_unconditional_graph_v<GraphClass<Type>>) {
+            return g;
+        } else {
+            std::vector<std::string> nodes;
+            nodes.reserve(g.num_total_nodes());
+            nodes.insert(nodes.end(), g.nodes().begin(), g.nodes().end());
+            nodes.insert(nodes.end(), g.interface_nodes().begin(), g.interface_nodes().end());
 
-        std::vector<std::string> nodes;
-        nodes.reserve(g.num_total_nodes());
-        nodes.insert(nodes.end(), g.nodes().begin(), g.nodes().end());
-        nodes.insert(nodes.end(), g.interface_nodes().begin(), g.interface_nodes().end());
+            Graph<Type> graph(nodes);
 
-        Graph<Type> graph(nodes);
-
-        if constexpr (GraphTraits<ConditionalGraph<Type>>::has_arcs) {
-            for (const auto& arc : g.arc_indices()) {
-                graph.add_arc(g.name(arc.first), g.name(arc.second));
+            if constexpr (GraphTraits<ConditionalGraph<Type>>::has_arcs) {
+                for (const auto& arc : g.arc_indices()) {
+                    graph.add_arc(g.name(arc.first), g.name(arc.second));
+                }
             }
-        }
-        if constexpr (GraphTraits<ConditionalGraph<Type>>::has_edges) {
-            for (const auto& edge : g.edge_indices()) {
-                graph.add_edge(g.name(edge.first), g.name(edge.second));
+            if constexpr (GraphTraits<ConditionalGraph<Type>>::has_edges) {
+                for (const auto& edge : g.edge_indices()) {
+                    graph.add_edge(g.name(edge.first), g.name(edge.second));
+                }
             }
+
+            return graph;
         }
 
-        return graph;
     }
 
     template<typename G, enable_if_unconditional_graph_t<G, int> = 0>
@@ -1436,7 +1461,7 @@ namespace graph {
 
         PartiallyDirectedImpl() = default;
 
-        // /////////////////////////////////////º
+        // /////////////////////////////////////
         // GraphBase constructors
         // /////////////////////////////////////
         template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
@@ -1589,14 +1614,10 @@ namespace graph {
             save_graph(*this, name);
         }
 
-        template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
         ConditionalGraph<PartiallyDirected> conditional_graph(const std::vector<std::string>& nodes,
                                                               const std::vector<std::string>& interface_nodes) const;
 
-        template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
         ConditionalGraph<PartiallyDirected> conditional_graph() const;
-        
-        template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int> = 0>
         Graph<PartiallyDirected> unconditional_graph() const;
     };
 
@@ -1710,14 +1731,9 @@ namespace graph {
             save_graph(*this, name);
         }
 
-        template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
         ConditionalGraph<Undirected> conditional_graph(const std::vector<std::string>& nodes,
                                                        const std::vector<std::string>& interface_nodes) const;
-        
-        template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
         ConditionalGraph<Undirected> conditional_graph() const;
-
-        template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int> = 0>
         Graph<Undirected> unconditional_graph() const;
     };
 
@@ -1829,14 +1845,9 @@ namespace graph {
             save_graph(*this, name);
         }
 
-        template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
         ConditionalGraph<Directed> conditional_graph(const std::vector<std::string>& nodes,
                                              const std::vector<std::string>& interface_nodes) const;
-
-        template<typename D = Derived, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int> = 0>
         ConditionalGraph<Directed> conditional_graph() const;
-
-        template<typename D = Derived, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int> = 0>
         Graph<Directed> unconditional_graph() const;
     };
 
@@ -1958,14 +1969,9 @@ namespace graph {
             save_graph(*this, name);
         }
 
-        template<typename B = BaseClass, std::enable_if_t<std::is_same_v<B, DirectedGraph>, int> = 0>
         ConditionalGraph<DirectedAcyclic> conditional_graph(const std::vector<std::string>& nodes,
                                                             const std::vector<std::string>& interface_nodes) const;
-
-        template<typename B = BaseClass, std::enable_if_t<std::is_same_v<B, DirectedGraph>, int> = 0>
         ConditionalGraph<DirectedAcyclic> conditional_graph() const;
-
-        template<typename B = BaseClass, std::enable_if_t<std::is_same_v<B, ConditionalDirectedGraph>, int> = 0>
         Graph<DirectedAcyclic> unconditional_graph() const;
     };
 
@@ -2105,7 +2111,6 @@ namespace graph {
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     inline ConditionalGraph<PartiallyDirected>
     PartiallyDirectedImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                                  const std::vector<std::string>& interface_nodes) const {
@@ -2113,15 +2118,17 @@ namespace graph {
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     inline ConditionalGraph<PartiallyDirected>
     PartiallyDirectedImpl<Derived, BaseClass>::conditional_graph() const {
-        std::vector<std::string> v;
-        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        if constexpr (is_conditional_graph_v<Derived>) {
+            return static_cast<const Derived&>(*this);
+        } else {
+            std::vector<std::string> v;
+            return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        }
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int>>
     inline Graph<PartiallyDirected>
     PartiallyDirectedImpl<Derived, BaseClass>::unconditional_graph() const {
         return to_unconditional_graph(static_cast<const Derived&>(*this));
@@ -2170,7 +2177,6 @@ namespace graph {
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     inline ConditionalGraph<Undirected>
     UndirectedImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                           const std::vector<std::string>& interface_nodes) const {
@@ -2178,15 +2184,17 @@ namespace graph {
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     inline ConditionalGraph<Undirected>
     UndirectedImpl<Derived, BaseClass>::conditional_graph() const {
-        std::vector<std::string> v;
-        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        if constexpr (is_conditional_graph_v<Derived>) {
+            return static_cast<const Derived&>(*this);
+        } else {
+            std::vector<std::string> v;
+            return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        }
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int>>
     inline Graph<Undirected>
     UndirectedImpl<Derived, BaseClass>::unconditional_graph() const {
         return to_unconditional_graph(static_cast<const Derived&>(*this));
@@ -2241,7 +2249,6 @@ namespace graph {
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     inline ConditionalGraph<Directed>
     DirectedImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                         const std::vector<std::string>& interface_nodes) const {
@@ -2249,15 +2256,17 @@ namespace graph {
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<GraphBase, BaseClass<D>, int>>
     inline ConditionalGraph<Directed>
     DirectedImpl<Derived, BaseClass>::conditional_graph() const {
-        std::vector<std::string> v;
-        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        if constexpr (is_conditional_graph_v<Derived>) {
+            return static_cast<const Derived&>(*this);
+        } else {
+            std::vector<std::string> v;
+            return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        }
     }
 
     template<typename Derived, template<typename> typename BaseClass>
-    template<typename D, util::enable_if_template_instantation_t<ConditionalGraphBase, BaseClass<D>, int>>
     inline Graph<Directed>
     DirectedImpl<Derived, BaseClass>::unconditional_graph() const {
         return to_unconditional_graph(static_cast<const Derived&>(*this));
@@ -2454,7 +2463,6 @@ namespace graph {
     }
 
     template<typename Derived, typename BaseClass>
-    template<typename B, std::enable_if_t<std::is_same_v<B, DirectedGraph>, int>>
     inline ConditionalGraph<DirectedAcyclic>
     DagImpl<Derived, BaseClass>::conditional_graph(const std::vector<std::string>& nodes,
                                                    const std::vector<std::string>& interface_nodes) const {
@@ -2462,15 +2470,17 @@ namespace graph {
     }
 
     template<typename Derived, typename BaseClass>
-    template<typename B, std::enable_if_t<std::is_same_v<B, DirectedGraph>, int>>
     inline ConditionalGraph<DirectedAcyclic>
     DagImpl<Derived, BaseClass>::conditional_graph() const {
-        std::vector<std::string> v;
-        return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        if constexpr (is_conditional_graph_v<Derived>) {
+            return static_cast<const Derived&>(*this);
+        } else {
+            std::vector<std::string> v;
+            return to_conditional_graph(static_cast<const Derived&>(*this), this->nodes(), v);
+        }
     }
 
     template<typename Derived, typename BaseClass>
-    template<typename B, std::enable_if_t<std::is_same_v<B, ConditionalDirectedGraph>, int>>
     inline Graph<DirectedAcyclic>
     DagImpl<Derived, BaseClass>::unconditional_graph() const {
         return to_unconditional_graph(static_cast<const Derived&>(*this));

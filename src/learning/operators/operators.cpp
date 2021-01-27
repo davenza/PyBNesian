@@ -127,7 +127,8 @@ namespace learning::operators {
 
     void ArcOperatorSet::cache_scores(const BayesianNetworkBase& model, const Score& score) {
         if (!util::compatible_score(model, score.type())) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + model.type().ToString() + ".");
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + 
+                                        models::BayesianNetworkType_ToString(model.type()) + ".");
         }
 
         initialize_local_cache(model);
@@ -256,7 +257,8 @@ namespace learning::operators {
 
     void ArcOperatorSet::cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) {
         if (!util::compatible_score(model, score.type())) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + model.type().ToString() + ".");
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " +
+                                        models::BayesianNetworkType_ToString(model.type()) + ".");
         }
 
         initialize_local_cache(model);
@@ -630,12 +632,13 @@ namespace learning::operators {
     }
 
     void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Score& score) {
-        if (model.type() != BayesianNetworkType::SPBN) {
+        if (model.type() != BayesianNetworkType::Semiparametric) {
             throw std::invalid_argument("ChangeNodeTypeSet can only be used with SemiparametricBN");
         }
         
         if (!util::compatible_score(model, score.type())) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + model.type().ToString() + ".");
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + 
+                                        models::BayesianNetworkType_ToString(model.type()) + ".");
         }
 
         initialize_local_cache(model);

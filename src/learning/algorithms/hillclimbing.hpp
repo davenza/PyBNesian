@@ -3,7 +3,7 @@
 
 #include <indicators/cursor_control.hpp>
 #include <dataset/dataset.hpp>
-#include <models/ConditionalBayesianNetwork.hpp>
+// #include <models/ConditionalBayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <util/progress.hpp>
@@ -134,7 +134,8 @@ namespace learning::algorithms {
                                               int verbose) {
         if (!util::compatible_score(start, validation_score.type())) {
             throw std::invalid_argument("Invalid score " + validation_score.ToString() + 
-                                        " for model type " + start.type().ToString() + ".");
+                                        " for model type " + 
+                                        models::BayesianNetworkType_ToString(start.type()) + ".");
         }
 
         indicators::show_console_cursor(false);
@@ -145,7 +146,7 @@ namespace learning::algorithms {
         current_model->check_blacklist(arc_blacklist);
         current_model->force_whitelist(arc_whitelist);
 
-        if (current_model->type() == BayesianNetworkType::SPBN) {
+        if (current_model->type() == BayesianNetworkType::Semiparametric) {
             auto current_spbn = dynamic_cast<SemiparametricBN&>(*current_model);
             current_spbn.force_type_whitelist(type_whitelist);
         }

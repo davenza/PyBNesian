@@ -206,6 +206,7 @@ void pybindings_algorithms(py::module& root) {
             py::arg("op_set"),
             py::arg("score"),
             py::arg("validation_score") = nullptr,
+            py::arg("nodes") = std::vector<std::string>(),
             py::arg("bn_type") = "gbn",
             py::arg("arc_blacklist") = ArcStringVector(),
             py::arg("arc_whitelist") = ArcStringVector(),

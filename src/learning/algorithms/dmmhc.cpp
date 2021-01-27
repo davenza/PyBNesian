@@ -24,75 +24,75 @@ namespace learning::algorithms {
                                                                 double alpha,
                                                                 int verbose) {
 
-        MMHC mmhc;
+        // MMHC mmhc;
 
-        const auto& static_tests = test.static_tests();
-        auto static_blacklist = test.static_blacklist();
-        auto& static_score = score.static_score();
-        Score* validation_static_score = nullptr;
-        if (validation_score)
-            validation_static_score = &validation_score->static_score();
+        // const auto& static_tests = test.static_tests();
+        // auto static_blacklist = test.static_blacklist();
+        // auto& static_score = score.static_score();
+        // Score* validation_static_score = nullptr;
+        // if (validation_score)
+        //     validation_static_score = &validation_score->static_score();
 
-        auto g0 = mmhc.estimate(static_tests,
-                                op_set,
-                                static_score,
-                                validation_static_score,
-                                bn_str,
-                                static_blacklist,
-                                ArcStringVector(),
-                                EdgeStringVector(),
-                                EdgeStringVector(),
-                                FactorStringTypeVector(),
-                                // varc_blacklist,
-                                // varc_whitelist,
-                                // vedge_blacklist,
-                                // vedge_whitelist,
-                                // type_whitelist,
-                                max_indegree,
-                                max_iters,
-                                epsilon,
-                                patience,
-                                alpha,
-                                verbose);
+        // auto g0 = mmhc.estimate(static_tests,
+        //                         op_set,
+        //                         static_score,
+        //                         validation_static_score,
+        //                         bn_str,
+        //                         static_blacklist,
+        //                         ArcStringVector(),
+        //                         EdgeStringVector(),
+        //                         EdgeStringVector(),
+        //                         FactorStringTypeVector(),
+        //                         // varc_blacklist,
+        //                         // varc_whitelist,
+        //                         // vedge_blacklist,
+        //                         // vedge_whitelist,
+        //                         // type_whitelist,
+        //                         max_indegree,
+        //                         max_iters,
+        //                         epsilon,
+        //                         patience,
+        //                         alpha,
+        //                         verbose);
     
-        const auto& transition_tests = test.transition_tests();
-        auto transition_blacklist = test.transition_blacklist();
-        auto& transition_score = score.transition_score();
-        Score* validation_transition_score = nullptr;
-        if (validation_score)
-            validation_transition_score = &validation_score->transition_score();
+        // const auto& transition_tests = test.transition_tests();
+        // auto transition_blacklist = test.transition_blacklist();
+        // auto& transition_score = score.transition_score();
+        // Score* validation_transition_score = nullptr;
+        // if (validation_score)
+        //     validation_transition_score = &validation_score->transition_score();
 
-        auto gt = mmhc.estimate(transition_tests,
-                                op_set,
-                                transition_score,
-                                validation_transition_score,
-                                bn_str,
-                                transition_blacklist,
-                                ArcStringVector(),
-                                EdgeStringVector(),
-                                EdgeStringVector(),
-                                FactorStringTypeVector(),
-                                // varc_blacklist,
-                                // varc_whitelist,
-                                // vedge_blacklist,
-                                // vedge_whitelist,
-                                // type_whitelist,
-                                max_indegree,
-                                max_iters,
-                                epsilon,
-                                patience,
-                                alpha,
-                                verbose);
+        // auto gt = mmhc.estimate(transition_tests,
+        //                         op_set,
+        //                         transition_score,
+        //                         validation_transition_score,
+        //                         bn_str,
+        //                         transition_blacklist,
+        //                         ArcStringVector(),
+        //                         EdgeStringVector(),
+        //                         EdgeStringVector(),
+        //                         FactorStringTypeVector(),
+        //                         // varc_blacklist,
+        //                         // varc_whitelist,
+        //                         // vedge_blacklist,
+        //                         // vedge_whitelist,
+        //                         // type_whitelist,
+        //                         max_indegree,
+        //                         max_iters,
+        //                         epsilon,
+        //                         patience,
+        //                         alpha,
+        //                         verbose);
         
 
-        auto bn_type = util::check_valid_bn_string(bn_str);
+        // auto bn_type = util::check_valid_bn_string(bn_str);
         // auto dynamic_bn = [bn_type, &g0, &gt]() -> std::unique_ptr<DynamicBayesianNetworkBase> {
         //     switch (bn_type) {
-        //         case BayesianNetworkType::GBN:
+        //         case BayesianNetworkType::Gaussian:
         //             return std::make_unique<DynamicBayesianNetwork<GaussianNetwork>>(
         //                             *static_cast<GaussianNetwork*>(g0.release()), 
         //                             *static_cast<GaussianNetwork*>(gt.release()));
-        //         case BayesianNetworkType::SPBN:
+        //         case BayesianNetworkType::Semiparametric:
         //             return std::make_unique<DynamicBayesianNetwork<SemiparametricBN>>(
         //                             *static_cast<SemiparametricBN*>(g0.release()),
         //                             *static_cast<SemiparametricBN*>(gt.release()));

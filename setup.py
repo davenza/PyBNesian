@@ -88,7 +88,7 @@ ext_modules = [
          'src/learning/scores/holdout_likelihood.cpp',
          'src/graph/generic_graph.cpp',
          'src/models/BayesianNetwork.cpp',
-         'src/models/ConditionalBayesianNetwork.cpp',
+        #  'src/models/ConditionalBayesianNetwork.cpp',
          'src/models/DynamicBayesianNetwork.cpp',
          'src/models/SemiparametricBN.cpp',
          'src/opencl/opencl_config.cpp'

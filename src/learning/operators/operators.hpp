@@ -3,7 +3,7 @@
 
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
-#include <models/ConditionalBayesianNetwork.hpp>
+// #include <models/ConditionalBayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
 #include <util/validate_scores.hpp>
 #include <util/vector.hpp>

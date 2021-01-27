@@ -5,8 +5,8 @@ using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSe
 namespace util {
 
     BayesianNetworkType check_valid_bn_string(const std::string& bn_type) {
-        if (bn_type == "gbn") return BayesianNetworkType::GBN;
-        if (bn_type == "spbn") return BayesianNetworkType::SPBN;
+        if (bn_type == "gbn") return BayesianNetworkType::Gaussian;
+        if (bn_type == "spbn") return BayesianNetworkType::Semiparametric;
         else
             throw std::invalid_argument("Wrong Bayesian Network type \"" + bn_type + "\" specified. The possible alternatives are " 
                                         "\"gbn\" (Gaussian Bayesian networks) or \"spbn\" (Semiparametric Bayesian networks).");
@@ -23,9 +23,9 @@ namespace util {
                                         "\"holdout-l\" (Holdout likelihood).");
         } else {
             switch(bn_type) {
-                case BayesianNetworkType::GBN:
+                case BayesianNetworkType::Gaussian:
                     return ScoreType::BIC;
-                case BayesianNetworkType::SPBN:
+                case BayesianNetworkType::Semiparametric:
                     return ScoreType::PREDICTIVE_LIKELIHOOD;
                 default:
                     throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
@@ -50,9 +50,9 @@ namespace util {
             return ops;
         } else {
             switch(bn_type) {
-                case BayesianNetworkType::GBN:
+                case BayesianNetworkType::Gaussian:
                     return {OperatorSetType::ARCS};
-                case BayesianNetworkType::SPBN:
+                case BayesianNetworkType::Semiparametric:
                     return {OperatorSetType::ARCS, OperatorSetType::NODE_TYPE};
                 default:
                     throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
@@ -68,21 +68,21 @@ namespace util {
                                              int num_folds,
                                              double test_holdout_ratio) {
         static std::unordered_map<BayesianNetworkType, 
-                                  std::unordered_set<ScoreType, typename ScoreType::HashType>, 
-                                  typename BayesianNetworkType::HashType>
+                                  std::unordered_set<ScoreType, typename ScoreType::HashType>>
         map_bn_score {
-            { BayesianNetworkType::GBN, { 
+            { BayesianNetworkType::Gaussian, { 
                                 ScoreType::BIC, 
                                 ScoreType::PREDICTIVE_LIKELIHOOD,
                                 ScoreType::HOLDOUT_LIKELIHOOD
                                  } 
             },
-            { BayesianNetworkType::SPBN, { ScoreType::PREDICTIVE_LIKELIHOOD } }
+            { BayesianNetworkType::Semiparametric, { ScoreType::PREDICTIVE_LIKELIHOOD } }
         };
         
         if (map_bn_score[bn_type].count(score) == 0) {
             throw std::invalid_argument("Score \"" + score.ToString() + "\" is not compabible with "
-                                        "Bayesian network type \"" + bn_type.ToString() + "\"");
+                                        "Bayesian network type \"" + 
+                                        models::BayesianNetworkType_ToString(bn_type) + "\"");
         }
 
         switch (score) {
@@ -104,18 +104,18 @@ namespace util {
                                                        int max_indegree,
                                                        const FactorStringTypeVector& type_whitelist) {
         static std::unordered_map<BayesianNetworkType,
-                                  std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>,
-                                  typename BayesianNetworkType::HashType>
+                                  std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>>
         map_bn_operators {
-            { BayesianNetworkType::GBN, { OperatorSetType::ARCS }},
-            { BayesianNetworkType::SPBN, { OperatorSetType::ARCS, OperatorSetType::NODE_TYPE }}
+            { BayesianNetworkType::Gaussian, { OperatorSetType::ARCS }},
+            { BayesianNetworkType::Semiparametric, { OperatorSetType::ARCS, OperatorSetType::NODE_TYPE }}
         };
 
         auto bn_set = map_bn_operators[bn_type];
         for (auto op : operators) {
             if (bn_set.count(op) == 0) {
                 throw std::invalid_argument("Operator \"" + op.ToString() + "\" is not compabible with " 
-                                            "Bayesian network type \"" + bn_type.ToString() + "\"");
+                                            "Bayesian network type \"" + 
+                                            models::BayesianNetworkType_ToString(bn_type) + "\"");
             }
         }
 

@@ -2,6 +2,19 @@
 
 namespace models {
     
+    std::string BayesianNetworkType_ToString(BayesianNetworkType t) {
+        switch(t) {
+            case Gaussian:
+                return "Gaussian";
+            case Semiparametric:
+                return "Semiparametric";
+            case Discrete:
+                return "Discrete";
+            default:
+                throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
+        }
+    }
+
     void requires_continuous_data(const DataFrame& df) {
         auto schema = df->schema();
 

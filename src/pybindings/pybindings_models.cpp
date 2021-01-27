@@ -2,12 +2,12 @@
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 #include <models/BayesianNetwork.hpp>
-#include <models/ConditionalBayesianNetwork.hpp>
+// #include <models/ConditionalBayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
 #include <models/DiscreteBN.hpp>
 
-using models::BayesianNetworkBase, models::BayesianNetwork, models::BayesianNetworkType, 
+using models::BayesianNetworkBase, models::BayesianNetworkImpl, models::BayesianNetworkType, 
       models::GaussianNetwork, models::SemiparametricBN, models::DiscreteBN;
 
 using models::ConditionalBayesianNetworkBase, models::ConditionalBayesianNetwork,
@@ -15,9 +15,11 @@ using models::ConditionalBayesianNetworkBase, models::ConditionalBayesianNetwork
       models::ConditionalDiscreteBN;
 
 template<typename DerivedBN>
-py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
-    using BaseClass = BayesianNetwork<DerivedBN>;
-    std::string base_name = std::string("BayesianNetwork<") + derivedbn_name + ">";
+py::class_<DerivedBN, BayesianNetworkImpl<DerivedBN, BayesianNetworkBase>> 
+register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
+
+    using BaseClass = BayesianNetworkImpl<DerivedBN, BayesianNetworkBase>;
+    std::string base_name = std::string("BayesianNetworkImpl<") + derivedbn_name + ">";
     // TODO: Implement copy operation.
     py::class_<BaseClass, BayesianNetworkBase>(m, base_name.c_str())
         .def("num_nodes", &BaseClass::num_nodes)
@@ -99,9 +101,10 @@ py::class_<DerivedBN, BayesianNetwork<DerivedBN>> register_BayesianNetwork(py::m
 }
 
 template<typename DerivedBN>
-py::class_<DerivedBN, ConditionalBayesianNetwork<DerivedBN>> register_ConditionalBayesianNetwork(py::module& m, const char* derivedbn_name) {
-    using BaseClass = ConditionalBayesianNetwork<DerivedBN>;
-    std::string base_name = std::string("ConditionalBayesianNetwork<") + derivedbn_name + ">";
+py::class_<DerivedBN, BayesianNetworkImpl<DerivedBN, ConditionalBayesianNetworkBase>> 
+register_ConditionalBayesianNetwork(py::module& m, const char* derivedbn_name) {
+    using BaseClass = BayesianNetworkImpl<DerivedBN, ConditionalBayesianNetworkBase>;
+    std::string base_name = std::string("BayesianNetworkImpl<") + derivedbn_name + ">";
     // TODO: Implement copy operation.
     py::class_<BaseClass, ConditionalBayesianNetworkBase>(m, base_name.c_str())
         .def("num_nodes", &BaseClass::num_nodes)
@@ -221,18 +224,22 @@ void pybindings_models(py::module& root) {
 
     models.def("load_model", &models::load_model);
 
-    py::class_<BayesianNetworkType>(models, "BayesianNetworkType")
-        .def_property_readonly_static("GBN", [](const py::object&) { 
-            return BayesianNetworkType(BayesianNetworkType::GBN);
-        })
-        .def_property_readonly_static("DISCRETEBN", [](const py::object&) { 
-            return BayesianNetworkType(BayesianNetworkType::DISCRETEBN);
-        })
-        .def_property_readonly_static("SPBN", [](const py::object&) { 
-            return BayesianNetworkType(BayesianNetworkType::SPBN);
-        })
-        .def(py::self == py::self)
-        .def(py::self != py::self);
+    // py::class_<BayesianNetworkType>(models, "BayesianNetworkType")
+    //     .def_property_readonly_static("Gaussian", [](const py::object&) { 
+    //         return BayesianNetworkType(BayesianNetworkType::Gaussian);
+    //     })
+    //     .def_property_readonly_static("Semiparametric", [](const py::object&) { 
+    //         return BayesianNetworkType(BayesianNetworkType::Semiparametric);
+    //     })
+    //     .def_property_readonly_static("Discrete", [](const py::object&) { 
+    //         return BayesianNetworkType(BayesianNetworkType::Discrete);
+    //     })
+    //     .def(py::self == py::self)
+    //     .def(py::self != py::self);
+    py::enum_<BayesianNetworkType>(models, "BayesianNetworkType")
+        .value("Gaussian", BayesianNetworkType::Gaussian)
+        .value("Semiparametric", BayesianNetworkType::Semiparametric)
+        .value("Discrete", BayesianNetworkType::Discrete);
 
     py::class_<BayesianNetworkBase>(models, "BayesianNetworkBase")
         .def_property_readonly("type", &BayesianNetworkBase::type)

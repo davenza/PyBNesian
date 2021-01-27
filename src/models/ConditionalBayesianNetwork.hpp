@@ -41,6 +41,7 @@ namespace models {
         virtual void set_node(const std::string& name) = 0;
         using BayesianNetworkBase::sample;
         virtual DataFrame sample(const DataFrame& evidence, unsigned int seed, bool concat_evidence, bool ordered) const = 0;
+        virtual std::unique_ptr<BayesianNetworkBase> unconditional_bn() const = 0;
     };
 
     template<typename Derived>
@@ -465,7 +466,7 @@ namespace models {
         } else {
             for (size_t i = 0; i < m_cpds.size(); ++i) {
                 if (is_valid(i) && !is_interface(i) && !m_cpds[i].fitted())
-                    return false;
+                    return false; 
             }
 
             return true;
@@ -514,7 +515,7 @@ namespace models {
             std::unordered_map<std::string, typename std::vector<CPD>::const_iterator> map_index;
             for (auto it = cpds.begin(); it != cpds.end(); ++it) {
                 if (map_index.count(it->variable()) == 1) {
-                    throw std::invalid_argument("CPD for variable " + it->variable() + "is repeated.");
+                    throw std::invalid_argument("CPD for variable " + it->variable() + " is repeated.");
                 }
                 map_index[it->variable()] = it;
             }

@@ -10,72 +10,46 @@ using util::clone_inherit;
 
 namespace models {
 
-    class DiscreteBN;
-    class ConditionalDiscreteBN;
+    template<template<BayesianNetworkType> typename _BNClass>
+    struct BN_traits<_BNClass<Discrete>> {
+        using CPD = DiscreteFactor;
+        using DagClass = std::conditional_t<
+                            util::GenericInstantation<BayesianNetworkType>::is_template_instantation_v<
+                                                                                BayesianNetwork,
+                                                                                _BNClass<Gaussian>>,
+                            Dag,
+                            ConditionalDag>;
+        template<BayesianNetworkType Type>
+        using BNClass = _BNClass<Type>;
+    };
 
     template<>
-    struct BN_traits<DiscreteBN> {
-        using CPD = DiscreteFactor;
-    };
-
-    template<>
-    struct BN_traits<ConditionalDiscreteBN> {
-        using CPD = DiscreteFactor;
-    };
-
-    template<typename Derived, template<typename> typename BNType>
-    class DiscreteNetworkImpl : public BNType<Derived> {
+    class BayesianNetwork<Discrete> : public clone_inherit<BayesianNetwork<Discrete>, 
+                                                           BayesianNetworkImpl<BayesianNetwork<Discrete>, 
+                                                                               BayesianNetworkBase>> {
     public:
-        using BNType<Derived>::BNType;
-
-        static void requires(const DataFrame& df) {
-            requires_discrete_data(df);
-        }
-
-        BayesianNetworkType type() const override {
-            return BayesianNetworkType::DISCRETEBN;
-        }
-
-        // std::unique_ptr<BayesianNetworkBase> clone() const override {
-        //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
-        // }
-
-        py::tuple __getstate__() const {
-            return BNType<Derived>::__getstate__();
-        }
-
-        static Derived __setstate__(py::tuple& t) {
-            return BNType<Derived>::__setstate__(t);
-        }
-
-        static Derived __setstate__(py::tuple&& t) {
-            return BNType<Derived>::__setstate__(t);
-        }
-    };
-
-    class DiscreteBN : public clone_inherit<DiscreteBN, DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>> {
-    public:
-        // using DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>::DiscreteNetworkImpl;
-        
-        using clone_inherit<DiscreteBN, DiscreteNetworkImpl<DiscreteBN, BayesianNetwork>>::clone_inherit;
-
+        inline static constexpr auto TYPE = Discrete;
+        using clone_inherit<BayesianNetwork<Discrete>, 
+                            BayesianNetworkImpl<BayesianNetwork<Discrete>, 
+                                                BayesianNetworkBase>>::clone_inherit;
         std::string ToString() const override {
-            return "DiscreteBN";
+            return "DiscreteNetwork";
         }        
     };
 
-    class ConditionalDiscreteBN : public clone_inherit<ConditionalDiscreteBN,
-                                                       DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>> {
+    template<>
+    class ConditionalBayesianNetwork<Discrete> : public clone_inherit<ConditionalBayesianNetwork<Discrete>, 
+                                                        ConditionalBayesianNetworkImpl<ConditionalBayesianNetwork<Discrete>>> {
     public:
-        // using DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>::DiscreteNetworkImpl;
-        
-        using clone_inherit<ConditionalDiscreteBN,
-                            DiscreteNetworkImpl<ConditionalDiscreteBN, ConditionalBayesianNetwork>>::clone_inherit;
+        inline static constexpr auto TYPE = Discrete;
+        using clone_inherit<ConditionalBayesianNetwork<Discrete>, 
+                            ConditionalBayesianNetworkImpl<ConditionalBayesianNetwork<Discrete>>>::clone_inherit;
 
         std::string ToString() const override {
-            return "ConditionalGaussianNetwork";
-        }        
+            return "ConditionalDiscreteNetwork";
+        }
     };
+
 }
 
 #endif //PYBNESIAN_MODELS_DISCRETEBN_HPP

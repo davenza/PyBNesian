@@ -280,17 +280,11 @@ void add_pickle_methods(PyClass& c) {
 template<typename CppClass, typename PyClass>
 void add_to_conditional_methods(PyClass& c) {
     c
-    .def("conditional_graph", py::overload_cast<>(
-                    &CppClass::template conditional_graph<>, py::const_))
+    .def("conditional_graph", py::overload_cast<>(&CppClass::conditional_graph, py::const_))
     .def("conditional_graph", py::overload_cast<const std::vector<std::string>&,
                                                 const std::vector<std::string>&>
-                                (&CppClass::template conditional_graph<>, py::const_));
-}
-
-template<typename CppClass, typename PyClass>
-void add_to_unconditional_methods(PyClass& c) {
-    c
-    .def("unconditional_graph", &CppClass::template unconditional_graph<>);
+                                (&CppClass::conditional_graph, py::const_))
+    .def("unconditional_graph", &CppClass::unconditional_graph);
 }
 
 void pybindings_normal_graph(py::module& graph) {
@@ -383,7 +377,7 @@ void pybindings_conditional_graph(py::module& graph) {
     add_conditionalgraphbase_methods<ConditionalDirectedGraph>(cdg);
     add_arcgraph_methods<ConditionalDirectedGraph>(cdg);
     add_directed_methods<ConditionalDirectedGraph>(cdg);
-    add_to_unconditional_methods<ConditionalDirectedGraph>(cdg);
+    add_to_conditional_methods<ConditionalDirectedGraph>(cdg);
     add_pickle_methods<ConditionalDirectedGraph>(cdg);
 
 
@@ -419,7 +413,7 @@ void pybindings_conditional_graph(py::module& graph) {
     })
     .def("to_pdag", &ConditionalDag::to_pdag);
 
-    add_to_unconditional_methods<ConditionalDag>(cdag);
+    add_to_conditional_methods<ConditionalDag>(cdag);
     add_pickle_methods<ConditionalDag>(cdag);
 
     py::class_<ConditionalUndirectedGraph> cug(graph, "ConditionalUndirectedGraph");
@@ -432,7 +426,7 @@ void pybindings_conditional_graph(py::module& graph) {
     add_conditionalgraphbase_methods<ConditionalUndirectedGraph>(cug);
     add_edgegraph_methods<ConditionalUndirectedGraph>(cug);
     add_undirected_methods<ConditionalUndirectedGraph>(cug);
-    add_to_unconditional_methods<ConditionalUndirectedGraph>(cug);
+    add_to_conditional_methods<ConditionalUndirectedGraph>(cug);
     add_pickle_methods<ConditionalUndirectedGraph>(cug);
 
     py::class_<ConditionalPartiallyDirectedGraph> cpdag(graph, "ConditionalPartiallyDirectedGraph");
@@ -449,7 +443,7 @@ void pybindings_conditional_graph(py::module& graph) {
     add_arcgraph_methods<ConditionalPartiallyDirectedGraph>(cpdag);
     add_edgegraph_methods<ConditionalPartiallyDirectedGraph>(cpdag);
     add_pdag_methods<ConditionalPartiallyDirectedGraph>(cpdag);
-    add_to_unconditional_methods<ConditionalPartiallyDirectedGraph>(cpdag);
+    add_to_conditional_methods<ConditionalPartiallyDirectedGraph>(cpdag);
     add_pickle_methods<ConditionalPartiallyDirectedGraph>(cpdag);
 }
 

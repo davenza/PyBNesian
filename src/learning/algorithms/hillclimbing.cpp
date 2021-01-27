@@ -60,9 +60,9 @@ namespace learning::algorithms {
         std::unique_ptr<BayesianNetworkBase> created_start_model = [start, bn_type, &df]() -> std::unique_ptr<BayesianNetworkBase> {
             if (!start) {
                 switch (bn_type) {
-                    case BayesianNetworkType::GBN:
+                    case BayesianNetworkType::Gaussian:
                         return std::make_unique<GaussianNetwork>(df.column_names());
-                    case BayesianNetworkType::SPBN:
+                    case BayesianNetworkType::Semiparametric:
                         return std::make_unique<SemiparametricBN>(df.column_names());
                     default:
                         throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");

@@ -7,7 +7,7 @@
 #include <util/virtual_clone.hpp>
 
 using dataset::DataFrame;
-using graph::Dag;
+using graph::Dag, graph::ConditionalDag;
 using util::ArcStringVector;
 
 using util::abstract_class, util::clone_inherit;
@@ -17,54 +17,63 @@ using Array_ptr = std::shared_ptr<arrow::Array>;
 
 namespace models {
 
-    template<typename Model>
-    struct BN_traits {};
+    // class BayesianNetworkType
+    // {
+    // public:
+    //     enum Value : uint8_t
+    //     {
+    //         Gaussian,
+    //         Semiparametric,
+    //         Discrete
+    //     };
 
-    class BayesianNetworkType
-    {
-    public:
-        enum Value : uint8_t
-        {
-            GBN,
-            DISCRETEBN,
-            SPBN
-        };
+    //     struct Hash
+    //     {
+    //         inline std::size_t operator ()(BayesianNetworkType const bn_type) const
+    //         {
+    //             return static_cast<std::size_t>(bn_type.value);
+    //         }
+    //     };
 
-        struct Hash
-        {
-            inline std::size_t operator ()(BayesianNetworkType const bn_type) const
-            {
-                return static_cast<std::size_t>(bn_type.value);
-            }
-        };
+    //     using HashType = Hash;
 
-        using HashType = Hash;
+    //     BayesianNetworkType() = default;
+    //     constexpr BayesianNetworkType(Value bn_type) : value(bn_type) { }
 
-        BayesianNetworkType() = default;
-        constexpr BayesianNetworkType(Value bn_type) : value(bn_type) { }
+    //     operator Value() const { return value; }  
+    //     explicit operator bool() = delete;
 
-        operator Value() const { return value; }  
-        explicit operator bool() = delete;
+    //     constexpr bool operator==(BayesianNetworkType a) const { return value == a.value; }
+    //     constexpr bool operator==(Value v) const { return value == v; }
+    //     constexpr bool operator!=(BayesianNetworkType a) const { return value != a.value; }
+    //     constexpr bool operator!=(Value v) const { return value != v; }
 
-        constexpr bool operator==(BayesianNetworkType a) const { return value == a.value; }
-        constexpr bool operator==(Value v) const { return value == v; }
-        constexpr bool operator!=(BayesianNetworkType a) const { return value != a.value; }
-        constexpr bool operator!=(Value v) const { return value != v; }
+    //     std::string ToString() const {
+    //         switch(value) {
+    //             case Value::Gaussian:
+    //                 return "GaussianNetwork";
+    //             case Value::Semiparametric:
+    //                 return "SemiparametricBN";
+    //             case Value::Discrete:
+    //                 return "Discrete";
+    //             default:
+    //                 throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
+    //         }
+    //     }
 
-        std::string ToString() const {
-            switch(value) {
-                case Value::GBN:
-                    return "GaussianNetwork";
-                case Value::SPBN:
-                    return "SemiparametricBN";
-                default:
-                    throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
-            }
-        }
+    // private:
+    //     Value value;
+    // };
 
-    private:
-        Value value;
+    enum BayesianNetworkType {
+        Gaussian,
+        Semiparametric,
+        Discrete
     };
+
+    std::string BayesianNetworkType_ToString(BayesianNetworkType t);
+    
+    class ConditionalBayesianNetworkBase;
 
     class BayesianNetworkBase : public clone_inherit<abstract_class<BayesianNetworkBase>> {
     public:
@@ -141,28 +150,153 @@ namespace models {
         virtual std::string ToString() const = 0;
         virtual BayesianNetworkType type() const = 0;
         virtual DataFrame sample(int n, unsigned int seed, bool ordered) const = 0;
+        virtual std::unique_ptr<ConditionalBayesianNetworkBase> 
+        conditional_bn(const std::vector<std::string>& nodes,
+                       const std::vector<std::string>& interface_nodes) const = 0;
+        virtual std::unique_ptr<ConditionalBayesianNetworkBase> conditional_bn() const = 0;
         virtual void save(std::string name, bool include_cpd = false) const = 0;
+    };
+
+    class ConditionalBayesianNetworkBase : public clone_inherit<abstract_class<ConditionalBayesianNetworkBase>, 
+                                                                BayesianNetworkBase>  {
+    public:
+        virtual ~ConditionalBayesianNetworkBase() = default;
+        virtual int num_interface_nodes() const = 0;
+        virtual int num_total_nodes() const = 0;
+        virtual const std::vector<std::string>& interface_nodes() const = 0;
+        virtual const std::vector<std::string>& all_nodes() const = 0;
+        virtual int interface_collapsed_index(const std::string& name) const = 0;
+        virtual int joint_collapsed_index(const std::string& name) const = 0;
+        virtual const std::unordered_map<std::string, int>& interface_collapsed_indices() const = 0;
+        virtual const std::unordered_map<std::string, int>& joint_collapsed_indices() const = 0;
+        virtual int index_from_interface_collapsed(int interface_collapsed_index) const = 0;
+        virtual int index_from_joint_collapsed(int joint_collapsed_index) const = 0;
+        virtual int interface_collapsed_from_index(int index) const = 0;
+        virtual int joint_collapsed_from_index(int index) const = 0;
+        virtual const std::string& interface_collapsed_name(int interface_collapsed_index) const = 0;
+        virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
+        virtual bool contains_interface_node(const std::string& name) const = 0;
+        virtual bool contains_total_node(const std::string& name) const = 0;
+        virtual int add_interface_node(const std::string& node) = 0;
+        virtual void remove_interface_node(int node_index) = 0;
+        virtual void remove_interface_node(const std::string& node) = 0;
+        virtual bool is_interface(int index) const = 0;
+        virtual bool is_interface(const std::string& name) const = 0;
+        virtual void set_interface(int index) = 0;
+        virtual void set_interface(const std::string& name) = 0;
+        virtual void set_node(int index) = 0;
+        virtual void set_node(const std::string& name) = 0;
+        using BayesianNetworkBase::sample;
+        virtual DataFrame sample(const DataFrame& evidence, unsigned int seed, bool concat_evidence, bool ordered) const = 0;
+        virtual std::unique_ptr<BayesianNetworkBase> unconditional_bn() const = 0;
     };
 
     class SemiparametricBNBase {
     public:
         virtual FactorType node_type(int node_index) const = 0;
         virtual FactorType node_type(const std::string& node) const = 0;
+        virtual std::unordered_map<std::string, FactorType> node_types() const = 0;
         virtual void set_node_type(int node_index, FactorType new_type) = 0;
         virtual void set_node_type(const std::string& node, FactorType new_type) = 0;
     };
 
+    template<BayesianNetworkType Type>
+    class BayesianNetwork;
+    template<BayesianNetworkType Type>
+    class ConditionalBayesianNetwork;
+
+    using GaussianNetwork = BayesianNetwork<Gaussian>;
+    using SemiparametricBN = BayesianNetwork<Semiparametric>;
+    using DiscreteBN = BayesianNetwork<Discrete>;
+
+    using ConditionalGaussianNetwork = ConditionalBayesianNetwork<Gaussian>;
+    using ConditionalSemiparametricBN = ConditionalBayesianNetwork<Semiparametric>;
+    using ConditionalDiscreteBN = ConditionalBayesianNetwork<Discrete>;
+
+    template<typename Model>
+    struct BN_traits {};
+
+    template<typename G, typename _ = void>
+    struct is_unconditional_bn : public std::false_type {};
+
+    template<typename G>
+    struct is_unconditional_bn<G,
+                               std::void_t<
+                                    util::GenericInstantation<BayesianNetworkType>::
+                                    enable_if_template_instantation_t<BayesianNetwork, G>
+                               >
+    > : public std::true_type {};
+
+    template<typename G>
+    inline constexpr auto is_unconditional_bn_v = is_unconditional_bn<G>::value;
+
+    template<typename G, typename R = void>
+    using enable_if_unconditional_bn_t = std::enable_if_t<is_unconditional_bn_v<G>, R>;
+
+    template<typename G, typename _ = void>
+    struct is_conditional_bn : public std::false_type {};
+
+    template<typename G>
+    struct is_conditional_bn<G,
+                                std::void_t<
+                                    util::GenericInstantation<BayesianNetworkType>::
+                                    enable_if_template_instantation_t<ConditionalBayesianNetwork, G>
+                                >
+    > : public std::true_type {};
+
+    template<typename G>
+    inline constexpr auto is_conditional_bn_v = is_conditional_bn<G>::value;
+
+    template<typename G, typename R = void>
+    using enable_if_conditional_bn_t = std::enable_if_t<is_conditional_bn_v<G>, R>;
+
     template<typename Derived>
-    class BayesianNetwork : public BayesianNetworkBase {
+    class ConditionalBayesianNetworkImpl;
+
+
+    template<typename Derived, typename BaseClass>
+    class BayesianNetworkImpl : public BaseClass {
     public:
         using CPD = typename BN_traits<Derived>::CPD;
+        using DagClass = typename BN_traits<Derived>::DagClass;
+        template<BayesianNetworkType Type>
+        using BNClass = typename BN_traits<Derived>::template BNClass<Type>;
 
-        BayesianNetwork(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {}
-        BayesianNetwork(const ArcStringVector& arcs) : g(arcs), m_cpds() {}
-        BayesianNetwork(const std::vector<std::string>& nodes, const ArcStringVector& arcs) :
+        friend class ConditionalBayesianNetworkImpl<Derived>;
+
+        // /////////////////////////////////////
+        // Unconditional BN constructors
+        // /////////////////////////////////////
+        template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
+        BayesianNetworkImpl(const std::vector<std::string>& nodes) : g(nodes), m_cpds() {}
+        template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
+        BayesianNetworkImpl(const ArcStringVector& arcs) : g(arcs), m_cpds() {}
+        template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
+        BayesianNetworkImpl(const std::vector<std::string>& nodes, const ArcStringVector& arcs) :
                                                  g(nodes, arcs), m_cpds() {}
-        BayesianNetwork(const Dag& graph) : g(graph), m_cpds() {}
-        BayesianNetwork(Dag&& graph) : g(std::move(graph)), m_cpds() {}
+
+        // /////////////////////////////////////
+        // Conditional BN constructors
+        // /////////////////////////////////////
+        template<typename D = Derived, enable_if_conditional_bn_t<D, int> = 0>
+        BayesianNetworkImpl(const std::vector<std::string>& nodes,
+                                       const std::vector<std::string>& interface_nodes) : g(nodes, interface_nodes), 
+                                                                                          m_cpds() {}
+
+        template<typename D = Derived, enable_if_conditional_bn_t<D, int> = 0>
+        BayesianNetworkImpl(const std::vector<std::string>& nodes,
+                            const std::vector<std::string>& interface_nodes,
+                            const ArcStringVector& arcs) : g(nodes, interface_nodes, arcs), 
+                                                           m_cpds() {}
+
+
+
+        BayesianNetworkImpl(const DagClass& graph) : g(graph), m_cpds() {}
+        BayesianNetworkImpl(DagClass&& graph) : g(std::move(graph)), m_cpds() {}
+
+        const DagClass& graph() const {
+            return g;
+        }
 
         int num_nodes() const override {
             return g.num_nodes();
@@ -188,6 +322,14 @@ namespace models {
 
         int index(const std::string& node) const override {
             return g.index(node);
+        }
+
+        int check_index(int idx) const {
+            return g.check_index(idx);
+        }
+
+        int check_index(const std::string& name) const {
+            return g.check_index(name);
         }
 
         int collapsed_index(const std::string& node) const override {
@@ -386,6 +528,14 @@ namespace models {
             g.topological_sort();
         }
 
+        bool can_have_cpd(int index) const {
+            return is_valid(index);
+        }
+
+        bool can_have_cpd(const std::string& name) const {
+            return is_valid(index(name));
+        }
+
         bool fitted() const override;
         void compatible_cpd(const CPD& cpd) const;
         void add_cpds(const std::vector<CPD>& cpds);       
@@ -408,18 +558,38 @@ namespace models {
             return cpd(g.index(node));
         }
 
+        const CPD& cpd(int index) const {
+            if (!m_cpds.empty() && is_valid(index))
+                return m_cpds[index];
+            else
+                throw py::value_error("CPD of variable \"" + name(index) + "\" not added. Call add_cpds() or fit() to add the CPD.");
+        }
+
+        const CPD& cpd(const std::string& node) const {
+            return cpd(g.index(node));
+        }
+
         VectorXd logl(const DataFrame& df) const override;
         double slogl(const DataFrame& df) const override;
+
+        BayesianNetworkType type() const override {
+            return Derived::TYPE;
+        }
+
+        using BaseClass::sample;
         DataFrame sample(int n,
                          unsigned int seed = std::random_device{}(),
                          bool ordered = false) const override;
-        void save(std::string name, bool include_cpd = false) const override;
 
+
+        std::unique_ptr<ConditionalBayesianNetworkBase> 
+        conditional_bn(const std::vector<std::string>& nodes,
+                       const std::vector<std::string>& interface_nodes) const override;
+        std::unique_ptr<ConditionalBayesianNetworkBase> conditional_bn() const override;
+
+        void save(std::string name, bool include_cpd = false) const override;
         py::tuple __getstate__() const;
         static Derived __setstate__(py::tuple& t);
-
-        template<typename Derived_>
-        friend std::ostream& operator<<(std::ostream &os, const BayesianNetwork<Derived_>& bn);
     protected:
         void check_fitted() const;
     private:
@@ -430,19 +600,149 @@ namespace models {
         void __setstate_extra__(py::tuple&) const { }
         void __setstate_extra__(py::tuple&&) const { }
 
-        Dag g;
+        DagClass g;
         std::vector<CPD> m_cpds;
         // This is necessary because __getstate__() do not admit parameters.
         mutable bool m_include_cpd;
     };
 
     template<typename Derived>
-    bool BayesianNetwork<Derived>::fitted() const {
+    class ConditionalBayesianNetworkImpl : public BayesianNetworkImpl<Derived, ConditionalBayesianNetworkBase> {
+    public:
+        using CPD = typename BN_traits<Derived>::CPD;
+        using BayesianNetworkImpl<Derived, ConditionalBayesianNetworkBase>::BayesianNetworkImpl;
+
+        int num_interface_nodes() const override {
+            return this->g.num_interface_nodes();
+        }
+
+        int num_total_nodes() const override {
+            return this->g.num_total_nodes();
+        }
+
+        const std::vector<std::string>& interface_nodes() const override {
+            return this->g.interface_nodes();
+        }
+        
+        const std::vector<std::string>& all_nodes() const override {
+            return this->g.all_nodes();
+        }
+
+        int interface_collapsed_index(const std::string& name) const override {
+            return this->g.interface_collapsed_index(name);
+        }
+
+        int joint_collapsed_index(const std::string& name) const override {
+            return this->g.joint_collapsed_index(name);
+        }
+
+        const std::unordered_map<std::string, int>& interface_collapsed_indices() const override {
+            return this->g.interface_collapsed_indices();
+        }
+
+        const std::unordered_map<std::string, int>& joint_collapsed_indices() const override {
+            return this->g.joint_collapsed_indices();
+        }
+
+        int index_from_interface_collapsed(int interface_collapsed_index) const override {
+            return this->g.index_from_interface_collapsed(interface_collapsed_index);
+        }
+
+        int index_from_joint_collapsed(int joint_collapsed_index) const override {
+            return this->g.index_from_joint_collapsed(joint_collapsed_index);
+        }
+
+        int interface_collapsed_from_index(int index) const override {
+            return this->g.interface_collapsed_from_index(index);
+        }
+
+        int joint_collapsed_from_index(int index) const override {
+            return this->g.joint_collapsed_from_index(index);
+        }
+
+        const std::string& interface_collapsed_name(int interface_collapsed_index) const override {
+            return this->g.interface_collapsed_name(interface_collapsed_index);
+        }
+
+        const std::string& joint_collapsed_name(int joint_collapsed_index) const override {
+            return this->g.joint_collapsed_name(joint_collapsed_index);
+        }
+
+        bool contains_interface_node(const std::string& name) const override {
+            return this->g.contains_interface_node(name);
+        }
+
+        bool contains_total_node(const std::string& name) const override {
+            return this->g.contains_total_node(name);
+        }
+
+        int add_interface_node(const std::string& node) override {
+            return this->g.add_interface_node(node);
+        }
+        
+        void remove_interface_node(int node_index) override {
+            this->g.remove_interface_node(node_index);
+        }
+        
+        void remove_interface_node(const std::string& node) override {
+            this->g.remove_interface_node(node);
+        }
+        
+        bool is_interface(int index) const override {
+            return this->g.is_interface(index);
+        }
+
+        bool is_interface(const std::string& name) const override {
+            return this->g.is_interface(name);
+        }
+        
+        void set_interface(int index) override {
+            this->g.set_interface(index);
+            if (!this->m_cpds.empty()) {
+                this->m_cpds[index] = CPD();
+            }
+        }
+
+        void set_interface(const std::string& name) override {
+            this->g.set_interface(name);
+            if(!this->m_cpds.empty()) {
+                this->m_cpds[this->index(name)] = CPD();
+            }
+        }
+
+        virtual void set_node(int index) override {
+            this->g.set_node(index);
+            if (!this->m_cpds.empty())
+                this->m_cpds[index] = static_cast<Derived&>(*this).create_cpd(this->g.name(index));
+        }
+
+        void set_node(const std::string& name) override {
+            this->g.set_node(name);
+            if(!this->m_cpds.empty())
+                this->m_cpds[this->index(name)] = static_cast<Derived&>(*this).create_cpd(name);
+        }
+
+        bool can_have_cpd(int index) const {
+            return this->is_valid(index) && !is_interface(index);
+        }
+
+        bool can_have_cpd(const std::string& name) const {
+            return this->is_valid(this->index(name)) && !is_interface(name);
+        }
+
+        // DataFrame sample(int n, unsigned int seed, bool ordered) const override;
+        using BayesianNetworkImpl<Derived, ConditionalBayesianNetworkBase>::sample;
+        DataFrame sample(const DataFrame& evidence, unsigned int seed, bool concat_evidence, bool ordered) const override;
+        std::unique_ptr<BayesianNetworkBase> unconditional_bn() const override;
+    };
+
+    template<typename Derived, typename BaseClass>
+    bool BayesianNetworkImpl<Derived, BaseClass>::fitted() const {
         if (m_cpds.empty()) {
             return false;
         } else {
             for (size_t i = 0; i < m_cpds.size(); ++i) {
-                if (is_valid(i) && !m_cpds[i].fitted()) {
+                if (static_cast<const Derived&>(*this).can_have_cpd(i) && !m_cpds[i].fitted()) {
                     return false;
                 }
             }
@@ -451,8 +751,8 @@ namespace models {
         }    
     }
 
-    template<typename Derived>
-    void BayesianNetwork<Derived>::compatible_cpd(const CPD& cpd) const {
+    template<typename Derived, typename BaseClass>
+    void BayesianNetworkImpl<Derived, BaseClass>::compatible_cpd(const CPD& cpd) const {
         if (!contains_node(cpd.variable())) {
             throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
         }
@@ -460,8 +760,16 @@ namespace models {
         auto& evidence = cpd.evidence();
 
         for (auto& ev : evidence) {
-            if (!contains_node(ev)) {
-                throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
+            if constexpr (is_unconditional_bn_v<Derived>) {
+                if (!contains_node(ev)) {
+                    throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
+                }
+            } else if constexpr(is_conditional_bn_v<Derived>) {
+                if (!this->contains_total_node(ev)) {
+                    throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" + cpd.ToString());
+                }
+            } else {
+                static_assert(util::always_false<Derived>, "Wrong BN Type");
             }
         }
 
@@ -483,8 +791,8 @@ namespace models {
         }
     }
 
-    template<typename Derived>
-    void BayesianNetwork<Derived>::add_cpds(const std::vector<CPD>& cpds) {
+    template<typename Derived, typename BaseClass>
+    void BayesianNetworkImpl<Derived, BaseClass>::add_cpds(const std::vector<CPD>& cpds) {
         for (auto& cpd : cpds) {
             static_cast<Derived*>(this)->compatible_cpd(cpd);
         }
@@ -493,7 +801,7 @@ namespace models {
             std::unordered_map<std::string, typename std::vector<CPD>::const_iterator> map_index;
             for (auto it = cpds.begin(); it != cpds.end(); ++it) {
                 if (map_index.count(it->variable()) == 1) {
-                    throw std::invalid_argument("CPD for variable " + it->variable() + "is repeated.");
+                    throw std::invalid_argument("CPD for variable " + it->variable() + " is repeated.");
                 }
                 map_index[it->variable()] = it;
             }
@@ -501,7 +809,7 @@ namespace models {
             m_cpds.reserve(num_raw_nodes());
 
             for (int i = 0; i < num_raw_nodes(); ++i) {
-                if (is_valid(i)) {
+                if (static_cast<Derived&>(*this).can_have_cpd(i)) {
                     const auto& node_name = name(i);
                     auto cpd_idx = map_index.find(node_name);
 
@@ -516,14 +824,18 @@ namespace models {
             }
         } else {
             for(auto& cpd : cpds) {
-                auto idx = index(cpd.variable());
-                m_cpds[idx] = cpd;
+                if (static_cast<Derived&>(*this).can_have_cpd(cpd.variable())) {
+                    auto idx = index(cpd.variable());
+                    m_cpds[idx] = cpd;
+                } else {
+                    throw std::invalid_argument("CPD for node " + cpd.variable() + " not valid for Bayesian network.");
+                }
             }
         }
     }
 
-    template<typename Derived>
-    bool BayesianNetwork<Derived>::must_construct_cpd(const CPD& cpd) const {
+    template<typename Derived, typename BaseClass>
+    bool BayesianNetworkImpl<Derived, BaseClass>::must_construct_cpd(const CPD& cpd) const {
         const auto& node = cpd.variable();
         const auto& cpd_evidence = cpd.evidence();
         auto parents = this->parents(node);
@@ -538,14 +850,14 @@ namespace models {
         }
     }
 
-    template<typename Derived>
-    void BayesianNetwork<Derived>::fit(const DataFrame& df) {
+    template<typename Derived, typename BaseClass>
+    void BayesianNetworkImpl<Derived, BaseClass>::fit(const DataFrame& df) {
         auto nraw_nodes = num_raw_nodes();
         if (m_cpds.empty()) {
             m_cpds.reserve(nraw_nodes);
 
             for (int i = 0; i < nraw_nodes; ++i) {
-                if (is_valid(i)) {
+                if (static_cast<Derived&>(*this).can_have_cpd(i)) {
                     auto cpd = static_cast<Derived&>(*this).create_cpd(name(i));
                     m_cpds.push_back(std::move(cpd));
                     m_cpds.back().fit(df);
@@ -555,7 +867,7 @@ namespace models {
             }
         } else {
             for (int i = 0; i < nraw_nodes; ++i) {
-                if (is_valid(i)) {
+                if (static_cast<Derived&>(*this).can_have_cpd(i)) {
                     if (static_cast<const Derived&>(*this).must_construct_cpd(m_cpds[i])) {
                         m_cpds[i] = static_cast<Derived&>(*this).create_cpd(name(i));
                         m_cpds[i].fit(df);
@@ -567,15 +879,15 @@ namespace models {
         }
     }
 
-    template<typename Derived>
-    void BayesianNetwork<Derived>::check_fitted() const {
+    template<typename Derived, typename BaseClass>
+    void BayesianNetworkImpl<Derived, BaseClass>::check_fitted() const {
         if (m_cpds.empty()) {
             throw py::value_error("Model not fitted.");
         } else {
             bool all_fitted = true;
             std::string err;
             for (size_t i = 0; i < m_cpds.size(); ++i) {
-                if (is_valid(i) && !m_cpds[i].fitted()) {
+                if (static_cast<const Derived&>(*this).can_have_cpd(i) && !m_cpds[i].fitted()) {
                     if (all_fitted) {
                         err += "Some CPDs are not fitted:\n";
                         all_fitted = false;
@@ -589,37 +901,43 @@ namespace models {
         }
     }
 
-    template<typename Derived>
-    VectorXd BayesianNetwork<Derived>::logl(const DataFrame& df) const {
+    template<typename Derived, typename BaseClass>
+    VectorXd BayesianNetworkImpl<Derived, BaseClass>::logl(const DataFrame& df) const {
         check_fitted();
 
         size_t i = 0;
-        for (size_t i = 0; i < m_cpds.size() && !is_valid(i); ++i);
+        for (size_t i = 0; i < m_cpds.size() && !static_cast<const Derived&>(*this).can_have_cpd(i); ++i);
 
         VectorXd accum = m_cpds[i].logl(df);
 
         for (++i; i < m_cpds.size(); ++i) {
-            if (is_valid(i))
+            if (static_cast<const Derived&>(*this).can_have_cpd(i))
                 accum += m_cpds[i].logl(df);
         }
 
         return accum;
     }
 
-    template<typename Derived>
-    double BayesianNetwork<Derived>::slogl(const DataFrame& df) const {
+    template<typename Derived, typename BaseClass>
+    double BayesianNetworkImpl<Derived, BaseClass>::slogl(const DataFrame& df) const {
         check_fitted();
         
         double accum = 0;
         for (size_t i = 0; i < m_cpds.size(); ++i) {
-            if (is_valid(i))
+            if (static_cast<const Derived&>(*this).can_have_cpd(i))
                 accum += m_cpds[i].slogl(df);
         }
         return accum;
     }
 
-    template<typename Derived>
-    DataFrame BayesianNetwork<Derived>::sample(int n, unsigned int seed, bool ordered) const {
+    template<typename Derived, typename BaseClass>
+    DataFrame BayesianNetworkImpl<Derived, BaseClass>::sample(int n, unsigned int seed, bool ordered) const {
+        if constexpr (is_conditional_bn_v<Derived>) {
+            if (this->num_interface_nodes() > 0)
+                throw std::runtime_error("Can not sample from ConditionalBayesianNetwork "
+                                         "if evidence is not provided for the interface nodes.");
+        }
+
         check_fitted();
 
         DataFrame parents(n);
@@ -651,8 +969,32 @@ namespace models {
         }
     }
 
-    template<typename Derived>
-    void BayesianNetwork<Derived>::save(std::string name, bool include_cpd) const {
+    template<typename Derived, typename BaseClass>
+    std::unique_ptr<ConditionalBayesianNetworkBase> 
+    BayesianNetworkImpl<Derived, BaseClass>::conditional_bn(const std::vector<std::string>& nodes,
+                                                            const std::vector<std::string>& interface_nodes) const {
+        auto new_dag = g.conditional_graph(nodes, interface_nodes);
+
+        auto new_bn = std::make_unique<ConditionalBayesianNetwork<Derived::TYPE>>(std::move(new_dag));
+
+        if (!m_cpds.empty()) {
+            std::vector<CPD> cpds;
+            cpds.reserve(nodes.size());
+
+            for (const auto& name : new_bn->nodes()) {
+                if (static_cast<const Derived&>(*this).can_have_cpd(name)) {
+                    cpds.push_back(this->cpd(name));
+                }
+            }
+
+            new_bn->add_cpds(cpds);
+        } 
+
+        return new_bn;
+    }
+
+    template<typename Derived, typename BaseClass>
+    void BayesianNetworkImpl<Derived, BaseClass>::save(std::string name, bool include_cpd) const {
         m_include_cpd = include_cpd;
         auto open = py::module::import("io").attr("open");
         auto file = open(name, "wb");
@@ -660,8 +1002,8 @@ namespace models {
         file.attr("close")();
     }
 
-    template<typename Derived>
-    py::tuple BayesianNetwork<Derived>::__getstate__() const {
+    template<typename Derived, typename BaseClass>
+    py::tuple BayesianNetworkImpl<Derived, BaseClass>::__getstate__() const {
         auto g_tuple = g.__getstate__();
 
         auto extra_info = static_cast<const Derived&>(*this).__getstate_extra__();
@@ -671,7 +1013,7 @@ namespace models {
             cpds.reserve(g.num_nodes());
 
             for (size_t i = 0; i < m_cpds.size(); ++i) {
-                if (g.is_valid(i))
+                if (static_cast<const Derived&>(*this).can_have_cpd(i))
                     cpds.push_back(m_cpds[i].__getstate__());
             }
 
@@ -681,12 +1023,12 @@ namespace models {
         }
     }
 
-    template<typename Derived>
-    Derived BayesianNetwork<Derived>::__setstate__(py::tuple& t) {
+    template<typename Derived, typename BaseClass>
+    Derived BayesianNetworkImpl<Derived, BaseClass>::__setstate__(py::tuple& t) {
         if (t.size() != 4)
             throw std::runtime_error("Not valid BayesianNetwork.");
         
-        auto bn = Derived(Dag::__setstate__(t[0].cast<py::tuple>()));
+        auto bn = Derived(DagClass::__setstate__(t[0].cast<py::tuple>()));
 
         bn.__setstate_extra__(t[3].cast<py::tuple>());
 

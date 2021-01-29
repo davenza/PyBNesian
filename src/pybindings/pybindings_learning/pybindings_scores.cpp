@@ -13,51 +13,6 @@ using learning::scores::Score, learning::scores::BIC, learning::scores::CVLikeli
 using learning::scores::DynamicScore, learning::scores::DynamicBIC,
       learning::scores::DynamicCVLikelihood, learning::scores::DynamicHoldoutLikelihood;
 
-// template<typename Model, typename... Models>
-// py::class_<Score, std::shared_ptr<Score>> register_Score(py::module& m) {
-//     auto score = [&m](){
-//         if constexpr (sizeof...(Models) == 0) {
-//             py::class_<Score, std::shared_ptr<Score>> score(m, "Score");
-//             score.def("is_decomposable", &Score::is_decomposable)
-//             .def("type", &Score::type)
-//             .def("local_score", [](Score& self, 
-//                                    FactorType variable_type, 
-//                                    const std::string& variable, 
-//                                    const std::vector<std::string> evidence) {
-//                 return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
-//             })
-//             .def("local_score", [](Score& self, 
-//                                    FactorType variable_type, 
-//                                    int variable, 
-//                                    const std::vector<int> evidence) {
-//                 return self.local_score(variable_type, variable, evidence.begin(), evidence.end());
-//             });
-
-//             return score;
-//         } else {
-//             return register_Score<Models...>(m);
-//         }
-//     }();
-
-//     score.def("score", [](Score& self, const Model& m) {
-//         return self.score(m);
-//     })
-//     .def("local_score", [](Score& self, const Model& m, const std::string& variable) {
-//         return self.local_score(m, variable);
-//     })
-//     .def("local_score", [](Score& self, const Model& m, const int variable) {
-//         return self.local_score(m, variable);
-//     })
-//     .def("local_score", [](Score& self, const Model& m, const std::string& variable, const std::vector<std::string> evidence) {
-//         return self.local_score(m, variable, evidence.begin(), evidence.end());
-//     })
-//     .def("local_score", [](Score& self, const Model& m, const int variable, const std::vector<int> evidence) {
-//         return self.local_score(m, variable, evidence.begin(), evidence.end());
-//     });
-
-//     return score;
-// }
-
 void pybindings_scores(py::module& root) {
     auto scores = root.def_submodule("scores", "Learning scores submodule.");
 

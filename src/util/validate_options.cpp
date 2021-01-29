@@ -68,7 +68,8 @@ namespace util {
                                              int num_folds,
                                              double test_holdout_ratio) {
         static std::unordered_map<BayesianNetworkType, 
-                                  std::unordered_set<ScoreType, typename ScoreType::HashType>>
+                                  std::unordered_set<ScoreType, typename ScoreType::HashType>,
+                                  typename BayesianNetworkType::HashType>
         map_bn_score {
             { BayesianNetworkType::Gaussian, { 
                                 ScoreType::BIC, 
@@ -81,8 +82,7 @@ namespace util {
         
         if (map_bn_score[bn_type].count(score) == 0) {
             throw std::invalid_argument("Score \"" + score.ToString() + "\" is not compabible with "
-                                        "Bayesian network type \"" + 
-                                        models::BayesianNetworkType_ToString(bn_type) + "\"");
+                                        "Bayesian network type \"" + bn_type.ToString() + "\"");
         }
 
         switch (score) {
@@ -104,7 +104,8 @@ namespace util {
                                                        int max_indegree,
                                                        const FactorStringTypeVector& type_whitelist) {
         static std::unordered_map<BayesianNetworkType,
-                                  std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>>
+                                  std::unordered_set<OperatorSetType, typename OperatorSetType::HashType>,
+                                  typename BayesianNetworkType::HashType>
         map_bn_operators {
             { BayesianNetworkType::Gaussian, { OperatorSetType::ARCS }},
             { BayesianNetworkType::Semiparametric, { OperatorSetType::ARCS, OperatorSetType::NODE_TYPE }}
@@ -114,8 +115,7 @@ namespace util {
         for (auto op : operators) {
             if (bn_set.count(op) == 0) {
                 throw std::invalid_argument("Operator \"" + op.ToString() + "\" is not compabible with " 
-                                            "Bayesian network type \"" + 
-                                            models::BayesianNetworkType_ToString(bn_type) + "\"");
+                                            "Bayesian network type \"" + bn_type.ToString() + "\"");
             }
         }
 

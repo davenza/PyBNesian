@@ -228,7 +228,7 @@ namespace dataset {
             using reference = value_type&;
             using pointer = value_type*;
             // FIXME: Check the iterator category operations.
-            using iterator_category = std::random_access_iterator_tag; //or another tag
+            using iterator_category = std::forward_iterator_tag; //or another tag
 
             cv_iterator(int i, const CrossValidation& cv) : i(i), cv(cv), updated_fold(false), current_fold() {}
 
@@ -285,7 +285,7 @@ namespace dataset {
             using reference = value_type&;
             using pointer = value_type*;
             // FIXME: Check the iterator category operations.
-            using iterator_category = std::random_access_iterator_tag; //or another tag
+            using iterator_category = std::forward_iterator_tag; //or another tag
 
             cv_iterator_indices(int i, const CrossValidation& cv) : i(i), cv(cv), updated_fold(false), current_fold() {}
 

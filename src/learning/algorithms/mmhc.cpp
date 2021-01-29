@@ -32,7 +32,7 @@ namespace learning::algorithms {
             for (auto j = i+1, j_end = bn.num_nodes(); j < j_end; ++j) {
                 auto other_index = bn.index(nodes[j]);
 
-                if (cpcs[index].count(other_index)) {
+                if (!cpcs[index].count(other_index)) {
                     blacklist.insert({index, other_index});
                     blacklist.insert({other_index, index});
                 }
@@ -54,7 +54,7 @@ namespace learning::algorithms {
             for (auto j = i+1, j_end = bn.num_nodes(); j < j_end; ++j) {
                 auto other_index = bn.index(nodes[j]);
 
-                if (cpcs[index].count(other_index)) {
+                if (!cpcs[index].count(other_index)) {
                     blacklist.insert({index, other_index});
                     blacklist.insert({other_index, index});
                 }
@@ -66,8 +66,7 @@ namespace learning::algorithms {
             for (const auto& inode : bn.interface_nodes()) {
                 auto iindex = bn.index(inode);
 
-                if (cpcs[nindex].count(iindex)) {
-                    blacklist.insert({nindex, iindex});
+                if (!cpcs[nindex].count(iindex)) {
                     blacklist.insert({iindex, nindex});
                 }
             }
@@ -95,6 +94,12 @@ namespace learning::algorithms {
                                                         int verbose) {
 
         auto bn_type = util::check_valid_bn_string(bn_str);
+
+        auto score_type = score.type();
+        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD && !validation_score)
+            throw std::invalid_argument("A validation score is needed if predictive likelihood is used as score.");
+
+
         auto create_bn = [bn_type](const std::vector<std::string>& nodes) -> std::unique_ptr<BayesianNetworkBase> {
             switch (bn_type) {
                 case BayesianNetworkType::Gaussian:
@@ -126,20 +131,13 @@ namespace learning::algorithms {
 
         indicators::show_console_cursor(false);
         auto progress = util::progress_bar(verbose);
-    
         auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
                                        restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
-        
         remove_asymmetries(cpcs);
-
         auto hc_blacklist = create_hc_blacklist(*bn, cpcs);
-
-        auto score_type = score.type();
         indicators::show_console_cursor(true);
 
         if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
-            if (!validation_score)
-                throw std::invalid_argument("A validation score is needed if predictive likelihood is used as score.");
             return learning::algorithms::estimate_validation_hc(op_set,
                                                                 score,
                                                                 *validation_score,
@@ -184,49 +182,73 @@ namespace learning::algorithms {
                                                                                double alpha,
                                                                                int verbose) {
 
-        // if (nodes.empty())
-        //     throw std::invalid_argument("Node list cannot be empty to train a Conditional Bayesian network.");
-        // if (interface_nodes.empty())
-        //     return MMHC::estimate(test, op_set, score, validation_score, nodes, bn_str, 
-        //                           varc_blacklist, varc_whitelist, vedge_blacklist, vedge_whitelist,
-        //                           type_whitelist, max_indegree, max_iters, epsilon, patience, alpha, verbose)->conditional_bn();
+        if (nodes.empty())
+            throw std::invalid_argument("Node list cannot be empty to train a Conditional Bayesian network.");
+        if (interface_nodes.empty())
+            return MMHC::estimate(test, op_set, score, validation_score, nodes, bn_str, 
+                                  varc_blacklist, varc_whitelist, vedge_blacklist, vedge_whitelist,
+                                  type_whitelist, max_indegree, max_iters, epsilon, patience, alpha, verbose)->conditional_bn();
 
-        // if (!test.has_variables(nodes) || !test.has_variables(interface_nodes))
-        //     throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes/interface_nodes lists.");
+        if (!test.has_variables(nodes) || !test.has_variables(interface_nodes))
+            throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes/interface_nodes lists.");
 
-        // ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
+        auto score_type = score.type();
+        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD && !validation_score)
+            throw std::invalid_argument("A validation score is needed if predictive likelihood is used as score.");
 
-        // auto bn_type = util::check_valid_bn_string(bn_str);
-        // auto bn = [bn_type, &nodes, &interface_nodes]() 
-        //             -> std::unique_ptr<ConditionalBayesianNetworkBase> {
-        //     switch (bn_type) {
-        //         case BayesianNetworkType::Gaussian:
-        //             return std::make_unique<ConditionalGaussianNetwork>(nodes, interface_nodes);
-        //         case BayesianNetworkType::Semiparametric:
-        //             return std::make_unique<ConditionalSemiparametricBN>(nodes, interface_nodes);
-        //         default:
-        //             throw std::invalid_argument("Wrong ConditionalBayesianNetwork type. Unreachable code!");
-        //     }
-        // }();
 
-        // auto restrictions = util::validate_restrictions(skeleton, 
-        //                                         varc_blacklist,
-        //                                         varc_whitelist,
-        //                                         vedge_blacklist,
-        //                                         vedge_whitelist);
+        ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
 
-        // indicators::show_console_cursor(false);
-        // auto progress = util::progress_bar(verbose);
-    
-        // auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
-        //                                restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
-        
-        // remove_asymmetries(cpcs);
+        auto bn_type = util::check_valid_bn_string(bn_str);
+        auto bn = [bn_type, &nodes, &interface_nodes]() 
+                    -> std::unique_ptr<ConditionalBayesianNetworkBase> {
+            switch (bn_type) {
+                case BayesianNetworkType::Gaussian:
+                    return std::make_unique<ConditionalGaussianNetwork>(nodes, interface_nodes);
+                case BayesianNetworkType::Semiparametric:
+                    return std::make_unique<ConditionalSemiparametricBN>(nodes, interface_nodes);
+                default:
+                    throw std::invalid_argument("Wrong ConditionalBayesianNetwork type. Unreachable code!");
+            }
+        }();
 
-        // auto hc_blacklist = create_hc_blacklist(cpcs);
+        auto restrictions = util::validate_restrictions(skeleton, 
+                                                varc_blacklist,
+                                                varc_whitelist,
+                                                vedge_blacklist,
+                                                vedge_whitelist);
 
-        // auto score_type = score.type();
-        // indicators::show_console_cursor(true);
+        indicators::show_console_cursor(false);
+        auto progress = util::progress_bar(verbose);
+        auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
+                                       restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
+        remove_asymmetries(cpcs);
+        auto hc_blacklist = create_conditional_hc_blacklist(*bn, cpcs);
+        indicators::show_console_cursor(true);
 
+        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
+            return learning::algorithms::estimate_validation_hc(op_set,
+                                                                score,
+                                                                *validation_score,
+                                                                *bn,
+                                                                hc_blacklist,
+                                                                restrictions.arc_whitelist,
+                                                                type_whitelist,
+                                                                max_indegree,
+                                                                max_iters,
+                                                                epsilon,
+                                                                patience,
+                                                                verbose);
+        } else {
+            return learning::algorithms::estimate_hc(op_set,
+                                                     score,
+                                                     *bn,
+                                                     hc_blacklist,
+                                                     restrictions.arc_whitelist,
+                                                     max_indegree,
+                                                     max_iters,
+                                                     epsilon,
+                                                     verbose);
+        }
     }
 }

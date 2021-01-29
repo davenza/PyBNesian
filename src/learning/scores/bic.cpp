@@ -21,8 +21,8 @@ namespace learning::scores {
                 return loglik - std::log(rows) * 0.5 * (num_evidence + 2);
             }
             default:
-               throw std::invalid_argument("Bayesian network type " + 
-                    models::BayesianNetworkType_ToString(model.type()) + " not valid for score BIC");
+               throw std::invalid_argument("Bayesian network type \"" + model.type().ToString() 
+                                            + "\" not valid for score BIC");
         }
 
     }

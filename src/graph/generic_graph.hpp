@@ -516,7 +516,7 @@ namespace graph {
         }
 
         bool is_valid(int idx) const {
-            return idx >= 0 && static_cast<size_t>(idx) < m_nodes.size() && m_nodes[idx].is_valid();
+            return idx >= 0 && idx < num_raw_nodes() && m_nodes[idx].is_valid();
         }
         
         int check_index(int idx) const {

@@ -41,18 +41,6 @@ namespace learning::scores {
                            const std::string& variable,
                            const std::vector<std::string>& evidence) const override;
 
-        // template<typename VarType>
-        // double local_score(const BayesianNetworkBase& model, const VarType& variable) const {
-        //     auto parents = model.parent_indices(variable);
-        //     return local_score(model, variable, parents.begin(), parents.end());
-        // }
-        
-        // template<typename VarType, typename EvidenceIter>
-        // double local_score(const BayesianNetworkBase& model, 
-        //                    const VarType& variable, 
-        //                    const EvidenceIter evidence_begin, 
-        //                    const EvidenceIter evidence_end) const;
-
         double local_score(FactorType variable_type,
                            const std::string& variable,
                            const std::vector<std::string>& evidence) const override;

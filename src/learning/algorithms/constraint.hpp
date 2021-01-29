@@ -416,7 +416,9 @@ namespace learning::algorithms {
     template<typename G>
     bool MeekRules::rule1(G& pdag) {
         bool changed = false;
-        for (const auto& arc : pdag.arc_indices()) {
+        // Iterate over a copy because we are making changes.
+        std::vector<Arc> arc_indices(pdag.arc_indices().begin(), pdag.arc_indices().end());
+        for (const auto& arc : arc_indices) {
             auto children = arc.second;
 
             for (const auto& neigh : pdag.neighbor_indices(children)) {
@@ -466,7 +468,7 @@ namespace learning::algorithms {
         const auto& parents = n.parents();
 
         bool changed = false;
-        for (const auto& neigh : nbr) {
+        for (auto neigh : nbr) {
             const auto& nbr_of_neigh = pdag.neighbor_set(neigh);
             auto intersection = intersect(nbr_of_neigh, parents);
 
@@ -490,7 +492,7 @@ namespace learning::algorithms {
         bool changed = false;
 
         for (const auto& node : pdag.raw_nodes()) {
-            if (node.parents().size() >= 2 && node.neighbors().size() >= 1) {
+            if (node.is_valid() && node.parents().size() >= 2 && node.neighbors().size() >= 1) {
                 changed |= rule3_at_node(pdag, node);
             }
         }

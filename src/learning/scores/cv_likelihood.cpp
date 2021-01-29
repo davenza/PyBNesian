@@ -23,9 +23,8 @@ namespace learning::scores {
                 return local_score(variable_type, variable, evidence);   
             }
             default:
-                throw std::invalid_argument("Bayesian network type " + 
-                                            models::BayesianNetworkType_ToString(model.type()) 
-                                                + " not valid for score CVLikelihood");
+                throw std::invalid_argument("Bayesian network type \"" + model.type().ToString()
+                                            + "\" not valid for score CVLikelihood");
         }                  
     }
 

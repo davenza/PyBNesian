@@ -9,27 +9,32 @@ using factors::continuous::LinearGaussianCPD;
 
 namespace models {
     
-    template<template<BayesianNetworkType> typename _BNClass>
-    struct BN_traits<_BNClass<Gaussian>> {
+    template<template<BayesianNetworkType::Value> typename _BNClass>
+    struct BN_traits<_BNClass<BayesianNetworkType::Gaussian>> {
         using CPD = LinearGaussianCPD;
+        using BaseClass = std::conditional_t<
+                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
+                                                                        BayesianNetwork,
+                                                                        _BNClass<BayesianNetworkType::Gaussian>>,
+                    BayesianNetworkBase,
+                    ConditionalBayesianNetworkBase>;
         using DagClass = std::conditional_t<
-                            util::GenericInstantation<BayesianNetworkType>::is_template_instantation_v<
-                                                                                BayesianNetwork,
-                                                                                _BNClass<Gaussian>>,
-                            Dag,
-                            ConditionalDag>;
-        template<BayesianNetworkType Type>
+                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
+                                                                        BayesianNetwork,
+                                                                        _BNClass<BayesianNetworkType::Gaussian>>,
+                    Dag,
+                    ConditionalDag>;
+        template<BayesianNetworkType::Value Type>
         using BNClass = _BNClass<Type>;
+        inline static constexpr auto TYPE = BayesianNetworkType::Gaussian;
     };
 
     template<>
-    class BayesianNetwork<Gaussian> : public clone_inherit<BayesianNetwork<Gaussian>, 
-                                                           BayesianNetworkImpl<BayesianNetwork<Gaussian>, 
-                                                                               BayesianNetworkBase>> {
+    class BayesianNetwork<BayesianNetworkType::Gaussian>
+        : public clone_inherit<GaussianNetwork, BayesianNetworkImpl<GaussianNetwork>> {
     public:
-        inline static constexpr auto TYPE = Gaussian;
-        using clone_inherit<BayesianNetwork<Gaussian>, 
-                            BayesianNetworkImpl<BayesianNetwork<Gaussian>, BayesianNetworkBase>>::clone_inherit;
+        inline static constexpr auto TYPE = BN_traits<GaussianNetwork>::TYPE;
+        using clone_inherit::clone_inherit;
 
         std::string ToString() const override {
             return "GaussianNetwork";
@@ -37,41 +42,16 @@ namespace models {
     };
 
     template<>
-    class ConditionalBayesianNetwork<Gaussian> : public clone_inherit<ConditionalBayesianNetwork<Gaussian>, 
-                                                        ConditionalBayesianNetworkImpl<ConditionalBayesianNetwork<Gaussian>>> {
+    class ConditionalBayesianNetwork<BayesianNetworkType::Gaussian>
+        : public clone_inherit<ConditionalGaussianNetwork, ConditionalBayesianNetworkImpl<ConditionalGaussianNetwork>> {
     public:
-        inline static constexpr auto TYPE = Gaussian;
-        using clone_inherit<ConditionalBayesianNetwork<Gaussian>, 
-                            ConditionalBayesianNetworkImpl<ConditionalBayesianNetwork<Gaussian>>>::clone_inherit;
+        inline static constexpr auto TYPE = BN_traits<ConditionalGaussianNetwork>::TYPE;
+        using clone_inherit::clone_inherit;
 
         std::string ToString() const override {
             return "ConditionalGaussianNetwork";
         }
     };
-
-
-
-    // class GaussianNetwork : public clone_inherit<GaussianNetwork, GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>> {
-    // public:
-    //     // using GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>::GaussianNetworkImpl;
-    //     using clone_inherit<GaussianNetwork, GaussianNetworkImpl<GaussianNetwork, BayesianNetwork>>::clone_inherit;
-
-    //     std::string ToString() const override {
-    //         return "GaussianNetwork";
-    //     }        
-    // };
-
-    // class ConditionalGaussianNetwork : public clone_inherit<ConditionalGaussianNetwork,
-    //                                                         GaussianNetworkImpl<ConditionalGaussianNetwork, ConditionalBayesianNetwork>> {
-    // public:
-    //     // using GaussianNetworkImpl<GaussianNetwork, ConditionalBayesianNetwork>::GaussianNetworkImpl;
-    //     using clone_inherit<ConditionalGaussianNetwork,
-    //                         GaussianNetworkImpl<ConditionalGaussianNetwork, ConditionalBayesianNetwork>>::clone_inherit;
-
-    //     std::string ToString() const override {
-    //         return "ConditionalGaussianNetwork";
-    //     }        
-    // };
 }
 
 #endif //PYBNESIAN_MODELS_GAUSSIANNETWORK_HPP

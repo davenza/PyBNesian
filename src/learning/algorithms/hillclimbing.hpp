@@ -134,8 +134,7 @@ namespace learning::algorithms {
                                               int verbose) {
         if (!util::compatible_score(start, validation_score.type())) {
             throw std::invalid_argument("Invalid score " + validation_score.ToString() + 
-                                        " for model type " + 
-                                        models::BayesianNetworkType_ToString(start.type()) + ".");
+                                        " for model type " + start.type().ToString() + ".");
         }
 
         indicators::show_console_cursor(false);

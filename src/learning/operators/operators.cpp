@@ -127,8 +127,8 @@ namespace learning::operators {
 
     void ArcOperatorSet::cache_scores(const BayesianNetworkBase& model, const Score& score) {
         if (!util::compatible_score(model, score.type())) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + 
-                                        models::BayesianNetworkType_ToString(model.type()) + ".");
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type \""
+                                        + model.type().ToString() + "\".");
         }
 
         initialize_local_cache(model);
@@ -257,8 +257,8 @@ namespace learning::operators {
 
     void ArcOperatorSet::cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) {
         if (!util::compatible_score(model, score.type())) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " +
-                                        models::BayesianNetworkType_ToString(model.type()) + ".");
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type \""
+                                        + model.type().ToString() + "\".");
         }
 
         initialize_local_cache(model);
@@ -637,8 +637,8 @@ namespace learning::operators {
         }
         
         if (!util::compatible_score(model, score.type())) {
-            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type " + 
-                                        models::BayesianNetworkType_ToString(model.type()) + ".");
+            throw std::invalid_argument("Invalid score " + score.ToString() + " for model type \""
+                                        + model.type().ToString() + "\".");
         }
 
         initialize_local_cache(model);

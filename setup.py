@@ -73,7 +73,6 @@ ext_modules = [
          'src/kdtree/kdtree.cpp',
          'src/learning/operators/operators.cpp',
          'src/learning/algorithms/hillclimbing.cpp',
-        #  'src/learning/algorithms/constraint.cpp',
          'src/learning/algorithms/pc.cpp',
          'src/learning/algorithms/mmpc.cpp',
          'src/learning/algorithms/mmhc.cpp',
@@ -88,9 +87,7 @@ ext_modules = [
          'src/learning/scores/holdout_likelihood.cpp',
          'src/graph/generic_graph.cpp',
          'src/models/BayesianNetwork.cpp',
-        #  'src/models/ConditionalBayesianNetwork.cpp',
          'src/models/DynamicBayesianNetwork.cpp',
-         'src/models/SemiparametricBN.cpp',
          'src/opencl/opencl_config.cpp'
          ],
         include_dirs=[

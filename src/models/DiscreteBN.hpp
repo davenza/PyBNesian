@@ -10,46 +10,48 @@ using util::clone_inherit;
 
 namespace models {
 
-    template<template<BayesianNetworkType> typename _BNClass>
-    struct BN_traits<_BNClass<Discrete>> {
+    template<template<BayesianNetworkType::Value> typename _BNClass>
+    struct BN_traits<_BNClass<BayesianNetworkType::Discrete>> {
         using CPD = DiscreteFactor;
+        using BaseClass = std::conditional_t<
+                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
+                                                                        BayesianNetwork,
+                                                                        _BNClass<BayesianNetworkType::Discrete>>,
+                    BayesianNetworkBase,
+                    ConditionalBayesianNetworkBase>;
         using DagClass = std::conditional_t<
-                            util::GenericInstantation<BayesianNetworkType>::is_template_instantation_v<
-                                                                                BayesianNetwork,
-                                                                                _BNClass<Gaussian>>,
-                            Dag,
-                            ConditionalDag>;
-        template<BayesianNetworkType Type>
+                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
+                                                                        BayesianNetwork,
+                                                                        _BNClass<BayesianNetworkType::Discrete>>,
+                    Dag,
+                    ConditionalDag>;
+        template<BayesianNetworkType::Value Type>
         using BNClass = _BNClass<Type>;
+        inline static constexpr auto TYPE = BayesianNetworkType::Discrete;
     };
 
     template<>
-    class BayesianNetwork<Discrete> : public clone_inherit<BayesianNetwork<Discrete>, 
-                                                           BayesianNetworkImpl<BayesianNetwork<Discrete>, 
-                                                                               BayesianNetworkBase>> {
+    class BayesianNetwork<BayesianNetworkType::Discrete>
+        : public clone_inherit<DiscreteBN, BayesianNetworkImpl<DiscreteBN>> {
     public:
-        inline static constexpr auto TYPE = Discrete;
-        using clone_inherit<BayesianNetwork<Discrete>, 
-                            BayesianNetworkImpl<BayesianNetwork<Discrete>, 
-                                                BayesianNetworkBase>>::clone_inherit;
+        inline static constexpr auto TYPE = BN_traits<DiscreteBN>::TYPE;
+        using clone_inherit::clone_inherit;
         std::string ToString() const override {
             return "DiscreteNetwork";
         }        
     };
 
     template<>
-    class ConditionalBayesianNetwork<Discrete> : public clone_inherit<ConditionalBayesianNetwork<Discrete>, 
-                                                        ConditionalBayesianNetworkImpl<ConditionalBayesianNetwork<Discrete>>> {
+    class ConditionalBayesianNetwork<BayesianNetworkType::Discrete>
+        : public clone_inherit<ConditionalDiscreteBN, ConditionalBayesianNetworkImpl<ConditionalDiscreteBN>> {
     public:
-        inline static constexpr auto TYPE = Discrete;
-        using clone_inherit<ConditionalBayesianNetwork<Discrete>, 
-                            ConditionalBayesianNetworkImpl<ConditionalBayesianNetwork<Discrete>>>::clone_inherit;
+        inline static constexpr auto TYPE = BN_traits<ConditionalDiscreteBN>::TYPE;
+        using clone_inherit::clone_inherit;
 
         std::string ToString() const override {
             return "ConditionalDiscreteNetwork";
         }
     };
-
 }
 
 #endif //PYBNESIAN_MODELS_DISCRETEBN_HPP

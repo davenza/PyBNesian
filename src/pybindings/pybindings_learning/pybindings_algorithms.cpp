@@ -218,6 +218,25 @@ void pybindings_algorithms(py::module& root) {
             py::arg("epsilon") = 0,
             py::arg("patience") = 0,
             py::arg("alpha") = 0.05,
+            py::arg("verbose") = 0)
+        .def("estimate_conditional", &MMHC::estimate_conditional,
+            py::arg("hypot_test"),
+            py::arg("op_set"),
+            py::arg("score"),
+            py::arg("validation_score") = nullptr,
+            py::arg("nodes") = std::vector<std::string>(),
+            py::arg("interface_nodes") = std::vector<std::string>(),
+            py::arg("bn_type") = "gbn",
+            py::arg("arc_blacklist") = ArcStringVector(),
+            py::arg("arc_whitelist") = ArcStringVector(),
+            py::arg("edge_blacklist") = EdgeStringVector(),
+            py::arg("edge_whitelist") = EdgeStringVector(),
+            py::arg("type_whitelist") = FactorStringTypeVector(),
+            py::arg("max_indegree") = 0,
+            py::arg("max_iters") = std::numeric_limits<int>::max(),
+            py::arg("epsilon") = 0,
+            py::arg("patience") = 0,
+            py::arg("alpha") = 0.05,
             py::arg("verbose") = 0);
 
     py::class_<DMMHC>(algorithms, "DMMHC")

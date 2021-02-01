@@ -2,7 +2,6 @@
 #define PYBNESIAN_MODELS_GAUSSIANNETWORK_HPP
 
 #include <models/BayesianNetwork.hpp>
-// #include <models/ConditionalBayesianNetwork.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 
 using factors::continuous::LinearGaussianCPD;

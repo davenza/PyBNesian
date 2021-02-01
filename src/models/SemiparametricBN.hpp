@@ -2,7 +2,6 @@
 #define PYBNESIAN_MODELS_SEMIPARAMETRICBN_HPP
 
 #include <models/BayesianNetwork.hpp>
-// #include <models/ConditionalBayesianNetwork.hpp>
 #include <factors/continuous/SemiparametricCPD.hpp>
 #include <util/virtual_clone.hpp>
 

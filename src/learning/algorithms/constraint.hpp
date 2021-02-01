@@ -403,6 +403,8 @@ namespace learning::algorithms {
         return res;
     }
 
+
+
     class MeekRules {
     public:
         template<typename G>
@@ -413,19 +415,45 @@ namespace learning::algorithms {
         static bool rule3(G& pdag);
     };
 
-    template<typename G>
-    bool MeekRules::rule1(G& pdag) {
-        bool changed = false;
-        // Iterate over a copy because we are making changes.
-        std::vector<Arc> arc_indices(pdag.arc_indices().begin(), pdag.arc_indices().end());
-        for (const auto& arc : arc_indices) {
+    template<typename G, typename T>
+    void rule1_find_new_arcs(const G& pdag, const T& to_check, std::vector<Arc>& new_arcs) {
+        for (const auto& arc : to_check) {
             auto children = arc.second;
 
-            for (const auto& neigh : pdag.neighbor_indices(children)) {
+            for (auto neigh : pdag.neighbor_indices(children)) {
                 if (!pdag.has_connection_unsafe(arc.first, neigh)) {
-                    pdag.direct(arc.second, neigh);
-                    changed = true;
+                    new_arcs.push_back({arc.second, neigh});
                 }
+            }
+        }
+    }
+
+    template<typename G>
+    void direct_new_arcs(G& pdag, const std::vector<Arc>& new_arcs) {
+        for (const auto& arc : new_arcs) {
+            pdag.direct(arc.first, arc.second);
+        }
+    }
+
+    template<typename G>
+    bool MeekRules::rule1(G& pdag) {
+
+        std::vector<Arc> new_arcs;
+
+        rule1_find_new_arcs(pdag, pdag.arc_indices(), new_arcs);
+        direct_new_arcs(pdag, new_arcs);
+
+        bool changed = !new_arcs.empty();
+        if (changed) {
+            std::vector<Arc> to_check = std::move(new_arcs);
+            new_arcs.clear();
+
+            while (!to_check.empty()) {
+                rule1_find_new_arcs(pdag, to_check, new_arcs);
+                direct_new_arcs(pdag, new_arcs);
+
+                to_check = std::move(new_arcs);
+                new_arcs.clear();
             }
         }
 
@@ -434,11 +462,9 @@ namespace learning::algorithms {
 
     template<typename G>
     bool MeekRules::rule2(G& pdag) {
-        bool changed = false;
 
-        // Iterate over a copy because we are making changes.
-        std::vector<Edge> edge_indices(pdag.edge_indices().begin(), pdag.edge_indices().end());
-        for (const auto& edge : edge_indices) {
+        std::vector<Arc> new_arcs;
+        for (const auto& edge : pdag.edge_indices()) {
             const auto& n1 = pdag.raw_node(edge.first);
             const auto& n2 = pdag.raw_node(edge.second);
 
@@ -446,20 +472,21 @@ namespace learning::algorithms {
             const auto& parents2 = n2.parents();
             
             if (any_intersect(parents2, children1)) {
-                changed = true;
-                pdag.direct(edge.first, edge.second);
+                new_arcs.push_back({edge.first, edge.second});
+                continue;
             }
 
             const auto& parents1 = n1.parents();
             const auto& children2 = n2.children();
 
             if (any_intersect(parents1, children2)) {
-                changed = true;
-                pdag.direct(edge.second, edge.first);
+                new_arcs.push_back({edge.second, edge.first});
             }            
         }
 
-        return changed;
+        direct_new_arcs(pdag, new_arcs);
+
+        return !new_arcs.empty();
     }
 
     template<typename G>
@@ -467,7 +494,7 @@ namespace learning::algorithms {
         const auto& nbr = n.neighbors();
         const auto& parents = n.parents();
 
-        bool changed = false;
+        std::vector<Arc> new_arcs;
         for (auto neigh : nbr) {
             const auto& nbr_of_neigh = pdag.neighbor_set(neigh);
             auto intersection = intersect(nbr_of_neigh, parents);
@@ -477,14 +504,15 @@ namespace learning::algorithms {
 
                 for (const auto& p : comb) {
                     if (!pdag.has_connection(p[0], p[1])) {
-                        pdag.direct(neigh, n.index());
-                        changed = true;
+                        new_arcs.push_back({neigh, n.index()});
                     }
                 }
             }
         }
 
-        return changed;
+        direct_new_arcs(pdag, new_arcs);
+
+        return !new_arcs.empty();
     }
 
     template<typename G>

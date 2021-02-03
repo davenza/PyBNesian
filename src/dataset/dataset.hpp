@@ -1251,7 +1251,8 @@ namespace dataset {
     };
 
     template<typename Derived>
-    template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+    // template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+    template<typename IndexIter, typename dataframe_traits<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     bool DataFrameBase<Derived>::has_columns(const IndexIter& begin, const IndexIter& end) const {
         for(auto it = begin; it != end; ++it) {
             if (!derived().has_column(*it))
@@ -1262,7 +1263,7 @@ namespace dataset {
     }
 
     template<typename Derived>
-    template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+    template<typename IndexIter, typename dataframe_traits<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     void DataFrameBase<Derived>::raise_has_columns(const IndexIter& begin, const IndexIter& end) const {
         for(auto it = begin; it != end; ++it) {
             derived().raise_has_column(*it);
@@ -1294,7 +1295,7 @@ namespace dataset {
     }
 
     template<typename Derived>
-    template<typename IndexIter, typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+    template<typename IndexIter, typename dataframe_traits<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     Array_vector DataFrameBase<Derived>::indices_to_columns(const IndexIter& begin, const IndexIter& end) const {
         Array_vector cols;
         cols.reserve(std::distance(begin, end));
@@ -1338,7 +1339,7 @@ namespace dataset {
 
     template<typename Derived>
     template<typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+             typename dataframe_traits<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     std::shared_ptr<arrow::Schema> DataFrameBase<Derived>::indices_to_schema(const IndexIter& begin, 
                                                                              const IndexIter& end) const {
         arrow::SchemaBuilder b(arrow::SchemaBuilder::ConflictPolicy::CONFLICT_APPEND);
@@ -1372,7 +1373,7 @@ namespace dataset {
 
     template<typename Derived>
     template<typename IndexIter,
-             typename DataFrameBase<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
+             typename dataframe_traits<Derived>::template enable_if_index_iterator_t<IndexIter, int>>
     typename DataFrameBase<Derived>::loc_return DataFrameBase<Derived>::loc(const IndexIter& begin, const IndexIter& end) const {
         auto columns = indices_to_columns(begin, end);
         auto schema = indices_to_schema(begin, end);
@@ -1381,7 +1382,7 @@ namespace dataset {
 
     template<typename Derived>
     template<typename Index,
-             typename DataFrameBase<Derived>::template enable_if_index_t<Index, int>>
+             typename dataframe_traits<Derived>::template enable_if_index_t<Index, int>>
     typename DataFrameBase<Derived>::loc_return DataFrameBase<Derived>::loc(const Index& index) const {
         arrow::SchemaBuilder b;
         RAISE_STATUS_ERROR(b.AddField(derived().field(index)));
@@ -1415,6 +1416,14 @@ namespace dataset {
         DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) {};
 
         const std::shared_ptr<RecordBatch>& record_batch() const { return m_batch; }
+
+        DataFrame slice(int64_t offset) const {
+            return DataFrame(m_batch->Slice(offset));
+        }
+
+        DataFrame slice(int64_t offset, int64_t length) const {
+            return DataFrame(m_batch->Slice(offset, length));
+        }
 
         int num_rows() const {
             return m_batch->num_rows();

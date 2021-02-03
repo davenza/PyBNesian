@@ -3,6 +3,7 @@
 
 #include <dataset/dataset.hpp>
 #include <util/util_types.hpp>
+#include <util/temporal.hpp>
 
 using util::ArcStringVector;
 
@@ -13,7 +14,6 @@ using Array_vector =  std::vector<Array_ptr>;
 
 namespace dataset {
     
-    std::string temporal_name(const std::string& name, int slice_index);
     DataFrame create_temporal_slice(const DataFrame& df, int slice_index, int slice_offset, int markovian_order);
     std::vector<DataFrame> create_temporal_slices(const DataFrame& df, int markovian_order);
     DataFrame create_static_df(const DataFrame& df, int markovian_order);
@@ -30,7 +30,7 @@ namespace dataset {
 
         template<typename T = Index, util::enable_if_stringable_t<T, int> = 0>
         std::string temporal_name() const {
-            return dataset::temporal_name(variable, temporal_slice);
+            return util::temporal_name(variable, temporal_slice);
         }
 
         Index variable;
@@ -251,13 +251,11 @@ namespace dataset {
 
     template<typename T>
     class DynamicAdaptator {
-    public:
-
+    public: 
         template<typename ...Args>
         DynamicAdaptator(const DynamicDataFrame& df, const Args&... args) : m_df(df),
                                                                             m_static(m_df.static_df(), args...),
                                                                             m_transition(m_df.transition_df(), args...) {}
-
 
         const DynamicDataFrame& dataframe() const { return m_df; }
         DynamicDataFrame& dataframe() { return m_df; }
@@ -265,6 +263,30 @@ namespace dataset {
         T& static_element() { return m_static; }
         const T& transition_element() const { return m_transition; }
         T& transition_element() { return m_transition; }
+
+        std::vector<std::string> variable_names() const {
+            return m_df.origin_df().column_names();
+        }
+
+        const std::string& name(int i) const {
+            return m_df.origin_df().name(i);
+        }
+
+        bool has_variables(const std::string& name) const {
+            return m_df.origin_df().has_columns(name);
+        }
+
+        bool has_variables(const std::vector<std::string>& cols) const {
+            return m_df.origin_df().has_columns(cols);
+        }
+
+        int num_variables() const {
+            return m_df.num_variables();
+        }
+
+        int markovian_order() const {
+            return m_df.markovian_order();
+        }
     private:
         DynamicDataFrame m_df;
         T m_static;

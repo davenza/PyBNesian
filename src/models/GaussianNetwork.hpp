@@ -2,6 +2,7 @@
 #define PYBNESIAN_MODELS_GAUSSIANNETWORK_HPP
 
 #include <models/BayesianNetwork.hpp>
+#include <models/DynamicBayesianNetwork.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 
 using factors::continuous::LinearGaussianCPD;
@@ -49,6 +50,18 @@ namespace models {
 
         std::string ToString() const override {
             return "ConditionalGaussianNetwork";
+        }
+    };
+
+    template<>
+    class DynamicBayesianNetwork<BayesianNetworkType::Gaussian> 
+        : public clone_inherit<DynamicGaussianNetwork, DynamicBayesianNetworkImpl<DynamicGaussianNetwork>> {
+    public:
+        inline static constexpr auto TYPE = BN_traits<DynamicGaussianNetwork>::TYPE;
+        using clone_inherit::clone_inherit;
+
+        std::string ToString() const override {
+            return "DynamicGaussianNetwork";
         }
     };
 }

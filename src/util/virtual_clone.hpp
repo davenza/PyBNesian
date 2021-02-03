@@ -29,6 +29,7 @@ namespace util {
     protected:
    //         desirable, but impossible in C++17
    //         see: http://cplusplus.github.io/EWG/ewg-active.html#102
+   //         This is not valid in gcc, but works in clang.
         using Bases::Bases...;
     private:
         virtual clone_inherit* clone_impl() const override {
@@ -49,7 +50,6 @@ namespace util {
     protected:
    //         desirable, but impossible in C++17
    //         see: http://cplusplus.github.io/EWG/ewg-active.html#102
-        // using typename... Bases::Bases;
         using Bases::Bases...;
     private:
         virtual clone_inherit* clone_impl() const = 0;

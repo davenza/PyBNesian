@@ -52,6 +52,18 @@ namespace models {
             return "ConditionalDiscreteNetwork";
         }
     };
+
+    template<>
+    class DynamicBayesianNetwork<BayesianNetworkType::Discrete> 
+        : public clone_inherit<DynamicDiscreteBN, DynamicBayesianNetworkImpl<DynamicDiscreteBN>> {
+    public:
+        inline static constexpr auto TYPE = BN_traits<DynamicDiscreteBN>::TYPE;
+        using clone_inherit::clone_inherit;
+
+        std::string ToString() const override {
+            return "DynamicGaussianNetwork";
+        }
+    };
 }
 
 #endif //PYBNESIAN_MODELS_DISCRETEBN_HPP

@@ -114,6 +114,8 @@ void pybindings_scores(py::module& root) {
         .def("ToString", &Score::ToString)
         .def("is_decomposable", &Score::is_decomposable)
         .def("type", &Score::type)
+        .def("has_variables", py::overload_cast<const std::string&>(&Score::has_variables, py::const_))
+        .def("has_variables", py::overload_cast<const std::vector<std::string>&>(&Score::has_variables, py::const_))
         .def("compatible_bn", py::overload_cast<const ConditionalBayesianNetworkBase&>(&Score::compatible_bn, py::const_))
         .def("compatible_bn", py::overload_cast<const BayesianNetworkBase&>(&Score::compatible_bn, py::const_));
 
@@ -245,26 +247,30 @@ void pybindings_scores(py::module& root) {
 
     py::class_<DynamicScore, std::shared_ptr<DynamicScore>>(scores, "DynamicScore")
         .def("static_score", &DynamicScore::static_score)
-        .def("transition_score", &DynamicScore::transition_score);
+        .def("transition_score", &DynamicScore::transition_score)
+        .def("has_variables", py::overload_cast<const std::string&>(&DynamicScore::has_variables, py::const_))
+        .def("has_variables", py::overload_cast<const std::vector<std::string>&>(&DynamicScore::has_variables, py::const_))
+        .def("compatible_bn", py::overload_cast<const ConditionalBayesianNetworkBase&>(&DynamicScore::compatible_bn, py::const_))
+        .def("compatible_bn", py::overload_cast<const BayesianNetworkBase&>(&DynamicScore::compatible_bn, py::const_));
 
     py::class_<DynamicBIC, DynamicScore, std::shared_ptr<DynamicBIC>>(scores, "DynamicBIC")
         .def(py::init<const DynamicDataFrame&>());
 
-    py::class_<DynamicCVLikelihood, DynamicScore, std::shared_ptr<DynamicCVLikelihood>>(scores, "DynamicCVLikelihood")
-        .def(py::init<const DynamicDataFrame&, int>(),
-                py::arg("df"),
-                py::arg("k") = 10)
-        .def(py::init<const DynamicDataFrame&, int, unsigned int>(),
-                py::arg("df"),
-                py::arg("k") = 10,
-                py::arg("seed"));
+    // py::class_<DynamicCVLikelihood, DynamicScore, std::shared_ptr<DynamicCVLikelihood>>(scores, "DynamicCVLikelihood")
+    //     .def(py::init<const DynamicDataFrame&, int>(),
+    //             py::arg("df"),
+    //             py::arg("k") = 10)
+    //     .def(py::init<const DynamicDataFrame&, int, unsigned int>(),
+    //             py::arg("df"),
+    //             py::arg("k") = 10,
+    //             py::arg("seed"));
 
-    py::class_<DynamicHoldoutLikelihood, DynamicScore, std::shared_ptr<DynamicHoldoutLikelihood>>(scores, "DynamicHoldoutLikelihood")
-        .def(py::init<const DynamicDataFrame&, double>(),
-                py::arg("df"),
-                py::arg("test_ratio") = 0.2)
-        .def(py::init<const DynamicDataFrame&, double, unsigned int>(),
-                py::arg("df"),
-                py::arg("test_ratio") = 0.2,
-                py::arg("seed"));
+    // py::class_<DynamicHoldoutLikelihood, DynamicScore, std::shared_ptr<DynamicHoldoutLikelihood>>(scores, "DynamicHoldoutLikelihood")
+    //     .def(py::init<const DynamicDataFrame&, double>(),
+    //             py::arg("df"),
+    //             py::arg("test_ratio") = 0.2)
+    //     .def(py::init<const DynamicDataFrame&, double, unsigned int>(),
+    //             py::arg("df"),
+    //             py::arg("test_ratio") = 0.2,
+    //             py::arg("seed"));
 }

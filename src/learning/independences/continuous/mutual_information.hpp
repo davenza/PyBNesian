@@ -147,16 +147,8 @@ namespace learning::independences::continuous {
             return m_df.name(i);
         }
 
-        bool has_variables(int index) const override {
-            return m_df.has_columns(index);
-        }
-
         bool has_variables(const std::string& name) const override {
             return m_df.has_columns(name);
-        }
-
-        bool has_variables(const std::vector<int>& cols) const override {
-            return m_df.has_columns(cols);
         }
 
         bool has_variables(const std::vector<std::string>& cols) const override {

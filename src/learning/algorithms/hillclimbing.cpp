@@ -104,6 +104,10 @@ namespace learning::algorithms {
                                                                       int max_iters,
                                                                       double epsilon,
                                                                       int verbose) {
+        if (!score.compatible_bn(start)) {
+            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
+        }
+        
         auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
 
         return estimate_hc(op_set,
@@ -127,6 +131,10 @@ namespace learning::algorithms {
                                                         int max_iters, 
                                                         double epsilon,
                                                         int verbose) {
+        if (!score.compatible_bn(start)) {
+            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
+        }
+
         auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
 
         return estimate_hc(op_set,
@@ -152,6 +160,10 @@ namespace learning::algorithms {
                                                                                  double epsilon, 
                                                                                  int patience,
                                                                                  int verbose) {
+        if (!score.compatible_bn(start) || !validation_score.compatible_bn(start)) {
+            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
+        }
+        
         auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
         util::check_node_type_list(start, type_whitelist);
 
@@ -182,6 +194,10 @@ namespace learning::algorithms {
                                                                                  double epsilon, 
                                                                                  int patience,
                                                                                  int verbose) {
+        if (!score.compatible_bn(start) || !validation_score.compatible_bn(start)) {
+            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
+        }
+
         auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
         util::check_node_type_list(start, type_whitelist);
 

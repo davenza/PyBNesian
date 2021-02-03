@@ -79,6 +79,8 @@ namespace learning::scores {
         virtual std::string ToString() const = 0;
         virtual bool is_decomposable() const = 0;
         virtual ScoreType type() const = 0;
+        virtual bool has_variables(const std::string& name) const = 0;
+        virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
         virtual bool compatible_bn(const BayesianNetworkBase& model) const = 0;
         virtual bool compatible_bn(const ConditionalBayesianNetworkBase& model) const = 0;
     };
@@ -99,6 +101,11 @@ namespace learning::scores {
 
         virtual Score& static_score() = 0;
         virtual Score& transition_score() = 0;
+
+        virtual bool has_variables(const std::string& name) const = 0;
+        virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
+        virtual bool compatible_bn(const BayesianNetworkBase& model) const = 0;
+        virtual bool compatible_bn(const ConditionalBayesianNetworkBase& model) const = 0;
     };
 
     template<typename BaseScore>
@@ -106,7 +113,7 @@ namespace learning::scores {
     public:
         template<typename... Args>
         DynamicScoreAdaptator(const DynamicDataFrame& df,
-                                         const Args&... args) : DynamicAdaptator<BaseScore>(df, args...) {}
+                              const Args&... args) : DynamicAdaptator<BaseScore>(df, args...) {}
         
         Score& static_score() override {
             return this->static_element();
@@ -114,6 +121,22 @@ namespace learning::scores {
 
         Score& transition_score() override {
             return this->transition_element();
+        }
+
+        bool has_variables(const std::string& name) const override {
+            return DynamicAdaptator<BaseScore>::has_variables(name);
+        }
+
+        bool has_variables(const std::vector<std::string>& cols) const override {
+            return DynamicAdaptator<BaseScore>::has_variables(cols);
+        }
+
+        bool compatible_bn(const BayesianNetworkBase& model) const override {
+            return DynamicAdaptator<BaseScore>::has_variables(model.nodes());
+        }
+
+        bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
+            return DynamicAdaptator<BaseScore>::has_variables(model.all_nodes());
         }
     };
 }

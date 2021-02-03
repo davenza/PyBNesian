@@ -304,7 +304,19 @@ namespace models {
         }
 
         std::string ToString() const override {
-            return "ConditonalSemiparametricBN";
+            return "ConditionalSemiparametricBN";
+        }
+    };
+
+    template<>
+    class DynamicBayesianNetwork<BayesianNetworkType::Semiparametric>
+        : public clone_inherit<DynamicSemiparametricBN, DynamicBayesianNetworkImpl<DynamicSemiparametricBN>> {
+    public:
+        inline static constexpr auto TYPE = BN_traits<DynamicSemiparametricBN>::TYPE;
+        using clone_inherit::clone_inherit;
+
+        std::string ToString() const override {
+            return "DynamicSemiparametricBN";
         }
     };
 }

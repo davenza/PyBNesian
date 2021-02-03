@@ -9,7 +9,7 @@ using models::ConditionalGaussianNetwork, models::ConditionalSemiparametricBN;
 
 namespace learning::algorithms {
 
-    void remove_asymmetries(std::vector<std::unordered_set<int>> cpcs) {
+    void remove_asymmetries(std::vector<std::unordered_set<int>>& cpcs) {
         for (size_t i = 0; i < cpcs.size(); ++i) {
             for (auto it = cpcs[i].begin(), end = cpcs[i].end(); it != end;) {
                 if (cpcs[*it].count(i) == 0) {
@@ -116,9 +116,16 @@ namespace learning::algorithms {
         if (nodes.empty()) {
             skeleton = PartiallyDirectedGraph(test.variable_names());
             bn = create_bn(test.variable_names());
+            
+            if (!score.has_variables(skeleton.nodes()) || (validation_score && !validation_score->has_variables(skeleton.nodes())))
+                throw std::invalid_argument("Score do not contain all the variables in nodes list.");
+
         } else {
             if (!test.has_variables(nodes))
                 throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes list.");
+            if (!score.has_variables(nodes) || (validation_score && !validation_score->has_variables(nodes)))
+                throw std::invalid_argument("Score do not contain all the variables in nodes list.");
+
             skeleton = PartiallyDirectedGraph(nodes);
             bn = create_bn(nodes);
         }
@@ -133,6 +140,7 @@ namespace learning::algorithms {
         auto progress = util::progress_bar(verbose);
         auto cpcs = mmpc_all_variables(test, skeleton, alpha, restrictions.arc_whitelist, 
                                        restrictions.edge_blacklist, restrictions.edge_whitelist, *progress);
+
         remove_asymmetries(cpcs);
         auto hc_blacklist = create_hc_blacklist(*bn, cpcs);
         indicators::show_console_cursor(true);
@@ -191,6 +199,9 @@ namespace learning::algorithms {
 
         if (!test.has_variables(nodes) || !test.has_variables(interface_nodes))
             throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes/interface_nodes lists.");
+        if (!score.has_variables(nodes) || !score.has_variables(interface_nodes) || 
+            (validation_score && (!validation_score->has_variables(nodes) || !validation_score->has_variables(interface_nodes))))
+            throw std::invalid_argument("Score do not contain all the variables in nodes list.");
 
         auto score_type = score.type();
         if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD && !validation_score)

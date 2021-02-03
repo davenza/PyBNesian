@@ -35,26 +35,25 @@ namespace learning::independences {
         virtual int num_variables() const = 0;
         virtual std::vector<std::string> variable_names() const = 0;
         virtual const std::string& name(int i) const = 0;
-        virtual bool has_variables(int index) const = 0;
         virtual bool has_variables(const std::string& name) const = 0;
-        virtual bool has_variables(const std::vector<int>& cols) const = 0;
         virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
-
     };
 
     class DynamicIndependenceTest {
     public:
         virtual ~DynamicIndependenceTest() {}
 
-        virtual std::vector<std::string> variable_names() const = 0;
-        virtual int num_variables() const = 0;
-        virtual int markovian_order() const = 0;
 
         virtual const IndependenceTest& static_tests() const = 0;
         virtual const IndependenceTest& transition_tests() const = 0;
 
-        ArcStringVector static_blacklist() const;
-        ArcStringVector transition_blacklist() const;
+        virtual std::vector<std::string> variable_names() const = 0;
+        virtual const std::string& name(int i) const = 0;
+        virtual bool has_variables(const std::string& name) const = 0;
+        virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
+
+        virtual int num_variables() const = 0;
+        virtual int markovian_order() const = 0;
     };
 
     template<typename BaseTest>
@@ -64,17 +63,7 @@ namespace learning::independences {
         DynamicIndependenceTestAdaptator(const DynamicDataFrame& df,
                                          const Args&... args) : DynamicAdaptator<BaseTest>(df, args...) {}
         
-        std::vector<std::string> variable_names() const override {
-            return this->dataframe().origin_df().column_names();
-        }
 
-        int num_variables() const override {
-            return this->dataframe().num_variables();
-        }
-
-        int markovian_order() const override {
-            return this->dataframe().markovian_order();
-        }
 
         const IndependenceTest& static_tests() const override {
             return this->static_element();
@@ -82,6 +71,30 @@ namespace learning::independences {
 
         const IndependenceTest& transition_tests() const override {
             return this->transition_element();
+        }
+
+        std::vector<std::string> variable_names() const override {
+            return DynamicAdaptator<BaseTest>::variable_names();
+        }
+
+        const std::string& name(int i) const override {
+            return DynamicAdaptator<BaseTest>::name(i);
+        }
+
+        bool has_variables(const std::string& name) const override {
+            return DynamicAdaptator<BaseTest>::has_variables(name);
+        }
+
+        bool has_variables(const std::vector<std::string>& cols) const override {
+            return DynamicAdaptator<BaseTest>::has_variables(cols);    
+        }
+
+        int num_variables() const override {
+            return DynamicAdaptator<BaseTest>::num_variables();
+        }
+
+        int markovian_order() const override {
+            return DynamicAdaptator<BaseTest>::markovian_order();
         }
     };
 }

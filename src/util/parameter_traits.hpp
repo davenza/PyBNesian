@@ -203,21 +203,40 @@ namespace util {
 
     // Implement is_template_instantation for non-type templates. Based on:
     // https://stackoverflow.com/questions/22674347/c-variadic-template-with-non-type-parameters-of-different-types/22675220
-    template<typename... Types>
+    
+    // This is only valid with clang, because gcc do not allow non-type variadic template expansion:
+    // https://stackoverflow.com/questions/51717440/a-compile-type-template-predicate-compiles-with-clang-but-not-with-gcc-or-msvc
+    // 
+    // template<typename... Types>
+    // struct GenericInstantation {
+    //     template<template <Types...> typename U, typename... Ts>
+    //     struct is_template_instantation : public std::false_type {};
+
+    //     template<template <Types...> typename U, Types... Ts>
+    //     struct is_template_instantation<U, U<Ts...>> : public std::true_type {};
+
+    //     template<template <Types...> typename U, typename... Ts>
+    //     inline static constexpr bool is_template_instantation_v = is_template_instantation<U, Ts...>::value;
+
+    //     template<template <Types...> typename TemplatedClass, typename Derived, typename R = void>
+    //     using enable_if_template_instantation_t = std::enable_if_t<is_template_instantation_v<TemplatedClass, Derived>, R>; 
+    // };
+
+    template<typename T>
     struct GenericInstantation {
-        template<template <Types...> typename U, typename... Ts>
+
+        template<template <T> typename, typename>
         struct is_template_instantation : public std::false_type {};
 
-        template<template <Types...> typename U, Types... Ts>
-        struct is_template_instantation<U, U<Ts...>> : public std::true_type {};
+        template<template <T> typename U, T value>
+        struct is_template_instantation<U, U<value>> : public std::true_type {};
 
-        template<template <Types...> typename U, typename... Ts>
-        inline static constexpr bool is_template_instantation_v = is_template_instantation<U, Ts...>::value;
+        template<template <T> typename U, typename Class>
+        inline static constexpr bool is_template_instantation_v = is_template_instantation<U, Class>::value;
 
-        template<template <Types...> typename TemplatedClass, typename Derived, typename R = void>
+        template<template <T> typename TemplatedClass, typename Derived, typename R = void>
         using enable_if_template_instantation_t = std::enable_if_t<is_template_instantation_v<TemplatedClass, Derived>, R>; 
     };
-
 
     template<typename T, typename = void>
     struct is_dynamic_index : public std::false_type {};

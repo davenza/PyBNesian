@@ -60,7 +60,6 @@ namespace models {
                     throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
             }
         }
-
     private:
         Value value;
     };
@@ -255,6 +254,8 @@ namespace models {
         using BNClass = typename BN_traits<Derived>::template BNClass<Type>;
 
         friend class ConditionalBayesianNetworkImpl<Derived>;
+
+        BayesianNetworkImpl() = default;
 
         // /////////////////////////////////////
         // Unconditional BN constructors

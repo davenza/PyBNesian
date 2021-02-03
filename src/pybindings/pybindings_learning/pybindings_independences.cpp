@@ -36,9 +36,11 @@ void pybindings_independence_tests(py::module& root) {
         .def("pvalue", [](IndependenceTest& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
             return self.pvalue(v1, v2, cond.begin(), cond.end());
         })
+        .def("num_variables", &IndependenceTest::num_variables)
         .def("variable_names", &IndependenceTest::variable_names)
         .def("name", &IndependenceTest::name)
-        .def("num_variables", &IndependenceTest::num_variables);
+        .def("has_variables", py::overload_cast<const std::string&>(&IndependenceTest::has_variables, py::const_))
+        .def("has_variables", py::overload_cast<const std::vector<std::string>&>(&IndependenceTest::has_variables, py::const_));
 
     py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(independence_tests, "LinearCorrelation")
         .def(py::init<const DataFrame>());
@@ -72,13 +74,14 @@ void pybindings_independence_tests(py::module& root) {
     py::class_<DynamicIndependenceTest,
                std::shared_ptr<DynamicIndependenceTest>>
                         (independence_tests, "DynamicIndependenceTest")
-        .def("variable_names", &DynamicIndependenceTest::variable_names)
-        .def("num_variables", &DynamicIndependenceTest::num_variables)
-        .def("markovian_order", &DynamicIndependenceTest::markovian_order)
         .def("static_tests", &DynamicIndependenceTest::static_tests)
         .def("transition_tests", &DynamicIndependenceTest::transition_tests)
-        .def("static_blacklist", &DynamicIndependenceTest::static_blacklist)
-        .def("transition_blacklist", &DynamicIndependenceTest::transition_blacklist);
+        .def("variable_names", &DynamicIndependenceTest::variable_names)
+        .def("name", &DynamicIndependenceTest::name)
+        .def("has_variables", py::overload_cast<const std::string&>(&DynamicIndependenceTest::has_variables, py::const_))
+        .def("has_variables", py::overload_cast<const std::vector<std::string>&>(&DynamicIndependenceTest::has_variables, py::const_))
+        .def("num_variables", &DynamicIndependenceTest::num_variables)
+        .def("markovian_order", &DynamicIndependenceTest::markovian_order);
 
     py::class_<DynamicLinearCorrelation,
                DynamicIndependenceTest,

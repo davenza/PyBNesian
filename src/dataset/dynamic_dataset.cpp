@@ -8,12 +8,9 @@ namespace dataset {
     std::string index_to_string(const DynamicVariable<int>& index) {
         return "(" + std::to_string(index.variable) + ", " + std::to_string(index.temporal_slice) + ")";
     }
+
     std::string index_to_string(const DynamicVariable<std::string>& index) {
         return "(" + index.variable + ", " + std::to_string(index.temporal_slice) + ")";
-    }
-
-    std::string temporal_name(const std::string& name, int slice_index) {
-        return name + "_t_" + std::to_string(slice_index);
     }
 
     DataFrame create_temporal_slice(const DataFrame& df, int slice_index, int slice_offset, int markovian_order) {
@@ -27,7 +24,7 @@ namespace dataset {
         new_fields.reserve(slice_df->num_columns());
 
         for (auto field : df->schema()->fields()) {
-            new_fields.push_back(field->WithName(temporal_name(field->name(), slice_index + slice_offset)));
+            new_fields.push_back(field->WithName(util::temporal_name(field->name(), slice_index + slice_offset)));
         }
 
         auto new_schema = arrow::schema(new_fields);
@@ -46,8 +43,19 @@ namespace dataset {
     }
 
     DataFrame create_static_df(const DataFrame& df, int markovian_order) {
-        if (markovian_order == 1)
-            return df;
+        if (markovian_order == 1) {
+            Field_vector new_fields;
+            new_fields.reserve(df->num_columns());
+
+            for (auto field : df->schema()->fields()) {
+                new_fields.push_back(field->WithName(util::temporal_name(field->name(), 1)));
+            }
+
+            auto new_schema = arrow::schema(new_fields);
+
+            return DataFrame(arrow::RecordBatch::Make(new_schema, df->num_rows(), df->columns()));
+        }
+
 
         Array_vector columns;
         Field_vector new_fields;
@@ -55,11 +63,11 @@ namespace dataset {
         new_fields.reserve(df->num_columns() * markovian_order);
 
         for (auto i = 0; i < markovian_order; ++i) {
-            append_slice(create_temporal_slice(df, i, 1, markovian_order-1), columns, new_fields);
+            auto new_slice = create_temporal_slice(df, i, 1, markovian_order-1);
+            append_slice(new_slice, columns, new_fields);
         }
 
         auto new_schema = arrow::schema(new_fields);
-        
         return DataFrame(arrow::RecordBatch::Make(new_schema, columns[0]->length(), columns));
     }
 
@@ -74,7 +82,6 @@ namespace dataset {
         }
 
         auto new_schema = arrow::schema(new_fields);
-
         return DataFrame(arrow::RecordBatch::Make(new_schema, v[0]->num_rows(), columns));
     }
 

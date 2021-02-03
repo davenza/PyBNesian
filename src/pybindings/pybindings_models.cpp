@@ -2,16 +2,20 @@
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 #include <models/BayesianNetwork.hpp>
+#include <models/DynamicBayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
 #include <models/DiscreteBN.hpp>
 
-using models::BayesianNetworkBase, models::BayesianNetworkImpl, models::BayesianNetworkType, 
-      models::GaussianNetwork, models::SemiparametricBN, models::DiscreteBN;
+using models::BayesianNetworkType, models::BayesianNetworkBase, models::BayesianNetworkImpl,
+      models::BayesianNetwork, models::GaussianNetwork, models::SemiparametricBN, models::DiscreteBN;
 
 using models::ConditionalBayesianNetworkBase, models::ConditionalBayesianNetworkImpl,
       models::ConditionalBayesianNetwork, models::ConditionalGaussianNetwork, 
       models::ConditionalSemiparametricBN, models::ConditionalDiscreteBN;
+
+using models::DynamicBayesianNetworkBase, models::DynamicBayesianNetworkImpl,
+      models::DynamicGaussianNetwork, models::DynamicSemiparametricBN, models::DynamicDiscreteBN;
 
 
 template<typename Derived, typename BaseClass>
@@ -151,6 +155,30 @@ register_ConditionalBayesianNetworkImpl(py::module& m, const char* derivedbn_nam
                         py::arg("ordered") = false);
 }
 
+template<typename Derived>
+py::class_<DynamicBayesianNetworkImpl<Derived>, DynamicBayesianNetworkBase>
+register_DynamicBayesianNetworkImpl(py::module& m, const char* derivedbn_name) {
+    std::string impl_name = std::string("DynamicBayesianNetworkImpl<") + derivedbn_name + ">";
+    using ImplClass = DynamicBayesianNetworkImpl<Derived>;
+
+    return py::class_<ImplClass, DynamicBayesianNetworkBase>(m, impl_name.c_str())
+        .def_property_readonly("type", &ImplClass::type)
+        .def("static_bn", &ImplClass::static_bn, py::return_value_policy::reference_internal)
+        .def("transition_bn", &ImplClass::transition_bn, py::return_value_policy::reference_internal)
+        .def("markovian_order", &ImplClass::markovian_order)
+        .def("num_variables", &ImplClass::num_variables)
+        .def("variables", &ImplClass::variables)
+        .def("contains_variable", &ImplClass::contains_variable)
+        .def("add_variable", &ImplClass::add_variable)
+        .def("remove_variable", &ImplClass::remove_variable)
+        .def("fitted", &ImplClass::fitted)
+        .def("fit", &ImplClass::fit)
+        .def("logl", &ImplClass::logl)
+        .def("slogl", &ImplClass::slogl)
+        .def("sample", &ImplClass::sample)
+        .def("save", &ImplClass::save);
+}
+
 template<typename DerivedBN>
 py::class_<DerivedBN, BayesianNetworkImpl<DerivedBN>> 
 register_BayesianNetwork(py::module& m, const char* derivedbn_name) {
@@ -193,6 +221,21 @@ register_ConditionalBayesianNetwork(py::module& m, const char* derivedbn_name) {
         ));
 }
 
+template<typename DerivedBN>
+py::class_<DerivedBN, DynamicBayesianNetworkImpl<DerivedBN>> 
+register_DynamicBayesianNetwork(py::module& m, const char* derivedbn_name) {
+
+    register_DynamicBayesianNetworkImpl<DerivedBN>(m, derivedbn_name);
+
+    using BaseImpl = DynamicBayesianNetworkImpl<DerivedBN>;
+    using NormalBN = BayesianNetwork<DerivedBN::TYPE>;
+    using ConditionalBN = ConditionalBayesianNetwork<DerivedBN::TYPE>;
+
+    return py::class_<DerivedBN, BaseImpl>(m, derivedbn_name)
+        .def(py::init<const std::vector<std::string>&, int>())
+        .def(py::init<const std::vector<std::string>&, int, NormalBN, ConditionalBN>());
+}
+
 
 void pybindings_models(py::module& root) {
     auto models = root.def_submodule("models", "Models submodule.");
@@ -210,7 +253,9 @@ void pybindings_models(py::module& root) {
             return BayesianNetworkType(BayesianNetworkType::Discrete);
         })
         .def(py::self == py::self)
-        .def(py::self != py::self);
+        .def(py::self != py::self)
+        .def("__repr__", &BayesianNetworkType::ToString)
+        .def("__str__", &BayesianNetworkType::ToString);
 
     py::class_<BayesianNetworkBase>(models, "BayesianNetworkBase")
         .def_property_readonly("type", &BayesianNetworkBase::type)
@@ -329,10 +374,25 @@ void pybindings_models(py::module& root) {
                         py::arg("ordered") = false)
         .def("clone", &ConditionalBayesianNetworkBase::clone);
 
-    register_BayesianNetwork<GaussianNetwork>(models, "GaussianNetwork");
-    
-    auto spbn = register_BayesianNetwork<SemiparametricBN>(models, "SemiparametricBN");
+    py::class_<DynamicBayesianNetworkBase>(models, "DynamicBayesianNetworkBase")
+        .def_property_readonly("type", &DynamicBayesianNetworkBase::type)
+        .def("static_bn", &DynamicBayesianNetworkBase::static_bn, py::return_value_policy::reference_internal)
+        .def("transition_bn", &DynamicBayesianNetworkBase::transition_bn, py::return_value_policy::reference_internal)
+        .def("markovian_order", &DynamicBayesianNetworkBase::markovian_order)
+        .def("num_variables", &DynamicBayesianNetworkBase::num_variables)
+        .def("variables", &DynamicBayesianNetworkBase::variables)
+        .def("contains_variable", &DynamicBayesianNetworkBase::contains_variable)
+        .def("add_variable", &DynamicBayesianNetworkBase::add_variable)
+        .def("remove_variable", &DynamicBayesianNetworkBase::remove_variable)
+        .def("fitted", &DynamicBayesianNetworkBase::fitted)
+        .def("fit", &DynamicBayesianNetworkBase::fit)
+        .def("logl", &DynamicBayesianNetworkBase::logl)
+        .def("slogl", &DynamicBayesianNetworkBase::slogl)
+        .def("sample", &DynamicBayesianNetworkBase::sample)
+        .def("save", &DynamicBayesianNetworkBase::save);
 
+    register_BayesianNetwork<GaussianNetwork>(models, "GaussianNetwork");
+    auto spbn = register_BayesianNetwork<SemiparametricBN>(models, "SemiparametricBN");
     spbn.def(py::init<const std::vector<std::string>&, FactorStringTypeVector&>())
         .def(py::init<const ArcStringVector&, FactorStringTypeVector&>())
         .def(py::init<const std::vector<std::string>&, const ArcStringVector&, FactorStringTypeVector&>())
@@ -342,14 +402,10 @@ void pybindings_models(py::module& root) {
         .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBN::set_node_type))
         .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBN::set_node_type))
         .def("node_types", &SemiparametricBN::node_types);
-
     register_BayesianNetwork<DiscreteBN>(models, "DiscreteBN");
 
-
     register_ConditionalBayesianNetwork<ConditionalGaussianNetwork>(models, "ConditionalGaussianNetwork");
-
     auto conditional_spbn = register_ConditionalBayesianNetwork<ConditionalSemiparametricBN>(models, "ConditionalSemiparametricBN");
-
     conditional_spbn.def(py::init<const std::vector<std::string>&,
                                   const std::vector<std::string>&,
                                   FactorStringTypeVector&>())
@@ -364,6 +420,9 @@ void pybindings_models(py::module& root) {
                     .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&ConditionalSemiparametricBN::set_node_type))
                     .def("set_node_type", py::overload_cast<int, FactorType>(&ConditionalSemiparametricBN::set_node_type))
                     .def("node_types", &ConditionalSemiparametricBN::node_types);
-    
     register_ConditionalBayesianNetwork<ConditionalDiscreteBN>(models, "ConditionalDiscreteBN");
+
+    register_DynamicBayesianNetwork<DynamicGaussianNetwork>(models, "DynamicGaussianNetwork");
+    register_DynamicBayesianNetwork<DynamicSemiparametricBN>(models, "DynamicSemiparametricBN");
+    register_DynamicBayesianNetwork<DynamicDiscreteBN>(models, "DynamicDiscreteBN");
 }

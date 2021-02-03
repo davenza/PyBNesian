@@ -65,6 +65,14 @@ namespace learning::scores {
             return ScoreType::PREDICTIVE_LIKELIHOOD;
         }
 
+        bool has_variables(const std::string& name) const override {
+            return m_cv.data().has_columns(name);
+        }
+
+        bool has_variables(const std::vector<std::string>& cols) const override {
+            return m_cv.data().has_columns(cols);
+        }
+
         bool compatible_bn(const BayesianNetworkBase& model) const override{
             return m_cv.data().has_columns(model.nodes());
         }

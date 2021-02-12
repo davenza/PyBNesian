@@ -17,8 +17,9 @@ namespace learning::scores {
         enum Value : uint8_t
         {
             BIC,
-            PREDICTIVE_LIKELIHOOD,
-            HOLDOUT_LIKELIHOOD
+            CVLikelihood,
+            HoldoutLikelihood,
+            ValidatedLikelihood
         };
 
         struct Hash
@@ -45,11 +46,13 @@ namespace learning::scores {
         std::string ToString() const { 
             switch(value) {
                 case Value::BIC:
-                    return "bic";
-                case Value::PREDICTIVE_LIKELIHOOD:
-                    return "predic-l";
-                case Value::HOLDOUT_LIKELIHOOD:
-                    return "holdout-l";
+                    return "BIC";
+                case Value::CVLikelihood:
+                    return "CVLikelihood";
+                case Value::HoldoutLikelihood:
+                    return "HoldoutLikelihood";
+                case Value::ValidatedLikelihood:
+                    return "ValidatedLikelihood";
                 default:
                     throw std::invalid_argument("Unreachable code in ScoreType.");
             }
@@ -85,7 +88,7 @@ namespace learning::scores {
         virtual bool compatible_bn(const ConditionalBayesianNetworkBase& model) const = 0;
     };
 
-    class ScoreSPBN : public Score {
+    class ScoreSPBN : public virtual Score {
     public:
         using Score::local_score;
         virtual ~ScoreSPBN() {}
@@ -95,10 +98,39 @@ namespace learning::scores {
                                    const std::vector<std::string>& evidence) const = 0;
     };
 
+    class ValidatedScore : public virtual Score {
+    public:
+        // using Score::local_score;
+        virtual ~ValidatedScore() {}
+
+        virtual double vscore(const BayesianNetworkBase& model) const {
+            double s = 0;
+            for (const auto& node : model.nodes()) {
+                s += vlocal_score(model, node);
+            }
+
+            return s;
+        }
+
+        virtual double vlocal_score(const BayesianNetworkBase&, int) const = 0;
+        virtual double vlocal_score(const BayesianNetworkBase&, const std::string&) const = 0;
+        virtual double vlocal_score(const BayesianNetworkBase&, int, const std::vector<int>&) const = 0;
+        virtual double vlocal_score(const BayesianNetworkBase&, const std::string&, const std::vector<std::string>&) const = 0;
+    };
+
+    class ValidatedScoreSPBN : public ValidatedScore, public ScoreSPBN {
+    public:
+        using ValidatedScore::vlocal_score;
+
+        virtual ~ValidatedScoreSPBN() {}
+        virtual double vlocal_score(FactorType variable_type,
+                                   const std::string& variable,
+                                   const std::vector<std::string>& evidence) const = 0;
+    };
+
     class DynamicScore {
     public:
         virtual ~DynamicScore() {}
-
         virtual Score& static_score() = 0;
         virtual Score& transition_score() = 0;
 
@@ -114,7 +146,7 @@ namespace learning::scores {
         template<typename... Args>
         DynamicScoreAdaptator(const DynamicDataFrame& df,
                               const Args&... args) : DynamicAdaptator<BaseScore>(df, args...) {}
-        
+
         Score& static_score() override {
             return this->static_element();
         }

@@ -1,5 +1,7 @@
 #include <util/validate_options.hpp>
+#include <learning/scores/validated_likelihood.hpp>
 
+using learning::scores::ValidatedLikelihood;
 using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet, learning::operators::OperatorPool;
 
 namespace util {
@@ -15,8 +17,9 @@ namespace util {
     ScoreType check_valid_score_string(const std::optional<std::string>& score, BayesianNetworkType bn_type) {
         if (score) {
             if (*score == "bic") return ScoreType::BIC;
-            if (*score == "predic-l") return ScoreType::PREDICTIVE_LIKELIHOOD;
-            if (*score == "holdout-l") return ScoreType::HOLDOUT_LIKELIHOOD;
+            if (*score == "cv-lik") return ScoreType::CVLikelihood;
+            if (*score == "holdout-lik") return ScoreType::HoldoutLikelihood;
+            if (*score == "validated-lik") return ScoreType::ValidatedLikelihood;
             else
                 throw std::invalid_argument("Wrong Bayesian Network score \"" + *score + "\" specified. The possible alternatives are " 
                                         "\"bic\" (Bayesian Information Criterion), \"predic-l\" (Predictive Log-likelihood) or"
@@ -26,7 +29,7 @@ namespace util {
                 case BayesianNetworkType::Gaussian:
                     return ScoreType::BIC;
                 case BayesianNetworkType::Semiparametric:
-                    return ScoreType::PREDICTIVE_LIKELIHOOD;
+                    return ScoreType::ValidatedLikelihood;
                 default:
                     throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
             }
@@ -61,7 +64,7 @@ namespace util {
 
     }
 
-    std::shared_ptr<Score> check_valid_score(const DataFrame& df, 
+    std::unique_ptr<Score> check_valid_score(const DataFrame& df, 
                                              BayesianNetworkType bn_type,
                                              ScoreType score,
                                              int seed,
@@ -73,11 +76,12 @@ namespace util {
         map_bn_score {
             { BayesianNetworkType::Gaussian, { 
                                 ScoreType::BIC, 
-                                ScoreType::PREDICTIVE_LIKELIHOOD,
-                                ScoreType::HOLDOUT_LIKELIHOOD
+                                ScoreType::CVLikelihood,
+                                ScoreType::HoldoutLikelihood,
+                                ScoreType::ValidatedLikelihood
                                  } 
             },
-            { BayesianNetworkType::Semiparametric, { ScoreType::PREDICTIVE_LIKELIHOOD } }
+            { BayesianNetworkType::Semiparametric, { ScoreType::ValidatedLikelihood } }
         };
         
         if (map_bn_score[bn_type].count(score) == 0) {
@@ -88,10 +92,12 @@ namespace util {
         switch (score) {
             case ScoreType::BIC:
                 return std::make_unique<BIC>(df);
-            case ScoreType::PREDICTIVE_LIKELIHOOD:
+            case ScoreType::CVLikelihood:
                 return std::make_unique<CVLikelihood>(df, num_folds, seed);
-            case ScoreType::HOLDOUT_LIKELIHOOD:
+            case ScoreType::HoldoutLikelihood:
                 return std::make_unique<HoldoutLikelihood>(df, test_holdout_ratio, seed);
+            case ScoreType::ValidatedLikelihood:
+                return std::make_unique<ValidatedLikelihood>(df, test_holdout_ratio, num_folds, seed);
             default:
                 throw std::invalid_argument("Wrong ScoreType. Unreachable code!");
         }

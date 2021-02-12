@@ -8,7 +8,7 @@
 
 using dataset::DataFrame;
 using graph::Dag, graph::ConditionalDag;
-using util::ArcStringVector;
+using util::ArcStringVector, util::FactorStringTypeVector;
 
 using util::abstract_class, util::clone_inherit;
 
@@ -189,6 +189,7 @@ namespace models {
         virtual std::unordered_map<std::string, FactorType> node_types() const = 0;
         virtual void set_node_type(int node_index, FactorType new_type) = 0;
         virtual void set_node_type(const std::string& node, FactorType new_type) = 0;
+        virtual void force_type_whitelist(const FactorStringTypeVector& type_whitelist) = 0;
     };
 
     template<BayesianNetworkType::Value Type>

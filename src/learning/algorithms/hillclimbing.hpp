@@ -86,7 +86,7 @@ namespace learning::algorithms {
 
     template<typename T>
     double validation_delta_score(const T& model,
-                                  const Score& val_score, 
+                                  const ValidatedScore& val_score, 
                                   const Operator* op,
                                   LocalScoreCache& current_local_scores) {
         
@@ -95,14 +95,14 @@ namespace learning::algorithms {
             case OperatorType::REMOVE_ARC: {
                 auto dwn_op = dynamic_cast<const ArcOperator*>(op);
                 double prev = current_local_scores.local_score(model, dwn_op->target());
-                current_local_scores.update_local_score(model, val_score, *op);
+                current_local_scores.update_vlocal_score(model, val_score, *op);
                 return current_local_scores.local_score(model, dwn_op->target()) - prev;
             }
             case OperatorType::FLIP_ARC: {
                 auto dwn_op = dynamic_cast<const ArcOperator*>(op);
                 double prev = current_local_scores.local_score(model, dwn_op->source()) +
                               current_local_scores.local_score(model, dwn_op->target());
-                current_local_scores.update_local_score(model, val_score, *op);
+                current_local_scores.update_vlocal_score(model, val_score, *op);
                 
                 return current_local_scores.local_score(model, dwn_op->source()) +
                        current_local_scores.local_score(model, dwn_op->target()) - prev;
@@ -110,7 +110,7 @@ namespace learning::algorithms {
             case OperatorType::CHANGE_NODE_TYPE: {
                 auto dwn_op = dynamic_cast<const ChangeNodeType*>(op);
                 double prev = current_local_scores.local_score(model, dwn_op->node());
-                current_local_scores.update_local_score(model, val_score, *op);
+                current_local_scores.update_vlocal_score(model, val_score, *op);
                 return current_local_scores.local_score(model, dwn_op->node()) - prev;
             }
             default:
@@ -120,8 +120,7 @@ namespace learning::algorithms {
     
     template<typename T>
     std::unique_ptr<T> estimate_validation_hc(OperatorSet& op_set,
-                                              Score& score,
-                                              Score& validation_score,
+                                              ValidatedScore& score,
                                               const T& start,
                                               const ArcSet& arc_blacklist,
                                               const ArcSet& arc_whitelist,
@@ -131,10 +130,6 @@ namespace learning::algorithms {
                                               double epsilon, 
                                               int patience,
                                               int verbose) {
-        if (!util::compatible_score(start, validation_score.type())) {
-            throw std::invalid_argument("Invalid score " + validation_score.ToString() + 
-                                        " for model type " + start.type().ToString() + ".");
-        }
 
         indicators::show_console_cursor(false);
         auto spinner = util::indeterminate_spinner(verbose);
@@ -143,9 +138,9 @@ namespace learning::algorithms {
         auto current_model = start.clone();
         current_model->check_blacklist(arc_blacklist);
         current_model->force_whitelist(arc_whitelist);
-
+        
         if (current_model->type() == BayesianNetworkType::Semiparametric) {
-            auto current_spbn = dynamic_cast<SemiparametricBN&>(*current_model);
+            auto& current_spbn = dynamic_cast<SemiparametricBNBase&>(*current_model);
             current_spbn.force_type_whitelist(type_whitelist);
         }
 
@@ -159,14 +154,14 @@ namespace learning::algorithms {
         spinner->update_status("Caching scores...");
 
         LocalScoreCache local_validation(*current_model);
-        local_validation.cache_local_scores(*current_model, validation_score);
+        local_validation.cache_vlocal_scores(*current_model, score);
 
         op_set.cache_scores(*current_model, score);
         int p = 0;
         double validation_offset = 0;
 
         OperatorTabuSet tabu_set;
-        
+
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op_set.find_max(*current_model, tabu_set);
@@ -176,7 +171,7 @@ namespace learning::algorithms {
 
             best_op->apply(*current_model);
             double validation_delta = validation_delta_score(*current_model,
-                                                             validation_score,
+                                                             score,
                                                              best_op.get(),
                                                              local_validation);
             
@@ -211,48 +206,24 @@ namespace learning::algorithms {
                                                       const BayesianNetworkBase& start,
                                                       const ArcStringVector& arc_blacklist,
                                                       const ArcStringVector& arc_whitelist,
+                                                      const FactorStringTypeVector& type_whitelist,
                                                       int max_indegree,
-                                                      int max_iters, 
+                                                      int max_iters,
                                                       double epsilon,
+                                                      int patience,
                                                       int verbose = 0);
 
-        std::unique_ptr<ConditionalBayesianNetworkBase> estimate(
-                                                    OperatorSet& op_set,
-                                                    Score& score,
-                                                    const ConditionalBayesianNetworkBase& start,
-                                                    const ArcStringVector& arc_blacklist,
-                                                    const ArcStringVector& arc_whitelist,
-                                                    int max_indegree,
-                                                    int max_iters, 
-                                                    double epsilon,
-                                                    int verbose = 0);
-
-        std::unique_ptr<BayesianNetworkBase> estimate_validation(OperatorSet& op_set,
+        std::unique_ptr<ConditionalBayesianNetworkBase> estimate(OperatorSet& op_set,
                                                                  Score& score,
-                                                                 Score& validation_score,
-                                                                 const BayesianNetworkBase& start,
+                                                                 const ConditionalBayesianNetworkBase& start,
                                                                  const ArcStringVector& arc_blacklist,
                                                                  const ArcStringVector& arc_whitelist,
                                                                  const FactorStringTypeVector& type_whitelist,
                                                                  int max_indegree,
                                                                  int max_iters,
-                                                                 double epsilon, 
+                                                                 double epsilon,
                                                                  int patience,
                                                                  int verbose = 0);
-
-
-        std::unique_ptr<BayesianNetworkBase> estimate_validation(OperatorSet& op_set,
-                                                                Score& score,
-                                                                Score& validation_score,
-                                                                const ConditionalBayesianNetworkBase& start,
-                                                                const ArcStringVector& arc_blacklist,
-                                                                const ArcStringVector& arc_whitelist,
-                                                                const FactorStringTypeVector& type_whitelist,
-                                                                int max_indegree,
-                                                                int max_iters,
-                                                                double epsilon, 
-                                                                int patience,
-                                                                int verbose = 0);
     };
 }
 

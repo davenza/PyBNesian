@@ -165,7 +165,7 @@ namespace models {
             return new_index;
         }
 
-        void force_type_whitelist(const FactorStringTypeVector& type_whitelist) {
+        void force_type_whitelist(const FactorStringTypeVector& type_whitelist) override {
             for (auto& nt : type_whitelist) {
                 set_node_type(nt.first, nt.second);
             }
@@ -186,17 +186,17 @@ namespace models {
         bool must_construct_cpd(const CPD& cpd) const {
             bool must_construct = BaseImpl<Derived>::must_construct_cpd(cpd);
             
-            return must_construct || (cpd.node_type() != m_factor_types[this->index(cpd.variable())]);
+            return must_construct || (cpd.factor_type() != m_factor_types[this->index(cpd.variable())]);
         }
 
         void compatible_cpd(const CPD& cpd) const {
             BaseImpl<Derived>::compatible_cpd(cpd);
 
             int index = this->index(cpd.variable());
-            if (m_factor_types[index] != cpd.node_type()) {
+            if (m_factor_types[index] != cpd.factor_type()) {
                 throw std::invalid_argument(
                     "CPD defined with a different node type. Expected node type: " + m_factor_types[index].ToString() +
-                    ". CPD node type: " + cpd.node_type().ToString());
+                    ". CPD node type: " + cpd.factor_type().ToString());
             }
         }
 

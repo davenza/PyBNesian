@@ -1,3 +1,5 @@
+#include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <learning/parameters/mle_base.hpp>
 #include <util/math_constants.hpp>
@@ -60,7 +62,6 @@ namespace factors::discrete {
 
 
     void DiscreteFactor::fit(const DataFrame& df) {
-        
         MLE<DiscreteFactor> mle;
 
         auto params = mle.estimate(df, m_variable, m_evidence);
@@ -332,7 +333,7 @@ namespace factors::discrete {
 
     DiscreteFactor DiscreteFactor::__setstate__(py::tuple& t) {
         if (t.size() != 6)
-            throw std::runtime_error("Not valid CKDE.");
+            throw std::runtime_error("Not valid DiscreteFactor.");
 
         DiscreteFactor dist(t[0].cast<std::string>(), t[1].cast<std::vector<std::string>>());
 

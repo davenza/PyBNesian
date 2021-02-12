@@ -54,7 +54,7 @@ namespace learning::independences::continuous {
 
     class LinearCorrelation : public IndependenceTest {
     public:
-        LinearCorrelation(const DataFrame df) : m_df(df), m_cached_cov(false), m_indices(), m_cov() {
+        LinearCorrelation(const DataFrame& df) : m_df(df), m_cached_cov(false), m_indices(), m_cov() {
             auto continuous_indices = df.continuous_columns();
 
             if (continuous_indices.size() < 2) {

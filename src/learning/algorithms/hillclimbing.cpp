@@ -78,20 +78,57 @@ namespace learning::algorithms {
         }();
 
         GreedyHillClimbing hc;
+        auto score = util::check_valid_score(df, bn_type, score_type, iseed, num_folds, test_holdout_ratio);
 
-        if (score_type == ScoreType::PREDICTIVE_LIKELIHOOD) {
-            HoldoutLikelihood validation_score(df, test_holdout_ratio, iseed);
-            auto score = util::check_valid_score(validation_score.training_data(), 
-                            bn_type, score_type, iseed, num_folds, test_holdout_ratio);
-    
-            return hc.estimate_validation(*operators, *score, validation_score, *start_model, arc_blacklist, arc_whitelist, 
-                                        type_whitelist, max_indegree, max_iters, epsilon, patience, verbose);
+        return hc.estimate(*operators, *score, *start_model, arc_blacklist, arc_whitelist, type_whitelist,
+                            max_indegree, max_iters, epsilon, patience, verbose);
+    }
 
+    template<typename T>
+    std::unique_ptr<T> estimate_checks(OperatorSet& op_set,
+                                       Score& score,
+                                       const T& start,
+                                       const ArcStringVector& arc_blacklist,
+                                       const ArcStringVector& arc_whitelist,
+                                       const FactorStringTypeVector& type_whitelist,
+                                       int max_indegree,
+                                       int max_iters,
+                                       double epsilon,
+                                       int patience,
+                                       int verbose) {
+        if (!util::compatible_score(start, score.type())) {
+            throw std::invalid_argument("Invalid score " + score.ToString() + 
+                                        " for model type " + start.type().ToString() + ".");
+        }
+        
+        if (!score.compatible_bn(start)) {
+            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
+        }
+        
+        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
+
+        if (auto validated_score = dynamic_cast<ValidatedScore*>(&score)) {
+            return estimate_validation_hc(op_set,
+                                          *validated_score,
+                                          start,
+                                          restrictions.arc_blacklist,
+                                          restrictions.arc_whitelist,
+                                          type_whitelist,
+                                          max_indegree,
+                                          max_iters,
+                                          epsilon,
+                                          patience,
+                                          verbose);
         } else {
-            auto score = util::check_valid_score(df, bn_type, score_type, iseed, num_folds, test_holdout_ratio);
-
-            return hc.estimate(*operators, *score, *start_model, arc_blacklist, arc_whitelist,
-                                max_indegree, max_iters, epsilon, verbose);
+            return estimate_hc(op_set,
+                               score,
+                               start,
+                               restrictions.arc_blacklist,
+                               restrictions.arc_whitelist,
+                               max_indegree,
+                               max_iters,
+                               epsilon,
+                               verbose);
         }
     }
 
@@ -100,25 +137,14 @@ namespace learning::algorithms {
                                                                       const BayesianNetworkBase& start,
                                                                       const ArcStringVector& arc_blacklist,
                                                                       const ArcStringVector& arc_whitelist,
+                                                                      const FactorStringTypeVector& type_whitelist,
                                                                       int max_indegree,
                                                                       int max_iters,
                                                                       double epsilon,
+                                                                      int patience,
                                                                       int verbose) {
-        if (!score.compatible_bn(start)) {
-            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
-        }
-        
-        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
-
-        return estimate_hc(op_set,
-                           score,
-                           start,
-                           restrictions.arc_blacklist,
-                           restrictions.arc_whitelist,
-                           max_indegree,
-                           max_iters,
-                           epsilon,
-                           verbose);
+        return estimate_checks(op_set, score, start, arc_blacklist, arc_whitelist, type_whitelist,
+                               max_indegree, max_iters, epsilon, patience, verbose);
     }
 
     std::unique_ptr<ConditionalBayesianNetworkBase> GreedyHillClimbing::estimate(
@@ -127,92 +153,13 @@ namespace learning::algorithms {
                                                         const ConditionalBayesianNetworkBase& start,
                                                         const ArcStringVector& arc_blacklist,
                                                         const ArcStringVector& arc_whitelist,
+                                                        const FactorStringTypeVector& type_whitelist,
                                                         int max_indegree,
                                                         int max_iters, 
                                                         double epsilon,
+                                                        int patience,
                                                         int verbose) {
-        if (!score.compatible_bn(start)) {
-            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
-        }
-
-        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
-
-        return estimate_hc(op_set,
-                           score,
-                           start,
-                           restrictions.arc_blacklist,
-                           restrictions.arc_whitelist,
-                           max_indegree,
-                           max_iters,
-                           epsilon,
-                           verbose);
-    }
-
-    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorSet& op_set,
-                                                                                 Score& score,
-                                                                                 Score& validation_score,
-                                                                                 const BayesianNetworkBase& start,
-                                                                                 const ArcStringVector& arc_blacklist,
-                                                                                 const ArcStringVector& arc_whitelist,
-                                                                                 const FactorStringTypeVector& type_whitelist,
-                                                                                 int max_indegree,
-                                                                                 int max_iters,
-                                                                                 double epsilon, 
-                                                                                 int patience,
-                                                                                 int verbose) {
-        if (!score.compatible_bn(start) || !validation_score.compatible_bn(start)) {
-            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
-        }
-        
-        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
-        util::check_node_type_list(start, type_whitelist);
-
-        return estimate_validation_hc(op_set,
-                                      score,
-                                      validation_score,
-                                      start,
-                                      restrictions.arc_blacklist,
-                                      restrictions.arc_whitelist,
-                                      type_whitelist,
-                                      max_indegree,
-                                      max_iters,
-                                      epsilon,
-                                      patience,
-                                      verbose);
-
-    }
-
-    std::unique_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate_validation(OperatorSet& op_set,
-                                                                                 Score& score,
-                                                                                 Score& validation_score,
-                                                                                 const ConditionalBayesianNetworkBase& start,
-                                                                                 const ArcStringVector& arc_blacklist,
-                                                                                 const ArcStringVector& arc_whitelist,
-                                                                                 const FactorStringTypeVector& type_whitelist,
-                                                                                 int max_indegree,
-                                                                                 int max_iters,
-                                                                                 double epsilon, 
-                                                                                 int patience,
-                                                                                 int verbose) {
-        if (!score.compatible_bn(start) || !validation_score.compatible_bn(start)) {
-            throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
-        }
-
-        auto restrictions = util::validate_restrictions(start, arc_blacklist, arc_whitelist);
-        util::check_node_type_list(start, type_whitelist);
-
-        return estimate_validation_hc(op_set,
-                                      score,
-                                      validation_score,
-                                      start,
-                                      restrictions.arc_blacklist,
-                                      restrictions.arc_whitelist,
-                                      type_whitelist,
-                                      max_indegree,
-                                      max_iters,
-                                      epsilon,
-                                      patience,
-                                      verbose);
-
+        return estimate_checks(op_set, score, start, arc_blacklist, arc_whitelist, type_whitelist,
+                               max_indegree, max_iters, epsilon, patience, verbose);
     }
 }

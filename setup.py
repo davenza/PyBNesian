@@ -200,6 +200,8 @@ class BuildExt(build_ext):
         link_opts = self.l_opts.get(ct, [])
         # Include this because the name mangling affects to find the pyarrow functions.
         opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")
+        # opts.append("-g")
+        # opts.append("-O0")
         # opts.append("-libstd=libc++")
         # opts.append("-ferror-limit=1")
 

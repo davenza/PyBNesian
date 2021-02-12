@@ -37,7 +37,6 @@ namespace dataset {
     py::object pandas_to_pyarrow_array(py::handle pyobject);
 
     Array_ptr copy_array(const Array_ptr& array);
-
     Array_ptr copy_array_dictionary(const Array_ptr& array);
     Array_ptr copy_array_string(const Array_ptr& array);
 
@@ -1413,7 +1412,7 @@ namespace dataset {
                                                 Array_vector()
                                                 )) {}
 
-        DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) {};
+        DataFrame(std::shared_ptr<RecordBatch> rb) : m_batch(rb) {}
 
         const std::shared_ptr<RecordBatch>& record_batch() const { return m_batch; }
 
@@ -1542,7 +1541,6 @@ namespace pybind11::detail {
             else if (dataset::is_pandas_dataframe(src)) {
                 auto a = dataset::pandas_to_pyarrow_record_batch(src);
                 auto result = pyarrow::unwrap_batch(a.ptr());
-
                 if (result.ok()) {
                     value = result.ValueOrDie();
                     return true;

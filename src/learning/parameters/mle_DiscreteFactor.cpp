@@ -34,11 +34,10 @@ namespace learning::parameters {
         cardinality(0) = dict_variable->dictionary()->length();
         strides(0) = 1;
 
-        int i = 1;
-        for(const auto& ev : evidence) {
-            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(ev));
+        for(int i = 1; i < num_variables; ++i) {
+            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(evidence[i-1]));
             cardinality(i) = dict_evidence->dictionary()->length();
-            strides(i) = strides(i-1)*cardinality(i-1);            
+            strides(i) = strides(i-1)*cardinality(i-1);
         }
 
         auto logprob = _joint_counts(df, variable, evidence, cardinality, strides);

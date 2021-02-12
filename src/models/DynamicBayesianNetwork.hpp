@@ -2,10 +2,16 @@
 #define PYBNESIAN_MODELS_DYNAMICBAYESIANNETWORK_HPP
 
 #include <dataset/dynamic_dataset.hpp>
+#include <factors/continuous/LinearGaussianCPD.hpp>
+#include <factors/continuous/CKDE.hpp>
+#include <factors/continuous/SemiparametricCPD.hpp>
+#include <factors/discrete/DiscreteFactor.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <util/temporal.hpp>
 
 using dataset::DynamicDataFrame;
+using factors::continuous::LinearGaussianCPD, factors::continuous::CKDE,
+      factors::continuous::SemiparametricCPD, factors::discrete::DiscreteFactor;
 using models::BayesianNetworkBase;
 
 namespace models {
@@ -136,13 +142,16 @@ namespace models {
         }
 
         DataFrame sample(int n, unsigned int seed) const override;
-
         void save(std::string name, bool include_cpd = false) const override;
+
+        py::tuple __getstate__() const;
+        static Derived __setstate__(py::tuple& t);
     private:
         BidirectionalMapIndex<std::string> m_variables;
         int m_markovian_order;
         BayesianNetwork<BN_traits<Derived>::TYPE> m_static;
         ConditionalBayesianNetwork<BN_traits<Derived>::TYPE> m_transition;
+        mutable bool m_include_cpd;
     };
     
     template<typename BN, typename ConditionalBN>
@@ -198,7 +207,6 @@ namespace models {
 
         auto static_df = df.slice(0, m_markovian_order);
         auto dstatic_df = create_static_df(static_df, m_markovian_order);
-
 
         // Generate logl for the static BN.
         for (int i = 0; i < m_markovian_order; ++i) {
@@ -262,14 +270,57 @@ namespace models {
         return sll;
     }
 
+    Array_ptr new_array(const LinearGaussianCPD& cpd, int length);
+    Array_ptr new_array(const CKDE& cpd, int length);
+    Array_ptr new_array(const SemiparametricCPD& cpd, int length);
+    Array_ptr new_array(const DiscreteFactor& cpd, int length);
+
     template<typename Derived>
     DataFrame DynamicBayesianNetworkImpl<Derived>::sample(int n, unsigned int seed) const {
+        check_fitted();
+
+        auto static_sample = m_static.sample(1, seed);
+
+        // auto schema = arrow::schema(m_variables.elements());
+        // std::vector<Array_ptr> columns;
+
+        // DataFrame parents(arrow::RecordBatch::Make(arrow::schema(m_variables, n)));
+
         
+
+
+    }
+
+    template<typename Derived>
+    py::tuple DynamicBayesianNetworkImpl<Derived>::__getstate__() const {
+        m_static.m_include_cpd = m_include_cpd;
+        m_transition.m_include_cpd = m_include_cpd;
+        return py::make_tuple(m_variables.elements(),
+                              m_markovian_order,
+                              m_static.__getstate__(),
+                              m_transition.__getstate__());
+    }
+
+    template<typename Derived>
+    Derived DynamicBayesianNetworkImpl<Derived>::__setstate__(py::tuple& t) {
+        if (t.size() != 4)
+            throw std::runtime_error("Not valid DynamicBayesianNetwork");
+
+        auto variables = t[0].cast<std::vector<std::string>>();
+        auto markovian_order = t[1].cast<int>();
+        auto static_bn = t[2].cast<BayesianNetwork<BN_traits<Derived>::TYPE>>();
+        auto transition_bn = t[3].cast<ConditionalBayesianNetwork<BN_traits<Derived>::TYPE>>();
+
+        return Derived(variables, markovian_order, static_bn, transition_bn);
     }
 
     template<typename Derived>
     void DynamicBayesianNetworkImpl<Derived>::save(std::string name, bool include_cpd) const {
-        
+        m_include_cpd = include_cpd;
+        auto open = py::module::import("io").attr("open");
+        auto file = open(name, "wb");
+        py::module::import("pickle").attr("dump")(py::cast(static_cast<const Derived*>(this)), file, 2);
+        file.attr("close")();
     }
 }
 

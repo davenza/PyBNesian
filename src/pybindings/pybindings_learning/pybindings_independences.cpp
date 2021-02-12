@@ -43,7 +43,7 @@ void pybindings_independence_tests(py::module& root) {
         .def("has_variables", py::overload_cast<const std::vector<std::string>&>(&IndependenceTest::has_variables, py::const_));
 
     py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(independence_tests, "LinearCorrelation")
-        .def(py::init<const DataFrame>());
+        .def(py::init<const DataFrame&>());
 
     py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(independence_tests, "KMutualInformation")
         .def(py::init<DataFrame, int, unsigned int, int, int>(),
@@ -71,8 +71,7 @@ void pybindings_independence_tests(py::module& root) {
             return self.mi(x, y, z.begin(), z.end());
         });
 
-    py::class_<DynamicIndependenceTest,
-               std::shared_ptr<DynamicIndependenceTest>>
+    py::class_<DynamicIndependenceTest, std::shared_ptr<DynamicIndependenceTest>>
                         (independence_tests, "DynamicIndependenceTest")
         .def("static_tests", &DynamicIndependenceTest::static_tests)
         .def("transition_tests", &DynamicIndependenceTest::transition_tests)
@@ -86,13 +85,13 @@ void pybindings_independence_tests(py::module& root) {
     py::class_<DynamicLinearCorrelation,
                DynamicIndependenceTest,
                std::shared_ptr<DynamicLinearCorrelation>>
-                        (independence_tests, "DynamicLinearCorrelation")
+                        (independence_tests, "DynamicLinearCorrelation", py::multiple_inheritance())
         .def(py::init<const DynamicDataFrame&>());
 
     py::class_<DynamicKMutualInformation,
                DynamicIndependenceTest,
                std::shared_ptr<DynamicKMutualInformation>>
-                        (independence_tests, "DynamicKMutualInformation")
+                        (independence_tests, "DynamicKMutualInformation", py::multiple_inheritance())
         .def(py::init<const DynamicDataFrame&, int, unsigned int, int, int>(),
             py::arg("df"), py::arg("k"), py::arg("seed"), py::arg("shuffle_neighbors") = 5, py::arg("samples") = 1000)
         .def(py::init<const DynamicDataFrame&, int,  int, int>(),

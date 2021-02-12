@@ -1,4 +1,6 @@
 #include <Python.h>
+#include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <arrow/api.h>
 #include <arrow/python/pyarrow.h>
 #include <factors/continuous/LinearGaussianCPD.hpp>
@@ -286,7 +288,6 @@ namespace factors::continuous {
         arrow::NumericBuilder<arrow::DoubleType> builder;
         RAISE_STATUS_ERROR(builder.Resize(n));
 
-
         std::mt19937 rng{seed};
         std::normal_distribution<> normal(m_beta(0), std::sqrt(m_variance));
 
@@ -370,7 +371,7 @@ namespace factors::continuous {
 
     LinearGaussianCPD LinearGaussianCPD::__setstate__(py::tuple& t) {
         if (t.size() != 5)
-            throw std::runtime_error("Not valid DirectedGraph.");
+            throw std::runtime_error("Not valid LinearGaussianCPD.");
 
         LinearGaussianCPD cpd(t[0].cast<std::string>(),
                               t[1].cast<std::vector<std::string>>());

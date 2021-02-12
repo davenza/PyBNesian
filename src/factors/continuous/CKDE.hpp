@@ -2,12 +2,16 @@
 #define PYBNESIAN_FACTORS_CONTINUOUS_CKDE_HPP
 
 #include <random>
+#include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <opencl/opencl_config.hpp>
 #include <dataset/dataset.hpp>
+#include <factors/factors.hpp>
 #include <util/math_constants.hpp>
 
 namespace py = pybind11;
 using dataset::DataFrame;
+using factors::FactorType;
 using Eigen::VectorXd, Eigen::VectorXi, Eigen::LLT;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
@@ -673,8 +677,7 @@ namespace factors::continuous {
         using CType = typename ArrowType::c_type;
         using VectorType = Matrix<CType, Dynamic, 1>;
         
-
-        int bandwidth_selector = -1;
+        int bandwidth_selector = static_cast<int>(m_bselector);
         MatrixXd bw;
         VectorType training_data;
         double lognorm_const = -1;
@@ -689,7 +692,6 @@ namespace factors::continuous {
             lognorm_const = m_lognorm_const;
             training_type = static_cast<int>(m_training_type);
             N_export = N;
-            bandwidth_selector = static_cast<int>(m_bselector);
             bw = m_bandwidth;
         }
 
@@ -727,6 +729,10 @@ namespace factors::continuous {
             if (!m_evidence.empty()) {
                 m_marg = KDE(m_evidence);
             }
+        }
+
+        FactorType factor_type() const {
+            return FactorType::CKDE;
         }
 
         const std::string& variable() const { return m_variable; }

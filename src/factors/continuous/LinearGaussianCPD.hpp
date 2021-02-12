@@ -2,10 +2,12 @@
 #define PYBNESIAN_FACTORS_CONTINUOUS_LINEARGAUSSIANCPD_HPP
 
 #include <random>
+#include <factors/factors.hpp>
 #include <dataset/dataset.hpp>
 
 using Eigen::VectorXd;
 using dataset::DataFrame;
+using factors::FactorType;
 
 namespace py = pybind11;
 
@@ -25,15 +27,19 @@ namespace factors::continuous {
         LinearGaussianCPD(const std::string variable, const std::vector<std::string> evidence,
                             const std::vector<double> beta, const double variance);
 
+
+        FactorType factor_type() const {
+            return FactorType::LinearGaussianCPD;
+        }
+        
         const std::string& variable() const { return m_variable; }
         const std::vector<std::string>& evidence() const { return m_evidence; }
+        
         bool fitted() const { return m_fitted; }
-  
         void fit(const DataFrame& df);
-
         VectorXd logl(const DataFrame& df) const;
-
         double slogl(const DataFrame& df) const;
+        VectorXd cdf(const DataFrame& df) const;
 
         std::string ToString() const;
 
@@ -44,10 +50,9 @@ namespace factors::continuous {
                                         ". Expected size: " + std::to_string((m_evidence.size() + 1)));
             m_beta = new_beta; 
         }
+
         double variance() const { return m_variance; }
         void set_variance(double v) { m_variance = v; }
-
-        VectorXd cdf(const DataFrame& df) const;
 
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 

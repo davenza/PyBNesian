@@ -32,13 +32,15 @@ namespace learning::operators {
     }
 
     void ArcOperatorSet::update_valid_ops(const BayesianNetworkBase& model) {
-        if (required_arclist_update) {
-            int num_nodes = model.num_nodes();
-            if (delta.rows() != num_nodes) {
-                delta = MatrixXd(num_nodes, num_nodes);
-                valid_op = MatrixXb(num_nodes, num_nodes);
-            }
+        int num_nodes = model.num_nodes();
 
+        bool changed_size = delta.rows() != num_nodes || delta.cols() != num_nodes;
+        if (changed_size) {
+            delta = MatrixXd(num_nodes, num_nodes);
+            valid_op = MatrixXb(num_nodes, num_nodes);
+        }
+
+        if (changed_size || required_arclist_update) {
             for (const auto& arc : m_blacklist_names) {
                 m_blacklist.insert({model.index(arc.first), model.index(arc.second)});
             }
@@ -52,7 +54,6 @@ namespace learning::operators {
             m_whitelist_names.clear();
 
             auto val_ptr = valid_op.data();
-
             std::fill(val_ptr, val_ptr + num_nodes*num_nodes, true);
 
             auto valid_ops = (num_nodes * num_nodes) - 2*m_whitelist.size() - m_blacklist.size() - num_nodes;
@@ -177,14 +178,16 @@ namespace learning::operators {
     }
 
     void ArcOperatorSet::update_valid_ops(const ConditionalBayesianNetworkBase& model) {
-        if (required_arclist_update) {
-            int num_nodes = model.num_nodes();
-            int total_nodes = model.num_total_nodes();
-            if (delta.rows() != total_nodes || delta.cols() != num_nodes) {
-                delta = MatrixXd(total_nodes, num_nodes);
-                valid_op = MatrixXb(total_nodes, num_nodes);
-            }
+        int num_nodes = model.num_nodes();
+        int total_nodes = model.num_total_nodes();
 
+        bool changed_size = delta.rows() != total_nodes || delta.cols() != num_nodes;
+        if (changed_size) {
+            delta = MatrixXd(total_nodes, num_nodes);
+            valid_op = MatrixXb(total_nodes, num_nodes);
+        }
+
+        if (changed_size || required_arclist_update) {
             for (const auto& arc : m_blacklist_names) {
                 m_blacklist.insert({model.index(arc.first), model.index(arc.second)});
             }
@@ -198,7 +201,6 @@ namespace learning::operators {
             m_whitelist_names.clear();
 
             auto val_ptr = valid_op.data();
-
             std::fill(val_ptr, val_ptr + total_nodes*num_nodes, true);
 
             auto valid_ops = total_nodes * num_nodes - num_nodes;
@@ -670,7 +672,7 @@ namespace learning::operators {
             int idx_max = *it;
             const auto& node = model.collapsed_name(idx_max);
             auto node_type = spbn.node_type(node);
-            return std::make_shared<ChangeNodeType>(node, node_type.opposite(), delta(idx_max));
+            return std::make_shared<ChangeNodeType>(node, node_type.opposite_semiparametric(), delta(idx_max));
         }
 
         return nullptr;
@@ -691,7 +693,7 @@ namespace learning::operators {
             int idx_max = *it;
             const auto& node = model.collapsed_name(idx_max);
             auto node_type = spbn.node_type(node);
-            std::shared_ptr<Operator> op = std::make_shared<ChangeNodeType>(node, node_type.opposite(), delta(idx_max));
+            std::shared_ptr<Operator> op = std::make_shared<ChangeNodeType>(node, node_type.opposite_semiparametric(), delta(idx_max));
             if (!tabu_set.contains(op))
                 return op;
         }

@@ -114,7 +114,8 @@ namespace factors::continuous {
             case Type::FLOAT:
                 return __getstate__<arrow::FloatType>();
             default:
-                throw std::runtime_error("Unreachable code.");
+                // Not fitted model.
+                return __getstate__<arrow::DoubleType>();
         }
     }
 
@@ -125,12 +126,12 @@ namespace factors::continuous {
         KDE kde(t[0].cast<std::vector<std::string>>());
 
         kde.m_fitted = t[1].cast<bool>();
+        kde.m_bselector = static_cast<KDEBandwidth>(t[2].cast<int>());
 
         if (kde.m_fitted) {
-            kde.m_bselector = static_cast<KDEBandwidth>(t[2].cast<int>());
             kde.m_bandwidth = t[3].cast<MatrixXd>();
             kde.m_lognorm_const = t[5].cast<double>();
-            kde.N = t[6].cast<size_t>();
+            kde.N = static_cast<size_t>(t[6].cast<int>());
             kde.m_training_type = static_cast<arrow::Type::type>(t[7].cast<int>());
 
             auto llt_cov = kde.m_bandwidth.llt();
@@ -284,7 +285,8 @@ namespace factors::continuous {
             case Type::FLOAT:
                 return __getstate__<arrow::FloatType>();
             default:
-                throw std::runtime_error("Unreachable code.");
+                // Not fitted model.
+                return __getstate__<arrow::DoubleType>();
         }
     }
 

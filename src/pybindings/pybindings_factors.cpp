@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <factors/continuous/LinearGaussianCPD.hpp>
@@ -25,7 +26,7 @@ void pybindings_factors(py::module& root) {
         .def_property_readonly_static("CKDE", [](const py::object&) { 
             return FactorType(FactorType::CKDE);
         })
-        .def("opposite", &FactorType::opposite)
+        .def("opposite_semiparametric", &FactorType::opposite_semiparametric)
         .def("__str__", &FactorType::ToString)
         .def("__repr__", &FactorType::ToString)
         .def(py::self == py::self)
@@ -177,10 +178,10 @@ void pybindings_factors(py::module& root) {
         .def(py::init<CKDE>())
         .def_property_readonly("variable", &SemiparametricCPD::variable)
         .def_property_readonly("evidence", &SemiparametricCPD::evidence)
-        .def_property_readonly("node_type", &SemiparametricCPD::node_type)
+        .def_property_readonly("factor_type", &SemiparametricCPD::factor_type)
         .def_property_readonly("fitted", &SemiparametricCPD::fitted)
-        .def("as_lg", &SemiparametricCPD::as_lg, py::return_value_policy::reference_internal)
-        .def("as_ckde", &SemiparametricCPD::as_ckde, py::return_value_policy::reference_internal)
+        .def("as_lg", py::overload_cast<>(&SemiparametricCPD::as_lg), py::return_value_policy::reference_internal)
+        .def("as_ckde", py::overload_cast<>(&SemiparametricCPD::as_ckde), py::return_value_policy::reference_internal)
         .def("fit", &SemiparametricCPD::fit)
         .def("logl", &SemiparametricCPD::logl, py::return_value_policy::take_ownership)
         .def("slogl", &SemiparametricCPD::slogl)

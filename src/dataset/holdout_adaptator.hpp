@@ -94,10 +94,10 @@ namespace dataset {
 
     class HoldOut {
     public:
-        HoldOut(const DataFrame& df, double test_ratio, bool include_null = false) : 
+        HoldOut(DataFrame df, double test_ratio, bool include_null = false) : 
                                                     HoldOut(df, test_ratio, std::random_device{}(), include_null) { }
-        HoldOut(const DataFrame& df, double test_ratio, unsigned int seed, bool include_null = false) :
-                                                                m_seed(seed)
+        HoldOut(DataFrame df, double test_ratio, unsigned int seed, bool include_null = false) :
+                                                    m_seed(seed)
         {
             if (test_ratio <= 0 || test_ratio >= 1.0) {
                 throw std::invalid_argument("test_ratio must be a number between 0 and 1.");

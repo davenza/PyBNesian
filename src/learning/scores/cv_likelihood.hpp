@@ -45,12 +45,6 @@ namespace learning::scores {
                            const std::string& variable,
                            const std::vector<std::string>& evidence) const override;
 
-        template<typename VarType, typename EvidenceIter>
-        double local_score(FactorType variable_type,
-                           const VarType& variable, 
-                           const EvidenceIter evidence_begin, 
-                           const EvidenceIter evidence_end) const;
-
         const CrossValidation& cv() { return m_cv; }
 
         std::string ToString() const override {
@@ -62,7 +56,7 @@ namespace learning::scores {
         }
 
         ScoreType type() const override {
-            return ScoreType::PREDICTIVE_LIKELIHOOD;
+            return ScoreType::CVLikelihood;
         }
 
         bool has_variables(const std::string& name) const override {

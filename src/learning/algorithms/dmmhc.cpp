@@ -35,7 +35,6 @@ namespace learning::algorithms {
     std::unique_ptr<DynamicBayesianNetworkBase> DMMHC::estimate(const DynamicIndependenceTest& test,
                                                                 OperatorSet& op_set,
                                                                 DynamicScore& score,
-                                                                DynamicScore* validation_score,
                                                                 const std::vector<std::string>& variables,
                                                                 const std::string& bn_str,
                                                                 int markovian_order,
@@ -45,18 +44,18 @@ namespace learning::algorithms {
                                                                 int patience,
                                                                 double alpha,
                                                                 int verbose) {
-        auto bn_type = util::check_valid_bn_string(bn_str);
-        if (!test.has_variables(variables))
-            throw std::invalid_argument("DynamicIndependenceTest do not contain all the variables in nodes lists.");
-        if (!score.has_variables(variables) || (validation_score && !validation_score->has_variables(variables)))
-            throw std::invalid_argument("Score do not contain all the variables in nodes list.");
-
         std::vector<std::string> vars;
         if (variables.empty())
             vars = test.variable_names();
-        else
+        else {
+            if (!test.has_variables(variables))
+                throw std::invalid_argument("DynamicIndependenceTest do not contain all the variables in nodes lists.");
             vars = variables;
+        }
 
+        if (!score.has_variables(vars))
+            throw std::invalid_argument("Score do not contain all the variables in nodes list.");
+        
 
         MMHC mmhc;
 
@@ -65,48 +64,45 @@ namespace learning::algorithms {
         const auto& static_tests = test.static_tests();
 
         auto& static_score = score.static_score();
-        Score* validation_static_score = nullptr;
-        if (validation_score)
-            validation_static_score = &validation_score->static_score();
+
+        ArcStringVector arc_blacklist;
+        ArcStringVector arc_whitelist;
+        EdgeStringVector edge_blacklist;
+        EdgeStringVector edge_whitelist;
+        FactorStringTypeVector type_whitelist;
 
         auto g0 = mmhc.estimate(static_tests,
                                 op_set,
                                 static_score,
-                                validation_static_score,
                                 static_nodes,
                                 bn_str,
                                 static_arc_blacklist,
-                                ArcStringVector(),
-                                EdgeStringVector(),
-                                EdgeStringVector(),
-                                FactorStringTypeVector(),
+                                arc_whitelist,
+                                edge_blacklist,
+                                edge_whitelist,
+                                type_whitelist,
                                 max_indegree,
                                 max_iters,
                                 epsilon,
                                 patience,
                                 alpha,
                                 verbose);
-    
+
         auto transition_nodes = util::temporal_names(vars, 0, 0);
         const auto& transition_tests = test.transition_tests();
-
         auto& transition_score = score.transition_score();
-        Score* validation_transition_score = nullptr;
-        if (validation_score)
-            validation_transition_score = &validation_score->transition_score();
 
         auto gt = mmhc.estimate_conditional(transition_tests,
                                             op_set,
                                             transition_score,
-                                            validation_transition_score,
                                             transition_nodes,
                                             static_nodes,
                                             bn_str,
-                                            ArcStringVector(),
-                                            ArcStringVector(),
-                                            EdgeStringVector(),
-                                            EdgeStringVector(),
-                                            FactorStringTypeVector(),
+                                            arc_blacklist,
+                                            arc_whitelist,
+                                            edge_blacklist,
+                                            edge_whitelist,
+                                            type_whitelist,
                                             max_indegree,
                                             max_iters,
                                             epsilon,
@@ -114,6 +110,7 @@ namespace learning::algorithms {
                                             alpha,
                                             verbose);
         
+        auto bn_type = util::check_valid_bn_string(bn_str);
         auto dynamic_bn = [bn_type, &vars, markovian_order, &g0, &gt]() -> std::unique_ptr<DynamicBayesianNetworkBase> {
             switch (bn_type) {
                 case BayesianNetworkType::Gaussian:

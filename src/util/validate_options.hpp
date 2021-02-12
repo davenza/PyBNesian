@@ -13,7 +13,7 @@ namespace util {
     OperatorSetTypeS check_valid_operators_string(const std::optional<std::vector<std::string>>& operators, 
                                                   BayesianNetworkType bn_type);
 
-    std::shared_ptr<Score> check_valid_score(const DataFrame& df, 
+    std::unique_ptr<Score> check_valid_score(const DataFrame& df, 
                                              BayesianNetworkType bn_type,
                                              ScoreType score,
                                              int seed,

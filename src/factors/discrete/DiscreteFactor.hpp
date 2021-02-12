@@ -3,8 +3,10 @@
 
 #include <random>
 #include <dataset/dataset.hpp>
+#include <factors/factors.hpp>
 
 using dataset::DataFrame;
+using factors::FactorType;
 using Eigen::VectorXd, Eigen::VectorXi;
 
 using Array_ptr = std::shared_ptr<arrow::Array>;
@@ -109,6 +111,9 @@ namespace factors::discrete {
                                                                                   m_strides(),
                                                                                   m_fitted(false) {}
 
+        FactorType factor_type() const {
+            return FactorType::DiscreteFactor;
+        }
 
         const std::string& variable() const { return m_variable; }
         const std::vector<std::string>& variable_values() const { return m_variable_values; }

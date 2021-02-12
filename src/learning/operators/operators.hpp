@@ -14,7 +14,7 @@ using VectorXb = Matrix<bool, Dynamic, 1>;
 using models::BayesianNetwork, models::BayesianNetworkBase, models::SemiparametricBNBase;
 using models::ConditionalBayesianNetworkBase;
 using factors::FactorType;
-using learning::scores::Score;
+using learning::scores::Score, learning::scores::ValidatedScore;
 using util::ArcStringVector, util::FactorStringTypeVector;
 
 namespace learning::operators {
@@ -182,7 +182,7 @@ namespace learning::operators {
             }
         }
         std::shared_ptr<Operator> opposite() const override {
-            return std::make_shared<ChangeNodeType>(m_node, m_new_node_type.opposite(), -this->delta());
+            return std::make_shared<ChangeNodeType>(m_node, m_new_node_type.opposite_semiparametric(), -this->delta());
         }
         std::shared_ptr<Operator> copy() const override {
             return std::make_shared<ChangeNodeType>(m_node, m_new_node_type, this->delta());
@@ -358,10 +358,27 @@ namespace learning::operators {
             }
         }
 
+        void cache_vlocal_scores(const BayesianNetworkBase& model,
+                                 const ValidatedScore& score) {
+            if (m_local_score.rows() != model.num_nodes()) {
+                m_local_score = VectorXd(model.num_nodes());
+            }
+
+            for (const auto& node : model.nodes()) {
+                m_local_score(model.collapsed_index(node)) = score.vlocal_score(model, node);
+            }
+        }
+
         void update_local_score(const BayesianNetworkBase& model,
                                 const Score& score,
                                 int index) {
             m_local_score(model.collapsed_from_index(index)) = score.local_score(model, index);
+        }
+
+        void update_vlocal_score(const BayesianNetworkBase& model,
+                                const ValidatedScore& score,
+                                int index) {
+            m_local_score(model.collapsed_from_index(index)) = score.vlocal_score(model, index);
         }
 
         void update_local_score(const BayesianNetworkBase& model,
@@ -388,6 +405,31 @@ namespace learning::operators {
             }
         }
 
+        void update_vlocal_score(const BayesianNetworkBase& model,
+                                 const ValidatedScore& score,
+                                 const Operator& op) {
+            switch(op.type()) {
+                case OperatorType::ADD_ARC:
+                case OperatorType::REMOVE_ARC: {
+                    auto& dwn_op = dynamic_cast<const ArcOperator&>(op);
+                    update_vlocal_score(model, score, model.index(dwn_op.target()));
+                }
+                    break;
+                case OperatorType::FLIP_ARC: {
+                    auto& dwn_op = dynamic_cast<const ArcOperator&>(op);
+                    update_vlocal_score(model, score, model.index(dwn_op.source()));
+                    update_vlocal_score(model, score, model.index(dwn_op.target()));
+                }
+                    break;
+                case OperatorType::CHANGE_NODE_TYPE: {
+                    auto& dwn_op = dynamic_cast<const ChangeNodeType&>(op);
+                    update_vlocal_score(model, score, model.index(dwn_op.node()));
+                }
+                    break;
+            }
+        }
+
+
         double sum() {
             return m_local_score.sum();
         }
@@ -405,6 +447,7 @@ namespace learning::operators {
     
     class OperatorSet {
     public:
+        OperatorSet() : m_local_cache(nullptr) {}
         virtual ~OperatorSet() {}
         virtual void cache_scores(const BayesianNetworkBase&, const Score&) = 0;
         virtual std::shared_ptr<Operator> find_max(const BayesianNetworkBase&) const = 0;
@@ -487,21 +530,25 @@ namespace learning::operators {
         void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
 
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
+            m_blacklist.clear();
             m_blacklist_names = blacklist;
             required_arclist_update = true;
         }
 
         void set_arc_blacklist(const ArcSet& blacklist) override {
+            m_blacklist_names.clear();
             m_blacklist = blacklist;
             required_arclist_update = true;
         }
 
         void set_arc_whitelist(const ArcStringVector& whitelist) override {
+            m_whitelist.clear();
             m_whitelist_names = whitelist;
             required_arclist_update = true;
         }
 
         void set_arc_whitelist(const ArcSet& whitelist) override {
+            m_whitelist_names.clear();
             m_whitelist = whitelist;
             required_arclist_update = true;
         }
@@ -762,7 +809,7 @@ namespace learning::operators {
             auto parents = model.parents(node);
             const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
 
-            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite(), node, parents)
+            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite_semiparametric(), node, parents)
                                                  - this->m_local_cache->local_score(model, node);
         }
 
@@ -775,7 +822,7 @@ namespace learning::operators {
             FactorType type = spbn.node_type(node);
             auto parents = model.parents(node);
             const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
-            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite(), node, parents) 
+            delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite_semiparametric(), node, parents) 
                                                  - this->m_local_cache->local_score(model, node);
         }
 

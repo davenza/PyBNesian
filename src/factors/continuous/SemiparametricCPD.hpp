@@ -32,7 +32,7 @@ namespace factors::continuous {
         double slogl(const DataFrame& df) const;
         VectorXd cdf(const DataFrame& df) const;
 
-        FactorType node_type() const {
+        FactorType factor_type() const {
             if (std::holds_alternative<LinearGaussianCPD>(m_cpd))
                 return FactorType::LinearGaussianCPD;
             else
@@ -47,7 +47,23 @@ namespace factors::continuous {
             }
         }
 
+        const LinearGaussianCPD& as_lg() const {
+            try {
+                return std::get<LinearGaussianCPD>(m_cpd);
+            } catch(std::bad_variant_access&) {
+                throw py::value_error("The SemiparametricBN is not a LinearGaussianCPD");
+            }
+        }
+
         CKDE& as_ckde() {
+            try {
+                return std::get<CKDE>(m_cpd);
+            } catch(std::bad_variant_access&) {
+                throw py::value_error("The SemiparametricBN is not a CKDE");
+            }
+        }
+
+        const CKDE& as_ckde() const {
             try {
                 return std::get<CKDE>(m_cpd);
             } catch(std::bad_variant_access&) {

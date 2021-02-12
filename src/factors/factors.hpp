@@ -12,7 +12,8 @@ namespace factors {
     public:
         enum Value : uint8_t {
             LinearGaussianCPD,
-            CKDE
+            CKDE,
+            DiscreteFactor
         };
 
         struct Hash {
@@ -41,16 +42,20 @@ namespace factors {
                     return "LinearGaussianCPD";
                 case Value::CKDE:
                     return "CKDE";
+                case Value::DiscreteFactor:
+                    return "DiscreteFactor";
                 default:
                     throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
             }
         }
 
-        FactorType opposite() const {
+        FactorType opposite_semiparametric() const {
             if (value == FactorType::LinearGaussianCPD) 
                 return FactorType::CKDE;
-            else
+            else if (value == FactorType::CKDE)
                 return FactorType::LinearGaussianCPD;
+            else
+                throw std::invalid_argument("Not valid FactorType for SemiparametricCPD.");
         }
     private:
         Value value;

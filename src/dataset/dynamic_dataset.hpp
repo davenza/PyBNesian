@@ -51,8 +51,9 @@ namespace dataset {
 
     class DynamicDataFrame : public DataFrameBase<DynamicDataFrame> {
     public:
-        DynamicDataFrame(const DataFrame& df, int markovian_order) : m_origin(df),
-                                                                     m_markovian_order(markovian_order) {
+        DynamicDataFrame(DataFrame df, int markovian_order) : m_origin(df),
+                                                              m_markovian_order(markovian_order) {
+
             if (markovian_order < 1) {
                 throw std::invalid_argument("Markovian order must be at least 1.");
             }
@@ -61,8 +62,6 @@ namespace dataset {
             m_static = create_static_df(m_origin, m_markovian_order);
             m_transition = create_transition_df(m_temporal_slices, m_markovian_order);
         }
-
-        const std::shared_ptr<RecordBatch>& record_batch() const { return m_transition.record_batch(); }
 
         int markovian_order() const {
             return m_markovian_order;
@@ -253,9 +252,9 @@ namespace dataset {
     class DynamicAdaptator {
     public: 
         template<typename ...Args>
-        DynamicAdaptator(const DynamicDataFrame& df, const Args&... args) : m_df(df),
-                                                                            m_static(m_df.static_df(), args...),
-                                                                            m_transition(m_df.transition_df(), args...) {}
+        DynamicAdaptator(DynamicDataFrame df, const Args&... args) : m_df(df),
+                                                                     m_static(m_df.static_df(), args...),
+                                                                     m_transition(m_df.transition_df(), args...) {}
 
         const DynamicDataFrame& dataframe() const { return m_df; }
         DynamicDataFrame& dataframe() { return m_df; }

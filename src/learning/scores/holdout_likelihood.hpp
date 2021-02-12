@@ -58,7 +58,7 @@ namespace learning::scores {
         }
 
         ScoreType type() const override {
-            return ScoreType::HOLDOUT_LIKELIHOOD;
+            return ScoreType::HoldoutLikelihood;
         }
         
         bool has_variables(const std::string& name) const override {

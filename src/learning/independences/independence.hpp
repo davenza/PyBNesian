@@ -42,8 +42,6 @@ namespace learning::independences {
     class DynamicIndependenceTest {
     public:
         virtual ~DynamicIndependenceTest() {}
-
-
         virtual const IndependenceTest& static_tests() const = 0;
         virtual const IndependenceTest& transition_tests() const = 0;
 
@@ -63,8 +61,6 @@ namespace learning::independences {
         DynamicIndependenceTestAdaptator(const DynamicDataFrame& df,
                                          const Args&... args) : DynamicAdaptator<BaseTest>(df, args...) {}
         
-
-
         const IndependenceTest& static_tests() const override {
             return this->static_element();
         }

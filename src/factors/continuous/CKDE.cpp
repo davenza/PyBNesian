@@ -261,9 +261,11 @@ namespace factors::continuous {
         std::stringstream stream;
         if (!m_evidence.empty()) {
             stream << "[CKDE] P(" << m_variable << " | " << m_evidence[0];
-            for (auto& ev : m_evidence) {
-                stream << ", " << ev;
+
+            for (size_t i = 1; i < m_evidence.size(); ++i) {
+                stream << ", " << m_evidence[i];
             }
+
             if (m_fitted)
                 stream << ") = CKDE with " << N << " instances";
             else

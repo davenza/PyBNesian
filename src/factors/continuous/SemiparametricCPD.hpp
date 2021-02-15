@@ -39,6 +39,8 @@ namespace factors::continuous {
                 return FactorType::CKDE;
         }
 
+        arrow::Type::type arrow_type() const;
+
         LinearGaussianCPD& as_lg() {
             try {
                 return std::get<LinearGaussianCPD>(m_cpd);

@@ -31,6 +31,10 @@ namespace factors::continuous {
         FactorType factor_type() const {
             return FactorType::LinearGaussianCPD;
         }
+
+        arrow::Type::type arrow_type() const {
+            return Type::DOUBLE;
+        }
         
         const std::string& variable() const { return m_variable; }
         const std::vector<std::string>& evidence() const { return m_evidence; }

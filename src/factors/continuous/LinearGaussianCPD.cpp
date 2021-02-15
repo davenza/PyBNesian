@@ -348,8 +348,8 @@ namespace factors::continuous {
 
             if (m_fitted) {
                 stream << ") = N(" << m_beta(0);
-                for (size_t i = 1; i < m_evidence.size(); ++i) {
-                    stream << " + " << m_beta(i) << "*" << m_evidence[i];
+                for (size_t i = 0; i < m_evidence.size(); ++i) {
+                    stream << " + " << m_beta(i+1) << "*" << m_evidence[i];
                 }
                 stream << ", " << m_variance << ")";
             } else {

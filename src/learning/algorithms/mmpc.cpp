@@ -1081,7 +1081,6 @@ namespace learning::algorithms {
     template<typename G>
     void estimate(G& skeleton,
                   const IndependenceTest& test,
-                  const std::vector<std::string>& nodes,
                   const ArcStringVector& varc_blacklist,
                   const ArcStringVector& varc_whitelist,
                   const EdgeStringVector& vedge_blacklist,
@@ -1172,9 +1171,8 @@ namespace learning::algorithms {
             skeleton = PartiallyDirectedGraph(nodes);
         }
 
-        learning::algorithms::estimate(skeleton, test, nodes, varc_blacklist, varc_whitelist,
-                                       vedge_blacklist, vedge_whitelist, alpha, ambiguous_threshold, allow_bidirected,
-                                       verbose);
+        learning::algorithms::estimate(skeleton, test, varc_blacklist, varc_whitelist, vedge_blacklist,
+                                    vedge_whitelist, alpha, ambiguous_threshold, allow_bidirected, verbose);
 
         return skeleton;
     }
@@ -1202,9 +1200,8 @@ namespace learning::algorithms {
 
         ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
 
-        learning::algorithms::estimate(skeleton, test, nodes, varc_blacklist, varc_whitelist,
-                                       vedge_blacklist, vedge_whitelist, alpha, ambiguous_threshold, allow_bidirected,
-                                       verbose);
+        learning::algorithms::estimate(skeleton, test, varc_blacklist, varc_whitelist, vedge_blacklist,
+                                    vedge_whitelist, alpha, ambiguous_threshold, allow_bidirected, verbose);
         return skeleton;
     }
 }

@@ -3,21 +3,26 @@
 
 namespace factors::continuous {
 
+    arrow::Type::type SemiparametricCPD::arrow_type() const { 
+        return std::visit([](const auto& cpd) {
+                    return cpd.arrow_type();
+                }, m_cpd);
+    }
 
     const std::string& SemiparametricCPD::variable() const { 
-        return std::visit([](auto& cpd) -> const std::string& {
+        return std::visit([](const auto& cpd) -> const std::string& {
                     return cpd.variable();
                 }, m_cpd);
     }
 
     const std::vector<std::string>& SemiparametricCPD::evidence() const { 
-        return std::visit([](auto& cpd) -> const std::vector<std::string>& {
+        return std::visit([](const auto& cpd) -> const std::vector<std::string>& {
                     return cpd.evidence();
                 }, m_cpd);
     }
 
     bool SemiparametricCPD::fitted() const { 
-        return std::visit([](auto& cpd) {
+        return std::visit([](const auto& cpd) {
                     return cpd.fitted();
                 }, m_cpd);
     }
@@ -29,25 +34,25 @@ namespace factors::continuous {
     }
 
     VectorXd SemiparametricCPD::logl(const DataFrame& df) const {
-        return std::visit([&df](auto& cpd) -> VectorXd {
+        return std::visit([&df](const auto& cpd) -> VectorXd {
                             return cpd.logl(df);
                         }, m_cpd);
     }
 
     double SemiparametricCPD::slogl(const DataFrame& df) const {
-        return std::visit([&df](auto& cpd) {
+        return std::visit([&df](const auto& cpd) {
                     return cpd.slogl(df);
                 }, m_cpd);
     }
 
     VectorXd SemiparametricCPD::cdf(const DataFrame& df) const {
-        return std::visit([&df](auto& cpd) -> VectorXd {
+        return std::visit([&df](const auto& cpd) -> VectorXd {
                             return cpd.cdf(df);
                         }, m_cpd);
     }
 
     std::string SemiparametricCPD::ToString() const {
-        return std::visit([](auto& cpd) {
+        return std::visit([](const auto& cpd) {
                     return cpd.ToString();
                 }, m_cpd);
     }
@@ -55,14 +60,14 @@ namespace factors::continuous {
     Array_ptr SemiparametricCPD::sample(int n, const DataFrame& evidence_values, 
                                         unsigned int seed) const {
         
-        return std::visit([n, &evidence_values, seed](auto& cpd) {
+        return std::visit([n, &evidence_values, seed](const auto& cpd) {
             return cpd.sample(n, evidence_values, seed);
         }, m_cpd);
     }
 
     py::tuple SemiparametricCPD::__getstate__() const {
         return py::make_tuple(m_cpd.index(),
-                                std::visit([](auto& cpd) {
+                                std::visit([](const auto& cpd) {
                                     return cpd.__getstate__();
                                 }, m_cpd)
                              );  

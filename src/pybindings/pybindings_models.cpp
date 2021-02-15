@@ -165,8 +165,10 @@ register_DynamicBayesianNetworkImpl(py::module& m, const char* derivedbn_name) {
 
     return py::class_<ImplClass, DynamicBayesianNetworkBase>(m, impl_name.c_str())
         .def_property_readonly("type", &ImplClass::type)
-        .def("static_bn", &ImplClass::static_bn, py::return_value_policy::reference_internal)
-        .def("transition_bn", &ImplClass::transition_bn, py::return_value_policy::reference_internal)
+        .def("static_bn", py::overload_cast<>(&ImplClass::static_bn),
+                            py::return_value_policy::reference_internal)
+        .def("transition_bn", py::overload_cast<>(&ImplClass::transition_bn),
+                            py::return_value_policy::reference_internal)
         .def("markovian_order", &ImplClass::markovian_order)
         .def("num_variables", &ImplClass::num_variables)
         .def("variables", &ImplClass::variables)
@@ -177,7 +179,12 @@ register_DynamicBayesianNetworkImpl(py::module& m, const char* derivedbn_name) {
         .def("fit", &ImplClass::fit)
         .def("logl", &ImplClass::logl)
         .def("slogl", &ImplClass::slogl)
-        .def("sample", &ImplClass::sample)
+        .def("sample", [](const ImplClass& self, int n) {
+            return self.sample(n, std::random_device{}());
+        }, py::arg("n"))
+        .def("sample", [](const ImplClass& self, int n, unsigned int seed) {
+            return self.sample(n, seed);
+        }, py::arg("n"), py::arg("seed"))
         .def("save", &ImplClass::save);
 }
 
@@ -386,8 +393,10 @@ void pybindings_models(py::module& root) {
 
     py::class_<DynamicBayesianNetworkBase>(models, "DynamicBayesianNetworkBase")
         .def_property_readonly("type", &DynamicBayesianNetworkBase::type)
-        .def("static_bn", &DynamicBayesianNetworkBase::static_bn, py::return_value_policy::reference_internal)
-        .def("transition_bn", &DynamicBayesianNetworkBase::transition_bn, py::return_value_policy::reference_internal)
+        .def("static_bn", py::overload_cast<>(&DynamicBayesianNetworkBase::static_bn),
+                            py::return_value_policy::reference_internal)
+        .def("transition_bn", py::overload_cast<>(&DynamicBayesianNetworkBase::transition_bn),
+                            py::return_value_policy::reference_internal)
         .def("markovian_order", &DynamicBayesianNetworkBase::markovian_order)
         .def("num_variables", &DynamicBayesianNetworkBase::num_variables)
         .def("variables", &DynamicBayesianNetworkBase::variables)

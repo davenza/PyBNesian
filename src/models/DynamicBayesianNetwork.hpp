@@ -20,7 +20,9 @@ namespace models {
     public:
         virtual ~DynamicBayesianNetworkBase() = default;
         virtual BayesianNetworkBase& static_bn() = 0;
+        virtual const BayesianNetworkBase& static_bn() const = 0;
         virtual ConditionalBayesianNetworkBase& transition_bn() = 0;
+        virtual const ConditionalBayesianNetworkBase& transition_bn() const = 0;
 
         virtual int markovian_order() const = 0;
         virtual int num_variables() const = 0;
@@ -95,7 +97,9 @@ namespace models {
         }
 
         BayesianNetwork<BN_traits<Derived>::TYPE>& static_bn() override { return m_static; }
+        const BayesianNetwork<BN_traits<Derived>::TYPE>& static_bn() const override { return m_static; }
         ConditionalBayesianNetwork<BN_traits<Derived>::TYPE>& transition_bn() override { return m_transition; }
+        const ConditionalBayesianNetwork<BN_traits<Derived>::TYPE>& transition_bn() const override { return m_transition; }
 
         int markovian_order() const override {
             return m_markovian_order;
@@ -270,25 +274,330 @@ namespace models {
         return sll;
     }
 
-    Array_ptr new_array(const LinearGaussianCPD& cpd, int length);
-    Array_ptr new_array(const CKDE& cpd, int length);
-    Array_ptr new_array(const SemiparametricCPD& cpd, int length);
-    Array_ptr new_array(const DiscreteFactor& cpd, int length);
+    Array_ptr new_numeric_array(arrow::Type::type t, int length);
+    Array_ptr new_discrete_array(const std::vector<std::string>& values, int length);
+
+    template<typename Derived>
+    arrow::Type::type find_type(const DynamicBayesianNetworkImpl<Derived>& dbn, const std::string& variable) {
+
+        if constexpr (BN_traits<Derived>::TYPE == BayesianNetworkType::Gaussian) {
+            return Type::DOUBLE;
+        } else if constexpr (BN_traits<Derived>::TYPE == BayesianNetworkType::Discrete) {
+            return Type::DICTIONARY;
+        } else {
+            arrow::Type::type t = arrow::Type::NA;
+
+            for (int i = 1; i <= dbn.markovian_order(); ++i) {
+                const auto& cpd = dbn.static_bn().cpd(util::temporal_name(variable, i));
+
+                switch (cpd.factor_type()) {
+                    case FactorType::LinearGaussianCPD:
+                        return Type::DOUBLE;
+                    case FactorType::CKDE: {
+                        const auto& ckde = cpd.as_ckde();
+                        if (ckde.arrow_type() == Type::DOUBLE)
+                            return Type::DOUBLE;
+                        else
+                            t = ckde.arrow_type();
+                        break;
+                    }
+                    default:
+                        throw std::runtime_error("Unreachable code.");
+                }
+            }
+
+
+            const auto& cpd = dbn.transition_bn().cpd(util::temporal_name(variable, 0));
+            switch (cpd.factor_type()) {
+                case FactorType::LinearGaussianCPD:
+                    return Type::DOUBLE;
+                case FactorType::CKDE: {
+                    const auto& ckde = cpd.as_ckde();
+                    if (ckde.arrow_type() == Type::DOUBLE)
+                        return Type::DOUBLE;
+                    else
+                        t = ckde.arrow_type();
+                    break;
+                }
+                default:
+                    throw std::runtime_error("Unreachable code.");
+            }
+
+            return t;
+        }
+    }
+
+    template<typename Derived>
+    std::vector<std::string> discretefactor_possible_values(const DynamicBayesianNetworkImpl<Derived>& dbn,
+                                                            const std::string& variable) {
+        std::unordered_set<std::string> values;
+
+        for (int i = 1; i < dbn.markovian_order(); ++i) {
+            const auto& cpd = dbn.static_bn().cpd(util::temporal_name(variable, i));
+
+            for (const auto& value : cpd.variable_values()) {
+                values.insert(value);
+            }
+        }
+
+        const auto& cpd = dbn.transition_bn().cpd(util::temporal_name(variable, 0));
+
+        for (const auto& value : cpd.variable_values()) {
+            values.insert(value);
+        }
+
+        return std::vector(values.begin(), values.end());
+    }
+
+    template<typename Derived>
+    std::pair<DataFrame, std::unordered_map<std::string, arrow::Type::type>>
+    generate_empty_dataframe(const DynamicBayesianNetworkImpl<Derived>& dbn, int n) {
+        
+        std::unordered_map<std::string, arrow::Type::type> types;
+        std::vector<Array_ptr> columns;
+        std::vector<Field_ptr> fields;
+
+        for (const auto& variable : dbn.variables()) {
+            if constexpr (BN_traits<Derived>::TYPE == BayesianNetworkType::Discrete) {
+                types.insert({variable, Type::DICTIONARY});
+                auto variable_values = discretefactor_possible_values(dbn, variable);
+                columns.push_back(new_discrete_array(variable_values, n));
+            } else {
+                auto type = find_type(dbn, variable);
+                types.insert({variable, type});
+                columns.push_back(new_numeric_array(type, n));
+            }
+
+            fields.push_back(arrow::field(variable, columns.back()->type()));
+        }
+
+        auto schema = arrow::schema(fields);
+
+        return {arrow::RecordBatch::Make(schema, n, columns), types};
+    }
+
+    template<typename ArrowType, typename Derived>
+    void sample_discrete_static_bn(const std::string& variable,
+                                   int max_length,
+                                   const DataFrame& static_sample,
+                                   const DynamicBayesianNetworkImpl<Derived>& dbn,
+                                   Array_ptr& output_indices) {
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        auto raw_output = output_indices->data()->template GetMutableValues<typename ArrowType::c_type>(1);
+        for (int i = 0; i < max_length; ++i) {
+            auto name = util::temporal_name(variable, dbn.markovian_order()-i);
+            
+            auto input = static_sample.col(name);
+            auto dict_input = std::static_pointer_cast<arrow::DictionaryArray>(input);
+            auto input_indices = dict_input->indices();
+
+            auto dwn_input_indices = std::static_pointer_cast<ArrayType>(input_indices);
+            raw_output[i] = dwn_input_indices->Value(0);
+        }
+    }
+
+    template<typename Derived>
+    void sample_static_bn(DataFrame& df,
+                          const std::unordered_map<std::string, arrow::Type::type>& types,
+                          const DynamicBayesianNetworkImpl<Derived>& dbn,
+                          int n, 
+                          unsigned int seed) {
+        auto static_sample = dbn.static_bn().sample(1, seed);
+
+        auto max_length = std::min(dbn.markovian_order(), n);
+
+        for (const auto& v : dbn.variables()) {
+            switch (types.at(v)) {
+                case Type::DOUBLE: {
+                    auto raw_col = df.template mutable_data<arrow::DoubleType>(v);
+
+                    for (int i = 0; i < max_length; ++i) {
+                        auto name = util::temporal_name(v, dbn.markovian_order()-i);
+                        raw_col[i] = *static_sample.template data<arrow::DoubleType>(name);
+                    }
+                    break;
+                }
+                case Type::FLOAT: {
+                    auto raw_col = df.mutable_data<arrow::FloatType>(v);
+
+                    for (int i = 0; i < max_length; ++i) {
+                        auto name = util::temporal_name(v, dbn.markovian_order()-i);
+                        raw_col[i] = *static_sample.template data<arrow::FloatType>(name);
+                    }
+                    break;
+                }
+                case Type::DICTIONARY: {
+                    auto col = df.col(v);
+                    auto dict_col = std::static_pointer_cast<arrow::DictionaryArray>(col);
+                    auto indices = dict_col->indices();
+                    switch (indices->type_id()) {
+                        case Type::INT8: {
+                            sample_discrete_static_bn<arrow::Int8Type>(v, max_length, static_sample, dbn, indices);
+                            break;
+                        }
+                        case Type::INT16: {
+                            sample_discrete_static_bn<arrow::Int16Type>(v, max_length, static_sample, dbn, indices);
+                            break;
+                        }
+                        case Type::INT32: {
+                            sample_discrete_static_bn<arrow::Int32Type>(v, max_length, static_sample, dbn, indices);
+                            break;
+                        }
+                        case Type::INT64: {
+                            sample_discrete_static_bn<arrow::Int64Type>(v, max_length, static_sample, dbn, indices);
+                            break;
+                        }
+                        default:
+                            throw std::invalid_argument("Wrong indices array type of DictionaryArray.");
+                    }
+                    break;
+                }
+                default:
+                    throw std::runtime_error("Wrong data type for variable " + v + ": " + std::to_string(types.at(v)));
+            }
+        }
+    }
+
+    std::vector<std::string> conditional_topological_sort(const ConditionalDag& dag);
+
+    template<typename Derived>
+    void sample_transition_bn(DataFrame& df,
+                              const std::unordered_map<std::string, arrow::Type::type>& types,
+                              const DynamicBayesianNetworkImpl<Derived>& dbn,
+                              int n, 
+                              unsigned int seed) {
+        
+        auto top_sort = conditional_topological_sort(dbn.transition_bn().graph());
+
+        for (int i = dbn.markovian_order(); i < n; ++i) {
+            auto evidence_slice = df.slice(i-dbn.markovian_order(), dbn.markovian_order()+1);
+            DynamicDataFrame slice_ddf(evidence_slice, dbn.markovian_order());
+            for (const auto& full_variable : top_sort) {
+                // Remove the suffix "_t_0"
+                auto variable = full_variable.substr(0, full_variable.size()-4);
+                const auto& cpd = dbn.transition_bn().cpd(full_variable);
+
+                auto sampled = cpd.sample(1, slice_ddf.transition_df(), seed);
+
+                switch (types.at(variable)) {
+                    case Type::DOUBLE: {
+                        auto raw_col = df.template mutable_data<arrow::DoubleType>(variable);
+                        
+                        switch(sampled->type_id()) {
+                            case Type::DOUBLE: {
+                                auto dwn_sampled = std::static_pointer_cast<arrow::DoubleArray>(sampled);
+                                raw_col[i] = dwn_sampled->Value(0);
+                                break;
+                            }
+                            case Type::FLOAT: {
+                                auto dwn_sampled = std::static_pointer_cast<arrow::FloatArray>(sampled);
+                                raw_col[i] = dwn_sampled->Value(0);
+                                break;
+                            }
+                            default:
+                                throw std::runtime_error("Wrong sampled data type for variable " + variable);
+                        }
+
+                        break;
+                    }
+                    case Type::FLOAT: {
+                        auto raw_col = df.template mutable_data<arrow::FloatType>(variable);
+                        
+                        switch(sampled->type_id()) {
+                            case Type::DOUBLE: {
+                                auto dwn_sampled = std::static_pointer_cast<arrow::DoubleArray>(sampled);
+                                raw_col[i] = dwn_sampled->Value(0);
+                                break;
+                            }
+                            case Type::FLOAT: {
+                                auto dwn_sampled = std::static_pointer_cast<arrow::FloatArray>(sampled);
+                                raw_col[i] = dwn_sampled->Value(0);
+                                break;
+                            }
+                            default:
+                                throw std::runtime_error("Wrong sampled data type for variable " + variable);
+                        }
+
+                        break;
+                    }
+                    case Type::DICTIONARY: {
+                        auto col = df.col(variable);
+                        auto dict_col = std::static_pointer_cast<arrow::DictionaryArray>(col);
+                        auto indices = dict_col->indices();
+                        
+                        switch (indices->type_id()) {
+                            case Type::INT8: {
+                                using CType = typename arrow::Int8Type::c_type;
+                                auto raw_output = indices->data()->template GetMutableValues<CType>(1);
+                                
+                                auto dict_sampled = std::static_pointer_cast<arrow::DictionaryArray>(sampled);
+                                auto indices_sampled = dict_sampled->indices();
+                                auto dwn_indices_sampled = std::static_pointer_cast<arrow::Int8Array>(indices_sampled);
+
+                                raw_output[i] = dwn_indices_sampled->Value(0);
+                                break;
+                            }
+                            case Type::INT16: {
+                                using CType = typename arrow::Int16Type::c_type;
+                                auto raw_output = indices->data()->template GetMutableValues<CType>(1);
+                                
+                                auto dict_sampled = std::static_pointer_cast<arrow::DictionaryArray>(sampled);
+                                auto indices_sampled = dict_sampled->indices();
+                                auto dwn_indices_sampled = std::static_pointer_cast<arrow::Int16Array>(indices_sampled);
+
+                                raw_output[i] = dwn_indices_sampled->Value(0);
+
+                                break;
+                            }
+                            case Type::INT32: {
+                                using CType = typename arrow::Int32Type::c_type;
+                                auto raw_output = indices->data()->template GetMutableValues<CType>(1);
+                                
+                                auto dict_sampled = std::static_pointer_cast<arrow::DictionaryArray>(sampled);
+                                auto indices_sampled = dict_sampled->indices();
+                                auto dwn_indices_sampled = std::static_pointer_cast<arrow::Int32Array>(indices_sampled);
+
+                                raw_output[i] = dwn_indices_sampled->Value(0);
+
+                                break;
+                            }
+                            case Type::INT64: {
+                                using CType = typename arrow::Int64Type::c_type;
+                                auto raw_output = indices->data()->template GetMutableValues<CType>(1);
+                                
+                                auto dict_sampled = std::static_pointer_cast<arrow::DictionaryArray>(sampled);
+                                auto indices_sampled = dict_sampled->indices();
+                                auto dwn_indices_sampled = std::static_pointer_cast<arrow::Int64Array>(indices_sampled);
+
+                                raw_output[i] = dwn_indices_sampled->Value(0);
+
+                                break;
+                            }
+                            default:
+                                throw std::invalid_argument("Wrong indices array type of DictionaryArray "
+                                                            "for variable " + variable);
+                            }
+
+                        break;
+                    }
+                    default:
+                        throw std::runtime_error("Wrong data type for variable " + variable +
+                                                 ": " + std::to_string(types.at(variable)));
+                }
+            }
+        }
+    }
 
     template<typename Derived>
     DataFrame DynamicBayesianNetworkImpl<Derived>::sample(int n, unsigned int seed) const {
         check_fitted();
 
-        auto static_sample = m_static.sample(1, seed);
+        auto [sampled, types] = generate_empty_dataframe(*this, n);
 
-        // auto schema = arrow::schema(m_variables.elements());
-        // std::vector<Array_ptr> columns;
+        sample_static_bn(sampled, types, *this, n, seed);
+        sample_transition_bn(sampled, types, *this, n, seed);
 
-        // DataFrame parents(arrow::RecordBatch::Make(arrow::schema(m_variables, n)));
-
-        
-
-
+        return sampled;
     }
 
     template<typename Derived>

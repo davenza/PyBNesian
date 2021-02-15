@@ -184,6 +184,7 @@ namespace models {
 
     class SemiparametricBNBase {
     public:
+        virtual ~SemiparametricBNBase() = default;
         virtual FactorType node_type(int node_index) const = 0;
         virtual FactorType node_type(const std::string& node) const = 0;
         virtual std::unordered_map<std::string, FactorType> node_types() const = 0;

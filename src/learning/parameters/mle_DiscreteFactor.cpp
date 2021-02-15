@@ -34,7 +34,7 @@ namespace learning::parameters {
         cardinality(0) = dict_variable->dictionary()->length();
         strides(0) = 1;
 
-        for(int i = 1; i < num_variables; ++i) {
+        for(size_t i = 1; i < num_variables; ++i) {
             auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(evidence[i-1]));
             cardinality(i) = dict_evidence->dictionary()->length();
             strides(i) = strides(i-1)*cardinality(i-1);

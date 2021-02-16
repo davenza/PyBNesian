@@ -72,7 +72,7 @@ def numpy_logpdf(test_df, variable, evidence, beta, variance):
 
     result = np.empty((test_df.shape[0],))
 
-    isnan_vec = np.full((test_df.shape[0],), False, dtype=np.bool)
+    isnan_vec = np.full((test_df.shape[0],), False, dtype=bool)
     isnan_vec[np.isnan(means)] = True
     isnan_vec[np.isnan(test_df.loc[:, variable].to_numpy())] = True
 
@@ -86,7 +86,7 @@ def numpy_cdf(test_df, variable, evidence, beta, variance):
 
     result = np.empty((test_df.shape[0],))
 
-    isnan_vec = np.full((test_df.shape[0],), False, dtype=np.bool)
+    isnan_vec = np.full((test_df.shape[0],), False, dtype=bool)
     isnan_vec[np.isnan(means)] = True
     isnan_vec[np.isnan(test_df.loc[:, variable].to_numpy())] = True
 

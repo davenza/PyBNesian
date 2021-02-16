@@ -459,8 +459,12 @@ namespace learning::operators {
         virtual std::shared_ptr<Operator> find_max(const ConditionalBayesianNetworkBase&, const OperatorTabuSet&) const = 0;
         virtual void update_scores(const ConditionalBayesianNetworkBase&, const Score&, const Operator&) = 0;
 
-        void set_local_score_cache(std::shared_ptr<LocalScoreCache> score_cache) {
+        void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) {
             m_local_cache = score_cache;
+        }
+
+        std::shared_ptr<LocalScoreCache>& local_score_cache() {
+            return m_local_cache;
         }
 
         virtual void set_arc_blacklist(const ArcStringVector&) = 0;
@@ -919,7 +923,6 @@ namespace learning::operators {
         template<typename M>
         void update_scores(const M& model, const Score& score, const Operator& op);
 
-               
         void set_arc_blacklist(const ArcStringVector& blacklist) override {
             for(auto& opset : m_op_sets) {
                 opset->set_arc_blacklist(blacklist);
@@ -961,7 +964,14 @@ namespace learning::operators {
 
     template<typename M>
     void OperatorPool::cache_scores(const M& model, const Score& score) {
-        initialize_local_cache(model);
+        if (this->local_score_cache() == nullptr) {
+            initialize_local_cache(model);
+
+            for (auto& op_set : m_op_sets) {
+                op_set->set_local_score_cache(this->local_score_cache());
+            }
+        }
+
         m_local_cache->cache_local_scores(model, score);
 
         for (auto& op_set : m_op_sets) {

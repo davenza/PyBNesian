@@ -319,7 +319,11 @@ void pybindings_scores(py::module& root) {
                 py::arg("df"),
                 py::arg("test_ratio") = 0.2,
                 py::arg("k") = 10,
-                py::arg("seed"));
+                py::arg("seed"))
+        .def_property_readonly("holdout_lik", &ValidatedLikelihood::holdout, py::return_value_policy::reference_internal)
+        .def_property_readonly("cv_lik", &ValidatedLikelihood::cv, py::return_value_policy::reference_internal)
+        .def("training_data", &ValidatedLikelihood::training_data, py::return_value_policy::reference_internal)
+        .def("validation_data", &ValidatedLikelihood::validation_data, py::return_value_policy::reference_internal);
 
     py::class_<DynamicScore, std::shared_ptr<DynamicScore>>(scores, "DynamicScore")
         .def("static_score", &DynamicScore::static_score)

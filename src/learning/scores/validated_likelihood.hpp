@@ -96,6 +96,14 @@ namespace learning::scores {
             return m_holdout.local_score(variable_type, variable, evidence);
         }
 
+        const DataFrame& training_data() {
+            return m_holdout.training_data();
+        }
+
+        const DataFrame& validation_data() {
+            return m_holdout.test_data();
+        }
+
         const HoldoutLikelihood& holdout() const {
             return m_holdout;
         }

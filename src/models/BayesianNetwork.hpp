@@ -1027,6 +1027,10 @@ namespace models {
     void BayesianNetworkImpl<Derived>::save(std::string name, bool include_cpd) const {
         m_include_cpd = include_cpd;
         auto open = py::module::import("io").attr("open");
+
+        if (name.size() < 7 || name.substr(name.size()-7) != ".pickle")
+            name += ".pickle";
+
         auto file = open(name, "wb");
         py::module::import("pickle").attr("dump")(py::cast(static_cast<const Derived*>(this)), file, 2);
         file.attr("close")();

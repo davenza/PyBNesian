@@ -370,23 +370,23 @@ namespace graph {
         G g(t[0].cast<std::vector<std::string>>(), t[1].cast<std::vector<std::string>>());
 
         if constexpr (GraphTraits<G>::has_arcs) {
-            auto arcs = t[2].cast<std::vector<Arc>>();
+            auto arcs = t[2].cast<ArcStringVector>();
 
-            for (auto& arc : arcs) {
+            for (const auto& arc : arcs) {
                 g.add_arc(arc.first, arc.second);
             }
 
             if constexpr (GraphTraits<G>::has_edges) {
-                auto edges = t[3].cast<std::vector<Edge>>();
+                auto edges = t[3].cast<EdgeStringVector>();
 
-                for (auto& edge : edges) {
+                for (const auto& edge : edges) {
                     g.add_edge(edge.first, edge.second);
                 }
             }
         } else {
-            auto edges = t[2].cast<std::vector<Edge>>();
+            auto edges = t[2].cast<EdgeStringVector>();
 
-            for (auto& edge : edges) {
+            for (const auto& edge : edges) {
                 g.add_edge(edge.first, edge.second);
             }
         }
@@ -401,8 +401,12 @@ namespace graph {
 
 
     template<typename G>
-    void save_graph(G& graph, const std::string& name) {
+    void save_graph(const G& graph, std::string name) {
         auto open = py::module::import("io").attr("open");
+        
+        if (name.size() < 7 || name.substr(name.size()-7) != ".pickle")
+            name += ".pickle";
+
         auto file = open(name, "wb");
         py::module::import("pickle").attr("dump")(py::cast(&graph), file, 2);
         file.attr("close")();
@@ -1611,7 +1615,7 @@ namespace graph {
         }
 
         void save(const std::string& name) const {
-            save_graph(*this, name);
+            save_graph(static_cast<const Derived&>(*this), name);
         }
 
         ConditionalGraph<PartiallyDirected> conditional_graph(const std::vector<std::string>& nodes,
@@ -1728,7 +1732,7 @@ namespace graph {
         }
 
         void save(const std::string& name) const {
-            save_graph(*this, name);
+            save_graph(static_cast<const Derived&>(*this), name);
         }
 
         ConditionalGraph<Undirected> conditional_graph(const std::vector<std::string>& nodes,
@@ -1842,7 +1846,7 @@ namespace graph {
         }
 
         void save(const std::string& name) const {
-            save_graph(*this, name);
+            save_graph(static_cast<const Derived&>(*this), name);
         }
 
         ConditionalGraph<Directed> conditional_graph(const std::vector<std::string>& nodes,
@@ -1966,7 +1970,7 @@ namespace graph {
         }
 
         void save(const std::string& name) const {
-            save_graph(*this, name);
+            save_graph(static_cast<const Derived&>(*this), name);
         }
 
         ConditionalGraph<DirectedAcyclic> conditional_graph(const std::vector<std::string>& nodes,

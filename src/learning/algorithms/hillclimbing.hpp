@@ -5,6 +5,7 @@
 #include <dataset/dataset.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
+#include <learning/algorithms/callbacks/callback.hpp>
 #include <util/progress.hpp>
 #include <util/vector.hpp>
 
@@ -16,6 +17,7 @@ using learning::scores::Score;
 using learning::operators::Operator, learning::operators::OperatorType, learning::operators::ArcOperator, 
       learning::operators::ChangeNodeType, learning::operators::OperatorTabuSet, learning::operators::OperatorSet,
       learning::operators::LocalScoreCache;
+using learning::algorithms::callbacks::Callback;
 
 using util::ArcStringVector;
 
@@ -29,6 +31,7 @@ namespace learning::algorithms {
                                             const ArcStringVector& arc_blacklist,
                                             const ArcStringVector& arc_whitelist,
                                             const FactorStringTypeVector& type_whitelist,
+                                            const Callback* callback,
                                             int max_indegree,
                                             int max_iters,
                                             double epsilon,
@@ -44,6 +47,7 @@ namespace learning::algorithms {
                                    const T& start,
                                    const ArcSet& arc_blacklist,
                                    const ArcSet& arc_whitelist,
+                                   const Callback* callback,
                                    int max_indegree,
                                    int max_iters,
                                    double epsilon,
@@ -64,6 +68,9 @@ namespace learning::algorithms {
 
         op_set.cache_scores(*current_model, score);
 
+        if (callback)
+            callback->call(*current_model, nullptr, score, 0);
+
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op_set.find_max(*current_model);
@@ -76,8 +83,14 @@ namespace learning::algorithms {
             op_set.update_scores(*current_model, score, *best_op);
             ++iter;
             
+            if (callback)
+                callback->call(*current_model, best_op.get(), score, iter);
+
             spinner->update_status(best_op->ToString());
         }
+
+        if (callback)
+            callback->call(*current_model, nullptr, score, iter);
 
         spinner->mark_as_completed("Finished Hill-climbing!");
         indicators::show_console_cursor(true);
@@ -125,6 +138,7 @@ namespace learning::algorithms {
                                               const ArcSet& arc_blacklist,
                                               const ArcSet& arc_whitelist,
                                               const FactorStringTypeVector& type_whitelist,
+                                              const Callback* callback,
                                               int max_indegree,
                                               int max_iters,
                                               double epsilon, 
@@ -162,6 +176,9 @@ namespace learning::algorithms {
 
         OperatorTabuSet tabu_set;
 
+        if (callback)
+            callback->call(*current_model, nullptr, score, 0);
+
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op_set.find_max(*current_model, tabu_set);
@@ -187,12 +204,17 @@ namespace learning::algorithms {
                 tabu_set.insert(best_op->opposite());
             }
 
+            if (callback)
+                callback->call(*current_model, best_op.get(), score, iter);
 
             op_set.update_scores(*current_model, score, *best_op);
 
             spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
             ++iter;
         }
+
+        if (callback)
+            callback->call(*current_model, nullptr, score, iter);
 
         spinner->mark_as_completed("Finished Hill-climbing!");
         indicators::show_console_cursor(true);
@@ -206,7 +228,8 @@ namespace learning::algorithms {
                                                       const BayesianNetworkBase& start,
                                                       const ArcStringVector& arc_blacklist,
                                                       const ArcStringVector& arc_whitelist,
-                                                      const FactorStringTypeVector& type_whitelist,
+                                                      const FactorStringTypeVector& type_wsshitelist,
+                                                      const Callback* callback,
                                                       int max_indegree,
                                                       int max_iters,
                                                       double epsilon,
@@ -219,6 +242,7 @@ namespace learning::algorithms {
                                                                  const ArcStringVector& arc_blacklist,
                                                                  const ArcStringVector& arc_whitelist,
                                                                  const FactorStringTypeVector& type_whitelist,
+                                                                 const Callback* callback,
                                                                  int max_indegree,
                                                                  int max_iters,
                                                                  double epsilon,

@@ -1,6 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <learning/operators/operators.hpp>
+#include <learning/algorithms/callbacks/callback.hpp>
+#include <learning/algorithms/callbacks/save_model.hpp>
 #include <learning/algorithms/hillclimbing.hpp>
 #include <learning/algorithms/constraint.hpp>
 #include <learning/algorithms/pc.hpp>
@@ -11,13 +13,29 @@
 namespace py = pybind11;
 
 using learning::operators::OperatorPool;
+using learning::algorithms::callbacks::Callback, learning::algorithms::callbacks::SaveModel;
 using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC, learning::algorithms::MeekRules,
       learning::algorithms::MMPC, learning::algorithms::MMHC;
 
 using learning::algorithms::DMMHC;
 
+void pybindings_algorithms_callbacks(py::module& root) {
+    auto callbacks = root.def_submodule("callbacks", "Callbacks for GreedyHillClimbing");
+
+    py::class_<Callback, std::shared_ptr<Callback>>(callbacks, "Callback")
+        .def("call", &Callback::call);
+
+    py::class_<SaveModel, Callback, std::shared_ptr<SaveModel>>(callbacks, "SaveModel")
+        .def(py::init<const std::string&>(),
+            py::arg("folder_name"))
+        .def("call", &SaveModel::call);
+}
+
+
 void pybindings_algorithms(py::module& root) {
     auto algorithms = root.def_submodule("algorithms", "Learning algorithms");
+
+    pybindings_algorithms_callbacks(algorithms);
 
     algorithms.def("hc", &learning::algorithms::hc, "Hill climbing estimate",
                 py::arg("df"),
@@ -28,6 +46,7 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("arc_blacklist") = ArcStringVector(),
                 py::arg("arc_whitelist") = ArcStringVector(),
                 py::arg("type_whitelist") = FactorStringTypeVector(),
+                py::arg("callback") = nullptr,
                 py::arg("max_indegree") = 0,
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,
@@ -45,6 +64,7 @@ void pybindings_algorithms(py::module& root) {
                                             const ArcStringVector&,
                                             const ArcStringVector&,
                                             const FactorStringTypeVector&,
+                                            const Callback*,
                                             int,
                                             int,
                                             double,
@@ -56,6 +76,7 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("arc_blacklist") = ArcStringVector(),
                 py::arg("arc_whitelist") = ArcStringVector(),
                 py::arg("type_whitelist") = FactorStringTypeVector(),
+                py::arg("callback") = nullptr,
                 py::arg("max_indegree") = 0,
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,
@@ -67,6 +88,7 @@ void pybindings_algorithms(py::module& root) {
                                             const ArcStringVector&,
                                             const ArcStringVector&,
                                             const FactorStringTypeVector&,
+                                            const Callback*,
                                             int,
                                             int,
                                             double,
@@ -78,6 +100,7 @@ void pybindings_algorithms(py::module& root) {
                 py::arg("arc_blacklist") = ArcStringVector(),
                 py::arg("arc_whitelist") = ArcStringVector(),
                 py::arg("type_whitelist") = FactorStringTypeVector(),
+                py::arg("callback") = nullptr,
                 py::arg("max_indegree") = 0,
                 py::arg("max_iters") = std::numeric_limits<int>::max(),
                 py::arg("epsilon") = 0,

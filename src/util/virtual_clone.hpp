@@ -15,11 +15,32 @@ namespace util {
     class virtual_inherit_from : virtual public T {
         using T::T;
     };
+
+///////////////////////////////////////////////////////////////////////////////
+
+    template<typename... Bases>
+    class add_constructors;
+
+    template<>
+    class add_constructors<> {};
+
+    template<typename Base>
+    class add_constructors<Base> : public Base { 
+    public:
+        using Base::Base; 
+    };
+
+    template<typename Base, typename... Bases>
+    class add_constructors<Base, Bases...> : public Base, public add_constructors<Bases...> {
+    public:
+        using Base::Base;
+        using add_constructors<Bases...>::add_constructors;
+    };
  
 ///////////////////////////////////////////////////////////////////////////////
  
     template <typename Derived, typename ... Bases>
-    class clone_inherit : public Bases... {
+    class clone_inherit : public add_constructors<Bases...> {
     public:
         virtual ~clone_inherit() = default;
 
@@ -30,17 +51,19 @@ namespace util {
    //         desirable, but impossible in C++17
    //         see: http://cplusplus.github.io/EWG/ewg-active.html#102
    //         This is not valid in gcc, but works in clang.
-        using Bases::Bases...;
+        // using typename... Bases::Bases...;
+
+        using add_constructors<Bases...>::add_constructors;
     private:
         virtual clone_inherit* clone_impl() const override {
-            return new Derived(static_cast<const Derived & >(*this));
+            return new Derived(static_cast<const Derived &>(*this));
         }
     };
  
 // ///////////////////////////////////////////////////////////////////////////////
  
     template <typename Derived, typename ... Bases>
-    class clone_inherit<abstract_class<Derived>, Bases...> : public Bases... {
+    class clone_inherit<abstract_class<Derived>, Bases...> : public add_constructors<Bases...> {
     public:
         virtual ~clone_inherit() = default;
 
@@ -50,7 +73,9 @@ namespace util {
     protected:
    //         desirable, but impossible in C++17
    //         see: http://cplusplus.github.io/EWG/ewg-active.html#102
-        using Bases::Bases...;
+        // using typename... Bases::Bases...;
+        
+        using add_constructors<Bases...>::add_constructors;
     private:
         virtual clone_inherit* clone_impl() const = 0;
     };

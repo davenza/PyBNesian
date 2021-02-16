@@ -30,6 +30,7 @@ namespace learning::algorithms {
                                             const ArcStringVector& arc_blacklist,
                                             const ArcStringVector& arc_whitelist,
                                             const FactorStringTypeVector& type_whitelist,
+                                            const Callback* callback,
                                             int max_indegree,
                                             int max_iters,
                                             double epsilon,
@@ -81,7 +82,7 @@ namespace learning::algorithms {
         auto score = util::check_valid_score(df, bn_type, score_type, iseed, num_folds, test_holdout_ratio);
 
         return hc.estimate(*operators, *score, *start_model, arc_blacklist, arc_whitelist, type_whitelist,
-                            max_indegree, max_iters, epsilon, patience, verbose);
+                           callback, max_indegree, max_iters, epsilon, patience, verbose);
     }
 
     template<typename T>
@@ -91,6 +92,7 @@ namespace learning::algorithms {
                                        const ArcStringVector& arc_blacklist,
                                        const ArcStringVector& arc_whitelist,
                                        const FactorStringTypeVector& type_whitelist,
+                                       const Callback* callback,
                                        int max_indegree,
                                        int max_iters,
                                        double epsilon,
@@ -114,6 +116,7 @@ namespace learning::algorithms {
                                           restrictions.arc_blacklist,
                                           restrictions.arc_whitelist,
                                           type_whitelist,
+                                          callback,
                                           max_indegree,
                                           max_iters,
                                           epsilon,
@@ -125,6 +128,7 @@ namespace learning::algorithms {
                                start,
                                restrictions.arc_blacklist,
                                restrictions.arc_whitelist,
+                               callback,
                                max_indegree,
                                max_iters,
                                epsilon,
@@ -138,13 +142,14 @@ namespace learning::algorithms {
                                                                       const ArcStringVector& arc_blacklist,
                                                                       const ArcStringVector& arc_whitelist,
                                                                       const FactorStringTypeVector& type_whitelist,
+                                                                      const Callback* callback,
                                                                       int max_indegree,
                                                                       int max_iters,
                                                                       double epsilon,
                                                                       int patience,
                                                                       int verbose) {
         return estimate_checks(op_set, score, start, arc_blacklist, arc_whitelist, type_whitelist,
-                               max_indegree, max_iters, epsilon, patience, verbose);
+                               callback, max_indegree, max_iters, epsilon, patience, verbose);
     }
 
     std::unique_ptr<ConditionalBayesianNetworkBase> GreedyHillClimbing::estimate(
@@ -154,12 +159,13 @@ namespace learning::algorithms {
                                                         const ArcStringVector& arc_blacklist,
                                                         const ArcStringVector& arc_whitelist,
                                                         const FactorStringTypeVector& type_whitelist,
+                                                        const Callback* callback,
                                                         int max_indegree,
                                                         int max_iters, 
                                                         double epsilon,
                                                         int patience,
                                                         int verbose) {
         return estimate_checks(op_set, score, start, arc_blacklist, arc_whitelist, type_whitelist,
-                               max_indegree, max_iters, epsilon, patience, verbose);
+                               callback, max_indegree, max_iters, epsilon, patience, verbose);
     }
 }

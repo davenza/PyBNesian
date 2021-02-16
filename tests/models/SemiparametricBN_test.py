@@ -128,7 +128,7 @@ def test_fit():
 
     for n in spbn.nodes():
         cpd = spbn.cpd(n)
-        assert cpd.node_type == FactorType.LinearGaussianCPD
+        assert cpd.factor_type == FactorType.LinearGaussianCPD
 
         lg = cpd.as_lg()
         assert type(lg) == LinearGaussianCPD
@@ -151,11 +151,11 @@ def test_fit():
     spbn.set_node_type('c', FactorType.CKDE)
 
     cpd_c = spbn.cpd('c')
-    assert cpd_c.node_type != spbn.node_type('c')
+    assert cpd_c.factor_type != spbn.node_type('c')
 
     spbn.fit(df)
     cpd_c = spbn.cpd('c')
-    assert cpd_c.node_type == spbn.node_type('c')
+    assert cpd_c.factor_type == spbn.node_type('c')
 
 
 def test_cpd():

@@ -66,7 +66,7 @@ def test_check_max_score():
     arc_op.cache_scores(gbn, bic)
     op = arc_op.find_max(gbn)
 
-    assert op.delta == (bic.local_score_unsafe(gbn, 'd', ['c']) - bic.local_score_unsafe(gbn, 'd'))
+    assert np.isclose(op.delta, (bic.local_score_unsafe(gbn, 'd', ['c']) - bic.local_score_unsafe(gbn, 'd')))
 
     # BIC is decomposable so the best operation is the arc in reverse direction.
     arc_op.set_arc_blacklist([(op.source, op.target)])

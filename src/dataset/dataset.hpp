@@ -40,6 +40,8 @@ namespace dataset {
     Array_ptr copy_array_dictionary(const Array_ptr& array);
     Array_ptr copy_array_string(const Array_ptr& array);
 
+    std::string array_type_ToString(arrow::Type::type t);
+
     template<typename ArrowType>
     Array_ptr copy_array_numeric(const Array_ptr& array) {
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;

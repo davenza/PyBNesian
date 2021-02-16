@@ -15,7 +15,8 @@ namespace dataset {
             case Type::FLOAT:
                 return split_array_train_test<arrow::FloatType>(col, include_null, train_begin, train_end, test_end);
             default:
-                throw std::invalid_argument("Wrong data type in HoldOut.");
+                throw std::invalid_argument("Wrong data type (" + 
+                                            dataset::array_type_ToString(col->type_id()) + ") in HoldOut.");
         }
     }
 

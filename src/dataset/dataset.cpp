@@ -36,7 +36,7 @@ namespace dataset {
     }
 
     py::object pandas_to_pyarrow_record_batch(py::handle pyobject) {
-        auto d = py::module::import("pyarrow").attr("RecordBatch").attr("from_pandas")(pyobject);
+        auto d = py::module::import("pyarrow").attr("RecordBatch").attr("from_pandas")(pyobject, py::none(), false);
         return d;
     }
 
@@ -128,6 +128,87 @@ namespace dataset {
         auto new_dictionary = copy_array(dwn_array->dictionary());
         auto new_indices = copy_array(dwn_array->indices());
         return std::make_shared<arrow::DictionaryArray>(array->type(), new_indices, new_dictionary);
+    }
+
+    std::string array_type_ToString(arrow::Type::type t) {
+        switch (t) {
+            case Type::NA:
+                return arrow::null()->name();
+            case Type::BOOL:
+                return arrow::boolean()->name();
+            case Type::UINT8:
+                return arrow::uint8()->name();
+            case Type::INT8:
+                return arrow::int8()->name();
+            case Type::UINT16:
+                return arrow::uint16()->name();
+            case Type::INT16:
+                return arrow::int16()->name();
+            case Type::UINT32:
+                return arrow::uint32()->name();
+            case Type::INT32:
+                return arrow::int32()->name();
+            case Type::UINT64:
+                return arrow::uint64()->name();
+            case Type::INT64:
+                return arrow::int64()->name();
+            case Type::HALF_FLOAT:
+                return arrow::float16()->name();
+            case Type::FLOAT:
+                return arrow::float32()->name();
+            case Type::DOUBLE:
+                return arrow::float64()->name();
+            case Type::STRING:
+                return arrow::utf8()->name();
+            case Type::BINARY:
+                return arrow::binary()->name();
+            case Type::FIXED_SIZE_BINARY:
+                return "FIXED_SIZE_BINARY";
+            case Type::DATE32:
+                return arrow::date32()->name();
+            case Type::DATE64:
+                return arrow::date64()->name();
+            case Type::TIMESTAMP:
+                return "TIMESTAMP";
+            case Type::TIME32:
+                return "TIME32";
+            case Type::TIME64:
+                return "TIME64";
+            case Type::INTERVAL_MONTHS:
+                return arrow::month_interval()->name();
+            case Type::INTERVAL_DAY_TIME:
+                return arrow::day_time_interval()->name();
+            case Type::DECIMAL128:
+                return "DECIMAL128";
+            case Type::DECIMAL256:
+                return "DECIMAL256";
+            case Type::LIST:
+                return "LIST";
+            case Type::STRUCT:
+                return "STRUCT";
+            case Type::SPARSE_UNION:
+                return "SPARSE_UNION";
+            case Type::DENSE_UNION:
+                return "DENSE_UNION";
+            case Type::DICTIONARY:
+                return "DICTIONARY";
+            case Type::MAP:
+                return "MAP";
+            case Type::EXTENSION:
+                return "EXTENSION";
+            case Type::FIXED_SIZE_LIST:
+                return "FIXED_SIZED_LIST";
+            case Type::DURATION:
+                return "DURATION";
+            case Type::LARGE_STRING:
+                return arrow::large_utf8()->name();
+            case Type::LARGE_BINARY:
+                return arrow::large_binary()->name();
+            case Type::LARGE_LIST:
+                return "LARGE_LIST";
+            case Type::MAX_ID:
+                return "MAX_ID";
+        }   
     }
 
     std::vector<std::string> DataFrame::column_names() const {

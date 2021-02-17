@@ -66,7 +66,7 @@ namespace learning::independences::continuous {
                 for (int i = 0, size = continuous_indices.size(); i < size; ++i) {
                     m_indices.insert(std::make_pair(m_df->column_name(continuous_indices[i]), i));
                 }
-                switch(m_df->column(continuous_indices[0])->type_id()) {
+                switch(m_df.same_type(continuous_indices)) {
                     case Type::DOUBLE:
                         m_cov = *(m_df.cov<arrow::DoubleType, false>(continuous_indices).release());
                         break;

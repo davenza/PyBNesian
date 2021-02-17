@@ -18,7 +18,7 @@ namespace learning::scores {
         BIC(const DataFrame& df) : m_df(df) {}
 
         double local_score(const BayesianNetworkBase& model, int variable) const override {
-            return local_score(model, model.name(variable));
+            return local_score(model, model.name(variable), model.parents(variable));
         }
 
         double local_score(const BayesianNetworkBase& model, const std::string& variable) const override {

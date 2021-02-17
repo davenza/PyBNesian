@@ -83,6 +83,7 @@ ext_modules = [
          'src/learning/parameters/mle_LinearGaussianCPD.cpp',
          'src/learning/parameters/mle_DiscreteFactor.cpp',
          'src/learning/scores/bic.cpp',
+         'src/learning/scores/bge.cpp',
          'src/learning/scores/cv_likelihood.cpp',
          'src/learning/scores/holdout_likelihood.cpp',
          'src/graph/generic_graph.cpp',

@@ -17,6 +17,7 @@ namespace learning::scores {
         enum Value : uint8_t
         {
             BIC,
+            BGe,
             CVLikelihood,
             HoldoutLikelihood,
             ValidatedLikelihood
@@ -47,6 +48,8 @@ namespace learning::scores {
             switch(value) {
                 case Value::BIC:
                     return "BIC";
+                case Value::BGe:
+                    return "BGe";
                 case Value::CVLikelihood:
                     return "CVLikelihood";
                 case Value::HoldoutLikelihood:

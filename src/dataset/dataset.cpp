@@ -350,4 +350,56 @@ namespace dataset {
 
         return res;
     }
+
+    double mean(Array_ptr& a) {
+        switch (a->type_id()) {
+            case Type::DOUBLE:
+                return dataset::mean<arrow::DoubleType>(a); 
+            case Type::FLOAT:
+                return static_cast<double>(dataset::mean<arrow::FloatType>(a));
+            default:
+                throw std::invalid_argument("mean() only implemented for \"double\" and \"float\" data types.");
+        }
+    }
+
+    double mean(const Buffer_ptr& bitmap, Array_ptr& a) {
+        switch (a->type_id()) {
+            case Type::DOUBLE:
+                return dataset::mean<arrow::DoubleType>(bitmap, a); 
+            case Type::FLOAT:
+                return static_cast<double>(dataset::mean<arrow::FloatType>(bitmap, a));
+            default:
+                throw std::invalid_argument("mean() only implemented for \"double\" and \"float\" data types.");
+        }
+    }
+
+    double mean(Array_ptr&& a) {
+        return mean(a);
+    }
+
+    double mean(const Buffer_ptr&& bitmap, Array_ptr&& a) {
+        return mean(bitmap, a);
+    }
+
+    VectorXd means(Array_iterator begin, Array_iterator end) {
+        VectorXd res(std::distance(begin, end));
+
+        int i = 0;
+        for (auto it = begin; it != end; ++it, ++i) {
+           res(i) = mean(*it);
+        }
+
+        return res;
+    }
+
+    VectorXd means(const Buffer_ptr& bitmap, Array_iterator begin, Array_iterator end) {
+        VectorXd res(std::distance(begin, end));
+
+        int i = 0;
+        for (auto it = begin; it != end; ++it, ++i) {
+           res(i) = mean(bitmap, *it);
+        }
+
+        return res;
+    }
 }

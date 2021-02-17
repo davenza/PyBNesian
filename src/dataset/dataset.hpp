@@ -108,7 +108,7 @@ namespace dataset {
     arrow::Type::type same_type(Array_iterator begin, Array_iterator end);
 
     template<typename ArrowType>
-    typename ArrowType::c_type min(Array_ptr a) {
+    typename ArrowType::c_type min(Array_ptr& a) {
         using CType = typename ArrowType::c_type;
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using MapType = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
@@ -130,7 +130,12 @@ namespace dataset {
     }
 
     template<typename ArrowType>
-    typename ArrowType::c_type max(Array_ptr a) {
+    typename ArrowType::c_type min(Array_ptr&& a) {
+        return min<ArrowType>(a);
+    }
+
+    template<typename ArrowType>
+    typename ArrowType::c_type max(Array_ptr& a) {
         using CType = typename ArrowType::c_type;
         using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
         using MapType = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
@@ -149,9 +154,94 @@ namespace dataset {
             }
             return res;
         }
-
     }
 
+    template<typename ArrowType>
+    typename ArrowType::c_type max(Array_ptr&& a) {
+        return max<ArrowType>(a);
+    }
+
+    // //////////////////////////////////// mean() //////////////////////////////
+    double mean(Array_ptr& a);
+    double mean(const Buffer_ptr& bitmap, Array_ptr& a);
+    double mean(Array_ptr&& a);
+    double mean(const Buffer_ptr&& bitmap, Array_ptr&& a);
+    VectorXd means(Array_iterator begin, Array_iterator end);
+    VectorXd means(const Buffer_ptr& bitmap, Array_iterator begin, Array_iterator end);
+
+
+
+    template<typename ArrowType>
+    typename ArrowType::c_type mean(const Buffer_ptr& bitmap, Array_ptr& a) {
+        using CType = typename ArrowType::c_type;
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        auto dwn = std::static_pointer_cast<ArrayType>(a);
+        
+        auto raw = dwn->raw_values();
+        auto bitmap_data = bitmap->data();
+        CType res = 0;
+        for (auto i = 0; i < a->length(); ++i) {
+            if (arrow::BitUtil::GetBit(bitmap_data, i))
+                res += raw[i];
+        }
+
+        return res / static_cast<CType>(util::bit_util::non_null_count(bitmap, a->length()));
+    }
+
+    template<typename ArrowType>
+    typename ArrowType::c_type mean(Array_ptr& a) {
+        using CType = typename ArrowType::c_type;
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
+        using MapType = Map<const Matrix<CType, Dynamic, 1>>;
+        auto dwn = std::static_pointer_cast<ArrayType>(a);
+        
+        auto raw = dwn->raw_values();
+        if (a->null_count() == 0) {
+            MapType map(raw, a->length());
+            return map.mean();
+        } else {
+            auto bitmap = a->null_bitmap();
+            return mean<ArrowType>(bitmap, a);
+        }
+    }
+
+    template<typename ArrowType>
+    typename ArrowType::c_type mean(Array_ptr&& a) {
+        return mean<ArrowType>(a);
+    }
+
+    template<typename ArrowType>
+    Matrix<typename ArrowType::c_type, Dynamic, 1> 
+    means(Buffer_ptr bitmap, Array_iterator begin, Array_iterator end) {
+        using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+
+        EigenVector res(std::distance(begin, end));
+
+        int i = 0;
+        for (auto it = begin; it != end; ++it, ++i) {
+            res(i) = mean<ArrowType>(bitmap, *it);
+        }
+
+        return res;
+    }
+
+    template<typename ArrowType>
+    Matrix<typename ArrowType::c_type, Dynamic, 1> 
+    means(Array_iterator begin, Array_iterator end) {
+        using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+
+        EigenVector res(std::distance(begin, end));
+
+        int i = 0;
+        for (auto it = begin; it != end; ++it, ++i) {
+            res(i) = mean<ArrowType>(*it);
+        }
+
+        return res;
+    }
+
+
+    // //////////////////////////////////// to_eigen() //////////////////////////////
     template<bool append_ones, typename ArrowType>
     EigenMatrix<ArrowType> to_eigen(Buffer_ptr bitmap, Array_iterator begin, Array_iterator end) {
         auto ncols = std::distance(begin, end);
@@ -251,6 +341,7 @@ namespace dataset {
         }
     }
 
+    // //////////////////////////////////// cov() //////////////////////////////
     template<typename ArrowType, typename MatrixObject>
     EigenMatrix<ArrowType> compute_cov(std::vector<MatrixObject>& v) {
         using CType = typename ArrowType::c_type;
@@ -339,6 +430,92 @@ namespace dataset {
         }
     }
 
+    // //////////////////////////////////// sse() //////////////////////////////
+    template<typename ArrowType, typename MatrixObject>
+    EigenMatrix<ArrowType> compute_sse(std::vector<MatrixObject>& v) {
+        auto n = v.size();
+        EigenMatrix<ArrowType> res = std::make_unique<typename EigenMatrix<ArrowType>::element_type>(n, n);
+
+        for (size_t i = 0; i < v.size(); ++i) {
+            (*res)(i, i) = v[i].squaredNorm();
+
+            for (size_t j = i+1; j < v.size(); ++j) {
+                (*res)(i, j) = (*res)(j, i) = v[i].dot(v[j]);
+            }
+        }
+
+        return res;
+    }
+
+    template<typename ArrowType>
+    EigenMatrix<ArrowType> sse(Buffer_ptr bitmap, Array_iterator begin, Array_iterator end) {
+        using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+        std::vector<EigenVector> columns;
+        auto n = std::distance(begin, end);
+        columns.reserve(n);
+
+        for(auto it = begin; it != end; ++it) {
+            auto c = to_eigen<false, ArrowType>(bitmap, *it);
+            auto m = c->mean();
+            columns.push_back(c->array() - m);
+        }
+
+        return compute_sse<ArrowType>(columns);
+    }
+
+    template<typename ArrowType, bool contains_null>
+    EigenMatrix<ArrowType> sse(Array_iterator begin, Array_iterator end) {
+        if constexpr (contains_null) {
+            auto bitmap = combined_bitmap(begin, end);
+            return sse<ArrowType>(bitmap, begin, end);
+        } else {
+            using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+            std::vector<EigenVector> columns;
+            auto n = std::distance(begin, end);
+            columns.reserve(n);
+
+            for(auto it = begin; it != end; ++it) {
+                auto c = to_eigen<false, ArrowType, false>(*it);
+                auto m = c->mean();
+                columns.push_back(c->array() - m);
+            }
+
+            return compute_sse<ArrowType>(columns);
+        }
+    }
+
+    template<typename ArrowType>
+    EigenMatrix<ArrowType> sse(Buffer_ptr bitmap, Array_ptr col) {
+        using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+        std::vector<EigenVector> columns;
+        columns.reserve(1);
+
+        auto c = to_eigen<false, ArrowType>(col, bitmap);
+        auto m = c->mean();
+        columns.push_back(c->array() - m);
+
+        return compute_sse<ArrowType>(columns);
+    }
+
+    template<typename ArrowType, bool contains_null>
+    EigenMatrix<ArrowType> sse(Array_ptr col) {
+        if constexpr (contains_null) {
+            auto bitmap = col->null_bitmap();
+            return sse<ArrowType>(bitmap, col);
+        } else {
+            using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
+            std::vector<EigenVector> columns;
+            columns.reserve(1);
+
+            auto c = to_eigen<false, ArrowType, false>(col);
+            auto m = c->mean();
+            columns.push_back(c->array() - m);
+
+            return compute_sse<ArrowType>(columns);
+        }
+    }
+    
+    // //////////////////////////////////// IndexLOC //////////////////////////////
     template<bool copy, typename... Args>
     class IndexLOC {
     public:
@@ -378,11 +555,6 @@ namespace dataset {
         using enable_if_index_iterator_t = util::enable_if_index_iterator_t<T, R>;
         using loc_return = DataFrame;
     };
-
-    // template<typename Index, typename>
-    // struct DynamicVariable;
-    // class DynamicDataFrame;
-
 
     std::string index_to_string(int i);
     std::string index_to_string(const std::string& name);
@@ -509,8 +681,6 @@ namespace dataset {
 
     template<typename DataFrame>
     struct AppendCopyColumns {
-        using BaseType = Array_ptr;
-
         template<typename T, typename R>
         using enable_if_index_t = typename DataFrame::template enable_if_index_t<T, R>;
         template<typename T, typename R>
@@ -649,6 +819,7 @@ namespace dataset {
             return static_cast<Derived&>(*this);
         }
 
+        ///////////////////////////// has_columns /////////////////////////
         template<typename Index, enable_if_index_t<Index, int> = 0>
         bool has_columns(const Index& index) const { return derived().has_column(index); }
         template<typename T, enable_if_index_container_t<T, int> = 0>
@@ -662,6 +833,7 @@ namespace dataset {
         template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         bool has_columns(const Args&... args) const;
 
+        ///////////////////////////// raise_has_columns /////////////////////////
         template<typename Index, enable_if_index_t<Index, int> = 0>
         void raise_has_columns(const Index& index) const { return derived().raise_has_column(index); }
         template<typename T, enable_if_index_container_t<T, int> = 0>
@@ -679,6 +851,7 @@ namespace dataset {
         template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         void raise_has_columns(const Args&... args) const;
 
+        ///////////////////////////// loc /////////////////////////
         template<typename Index, enable_if_index_t<Index, int> = 0>
         loc_return loc(const Index& index) const;
         template<typename T, enable_if_index_container_t<T, int> = 0>
@@ -692,13 +865,14 @@ namespace dataset {
         template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         loc_return loc(const Args&... args) const;
 
+        ///////////////////////////// same_type /////////////////////////
         arrow::Type::type same_type() const {
             Array_vector cols = derived().columns();
             return dataset::same_type(cols.begin(), cols.end());
         }
         template<typename Index, enable_if_index_t<Index, int> = 0>
         arrow::Type::type same_type(const Index& index) const {
-            return derived().loc(index)->type_id();
+            return derived().col(index)->type_id();
         }
         template<typename T, enable_if_index_container_t<T, int> = 0>
         arrow::Type::type same_type(const T& cols) const { return same_type(cols.begin(), cols.end()); }
@@ -719,6 +893,7 @@ namespace dataset {
             return dataset::same_type(v.begin(), v.end());
         }
 
+        ///////////////////////////// names /////////////////////////
         std::vector<std::string> names() const { return derived().column_names(); }
         template<typename Index, enable_if_index_t<Index, int> = 0>
         std::vector<std::string> names(const Index& index) const { return { derived().name(index) }; }
@@ -751,6 +926,7 @@ namespace dataset {
             return res;
         }
 
+        ///////////////////////////// data /////////////////////////
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         const typename ArrowType::c_type* data(const Index& index) const {
             return derived().col(index)->data()->template GetValues<typename ArrowType::c_type>(1);
@@ -761,6 +937,7 @@ namespace dataset {
             return derived().col(index)->data()->template GetMutableValues<typename ArrowType::c_type>(1);
         }
 
+        ///////////////////////////// downcast_vector /////////////////////////
         template<typename ArrowType>
         std::vector<std::shared_ptr<typename arrow::TypeTraits<ArrowType>::ArrayType>>
         downcast_vector() const { 
@@ -826,6 +1003,7 @@ namespace dataset {
             return res;
         }
 
+        ///////////////////////////// combined_bitmap /////////////////////////
         Buffer_ptr combined_bitmap() const { 
             Array_vector cols = derived().columns(); 
             return dataset::combined_bitmap(cols.begin(), cols.end());
@@ -858,6 +1036,7 @@ namespace dataset {
             return dataset::combined_bitmap(v.begin(), v.end());
         }
 
+        ///////////////////////////// null_count /////////////////////////
         int64_t null_count() const { 
             auto cols = derived().columns(); 
             return dataset::null_count(cols.begin(), cols.end()); 
@@ -888,6 +1067,7 @@ namespace dataset {
             return dataset::null_count(v.begin(), v.end());
         }
 
+        ///////////////////////////// valid_rows /////////////////////////
         int64_t valid_rows() const {
             auto cols = derived().columns();
             return dataset::valid_rows(cols.begin(), cols.end()); 
@@ -919,9 +1099,39 @@ namespace dataset {
             return dataset::valid_rows(v.begin(), v.end());
         }
 
+        ///////////////////////////// min /////////////////////////
+        template<typename Index, util::enable_if_index_t<Index, int> = 0>
+        double min(const Index& index) const { 
+            auto a = derived().col(index);
+
+            switch (a->type_id()) {
+                case Type::DOUBLE:
+                    return dataset::min<arrow::DoubleType>(a); 
+                case Type::FLOAT:
+                    return static_cast<double>(dataset::min<arrow::FloatType>(a));
+                default:
+                    throw std::invalid_argument("min() only implemented for \"double\" and \"float\" data types.");
+            }
+        }
+
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         typename ArrowType::c_type min(const Index& index) const {
             return dataset::min<ArrowType>(derived().col(index));
+        }
+
+        ///////////////////////////// max /////////////////////////
+        template<typename Index, util::enable_if_index_t<Index, int> = 0>
+        double max(const Index& index) const { 
+            auto a = derived().col(index);
+
+            switch (a->type_id()) {
+                case Type::DOUBLE:
+                    return dataset::max<arrow::DoubleType>(a); 
+                case Type::FLOAT:
+                    return static_cast<double>(dataset::max<arrow::FloatType>(a));
+                default:
+                    throw std::invalid_argument("max() only implemented for \"double\" and \"float\" data types.");
+            }
         }
 
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
@@ -929,6 +1139,166 @@ namespace dataset {
             return dataset::max<ArrowType>(derived().col(index));
         }
 
+        ///////////////////////////// means /////////////////////////
+        template<typename Index, util::enable_if_index_t<Index, int> = 0>
+        double mean(const Index& index) const { 
+            return dataset::mean(derived().col(index));
+        }
+
+        template<typename Index, util::enable_if_index_t<Index, int> = 0>
+        double mean(const Buffer_ptr& bitmap, const Index& index) const {
+            auto a = derived().col(index);
+            return dataset::mean(bitmap, a);
+        }
+
+        template<typename ArrowType, typename Index, util::enable_if_index_t<Index, int> = 0>
+        typename ArrowType::c_type mean(const Index& n) const { 
+            return dataset::mean<ArrowType>(derived().col(n)); 
+        }
+
+        template<typename ArrowType, typename Index, util::enable_if_index_t<Index, int> = 0>
+        typename ArrowType::c_type mean(const Buffer_ptr& bitmap, const Index& n) const { 
+            return dataset::mean<ArrowType>(bitmap, derived().col(n)); 
+        }
+
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        VectorXd means(const Index& index) const {
+            VectorXd res(1);
+            res(0) = mean(index);
+            return res;
+        }
+        template<typename T, enable_if_index_container_t<T, int> = 0>
+        VectorXd means() const { 
+            Array_vector cols = derived().columns();
+            return means(cols.begin(), cols.end()); 
+        }
+        template<typename T, enable_if_index_container_t<T, int> = 0>
+        VectorXd means(const T& cols) const { return means(cols.begin(), cols.end()); }
+        template<typename V>
+        VectorXd means(const std::initializer_list<V>& cols) const { return means(cols.begin(), cols.end()); }
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        VectorXd means(const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::means(c.begin(), c.end());
+        }
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        VectorXd means(const std::pair<IndexIter, IndexIter>& tuple) const { return means(tuple.first, tuple.second); }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        VectorXd means(const Args&... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::means(c.begin(), c.end());
+        }
+
+        template<typename Index, enable_if_index_t<Index, int> = 0>
+        VectorXd means(const Buffer_ptr& bitmap, const Index& index) const {
+            VectorXd res(1);
+            res(0) = mean(bitmap, index);
+            return res;
+        }
+        template<typename T, enable_if_index_container_t<T, int> = 0>
+        VectorXd means(const Buffer_ptr& bitmap) const { 
+            Array_vector cols = derived().columns();
+            return means(bitmap, cols.begin(), cols.end()); 
+        }
+        template<typename T, enable_if_index_container_t<T, int> = 0>
+        VectorXd means(const Buffer_ptr& bitmap, const T& cols) const { return means(bitmap, cols.begin(), cols.end()); }
+        template<typename V>
+        VectorXd means(const Buffer_ptr& bitmap, const std::initializer_list<V>& cols) const {
+            return means(bitmap, cols.begin(), cols.end()); 
+        }
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        VectorXd means(const Buffer_ptr& bitmap, const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::means(bitmap, c.begin(), c.end());
+        }
+        template<typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        VectorXd means(const Buffer_ptr& bitmap, const std::pair<IndexIter, IndexIter>& tuple) const { 
+            return means(bitmap, tuple.first, tuple.second); 
+        }
+        template<typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        VectorXd means(const Buffer_ptr& bitmap, const Args&... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::means(bitmap, c.begin(), c.end());
+        }
+
+        ///////////////////////////// means<ArrowType> /////////////////////////
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const Index& index) const {
+            Matrix<typename ArrowType::c_type, Dynamic, 1> res(1);
+            res(0) = mean<ArrowType>(index);
+            return res;
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means() const { 
+            Array_vector cols = derived().columns();
+            return means<ArrowType>(cols.begin(), cols.end()); 
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const T& cols) const { return means<ArrowType>(cols.begin(), cols.end()); }
+        template<typename ArrowType, typename V>
+        Matrix<typename ArrowType::c_type, Dynamic, 1> 
+        means(const std::initializer_list<V>& cols) const { return means(cols.begin(), cols.end()); }
+        template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::means<ArrowType>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1> 
+        means(const std::pair<IndexIter, IndexIter>& tuple) const { return means(tuple.first, tuple.second); }
+        template<typename ArrowType, typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1> 
+        means(const Args&... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::means<ArrowType>(c.begin(), c.end());
+        }
+
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const Buffer_ptr& bitmap, const Index& index) const {
+            Matrix<typename ArrowType::c_type, Dynamic, 1> res(1);
+            res(0) = mean<ArrowType>(bitmap, index);
+            return res;
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const Buffer_ptr& bitmap) const { 
+            Array_vector cols = derived().columns();
+            return means<ArrowType>(bitmap, cols.begin(), cols.end()); 
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const Buffer_ptr& bitmap, const T& cols) const {
+            return means<ArrowType>(bitmap, cols.begin(), cols.end());
+        }
+        template<typename ArrowType, typename V>
+        Matrix<typename ArrowType::c_type, Dynamic, 1> 
+        means(const Buffer_ptr& bitmap, const std::initializer_list<V>& cols) const {
+            return means(bitmap, cols.begin(), cols.end()); 
+        }
+        template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1>
+        means(const Buffer_ptr& bitmap, const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::means<ArrowType>(bitmap, c.begin(), c.end());
+        }
+        template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1> 
+        means(const Buffer_ptr& bitmap, const std::pair<IndexIter, IndexIter>& tuple) const {
+            return means(bitmap, tuple.first, tuple.second);
+        }
+        template<typename ArrowType, typename ...Args, std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        Matrix<typename ArrowType::c_type, Dynamic, 1> 
+        means(const Buffer_ptr& bitmap, const Args&... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::means<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        ///////////////////////////// to_eigen<ArrowType> /////////////////////////
         template<bool append_ones, typename ArrowType, bool contains_null>
         EigenMatrix<ArrowType> to_eigen() const {
             auto cols = derived().columns();
@@ -957,8 +1327,11 @@ namespace dataset {
         template<bool append_ones, typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenVectorOrMatrix<append_ones, ArrowType> to_eigen(const Index& index) const {
             auto col = derived().col(index);
-            if (col->null_count() == 0)
-                return dataset::to_eigen<append_ones, ArrowType, false>(col);
+            if (col->null_count() == 0) {
+                using EigenReturnType = typename EigenVectorOrMatrix<append_ones, ArrowType>::element_type;
+                auto map = dataset::to_eigen<append_ones, ArrowType, false>(col);
+                return std::make_unique<EigenReturnType>(*map);
+            }
             else {
                 return dataset::to_eigen<append_ones, ArrowType, true>(col);
             }
@@ -1099,6 +1472,7 @@ namespace dataset {
             return dataset::to_eigen<append_ones, ArrowType>(bitmap, v.begin(), v.end());
         }
 
+        ///////////////////////////// cov<ArrowType> /////////////////////////
         template<typename ArrowType, bool contains_null>
         EigenMatrix<ArrowType> cov() {
             auto c = derived().columns();
@@ -1120,7 +1494,7 @@ namespace dataset {
 
         template<typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
         EigenMatrix<ArrowType> cov(const Index& index) const {
-            dataset::cov<ArrowType, contains_null>(derived().col(index));
+            return dataset::cov<ArrowType, contains_null>(derived().col(index));
         }
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenMatrix<ArrowType> cov(const Index& index) const {
@@ -1132,7 +1506,7 @@ namespace dataset {
         }
         template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
         EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const Index& index) const {
-            dataset::cov<ArrowType>(bitmap, derived().col(index));
+            return dataset::cov<ArrowType>(bitmap, derived().col(index));
         }
 
         template<typename ArrowType,
@@ -1227,6 +1601,138 @@ namespace dataset {
             return dataset::cov<ArrowType>(bitmap, c.begin(), c.end());
         }
 
+        ///////////////////////////// sse<ArrowType> /////////////////////////
+        
+        template<typename ArrowType, bool contains_null>
+        EigenMatrix<ArrowType> sse() {
+            auto c = derived().columns();
+            return dataset::sse<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        
+        template<typename ArrowType>
+        EigenMatrix<ArrowType> sse() {
+            if (null_count() == 0) {
+                return sse<ArrowType, false>();
+            } else {
+                return sse<ArrowType, true>();
+            }
+        }
+        template<typename ArrowType>
+        EigenMatrix<ArrowType> sse(const Buffer_ptr& bitmap) {
+            auto c = derived().columns();
+            return sse<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        template<typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> sse(const Index& index) const {
+            return dataset::sse<ArrowType, contains_null>(derived().col(index));
+        }
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> sse(const Index& index) const {
+            if (null_count(index) == 0) {
+                return sse<ArrowType, false>(index);
+            } else {
+                return sse<ArrowType, true>(index);
+            }
+        }
+        template<typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
+        EigenMatrix<ArrowType> sse(const Buffer_ptr& bitmap, const Index& index) const {
+            return dataset::sse<ArrowType>(bitmap, derived().col(index));
+        }
+
+        template<typename ArrowType,
+                 bool contains_null,
+                 typename T,
+                 enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> sse(const T& cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::sse<ArrowType, contains_null>(c.begin(), c.end());
+        
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> sse(const T& cols) {
+            if (null_count(cols) == 0) {
+                return sse<ArrowType, false>(cols);
+            } else {
+                return sse<ArrowType, true>(cols);
+            }
+        }
+        template<typename ArrowType, typename T, enable_if_index_container_t<T, int> = 0>
+        EigenMatrix<ArrowType> sse(const Buffer_ptr& bitmap, const T& cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::sse<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        template<typename ArrowType, bool contains_null, typename V>
+        EigenMatrix<ArrowType> sse(const std::initializer_list<V>& cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::sse<ArrowType, contains_null, std::initializer_list<V>>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename V>
+        EigenMatrix<ArrowType> sse(const std::initializer_list<V>& cols) {
+            if (null_count(cols) == 0) {
+                return sse<ArrowType, false, std::initializer_list<V>>(cols);
+            } else {
+                return sse<ArrowType, true, std::initializer_list<V>>(cols);
+            }
+        }
+        template<typename ArrowType, typename V>
+        EigenMatrix<ArrowType> sse(const Buffer_ptr& bitmap, const std::initializer_list<V>& cols) {
+            auto c = indices_to_columns(cols);
+            return dataset::sse<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        template<typename ArrowType,
+                 bool contains_null,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> sse(const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::sse<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        template<typename ArrowType, typename IndexIter, enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> sse(const IndexIter& begin, const IndexIter& end) const {
+            if (null_count(begin, end) == 0) {
+                return sse<ArrowType, false>(begin, end);
+            } else {
+                return sse<ArrowType, true>(begin, end);
+            }
+        }
+        template<typename ArrowType,
+                 typename IndexIter,
+                 enable_if_index_iterator_t<IndexIter, int> = 0>
+        EigenMatrix<ArrowType> sse(const Buffer_ptr& bitmap, const IndexIter& begin, const IndexIter& end) const {
+            auto c = indices_to_columns(begin, end);
+            return dataset::sse<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        template<typename ArrowType,
+                 bool contains_null,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        EigenMatrix<ArrowType> sse(const Args&... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::sse<ArrowType, contains_null>(c.begin(), c.end());
+        }
+        template<typename ArrowType,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        EigenMatrix<ArrowType> sse(const Args&... args) const {
+            if (null_count(args...) == 0) {
+                return sse<ArrowType, false>(args...);
+            } else {
+                return sse<ArrowType, true>(args...);
+            }
+        }
+        template<typename ArrowType,
+                 typename ...Args,
+                 std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
+        EigenMatrix<ArrowType> sse(const Buffer_ptr& bitmap, const Args&... args) const {
+            auto c = indices_to_columns(args...);
+            return dataset::sse<ArrowType>(bitmap, c.begin(), c.end());
+        }
+
+        ///////////////////////////// indices_to_columns /////////////////////////
         Array_vector indices_to_columns() const;
         template<typename T, enable_if_index_container_t<T, int> = 0>
         Array_vector indices_to_columns(const T& cols) const {
@@ -1239,6 +1745,7 @@ namespace dataset {
                  std::enable_if_t<(... && !util::is_iterator_v<Args>), int> = 0>
         Array_vector indices_to_columns(const Args&... args) const;
 
+        ///////////////////////////// indices_to_schema /////////////////////////
         std::shared_ptr<arrow::Schema> indices_to_schema() const;
         template<typename T, enable_if_index_container_t<T, int> = 0>
         std::shared_ptr<arrow::Schema> indices_to_schema(const T& cols) const {
@@ -1478,6 +1985,15 @@ namespace dataset {
         template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
         Field_ptr field(const StringType& name) const {
             return m_batch->schema()->GetFieldByName(name);
+        }
+
+        int index(int i) const {
+            return i;
+        }
+
+        template<typename StringType, util::enable_if_stringable_t<StringType, int> = 0>
+        int index(const StringType& name) const {
+            return m_batch->schema()->GetFieldIndex(name);
         }
 
         const std::string& name(int i) const { return m_batch->column_name(i); }

@@ -2,6 +2,7 @@
 #include <pybind11/stl.h>
 #include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
+#include <learning/scores/bge.hpp>
 #include <learning/scores/cv_likelihood.hpp>
 #include <learning/scores/holdout_likelihood.hpp>
 #include <learning/scores/validated_likelihood.hpp>
@@ -9,8 +10,9 @@
 namespace py = pybind11;
 
 using learning::scores::Score, learning::scores::ValidatedScore,
-      learning::scores::BIC, learning::scores::CVLikelihood, 
-      learning::scores::HoldoutLikelihood, learning::scores::ValidatedLikelihood;
+      learning::scores::BIC, learning::scores::BGe,
+      learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood,
+      learning::scores::ValidatedLikelihood;
 
 using learning::scores::DynamicScore, learning::scores::DynamicBIC,
       learning::scores::DynamicCVLikelihood, learning::scores::DynamicHoldoutLikelihood,
@@ -287,6 +289,16 @@ void pybindings_scores(py::module& root) {
 
     py::class_<BIC, Score, std::shared_ptr<BIC>>(scores, "BIC")
         .def(py::init<const DataFrame&>());
+
+    py::class_<BGe, Score, std::shared_ptr<BGe>>(scores, "BGe")
+        .def(py::init<const DataFrame&,
+                      double,
+                      std::optional<double>,
+                      std::optional<VectorXd>>(),
+                      py::arg("df"),
+                      py::arg("iss_mu") = 1,
+                      py::arg("iss_w") = std::nullopt,
+                      py::arg("nu") = std::nullopt);
 
     py::class_<CVLikelihood, ScoreSPBN, std::shared_ptr<CVLikelihood>>(scores, "CVLikelihood")
         .def(py::init<const DataFrame&, int>(),

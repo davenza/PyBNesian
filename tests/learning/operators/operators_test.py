@@ -1,5 +1,5 @@
 import pytest
-from pybnesian.factors import FactorType
+from pybnesian.factors import NodeType
 from pybnesian.models import BayesianNetworkType, GaussianNetwork, SemiparametricBN
 from pybnesian.learning.operators import OperatorType, AddArc, RemoveArc, FlipArc, ChangeNodeType
 
@@ -23,9 +23,9 @@ def test_create():
     assert o.delta == 3
     assert o.type == OperatorType.FLIP_ARC
 
-    o = ChangeNodeType("a", FactorType.CKDE, 4)
+    o = ChangeNodeType("a", NodeType.CKDE, 4)
     assert o.node == 'a'
-    assert o.node_type == FactorType.CKDE
+    assert o.node_type == NodeType.CKDE
     assert o.delta == 4
     assert o.type == OperatorType.CHANGE_NODE_TYPE
 
@@ -50,7 +50,7 @@ def test_apply():
     assert gbn.num_arcs() == 0
     assert not gbn.has_arc('b', 'a')
 
-    o = ChangeNodeType("a", FactorType.CKDE, 1)
+    o = ChangeNodeType("a", NodeType.CKDE, 1)
     with pytest.raises(ValueError) as ex:
         o.apply(gbn)
     "can only be applied to SemiparametricBN" in str(ex.value)
@@ -58,10 +58,10 @@ def test_apply():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
     assert spbn.num_arcs() == 0
 
-    o = ChangeNodeType("a", FactorType.CKDE, 1)
-    assert(spbn.node_type('a') == FactorType.LinearGaussianCPD)
+    o = ChangeNodeType("a", NodeType.CKDE, 1)
+    assert(spbn.node_type('a') == NodeType.LinearGaussianCPD)
     o.apply(spbn)
-    assert(spbn.node_type('a') == FactorType.CKDE)
+    assert(spbn.node_type('a') == NodeType.CKDE)
 
     assert not spbn.has_arc('a', 'b')
     o = AddArc("a", "b", 1)
@@ -102,9 +102,9 @@ def test_opposite():
     assert oppo.delta == -1
     assert oppo.type == OperatorType.FLIP_ARC
 
-    o = ChangeNodeType("a", FactorType.CKDE, 1)
+    o = ChangeNodeType("a", NodeType.CKDE, 1)
     oppo = o.opposite()
     assert oppo.node == 'a'
-    assert oppo.node_type == FactorType.LinearGaussianCPD
+    assert oppo.node_type == NodeType.LinearGaussianCPD
     assert oppo.delta == -1
     assert oppo.type == OperatorType.CHANGE_NODE_TYPE

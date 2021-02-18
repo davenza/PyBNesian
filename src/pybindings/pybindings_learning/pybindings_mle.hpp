@@ -6,11 +6,11 @@
 
 namespace py = pybind11;
 
-using factors::FactorType;
+using factors::NodeType;
 
 namespace pybindings::learning::parameters {
 
-    py::object mle_python_wrapper(FactorType n);
+    py::object mle_python_wrapper(NodeType n);
 }
 
 #endif //PYBNESIAN_PYBINDINGS_MLE_HPP

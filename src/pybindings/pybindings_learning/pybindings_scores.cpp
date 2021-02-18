@@ -121,7 +121,7 @@ template<typename CppClass, typename PyClass>
 void register_ScoreSPBN_methods(PyClass& pyclass) {
     pyclass
         .def("local_score", [](CppClass& self,
-                               FactorType variable_type,
+                               NodeType variable_type,
                                const std::string& variable,
                                const std::vector<std::string>& evidence) {
             if (self.has_variables(variable) && self.has_variables(evidence))
@@ -130,7 +130,7 @@ void register_ScoreSPBN_methods(PyClass& pyclass) {
                 throw py::value_error("Score is incompatible with variable/evidence.");
         })
         .def("local_score_unsafe", [](CppClass& self,
-                                      FactorType variable_type,
+                                      NodeType variable_type,
                                       const std::string& variable,
                                       const std::vector<std::string>& evidence) {
             return self.local_score(variable_type, variable, evidence);
@@ -239,7 +239,7 @@ template<typename CppClass, typename PyClass>
 void register_ValidatedScoreSPBN_methods(PyClass& pyclass) {
     pyclass
         .def("vlocal_score", [](CppClass& self,
-                               FactorType variable_type,
+                               NodeType variable_type,
                                const std::string& variable,
                                const std::vector<std::string>& evidence) {
             if (self.has_variables(variable) && self.has_variables(evidence))
@@ -248,7 +248,7 @@ void register_ValidatedScoreSPBN_methods(PyClass& pyclass) {
                 throw py::value_error("Score is incompatible with variable/evidence.");
         })
         .def("vlocal_score_unsafe", [](CppClass& self,
-                                      FactorType variable_type,
+                                      NodeType variable_type,
                                       const std::string& variable,
                                       const std::vector<std::string>& evidence) {
             return self.vlocal_score(variable_type, variable, evidence);

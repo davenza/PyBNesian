@@ -36,7 +36,7 @@ namespace learning::scores {
             return m_cv.local_score(model, variable, evidence);
         }
 
-        double local_score(FactorType variable_type,
+        double local_score(NodeType variable_type,
                            const std::string& variable,
                            const std::vector<std::string>& evidence) const override {
             return m_cv.local_score(variable_type, variable, evidence);
@@ -90,7 +90,7 @@ namespace learning::scores {
             return m_holdout.local_score(model, variable, evidence);
         }
 
-        double vlocal_score(FactorType variable_type,
+        double vlocal_score(NodeType variable_type,
                             const std::string& variable,
                             const std::vector<std::string>& evidence) const override {
             return m_holdout.local_score(variable_type, variable, evidence);

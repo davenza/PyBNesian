@@ -5,20 +5,20 @@
 
 namespace py = pybind11;
 
-using factors::FactorType;
+using factors::NodeType;
 using factors::continuous::LinearGaussianCPD;
 using learning::parameters::MLE;
 
 namespace pybindings::learning::parameters {
-    py::object mle_python_wrapper(FactorType f) {
+    py::object mle_python_wrapper(NodeType f) {
         switch(f) {
-            case FactorType::LinearGaussianCPD: {
+            case NodeType::LinearGaussianCPD: {
                 auto* mle = new MLE<LinearGaussianCPD>();
                 auto pyobject = py::cast(mle);
                 return pyobject;
             }
             default:
-                throw std::invalid_argument("MLE not available for FactorType " + f.ToString());
+                throw std::invalid_argument("MLE not available for NodeType " + f.ToString());
         }
     }
 }

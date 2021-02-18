@@ -3,6 +3,9 @@
 #include <util/validate_options.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
+#include <models/GaussianNetwork.hpp>
+#include <models/SemiparametricBN.hpp>
+#include <models/KDENetwork.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/cv_likelihood.hpp>
@@ -12,7 +15,7 @@
 using namespace dataset;
 
 using Eigen::VectorXd, Eigen::MatrixXd;;
-using models::GaussianNetwork, models::BayesianNetworkType;
+using models::BayesianNetworkType, models::GaussianNetwork, models::SemiparametricBN, models::KDENetwork;
 using learning::scores::ScoreType, learning::scores::BIC, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood;
 using learning::operators::OperatorSet, learning::operators::OperatorSetType, 
       learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet;
@@ -65,6 +68,8 @@ namespace learning::algorithms {
                         return std::make_unique<GaussianNetwork>(df.column_names());
                     case BayesianNetworkType::Semiparametric:
                         return std::make_unique<SemiparametricBN>(df.column_names());
+                    case BayesianNetworkType::KDENetwork:
+                        return std::make_unique<KDENetwork>(df.column_names());
                     default:
                         throw std::invalid_argument("Wrong BayesianNetwork type. Unreachable code!");
                 }

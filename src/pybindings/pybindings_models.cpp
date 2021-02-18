@@ -5,18 +5,21 @@
 #include <models/DynamicBayesianNetwork.hpp>
 #include <models/GaussianNetwork.hpp>
 #include <models/SemiparametricBN.hpp>
+#include <models/KDENetwork.hpp>
 #include <models/DiscreteBN.hpp>
 
 using models::BayesianNetworkType, models::BayesianNetworkBase, models::SemiparametricBNBase,
-      models::BayesianNetworkImpl, models::BayesianNetwork, models::GaussianNetwork, 
-      models::SemiparametricBN, models::DiscreteBN;
+      models::BayesianNetworkImpl, models::BayesianNetwork, models::GaussianNetwork,
+      models::SemiparametricBN, models::KDENetwork, models::DiscreteBN;
 
 using models::ConditionalBayesianNetworkBase, models::ConditionalBayesianNetworkImpl,
-      models::ConditionalBayesianNetwork, models::ConditionalGaussianNetwork, 
-      models::ConditionalSemiparametricBN, models::ConditionalDiscreteBN;
+      models::ConditionalBayesianNetwork, models::ConditionalGaussianNetwork,
+      models::ConditionalSemiparametricBN, models::ConditionalKDENetwork,
+      models::ConditionalDiscreteBN;
 
 using models::DynamicBayesianNetworkBase, models::DynamicBayesianNetworkImpl,
-      models::DynamicGaussianNetwork, models::DynamicSemiparametricBN, models::DynamicDiscreteBN;
+      models::DynamicGaussianNetwork, models::DynamicSemiparametricBN,
+      models::DynamicKDENetwork, models::DynamicDiscreteBN;
 
 
 template<typename Derived, typename BaseClass>
@@ -258,9 +261,13 @@ void pybindings_models(py::module& root) {
         .def_property_readonly_static("Semiparametric", [](const py::object&) { 
             return BayesianNetworkType(BayesianNetworkType::Semiparametric);
         })
+        .def_property_readonly_static("KDENetwork", [](const py::object&) { 
+            return BayesianNetworkType(BayesianNetworkType::KDENetwork);
+        })
         .def_property_readonly_static("Discrete", [](const py::object&) { 
             return BayesianNetworkType(BayesianNetworkType::Discrete);
         })
+        .def_static("from_string", &BayesianNetworkType::from_string)
         .def(py::self == py::self)
         .def(py::self != py::self)
         .def("__repr__", &BayesianNetworkType::ToString)
@@ -387,8 +394,8 @@ void pybindings_models(py::module& root) {
         .def("node_type", py::overload_cast<int>(&SemiparametricBNBase::node_type, py::const_))
         .def("node_type", py::overload_cast<const std::string&>(&SemiparametricBNBase::node_type, py::const_))
         .def("node_types", &SemiparametricBNBase::node_types)
-        .def("set_node_type", py::overload_cast<int, FactorType>(&SemiparametricBNBase::set_node_type))
-        .def("set_node_type", py::overload_cast<const std::string&, FactorType>(&SemiparametricBNBase::set_node_type))
+        .def("set_node_type", py::overload_cast<int, NodeType>(&SemiparametricBNBase::set_node_type))
+        .def("set_node_type", py::overload_cast<const std::string&, NodeType>(&SemiparametricBNBase::set_node_type))
         .def("force_type_whitelist", &SemiparametricBNBase::force_type_whitelist);
 
     py::class_<DynamicBayesianNetworkBase>(models, "DynamicBayesianNetworkBase")
@@ -416,6 +423,7 @@ void pybindings_models(py::module& root) {
         .def(py::init<const ArcStringVector&, FactorStringTypeVector&>())
         .def(py::init<const std::vector<std::string>&, const ArcStringVector&, FactorStringTypeVector&>())
         .def(py::init<const Dag&, FactorStringTypeVector&>());
+    register_BayesianNetwork<KDENetwork>(models, "KDENetwork");
     register_BayesianNetwork<DiscreteBN>(models, "DiscreteBN");
 
     register_ConditionalBayesianNetwork<ConditionalGaussianNetwork>(models, "ConditionalGaussianNetwork");
@@ -430,9 +438,11 @@ void pybindings_models(py::module& root) {
                                   FactorStringTypeVector&>())
                     .def(py::init<const ConditionalDag&,
                                   FactorStringTypeVector&>());
+    register_ConditionalBayesianNetwork<ConditionalKDENetwork>(models, "ConditionalKDENetwork");
     register_ConditionalBayesianNetwork<ConditionalDiscreteBN>(models, "ConditionalDiscreteBN");
 
     register_DynamicBayesianNetwork<DynamicGaussianNetwork>(models, "DynamicGaussianNetwork");
     register_DynamicBayesianNetwork<DynamicSemiparametricBN>(models, "DynamicSemiparametricBN");
+    register_DynamicBayesianNetwork<DynamicKDENetwork>(models, "DynamicKDENetwork");
     register_DynamicBayesianNetwork<DynamicDiscreteBN>(models, "DynamicDiscreteBN");
 }

@@ -7,18 +7,19 @@ namespace learning::scores {
 
 
     double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,
-                    const std::string& variable,
-                    const std::vector<std::string>& evidence) const {
+                                          const std::string& variable,
+                                          const std::vector<std::string>& evidence) const {
         switch (model.type()) {
             case BayesianNetworkType::Gaussian: {
-                LinearGaussianCPD cpd(variable, evidence);
-                cpd.fit(training_data());
-                return cpd.slogl(test_data());
+                return factor_score<LinearGaussianCPD>(variable, evidence);
             }
             case BayesianNetworkType::Semiparametric: {
                 const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-                FactorType variable_type = spbn.node_type(variable);
+                NodeType variable_type = spbn.node_type(variable);
                 return local_score(variable_type, variable, evidence);   
+            }
+            case BayesianNetworkType::KDENetwork: {
+                return factor_score<CKDE>(variable, evidence);
             }
             default:
                 throw std::invalid_argument("Bayesian network type \"" + model.type().ToString()
@@ -26,17 +27,18 @@ namespace learning::scores {
         }
     }
     
-    double HoldoutLikelihood::local_score(FactorType variable_type,
+    double HoldoutLikelihood::local_score(NodeType variable_type,
                                           const std::string& variable,
                                           const std::vector<std::string>& evidence) const {
-        if (variable_type == FactorType::LinearGaussianCPD) {
-            LinearGaussianCPD cpd(variable, evidence);
-            cpd.fit(training_data());
-            return cpd.slogl(test_data());
-        } else {
-            CKDE cpd(variable, evidence);
-            cpd.fit(training_data());
-            return cpd.slogl(test_data());
+        switch (variable_type) {
+            case NodeType::LinearGaussianCPD: {
+                return factor_score<LinearGaussianCPD>(variable, evidence);
+            }
+            case NodeType::CKDE: {
+                return factor_score<CKDE>(variable, evidence);
+            }
+            default:
+                throw std::invalid_argument("HoldoutLikelihood only implemented for LinearGaussianCPD and CKDE.");
         }
     }
 }

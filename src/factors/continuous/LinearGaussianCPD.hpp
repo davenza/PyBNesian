@@ -7,7 +7,7 @@
 
 using Eigen::VectorXd;
 using dataset::DataFrame;
-using factors::FactorType;
+using factors::NodeType;
 
 namespace py = pybind11;
 
@@ -28,8 +28,8 @@ namespace factors::continuous {
                             const std::vector<double> beta, const double variance);
 
 
-        FactorType factor_type() const {
-            return FactorType::LinearGaussianCPD;
+        NodeType node_type() const {
+            return NodeType::LinearGaussianCPD;
         }
 
         arrow::Type::type arrow_type() const {
@@ -61,6 +61,10 @@ namespace factors::continuous {
         Array_ptr sample(int n, 
                          const DataFrame& evidence_values, 
                          unsigned int seed = std::random_device{}()) const;
+        
+        void save(const std::string name) {
+            save_factor(*this, name);
+        }
 
         py::tuple __getstate__() const;
         static LinearGaussianCPD __setstate__(py::tuple& t);

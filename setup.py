@@ -57,6 +57,7 @@ ext_modules = [
          'src/pybindings/pybindings_learning/pybindings_mle.cpp',
          'src/pybindings/pybindings_learning/pybindings_operators.cpp',
          'src/pybindings/pybindings_learning/pybindings_algorithms.cpp',
+         'src/factors/factors.cpp',
          'src/factors/continuous/LinearGaussianCPD.cpp',
          'src/factors/continuous/CKDE.cpp',
          'src/factors/continuous/SemiparametricCPD.cpp',

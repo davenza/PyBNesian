@@ -11,7 +11,7 @@
 
 namespace py = pybind11;
 using dataset::DataFrame;
-using factors::FactorType;
+using factors::NodeType;
 using Eigen::VectorXd, Eigen::VectorXi, Eigen::LLT;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
@@ -412,6 +412,10 @@ namespace factors::continuous {
         cl::Buffer logl_buffer(const DataFrame& df, Buffer_ptr& bitmap) const;
 
         double slogl(const DataFrame& df) const;
+        
+        void save(const std::string name) {
+            save_factor(*this, name);
+        }
 
         py::tuple __getstate__() const;
         static KDE __setstate__(py::tuple& t);
@@ -731,8 +735,8 @@ namespace factors::continuous {
             }
         }
 
-        FactorType factor_type() const {
-            return FactorType::CKDE;
+        NodeType node_type() const {
+            return NodeType::CKDE;
         }
 
         const std::string& variable() const { return m_variable; }
@@ -759,6 +763,10 @@ namespace factors::continuous {
 
         std::string ToString() const;
 
+        void save(const std::string name) {
+            save_factor(*this, name);
+        }
+        
         py::tuple __getstate__() const;
         static CKDE __setstate__(py::tuple& t);
         static CKDE __setstate__(py::tuple&& t) {

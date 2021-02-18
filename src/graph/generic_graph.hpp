@@ -399,7 +399,6 @@ namespace graph {
         return graph::__setstate__<G>(t);
     }
 
-
     template<typename G>
     void save_graph(const G& graph, std::string name) {
         auto open = py::module::import("io").attr("open");

@@ -8,7 +8,7 @@
 
 using factors::continuous::LinearGaussianCPD;
 using factors::continuous::CKDE;
-using factors::FactorType;
+using factors::NodeType;
 
 namespace factors::continuous {
 
@@ -32,11 +32,15 @@ namespace factors::continuous {
         double slogl(const DataFrame& df) const;
         VectorXd cdf(const DataFrame& df) const;
 
-        FactorType factor_type() const {
+        NodeType node_type() const {
+            return NodeType::SemiparametricCPD;
+        }
+
+        NodeType underlying_node_type() const {
             if (std::holds_alternative<LinearGaussianCPD>(m_cpd))
-                return FactorType::LinearGaussianCPD;
+                return NodeType::LinearGaussianCPD;
             else
-                return FactorType::CKDE;
+                return NodeType::CKDE;
         }
 
         arrow::Type::type arrow_type() const;
@@ -77,6 +81,10 @@ namespace factors::continuous {
                          unsigned int seed = std::random_device{}()) const;
 
         std::string ToString() const;
+
+        void save(const std::string name) {
+            save_factor(*this, name);
+        }
 
         py::tuple __getstate__() const;
         static SemiparametricCPD __setstate__(py::tuple& t);

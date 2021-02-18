@@ -13,7 +13,7 @@ using VectorXb = Matrix<bool, Dynamic, 1>;
 
 using models::BayesianNetwork, models::BayesianNetworkBase, models::SemiparametricBNBase;
 using models::ConditionalBayesianNetworkBase;
-using factors::FactorType;
+using factors::NodeType;
 using learning::scores::Score, learning::scores::ValidatedScore;
 using util::ArcStringVector, util::FactorStringTypeVector;
 
@@ -63,6 +63,19 @@ namespace learning::operators {
                 default:
                     throw std::invalid_argument("Unreachable code in OperatorType.");
             }
+        }
+
+        static OperatorType from_string(const std::string& name) {
+            if (name == "AddArc")
+                return OperatorType::ADD_ARC;
+            else if (name == "RemoveArc")
+                return OperatorType::REMOVE_ARC;
+            else if (name == "FlipArc")
+                return OperatorType::FLIP_ARC;
+            else if (name == "ChangeNodeType")
+                return OperatorType::CHANGE_NODE_TYPE;
+            else
+                throw std::invalid_argument("Not valid OperatorType.");
         }
 
     private:
@@ -166,13 +179,13 @@ namespace learning::operators {
     class ChangeNodeType : public Operator {
     public:
         ChangeNodeType(std::string node,
-                       FactorType new_node_type,
+                       NodeType new_node_type,
                        double delta) : Operator(delta, OperatorType::CHANGE_NODE_TYPE),
                                        m_node(node),
                                        m_new_node_type(new_node_type) {}
 
         const std::string& node() const { return m_node; }
-        FactorType node_type() const { return m_new_node_type; }
+        NodeType node_type() const { return m_new_node_type; }
         void apply(BayesianNetworkBase& m) const override {
             try {
                 auto& spbn = dynamic_cast<SemiparametricBNBase&>(m);
@@ -192,7 +205,7 @@ namespace learning::operators {
         }
     private:
         std::string m_node;
-        FactorType m_new_node_type;
+        NodeType m_new_node_type;
     };
 
     class HashOperator {
@@ -809,7 +822,7 @@ namespace learning::operators {
 
         void update_local_delta(const BayesianNetworkBase& model, const Score& score, const std::string& node) {
             const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-            FactorType type = spbn.node_type(node);
+            NodeType type = spbn.node_type(node);
             auto parents = model.parents(node);
             const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
 
@@ -823,7 +836,7 @@ namespace learning::operators {
 
         void update_local_delta(const ConditionalBayesianNetworkBase& model, const Score& score, const std::string& node) {
             const auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
-            FactorType type = spbn.node_type(node);
+            NodeType type = spbn.node_type(node);
             auto parents = model.parents(node);
             const auto& spbn_score = dynamic_cast<const ScoreSPBN&>(score);
             delta(model.collapsed_index(node)) = spbn_score.local_score(type.opposite_semiparametric(), node, parents) 

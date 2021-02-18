@@ -95,8 +95,8 @@ namespace learning::scores {
     public:
         using Score::local_score;
         virtual ~ScoreSPBN() {}
-        // virtual double local_score(FactorType variable_type, int variable, const std::vector<int>& evidence) const = 0;
-        virtual double local_score(FactorType variable_type,
+        // virtual double local_score(NodeType variable_type, int variable, const std::vector<int>& evidence) const = 0;
+        virtual double local_score(NodeType variable_type,
                                    const std::string& variable,
                                    const std::vector<std::string>& evidence) const = 0;
     };
@@ -126,7 +126,7 @@ namespace learning::scores {
         using ValidatedScore::vlocal_score;
 
         virtual ~ValidatedScoreSPBN() {}
-        virtual double vlocal_score(FactorType variable_type,
+        virtual double vlocal_score(NodeType variable_type,
                                    const std::string& variable,
                                    const std::vector<std::string>& evidence) const = 0;
     };

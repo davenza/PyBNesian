@@ -12,10 +12,20 @@ namespace util {
         }
     }
 
+    bool bge_compatible(const BayesianNetworkBase& bn) {
+        switch(bn.type()) {
+            case BayesianNetworkType::Gaussian:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     bool cvl_compatible(const BayesianNetworkBase& bn) {
         switch(bn.type()) {
             case BayesianNetworkType::Gaussian:
             case BayesianNetworkType::Semiparametric:
+            case BayesianNetworkType::KDENetwork:
             case BayesianNetworkType::Discrete:
                 return true;
             default:
@@ -27,6 +37,7 @@ namespace util {
         switch(bn.type()) {
             case BayesianNetworkType::Gaussian:
             case BayesianNetworkType::Semiparametric:
+            case BayesianNetworkType::KDENetwork:
             case BayesianNetworkType::Discrete:
                 return true;
             default:
@@ -38,6 +49,7 @@ namespace util {
         switch(bn.type()) {
             case BayesianNetworkType::Gaussian:
             case BayesianNetworkType::Semiparametric:
+            case BayesianNetworkType::KDENetwork:
             case BayesianNetworkType::Discrete:
                 return true;
             default:
@@ -49,6 +61,8 @@ namespace util {
         switch (score) {
             case ScoreType::BIC:
                 return bic_compatible(bn);
+            case ScoreType::BGe:
+                return bge_compatible(bn);
             case ScoreType::CVLikelihood:
                 return cvl_compatible(bn);
             case ScoreType::HoldoutLikelihood:

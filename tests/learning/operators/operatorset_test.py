@@ -3,7 +3,7 @@ import numpy as np
 from pybnesian.learning.operators import ArcOperatorSet, ChangeNodeTypeSet, OperatorTabuSet, AddArc, OperatorType
 from pybnesian.learning.scores import BIC, CVLikelihood
 from pybnesian.models import GaussianNetwork, SemiparametricBN
-from pybnesian.factors import FactorType
+from pybnesian.factors import NodeType
 import util_test
 
 SIZE = 10000
@@ -41,7 +41,7 @@ def test_lists():
     arc_op.set_arc_blacklist([("b", "a")])
     arc_op.set_arc_whitelist([("b", "c")])
     arc_op.set_max_indegree(3)
-    arc_op.set_type_whitelist([("a", FactorType.LinearGaussianCPD)])
+    arc_op.set_type_whitelist([("a", NodeType.LinearGaussianCPD)])
 
     arc_op.cache_scores(gbn, bic)
 

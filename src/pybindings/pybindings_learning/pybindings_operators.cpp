@@ -74,13 +74,14 @@ void pybindings_operators(py::module& root) {
         .def_property_readonly_static("CHANGE_NODE_TYPE", [](const py::object&) { 
             return OperatorType(OperatorType::CHANGE_NODE_TYPE);
         })
+        .def_static("from_string", &OperatorType::from_string)
         .def(py::self == py::self)
         .def(py::self != py::self);
 
     register_ArcOperators(operators);
 
     py::class_<ChangeNodeType, Operator, std::shared_ptr<ChangeNodeType>>(operators, "ChangeNodeType")
-        .def(py::init<std::string, FactorType, double>())
+        .def(py::init<std::string, NodeType, double>())
         .def_property_readonly("node", &ChangeNodeType::node)
         .def_property_readonly("node_type", &ChangeNodeType::node_type)
         .def("apply", &ChangeNodeType::apply)

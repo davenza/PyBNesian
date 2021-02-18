@@ -25,6 +25,7 @@ namespace models {
         {
             Gaussian,
             Semiparametric,
+            KDENetwork,
             Discrete
         };
 
@@ -55,11 +56,26 @@ namespace models {
                     return "Gaussian";
                 case Value::Semiparametric:
                     return "Semiparametric";
+                case Value::KDENetwork:
+                    return "KDENetwork";
                 case Value::Discrete:
                     return "Discrete";
                 default:
                     throw std::invalid_argument("Unreachable code in BayesianNetworkType.");
             }
+        }
+
+        static BayesianNetworkType from_string(const std::string& name) {
+            if (name == "Gaussian")
+                return BayesianNetworkType::Gaussian;
+            else if (name == "Semiparametric")
+                return BayesianNetworkType::Semiparametric;
+            else if (name == "KDENetwork")
+                return BayesianNetworkType::KDENetwork;
+            else if (name == "Discrete")
+                return BayesianNetworkType::Discrete;
+            else
+                throw std::invalid_argument("Not valid BayesianNetworkType.");
         }
     private:
         Value value;
@@ -186,11 +202,11 @@ namespace models {
     class SemiparametricBNBase {
     public:
         virtual ~SemiparametricBNBase() = default;
-        virtual FactorType node_type(int node_index) const = 0;
-        virtual FactorType node_type(const std::string& node) const = 0;
-        virtual std::unordered_map<std::string, FactorType> node_types() const = 0;
-        virtual void set_node_type(int node_index, FactorType new_type) = 0;
-        virtual void set_node_type(const std::string& node, FactorType new_type) = 0;
+        virtual NodeType node_type(int node_index) const = 0;
+        virtual NodeType node_type(const std::string& node) const = 0;
+        virtual std::unordered_map<std::string, NodeType> node_types() const = 0;
+        virtual void set_node_type(int node_index, NodeType new_type) = 0;
+        virtual void set_node_type(const std::string& node, NodeType new_type) = 0;
         virtual void force_type_whitelist(const FactorStringTypeVector& type_whitelist) = 0;
     };
 
@@ -201,10 +217,12 @@ namespace models {
 
     using GaussianNetwork = BayesianNetwork<BayesianNetworkType::Gaussian>;
     using SemiparametricBN = BayesianNetwork<BayesianNetworkType::Semiparametric>;
+    using KDENetwork = BayesianNetwork<BayesianNetworkType::KDENetwork>;
     using DiscreteBN = BayesianNetwork<BayesianNetworkType::Discrete>;
 
     using ConditionalGaussianNetwork = ConditionalBayesianNetwork<BayesianNetworkType::Gaussian>;
     using ConditionalSemiparametricBN = ConditionalBayesianNetwork<BayesianNetworkType::Semiparametric>;
+    using ConditionalKDENetwork = ConditionalBayesianNetwork<BayesianNetworkType::KDENetwork>;
     using ConditionalDiscreteBN = ConditionalBayesianNetwork<BayesianNetworkType::Discrete>;
 
     template<typename Model, typename = void>
@@ -246,7 +264,6 @@ namespace models {
 
     template<typename Derived>
     class ConditionalBayesianNetworkImpl;
-
 
     template<typename Derived>
     class BayesianNetworkImpl : public BN_traits<Derived>::BaseClass {

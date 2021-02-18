@@ -39,7 +39,7 @@ namespace learning::scores {
                            const std::string& variable,
                            const std::vector<std::string>& evidence) const override;
 
-        double local_score(FactorType variable_type,
+        double local_score(NodeType variable_type,
                            const std::string& variable,
                            const std::vector<std::string>& evidence) const override;
 
@@ -77,8 +77,19 @@ namespace learning::scores {
             return m_holdout.training_data().has_columns(model.all_nodes());
         }
     private:
+        template<typename FactorType>
+        double factor_score(const std::string& variable, const std::vector<std::string>& evidence) const;
+
         HoldOut m_holdout;
     };
+
+    template<typename FactorType>
+    double HoldoutLikelihood::factor_score(const std::string& variable, const std::vector<std::string>& evidence) const {
+        FactorType cpd(variable, evidence);
+        cpd.fit(training_data());
+        return cpd.slogl(test_data());
+    }
+
 
     using DynamicHoldoutLikelihood = DynamicScoreAdaptator<HoldoutLikelihood>;
 }

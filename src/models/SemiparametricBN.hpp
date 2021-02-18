@@ -20,28 +20,40 @@ namespace models {
         using DagClass = typename BN_traits<Derived>::DagClass;
 
         SemiparametricBNImpl(const DagClass& graph) : BaseImpl<Derived>(graph),
-                                                      m_factor_types(this->num_raw_nodes()) {}
+                                                      m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         SemiparametricBNImpl(DagClass&& graph) : BaseImpl<Derived>(std::move(graph)),
-                                                 m_factor_types(this->num_raw_nodes()) {}
+                                                 m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         SemiparametricBNImpl(const DagClass& graph,
                              FactorStringTypeVector& node_types) : BaseImpl<Derived>(graph),
-                                                                   m_factor_types(this->num_raw_nodes()) {
+                                                                   m_node_types(this->num_raw_nodes()) {
             for(auto& p : node_types) {
                 if (!static_cast<Derived&>(*this).can_have_cpd(p.first))
                     throw std::invalid_argument("Node " + p.first + " in node_types list, not present in Bayesian network");
-                m_factor_types[this->index(p.first)] = p.second;
+
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+                
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
 
         SemiparametricBNImpl(DagClass&& graph, FactorStringTypeVector& node_types) 
                                             : BaseImpl<Derived>(std::move(graph)),
-                                              m_factor_types(this->num_raw_nodes()) {
+                                              m_node_types(this->num_raw_nodes()) {
             for(auto& p : node_types) {
                 if (!static_cast<Derived&>(*this).can_have_cpd(p.first))
                     throw std::invalid_argument("Node " + p.first + " in node_types list, not present in Bayesian network");
-                m_factor_types[this->index(p.first)] = p.second;
+                
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -50,32 +62,42 @@ namespace models {
         // /////////////////////////////////////
         template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const std::vector<std::string>& nodes) : BaseImpl<Derived>(nodes),
-                                                                      m_factor_types(this->num_raw_nodes()) {}
+                                                                      m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const ArcStringVector& arcs) : BaseImpl<Derived>(arcs),
-                                                            m_factor_types(this->num_raw_nodes()) {}
+                                                            m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const std::vector<std::string>& nodes, 
                              const ArcStringVector& arcs) : BaseImpl<Derived>(nodes, arcs),
-                                                            m_factor_types(this->num_raw_nodes()) {}
+                                                            m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const std::vector<std::string>& nodes, 
                              FactorStringTypeVector& node_types) : BaseImpl<Derived>(nodes),
-                                                                   m_factor_types(this->num_raw_nodes()) {
+                                                                   m_node_types(this->num_raw_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->index(p.first)] = p.second;
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
 
         template<typename D = Derived, enable_if_unconditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const ArcStringVector& arcs, 
                              FactorStringTypeVector& node_types) : BaseImpl<Derived>(arcs),
-                                                                   m_factor_types(this->num_raw_nodes()) {
+                                                                   m_node_types(this->num_raw_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->index(p.first)] = p.second;
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -83,9 +105,11 @@ namespace models {
         SemiparametricBNImpl(const std::vector<std::string>& nodes, 
                              const ArcStringVector& arcs, 
                              FactorStringTypeVector& node_types) : BaseImpl<Derived>(nodes, arcs),
-                                                                   m_factor_types(this->num_raw_nodes()) {
+                                                                   m_node_types(this->num_raw_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->index(p.first)] = p.second;
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
         
@@ -96,24 +120,30 @@ namespace models {
         SemiparametricBNImpl(const std::vector<std::string>& nodes,
                              const std::vector<std::string>& interface_nodes) 
                                             : BaseImpl<Derived>(nodes, interface_nodes),
-                                              m_factor_types(this->num_raw_nodes()) {}
+                                              m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         template<typename D = Derived, enable_if_conditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const std::vector<std::string>& nodes,
                              const std::vector<std::string>& interface_nodes,
                              const ArcStringVector& arcs) 
                                             : BaseImpl<Derived>(nodes, interface_nodes, arcs),
-                                              m_factor_types(this->num_raw_nodes()) {}
+                                              m_node_types(this->num_raw_nodes()) {
+            std::fill(m_node_types.begin(), m_node_types.end(), NodeType::LinearGaussianCPD);
+        }
 
         template<typename D = Derived, enable_if_conditional_bn_t<D, int> = 0>
         SemiparametricBNImpl(const std::vector<std::string>& nodes,
                              const std::vector<std::string>& interface_nodes,
                              FactorStringTypeVector& node_types) 
                                             : BaseImpl<Derived>(nodes, interface_nodes),
-                                              m_factor_types(this->num_raw_nodes()) {
+                                              m_node_types(this->num_raw_nodes()) {
             
             for(auto& p : node_types) {
-                m_factor_types[this->index(p.first)] = p.second;
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
 
@@ -123,30 +153,37 @@ namespace models {
                              const ArcStringVector& arcs, 
                              FactorStringTypeVector& node_types) 
                                             : BaseImpl<Derived>(nodes, interface_nodes, arcs),
-                                              m_factor_types(this->num_raw_nodes()) {
+                                              m_node_types(this->num_raw_nodes()) {
             for(auto& p : node_types) {
-                m_factor_types[this->index(p.first)] = p.second;
+                if (p.second != NodeType::LinearGaussianCPD && p.second != NodeType::CKDE)
+                    throw std::invalid_argument("Wrong factor type (" + p.second.ToString() + ") for variable " + p.first);
+                m_node_types[this->index(p.first)] = p.second;
             }
         }
 
-        FactorType node_type(int node_index) const override {
-            return m_factor_types[this->check_index(node_index)];
+        NodeType node_type(int node_index) const override {
+            return m_node_types[this->check_index(node_index)];
         }
 
-        FactorType node_type(const std::string& node) const override {
-            return m_factor_types[this->check_index(node)];
+        NodeType node_type(const std::string& node) const override {
+            return m_node_types[this->check_index(node)];
         }
 
-        void set_node_type(int node_index, FactorType new_type) override {
-            m_factor_types[this->check_index(node_index)] = new_type;
+        void set_node_type(int node_index, NodeType new_type) override {
+            if (new_type != NodeType::LinearGaussianCPD && new_type != NodeType::CKDE)
+                throw std::invalid_argument("Wrong factor type (" + new_type.ToString() + ") for variable " 
+                                                + std::to_string(node_index));
+            m_node_types[this->check_index(node_index)] = new_type;
         }
 
-        void set_node_type(const std::string& node, FactorType new_type) override {
-            m_factor_types[this->check_index(node)] = new_type;
+        void set_node_type(const std::string& node, NodeType new_type) override {
+            if (new_type != NodeType::LinearGaussianCPD && new_type != NodeType::CKDE)
+                throw std::invalid_argument("Wrong factor type (" + new_type.ToString() + ") for variable " + node);
+            m_node_types[this->check_index(node)] = new_type;
         }
 
-        std::unordered_map<std::string, FactorType> node_types() const override {
-            std::unordered_map<std::string, FactorType> res;
+        std::unordered_map<std::string, NodeType> node_types() const override {
+            std::unordered_map<std::string, NodeType> res;
 
             for (const auto& n : this->nodes()) {
                 res.insert({n, this->node_type(n)});
@@ -158,10 +195,10 @@ namespace models {
         int add_node(const std::string& node) override {
             auto new_index = BaseImpl<Derived>::add_node(node);
             // Update factor type size.
-            if (static_cast<size_t>(new_index) >= m_factor_types.size())
-                m_factor_types.resize(new_index + 1);
+            if (static_cast<size_t>(new_index) >= m_node_types.size())
+                m_node_types.resize(new_index + 1);
 
-            m_factor_types[new_index] = FactorType::LinearGaussianCPD;
+            m_node_types[new_index] = NodeType::LinearGaussianCPD;
             return new_index;
         }
 
@@ -174,9 +211,9 @@ namespace models {
         CPD create_cpd(const std::string& node) const {
             auto pa = this->parents(node);
             switch(node_type(node)) {
-                case FactorType::LinearGaussianCPD:
+                case NodeType::LinearGaussianCPD:
                     return LinearGaussianCPD(node, pa);
-                case FactorType::CKDE:
+                case NodeType::CKDE:
                     return CKDE(node, pa);
                 default:
                     throw std::runtime_error("Unreachable code.");
@@ -186,17 +223,17 @@ namespace models {
         bool must_construct_cpd(const CPD& cpd) const {
             bool must_construct = BaseImpl<Derived>::must_construct_cpd(cpd);
             
-            return must_construct || (cpd.factor_type() != m_factor_types[this->index(cpd.variable())]);
+            return must_construct || (cpd.underlying_node_type() != m_node_types[this->index(cpd.variable())]);
         }
 
         void compatible_cpd(const CPD& cpd) const {
             BaseImpl<Derived>::compatible_cpd(cpd);
 
             int index = this->index(cpd.variable());
-            if (m_factor_types[index] != cpd.factor_type()) {
+            if (m_node_types[index] != cpd.underlying_node_type()) {
                 throw std::invalid_argument(
-                    "CPD defined with a different node type. Expected node type: " + m_factor_types[index].ToString() +
-                    ". CPD node type: " + cpd.factor_type().ToString());
+                    "CPD defined with a different node type. Expected node type: " + m_node_types[index].ToString() +
+                    ". CPD node type: " + cpd.underlying_node_type().ToString());
             }
         }
 
@@ -222,7 +259,7 @@ namespace models {
             __setstate_extra__(t);
         }
     private:
-        std::vector<FactorType> m_factor_types;
+        std::vector<NodeType> m_node_types;
     };
 
     template<typename Derived, template<typename> typename BaseImpl>
@@ -233,7 +270,7 @@ namespace models {
         for (const auto& name : this->nodes()) {
             auto idx = this->index(name);
 
-            types.push_back(py::make_tuple(name, static_cast<int>(node_type(idx))));
+            types.push_back(py::make_tuple(name, node_type(idx).ToString()));
         }
 
         return py::cast(types);
@@ -245,12 +282,11 @@ namespace models {
 
         for (const auto& type : types) {
             const auto& name = type[0].cast<std::string>();
-            int type_int = type[1].cast<int>();
+            std::string type_string = type[1].cast<std::string>();
 
-            this->set_node_type(name, static_cast<FactorType>(type_int));
+            this->set_node_type(name, NodeType::from_string(type_string));
         }
     }
-
 
     template<template<BayesianNetworkType::Value> typename _BNClass>
     struct BN_traits<_BNClass<BayesianNetworkType::Semiparametric>,
@@ -296,12 +332,12 @@ namespace models {
 
         void set_node(int index) override {
             clone_inherit::set_node(index);
-            this->set_node_type(index, FactorType::LinearGaussianCPD);
+            this->set_node_type(index, NodeType::LinearGaussianCPD);
         }
 
         void set_node(const std::string& name) override {
             clone_inherit::set_node(name);
-            this->set_node_type(name, FactorType::LinearGaussianCPD);
+            this->set_node_type(name, NodeType::LinearGaussianCPD);
         }
 
         std::string ToString() const override {

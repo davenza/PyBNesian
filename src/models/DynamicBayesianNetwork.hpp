@@ -45,6 +45,7 @@ namespace models {
 
     using DynamicGaussianNetwork = DynamicBayesianNetwork<BayesianNetworkType::Gaussian>;
     using DynamicSemiparametricBN = DynamicBayesianNetwork<BayesianNetworkType::Semiparametric>;
+    using DynamicKDENetwork = DynamicBayesianNetwork<BayesianNetworkType::KDENetwork>;
     using DynamicDiscreteBN = DynamicBayesianNetwork<BayesianNetworkType::Discrete>;
 
     template<typename G, typename _ = void>
@@ -76,7 +77,6 @@ namespace models {
     template<typename Derived>
     class DynamicBayesianNetworkImpl : public DynamicBayesianNetworkBase {
     public:
-
         DynamicBayesianNetworkImpl(const std::vector<std::string>& variables, int markovian_order) : m_variables(variables),
                                                                                                      m_markovian_order(markovian_order),
                                                                                                      m_static(),
@@ -311,45 +311,8 @@ namespace models {
         } else if constexpr (BN_traits<Derived>::TYPE == BayesianNetworkType::Discrete) {
             return Type::DICTIONARY;
         } else {
-            arrow::Type::type t = arrow::Type::NA;
-
-            for (int i = 1; i <= dbn.markovian_order(); ++i) {
-                const auto& cpd = dbn.static_bn().cpd(util::temporal_name(variable, i));
-
-                switch (cpd.factor_type()) {
-                    case FactorType::LinearGaussianCPD:
-                        return Type::DOUBLE;
-                    case FactorType::CKDE: {
-                        const auto& ckde = cpd.as_ckde();
-                        if (ckde.arrow_type() == Type::DOUBLE)
-                            return Type::DOUBLE;
-                        else
-                            t = ckde.arrow_type();
-                        break;
-                    }
-                    default:
-                        throw std::runtime_error("Unreachable code.");
-                }
-            }
-
-
             const auto& cpd = dbn.transition_bn().cpd(util::temporal_name(variable, 0));
-            switch (cpd.factor_type()) {
-                case FactorType::LinearGaussianCPD:
-                    return Type::DOUBLE;
-                case FactorType::CKDE: {
-                    const auto& ckde = cpd.as_ckde();
-                    if (ckde.arrow_type() == Type::DOUBLE)
-                        return Type::DOUBLE;
-                    else
-                        t = ckde.arrow_type();
-                    break;
-                }
-                default:
-                    throw std::runtime_error("Unreachable code.");
-            }
-
-            return t;
+            return cpd.arrow_type();
         }
     }
 

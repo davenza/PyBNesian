@@ -14,21 +14,30 @@ namespace py = pybind11;
 using factors::continuous::LinearGaussianCPD, factors::continuous::KDE, 
       factors::continuous::CKDE, factors::continuous::SemiparametricCPD;
 using factors::discrete::DiscreteFactor;
-using factors::FactorType;
+using factors::NodeType;
 
 void pybindings_factors(py::module& root) {
     auto factors = root.def_submodule("factors", "Factors submodule.");
 
-    py::class_<FactorType>(factors, "FactorType")
+    factors.def("load_factor", &factors::load_factor);
+
+    py::class_<NodeType>(factors, "NodeType")
         .def_property_readonly_static("LinearGaussianCPD", [](const py::object&) { 
-            return FactorType(FactorType::LinearGaussianCPD);
+            return NodeType(NodeType::LinearGaussianCPD);
         })
         .def_property_readonly_static("CKDE", [](const py::object&) { 
-            return FactorType(FactorType::CKDE);
+            return NodeType(NodeType::CKDE);
         })
-        .def("opposite_semiparametric", &FactorType::opposite_semiparametric)
-        .def("__str__", &FactorType::ToString)
-        .def("__repr__", &FactorType::ToString)
+        .def_property_readonly_static("SemiparametricCPD", [](const py::object&) { 
+            return NodeType(NodeType::SemiparametricCPD);
+        })
+        .def_property_readonly_static("DiscreteFactor", [](const py::object&) { 
+            return NodeType(NodeType::DiscreteFactor);
+        })
+        .def_static("from_string", &NodeType::from_string)
+        .def("opposite_semiparametric", &NodeType::opposite_semiparametric)
+        .def("__str__", &NodeType::ToString)
+        .def("__repr__", &NodeType::ToString)
         .def(py::self == py::self)
         .def(py::self != py::self);
 
@@ -39,6 +48,7 @@ void pybindings_factors(py::module& root) {
         .def(py::init<const std::string, const std::vector<std::string>, const std::vector<double>, double>())
         .def_property_readonly("variable", &LinearGaussianCPD::variable)
         .def_property_readonly("evidence", &LinearGaussianCPD::evidence)
+        .def_property_readonly("node_type", &LinearGaussianCPD::node_type)
         .def_property("beta", [](const LinearGaussianCPD& self) {
             if (self.fitted())
                 return self.beta();
@@ -70,6 +80,7 @@ void pybindings_factors(py::module& root) {
         }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
         .def("__str__", &LinearGaussianCPD::ToString)
         .def("__repr__", &LinearGaussianCPD::ToString)
+        .def("save", &LinearGaussianCPD::save)
         .def(py::pickle(
             [](const LinearGaussianCPD& self) {
                 return self.__getstate__();
@@ -110,6 +121,7 @@ void pybindings_factors(py::module& root) {
         .def("fit", (void (KDE::*)(const DataFrame&))&KDE::fit)
         .def("logl", &KDE::logl, py::return_value_policy::take_ownership)
         .def("slogl", &KDE::slogl)
+        .def("save", &KDE::save)
         .def(py::pickle(
             [](const KDE& self) {
                 return self.__getstate__();
@@ -123,6 +135,7 @@ void pybindings_factors(py::module& root) {
         .def(py::init<const std::string, const std::vector<std::string>>())
         .def_property_readonly("variable", &CKDE::variable)
         .def_property_readonly("evidence", &CKDE::evidence)
+        .def_property_readonly("node_type", &CKDE::node_type)
         .def_property_readonly("N", [](const CKDE& self) {
             if (self.fitted())
                 return self.num_instances();
@@ -162,6 +175,7 @@ void pybindings_factors(py::module& root) {
                 return self.sample(n, DataFrame(), seed);
             }
         }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        .def("save", &CKDE::save)
         .def("__str__", &CKDE::ToString)
         .def("__repr__", &CKDE::ToString)
         .def(py::pickle(
@@ -178,7 +192,8 @@ void pybindings_factors(py::module& root) {
         .def(py::init<CKDE>())
         .def_property_readonly("variable", &SemiparametricCPD::variable)
         .def_property_readonly("evidence", &SemiparametricCPD::evidence)
-        .def_property_readonly("factor_type", &SemiparametricCPD::factor_type)
+        .def_property_readonly("node_type", &SemiparametricCPD::node_type)
+        .def_property_readonly("underlying_node_type", &SemiparametricCPD::underlying_node_type)
         .def_property_readonly("fitted", &SemiparametricCPD::fitted)
         .def("as_lg", py::overload_cast<>(&SemiparametricCPD::as_lg), py::return_value_policy::reference_internal)
         .def("as_ckde", py::overload_cast<>(&SemiparametricCPD::as_ckde), py::return_value_policy::reference_internal)
@@ -205,7 +220,16 @@ void pybindings_factors(py::module& root) {
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"));
+        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        .def("save", &SemiparametricCPD::save)
+        .def(py::pickle(
+            [](const SemiparametricCPD& self) {
+                return self.__getstate__();
+            }, 
+            [](py::tuple t) {
+                return SemiparametricCPD::__setstate__(t);
+            }
+        ));
     
     py::implicitly_convertible<LinearGaussianCPD, SemiparametricCPD>();
     py::implicitly_convertible<CKDE, SemiparametricCPD>();
@@ -216,11 +240,13 @@ void pybindings_factors(py::module& root) {
         .def(py::init<std::string, std::vector<std::string>>())
         .def_property_readonly("variable", &DiscreteFactor::variable)
         .def_property_readonly("evidence", &DiscreteFactor::evidence)
+        .def_property_readonly("node_type", &DiscreteFactor::node_type)
         .def_property_readonly("fitted", &DiscreteFactor::fitted)
         .def("fit", &DiscreteFactor::fit)
         .def("logl", &DiscreteFactor::logl, py::arg("df"), py::arg("check_domain") = true)
         .def("slogl", &DiscreteFactor::slogl, py::arg("df"), py::arg("check_domain") = true)
         .def("ToString", &DiscreteFactor::ToString)
+        .def("save", &DiscreteFactor::save)
         .def(py::pickle(
             [](const DiscreteFactor& self) {
                 return self.__getstate__();

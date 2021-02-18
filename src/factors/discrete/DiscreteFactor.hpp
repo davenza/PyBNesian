@@ -6,7 +6,7 @@
 #include <factors/factors.hpp>
 
 using dataset::DataFrame;
-using factors::FactorType;
+using factors::NodeType;
 using Eigen::VectorXd, Eigen::VectorXi;
 
 using Array_ptr = std::shared_ptr<arrow::Array>;
@@ -111,8 +111,8 @@ namespace factors::discrete {
                                                                                   m_strides(),
                                                                                   m_fitted(false) {}
 
-        FactorType factor_type() const {
-            return FactorType::DiscreteFactor;
+        NodeType node_type() const {
+            return NodeType::DiscreteFactor;
         }
 
         const std::string& variable() const { return m_variable; }
@@ -138,6 +138,10 @@ namespace factors::discrete {
         Array_ptr sample(int n, const DataFrame& evidence_values, 
                          unsigned int seed = std::random_device{}()) const;
 
+        void save(const std::string name) {
+            save_factor(*this, name);
+        }
+        
         py::tuple __getstate__() const;
         static DiscreteFactor __setstate__(py::tuple& t);
         static DiscreteFactor __setstate__(py::tuple&& t) {

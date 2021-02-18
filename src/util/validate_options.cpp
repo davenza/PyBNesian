@@ -1,7 +1,8 @@
 #include <util/validate_options.hpp>
+#include <learning/scores/bge.hpp>
 #include <learning/scores/validated_likelihood.hpp>
 
-using learning::scores::ValidatedLikelihood;
+using learning::scores::BGe, learning::scores::ValidatedLikelihood;
 using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet, learning::operators::OperatorPool;
 
 namespace util {
@@ -9,26 +10,31 @@ namespace util {
     BayesianNetworkType check_valid_bn_string(const std::string& bn_type) {
         if (bn_type == "gbn") return BayesianNetworkType::Gaussian;
         if (bn_type == "spbn") return BayesianNetworkType::Semiparametric;
+        if (bn_type == "kdebn") return BayesianNetworkType::KDENetwork;
         else
             throw std::invalid_argument("Wrong Bayesian Network type \"" + bn_type + "\" specified. The possible alternatives are " 
-                                        "\"gbn\" (Gaussian Bayesian networks) or \"spbn\" (Semiparametric Bayesian networks).");
+                                        "\"gbn\" (Gaussian Bayesian networks), \"spbn\" (Semiparametric Bayesian networks)"
+                                        " or \"kdebn\" (KDE Bayesian network).");
     }
 
     ScoreType check_valid_score_string(const std::optional<std::string>& score, BayesianNetworkType bn_type) {
         if (score) {
             if (*score == "bic") return ScoreType::BIC;
+            if (*score == "bge") return ScoreType::BGe;
             if (*score == "cv-lik") return ScoreType::CVLikelihood;
             if (*score == "holdout-lik") return ScoreType::HoldoutLikelihood;
             if (*score == "validated-lik") return ScoreType::ValidatedLikelihood;
             else
                 throw std::invalid_argument("Wrong Bayesian Network score \"" + *score + "\" specified. The possible alternatives are " 
-                                        "\"bic\" (Bayesian Information Criterion), \"predic-l\" (Predictive Log-likelihood) or"
-                                        "\"holdout-l\" (Holdout likelihood).");
+                                        "\"bic\" (Bayesian Information Criterion), \"bge\" (Bayesian Gaussian equivalent), "
+                                        "\"cv-lik\" (Cross-Validated likelihood), \"holdout-l\" (Hold-out likelihood) "
+                                        " or \"validated-lik\" (Validated likelihood with cross-validation).");
         } else {
             switch(bn_type) {
                 case BayesianNetworkType::Gaussian:
                     return ScoreType::BIC;
                 case BayesianNetworkType::Semiparametric:
+                case BayesianNetworkType::KDENetwork:
                     return ScoreType::ValidatedLikelihood;
                 default:
                     throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
@@ -57,6 +63,8 @@ namespace util {
                     return {OperatorSetType::ARCS};
                 case BayesianNetworkType::Semiparametric:
                     return {OperatorSetType::ARCS, OperatorSetType::NODE_TYPE};
+                case BayesianNetworkType::KDENetwork:
+                    return {OperatorSetType::ARCS};
                 default:
                     throw std::invalid_argument("Wrong BayesianNetworkType. Unreachable code!");
             }
@@ -76,12 +84,13 @@ namespace util {
         map_bn_score {
             { BayesianNetworkType::Gaussian, { 
                                 ScoreType::BIC, 
+                                ScoreType::BGe,
                                 ScoreType::CVLikelihood,
                                 ScoreType::HoldoutLikelihood,
-                                ScoreType::ValidatedLikelihood
-                                 } 
+                                ScoreType::ValidatedLikelihood } 
             },
-            { BayesianNetworkType::Semiparametric, { ScoreType::ValidatedLikelihood } }
+            { BayesianNetworkType::Semiparametric, { ScoreType::ValidatedLikelihood } },
+            { BayesianNetworkType::KDENetwork, { ScoreType::ValidatedLikelihood } }
         };
         
         if (map_bn_score[bn_type].count(score) == 0) {
@@ -92,6 +101,8 @@ namespace util {
         switch (score) {
             case ScoreType::BIC:
                 return std::make_unique<BIC>(df);
+            case ScoreType::BGe:
+                return std::make_unique<BGe>(df);
             case ScoreType::CVLikelihood:
                 return std::make_unique<CVLikelihood>(df, num_folds, seed);
             case ScoreType::HoldoutLikelihood:
@@ -114,7 +125,8 @@ namespace util {
                                   typename BayesianNetworkType::HashType>
         map_bn_operators {
             { BayesianNetworkType::Gaussian, { OperatorSetType::ARCS }},
-            { BayesianNetworkType::Semiparametric, { OperatorSetType::ARCS, OperatorSetType::NODE_TYPE }}
+            { BayesianNetworkType::Semiparametric, { OperatorSetType::ARCS, OperatorSetType::NODE_TYPE }},
+            { BayesianNetworkType::KDENetwork, { OperatorSetType::ARCS }}
         };
 
         auto bn_set = map_bn_operators[bn_type];

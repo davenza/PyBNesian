@@ -4,6 +4,7 @@
 #include <random>
 #include <dataset/dataset.hpp>
 #include <graph/generic_graph.hpp>
+#include <util/parameter_traits.hpp>
 #include <util/virtual_clone.hpp>
 
 using dataset::DataFrame;
@@ -206,7 +207,7 @@ namespace models {
     using ConditionalSemiparametricBN = ConditionalBayesianNetwork<BayesianNetworkType::Semiparametric>;
     using ConditionalDiscreteBN = ConditionalBayesianNetwork<BayesianNetworkType::Discrete>;
 
-    template<typename Model>
+    template<typename Model, typename = void>
     struct BN_traits {};
 
     template<typename G, typename _ = void>

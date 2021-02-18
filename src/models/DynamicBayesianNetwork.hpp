@@ -47,6 +47,32 @@ namespace models {
     using DynamicSemiparametricBN = DynamicBayesianNetwork<BayesianNetworkType::Semiparametric>;
     using DynamicDiscreteBN = DynamicBayesianNetwork<BayesianNetworkType::Discrete>;
 
+    template<typename G, typename _ = void>
+    struct is_dynamic_bn : public std::false_type {};
+
+    template<typename G>
+    struct is_dynamic_bn<G,
+                         std::void_t<
+                            util::GenericInstantation<BayesianNetworkType::Value>::
+                                    enable_if_template_instantation_t<DynamicBayesianNetwork, G>
+                         >
+    > : public std::true_type {};
+
+    template<typename G>
+    inline constexpr auto is_dynamic_bn_v = is_dynamic_bn<G>::value;
+
+    template<typename G, typename R = void>
+    using enable_if_dynamic_bn_t = std::enable_if_t<is_dynamic_bn_v<G>, R>;
+
+    template<BayesianNetworkType::Value T>
+    struct BN_traits<DynamicBayesianNetwork<T>, void> {
+        using CPD = typename BN_traits<BayesianNetwork<T>>::CPD;
+        using BaseClass = DynamicBayesianNetworkBase;
+        template<BayesianNetworkType::Value T2>
+        using BNClass = DynamicBayesianNetwork<T2>;
+        inline static constexpr auto TYPE = T;
+    };
+
     template<typename Derived>
     class DynamicBayesianNetworkImpl : public DynamicBayesianNetworkBase {
     public:

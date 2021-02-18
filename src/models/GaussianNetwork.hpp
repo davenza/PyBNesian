@@ -10,20 +10,21 @@ using factors::continuous::LinearGaussianCPD;
 namespace models {
     
     template<template<BayesianNetworkType::Value> typename _BNClass>
-    struct BN_traits<_BNClass<BayesianNetworkType::Gaussian>> {
+    struct BN_traits<_BNClass<BayesianNetworkType::Gaussian>,
+                     std::enable_if_t<(is_unconditional_bn_v<_BNClass<BayesianNetworkType::Gaussian>> ||
+                                        is_conditional_bn_v<_BNClass<BayesianNetworkType::Gaussian>>),
+                                        void>
+    > {
         using CPD = LinearGaussianCPD;
         using BaseClass = std::conditional_t<
-                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
-                                                                        BayesianNetwork,
-                                                                        _BNClass<BayesianNetworkType::Gaussian>>,
-                    BayesianNetworkBase,
-                    ConditionalBayesianNetworkBase>;
-        using DagClass = std::conditional_t<
-                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
-                                                                        BayesianNetwork,
-                                                                        _BNClass<BayesianNetworkType::Gaussian>>,
-                    Dag,
-                    ConditionalDag>;
+                                is_unconditional_bn_v<_BNClass<BayesianNetworkType::Gaussian>>,
+                                BayesianNetworkBase,
+                                ConditionalBayesianNetworkBase
+                        >;
+        using DagClass = std::conditional_t<is_unconditional_bn_v<_BNClass<BayesianNetworkType::Gaussian>>,
+                                Dag,
+                                ConditionalDag
+                        >;
         template<BayesianNetworkType::Value Type>
         using BNClass = _BNClass<Type>;
         inline static constexpr auto TYPE = BayesianNetworkType::Gaussian;

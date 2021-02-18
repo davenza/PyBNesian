@@ -11,20 +11,21 @@ using util::clone_inherit;
 namespace models {
 
     template<template<BayesianNetworkType::Value> typename _BNClass>
-    struct BN_traits<_BNClass<BayesianNetworkType::Discrete>> {
+    struct BN_traits<_BNClass<BayesianNetworkType::Discrete>,
+                     std::enable_if_t<(is_unconditional_bn_v<_BNClass<BayesianNetworkType::Discrete>> ||
+                                       is_conditional_bn_v<_BNClass<BayesianNetworkType::Discrete>>),
+                                       void>
+    > {
         using CPD = DiscreteFactor;
         using BaseClass = std::conditional_t<
-                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
-                                                                        BayesianNetwork,
-                                                                        _BNClass<BayesianNetworkType::Discrete>>,
-                    BayesianNetworkBase,
-                    ConditionalBayesianNetworkBase>;
-        using DagClass = std::conditional_t<
-                    util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
-                                                                        BayesianNetwork,
-                                                                        _BNClass<BayesianNetworkType::Discrete>>,
-                    Dag,
-                    ConditionalDag>;
+                                is_unconditional_bn_v<_BNClass<BayesianNetworkType::Discrete>>,
+                                BayesianNetworkBase,
+                                ConditionalBayesianNetworkBase
+                        >;
+        using DagClass = std::conditional_t<is_unconditional_bn_v<_BNClass<BayesianNetworkType::Discrete>>,
+                                Dag,
+                                ConditionalDag
+                        >;
         template<BayesianNetworkType::Value Type>
         using BNClass = _BNClass<Type>;
         inline static constexpr auto TYPE = BayesianNetworkType::Discrete;

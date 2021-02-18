@@ -253,20 +253,21 @@ namespace models {
 
 
     template<template<BayesianNetworkType::Value> typename _BNClass>
-    struct BN_traits<_BNClass<BayesianNetworkType::Semiparametric>> {
+    struct BN_traits<_BNClass<BayesianNetworkType::Semiparametric>,
+                     std::enable_if_t<(is_unconditional_bn_v<_BNClass<BayesianNetworkType::Semiparametric>> ||
+                                       is_conditional_bn_v<_BNClass<BayesianNetworkType::Semiparametric>>),
+                                       void>
+    > {
         using CPD = SemiparametricCPD;
         using BaseClass = std::conditional_t<
-                            util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
-                                                                                BayesianNetwork,
-                                                                                _BNClass<BayesianNetworkType::Semiparametric>>,
-                            BayesianNetworkBase,
-                            ConditionalBayesianNetworkBase>;
-        using DagClass = std::conditional_t<
-                            util::GenericInstantation<BayesianNetworkType::Value>::is_template_instantation_v<
-                                                                                BayesianNetwork,
-                                                                                _BNClass<BayesianNetworkType::Semiparametric>>,
-                            Dag,
-                            ConditionalDag>;
+                                is_unconditional_bn_v<_BNClass<BayesianNetworkType::Semiparametric>>,
+                                BayesianNetworkBase,
+                                ConditionalBayesianNetworkBase
+                        >;
+        using DagClass = std::conditional_t<is_unconditional_bn_v<_BNClass<BayesianNetworkType::Semiparametric>>,
+                                Dag,
+                                ConditionalDag
+                        >;
         template<BayesianNetworkType::Value Type>
         using BNClass = _BNClass<Type>;
         inline static constexpr auto TYPE = BayesianNetworkType::Semiparametric;

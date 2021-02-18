@@ -147,9 +147,18 @@ namespace learning::independences::continuous {
 
     private:
         int cached_index(int v) const {
-            return m_indices.at(m_df->column_name(v)); 
+            auto it = m_indices.find(m_df->column_name(v));
+            if (it == m_indices.end())
+                throw std::invalid_argument("Continuous variable " + std::to_string(v) + " not present in LinearCorrelation.");
+            return it->second;
         }
-        int cached_index(const std::string& name) const { return m_indices.at(name); }
+
+        int cached_index(const std::string& name) const {
+            auto it = m_indices.find(name);
+            if (it == m_indices.end())
+                throw std::invalid_argument("Continuous variable " + name + " not present in LinearCorrelation.");
+            return it->second;
+        }
 
         template<typename VarType>
         double pvalue_cached(const VarType& v1, const VarType& v2) const;

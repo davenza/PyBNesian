@@ -120,9 +120,17 @@ namespace learning::scores {
         }
     private:
         int cached_index(int v) const {
-            return m_cached_indices.at(m_df->column_name(v)); 
+            auto it = m_cached_indices.find(m_df->column_name(v));
+            if (it == m_cached_indices.end())
+                throw std::invalid_argument("Continuous variable " + std::to_string(v) + " not present in BGe.");
+            return it->second;
         }
-        int cached_index(const std::string& name) const { return m_cached_indices.at(name); }
+        int cached_index(const std::string& name) const {
+            auto it = m_cached_indices.find(name);
+            if (it == m_cached_indices.end())
+                throw std::invalid_argument("Continuous variable " + name + " not present in BGe.");
+            return it->second; 
+        }
 
         template<typename ArrowType>
         double bge_no_parents(const std::string& variable,
@@ -217,7 +225,7 @@ namespace learning::scores {
 
         VectorXd means_full(evidence.size() + 1);
         MatrixXd r_full(evidence.size() + 1, evidence.size() + 1);
-        
+
         if (m_is_cached) {
             generate_cached_means(means_full, variable, evidence);
             generate_cached_r(r_full, variable, evidence);

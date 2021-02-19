@@ -1149,7 +1149,6 @@ namespace models {
         return DataFrame(new_rb);
     }
 
-    py::object load_model(const std::string& name);
     void requires_continuous_data(const DataFrame& df);
     void requires_discrete_data(const DataFrame& df);
 }

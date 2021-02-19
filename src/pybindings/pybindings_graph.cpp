@@ -452,8 +452,6 @@ void pybindings_conditional_graph(py::module& graph) {
 void pybindings_graph(py::module& root) {
     auto graph = root.def_submodule("graph","Graph submodule");
 
-    graph.def("load_graph", &graph::load_graph);
-    
     pybindings_normal_graph(graph);
     pybindings_conditional_graph(graph);
 

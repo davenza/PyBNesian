@@ -19,8 +19,6 @@ using factors::NodeType;
 void pybindings_factors(py::module& root) {
     auto factors = root.def_submodule("factors", "Factors submodule.");
 
-    factors.def("load_factor", &factors::load_factor);
-
     py::class_<NodeType>(factors, "NodeType")
         .def_property_readonly_static("LinearGaussianCPD", [](const py::object&) { 
             return NodeType(NodeType::LinearGaussianCPD);

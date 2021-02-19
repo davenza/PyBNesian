@@ -252,8 +252,6 @@ register_DynamicBayesianNetwork(py::module& m, const char* derivedbn_name) {
 void pybindings_models(py::module& root) {
     auto models = root.def_submodule("models", "Models submodule.");
 
-    models.def("load_model", &models::load_model);
-
     py::class_<BayesianNetworkType>(models, "BayesianNetworkType")
         .def_property_readonly_static("Gaussian", [](const py::object&) { 
             return BayesianNetworkType(BayesianNetworkType::Gaussian);

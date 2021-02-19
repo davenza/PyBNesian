@@ -411,8 +411,6 @@ namespace graph {
         file.attr("close")();
     }
 
-    py::object load_graph(const std::string& name);
-
     template<typename Derived, template<typename> typename BaseClass>
     class ArcGraph;
 

@@ -91,8 +91,6 @@ namespace factors {
         py::module::import("pickle").attr("dump")(py::cast(&factor), file, 2);
         file.attr("close")();
     }
-
-    py::object load_factor(const std::string& name);
 }
 
 

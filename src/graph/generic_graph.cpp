@@ -85,12 +85,4 @@ namespace graph {
 
         return un;
     }
-
-    py::object load_graph(const std::string& name) {
-        auto open = py::module::import("io").attr("open");
-        auto file = open(name, "rb");
-        auto graph = py::module::import("pickle").attr("load")(file);
-        file.attr("close")();
-        return graph;
-    }
 }

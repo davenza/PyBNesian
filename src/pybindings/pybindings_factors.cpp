@@ -69,13 +69,13 @@ void pybindings_factors(py::module& root) {
                 return self.sample(n, *evidence_values, std::random_device{}());
             else
                 return self.sample(n, DataFrame(), std::random_device{}());
-        }, py::arg("n"), py::arg("evidence_values"))
+        }, py::arg("n"), py::arg("evidence_values") = std::nullopt)
         .def("sample", [](const LinearGaussianCPD& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
             if (evidence_values)
                 return self.sample(n, *evidence_values, seed);
             else
                 return self.sample(n, DataFrame(), seed);
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        }, py::arg("n"), py::arg("evidence_values") = std::nullopt, py::arg("seed"))
         .def("__str__", &LinearGaussianCPD::ToString)
         .def("__repr__", &LinearGaussianCPD::ToString)
         .def("save", &LinearGaussianCPD::save)
@@ -164,7 +164,7 @@ void pybindings_factors(py::module& root) {
             else {
                 return self.sample(n, DataFrame(), std::random_device{}());
             }
-        }, py::arg("n"), py::arg("evidence_values"))
+        }, py::arg("n"), py::arg("evidence_values") = std::nullopt)
         .def("sample", [](const CKDE& self, int n, std::optional<const DataFrame> evidence_values, unsigned int seed) {
             if (evidence_values) {
                 return self.sample(n, *evidence_values, seed);
@@ -172,7 +172,7 @@ void pybindings_factors(py::module& root) {
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        }, py::arg("n"), py::arg("evidence_values") = std::nullopt, py::arg("seed"))
         .def("save", &CKDE::save)
         .def("__str__", &CKDE::ToString)
         .def("__repr__", &CKDE::ToString)
@@ -218,7 +218,7 @@ void pybindings_factors(py::module& root) {
             else {
                 return self.sample(n, DataFrame(), seed);
             }
-        }, py::arg("n"), py::arg("evidence_values"), py::arg("seed"))
+        }, py::arg("n"), py::arg("evidence_values") = std::nullopt, py::arg("seed"))
         .def("save", &SemiparametricCPD::save)
         .def(py::pickle(
             [](const SemiparametricCPD& self) {

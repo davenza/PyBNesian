@@ -1914,7 +1914,11 @@ namespace dataset {
 
     class DataFrame : public DataFrameBase<DataFrame> {
     public:
-        DataFrame() = default;
+        DataFrame() : m_batch(arrow::RecordBatch::Make(
+                                arrow::schema({}),
+                                0,
+                                Array_vector()
+                                )) {}
         DataFrame(int64_t num_rows) : m_batch(arrow::RecordBatch::Make(
                                                 arrow::schema({}),
                                                 num_rows,

@@ -593,7 +593,7 @@ namespace learning::operators {
 
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
+            return delta_ptr[i1] > delta_ptr[i2];
         });
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
@@ -632,7 +632,7 @@ namespace learning::operators {
 
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
+            return delta_ptr[i1] > delta_ptr[i2];
         });
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
@@ -685,7 +685,7 @@ namespace learning::operators {
 
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
+            return delta_ptr[i1] > delta_ptr[i2];
         });
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
@@ -737,7 +737,7 @@ namespace learning::operators {
 
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
+            return delta_ptr[i1] > delta_ptr[i2];
         });
 
         for(auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {

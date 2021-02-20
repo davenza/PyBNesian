@@ -664,7 +664,7 @@ namespace learning::operators {
         auto delta_ptr = delta.data();
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
+            return delta_ptr[i1] > delta_ptr[i2];
         });
 
         auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);
@@ -685,7 +685,7 @@ namespace learning::operators {
         auto delta_ptr = delta.data();
         // TODO: Not checking sorted_idx empty
         std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
-            return delta_ptr[i1] >= delta_ptr[i2];
+            return delta_ptr[i1] > delta_ptr[i2];
         });
 
         auto& spbn = dynamic_cast<const SemiparametricBNBase&>(model);

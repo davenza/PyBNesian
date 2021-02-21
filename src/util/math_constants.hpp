@@ -13,6 +13,22 @@ namespace util {
 
     template<typename T>
     inline auto constexpr nan = std::numeric_limits<T>::quiet_NaN();
+
+    namespace detail
+    {
+        double constexpr sqrtNewtonRaphson(double x, double curr, double prev)
+        {
+            return curr == prev
+                ? curr
+                : sqrtNewtonRaphson(x, 0.5 * (curr + x / curr), curr);
+        }
+
+        double constexpr sqrt_constexpr(double x) {
+            return sqrtNewtonRaphson(x, x, 0);
+        }
+    }
+
+    inline auto constexpr machine_tol = detail::sqrt_constexpr(std::numeric_limits<double>::epsilon());
 }
 
 #endif //PYBNESIAN_UTIL_MATH_CONSTANTS_HPP

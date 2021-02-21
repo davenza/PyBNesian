@@ -6,6 +6,7 @@
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
 #include <learning/algorithms/callbacks/callback.hpp>
+#include <util/math_constants.hpp>
 #include <util/progress.hpp>
 #include <util/vector.hpp>
 
@@ -74,7 +75,7 @@ namespace learning::algorithms {
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op_set.find_max(*current_model);
-            if (!best_op || best_op->delta() <= epsilon) {
+            if (!best_op || (best_op->delta() - epsilon) < util::machine_tol) {
                 break;
             }
 
@@ -182,7 +183,7 @@ namespace learning::algorithms {
         auto iter = 0;
         while(iter < max_iters) {
             auto best_op = op_set.find_max(*current_model, tabu_set);
-            if (!best_op || best_op->delta() <= epsilon) {
+            if (!best_op || (best_op->delta() - epsilon) < util::machine_tol) {
                 break;
             }
 

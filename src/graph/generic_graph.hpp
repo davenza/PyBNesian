@@ -336,21 +336,21 @@ namespace graph {
             auto arcs = t[1].cast<std::vector<Arc>>();
 
             for (auto& arc : arcs) {
-                g.add_arc(arc.first, arc.second);
+                g.add_arc_unsafe(arc.first, arc.second);
             }
 
             if constexpr (GraphTraits<G>::has_edges) {
                 auto edges = t[2].cast<std::vector<Edge>>();
 
                 for (auto& edge : edges) {
-                    g.add_edge(edge.first, edge.second);
+                    g.add_edge_unsafe(edge.first, edge.second);
                 }
             }
         } else {
             auto edges = t[1].cast<std::vector<Edge>>();
 
             for (auto& edge : edges) {
-                g.add_edge(edge.first, edge.second);
+                g.add_edge_unsafe(edge.first, edge.second);
             }
         }
         
@@ -373,21 +373,21 @@ namespace graph {
             auto arcs = t[2].cast<ArcStringVector>();
 
             for (const auto& arc : arcs) {
-                g.add_arc(arc.first, arc.second);
+                g.add_arc_unsafe(g.index(arc.first), g.index(arc.second));
             }
 
             if constexpr (GraphTraits<G>::has_edges) {
                 auto edges = t[3].cast<EdgeStringVector>();
 
                 for (const auto& edge : edges) {
-                    g.add_edge(edge.first, edge.second);
+                    g.add_edge_unsafe(g.index(edge.first), g.index(edge.second));
                 }
             }
         } else {
             auto edges = t[2].cast<EdgeStringVector>();
 
             for (const auto& edge : edges) {
-                g.add_edge(edge.first, edge.second);
+                g.add_edge_unsafe(g.index(edge.first), g.index(edge.second));
             }
         }
         
@@ -2152,7 +2152,7 @@ namespace graph {
             const auto& neighbors = this->neighbor_set(source);
             std::vector<int> stack {neighbors.begin(), neighbors.end()};
 
-            for (auto neighbor : neighbors) {
+            for (auto neighbor : stack) {
                 in_stack.set(neighbor);
             }
 
@@ -2206,19 +2206,37 @@ namespace graph {
         if (this->has_arc_unsafe(source, target))
             return true;
         else {
+            dynamic_bitset in_stack(static_cast<size_t>(this->num_raw_nodes()));
+            in_stack.reset(0, this->num_raw_nodes());
+
+            for (auto free : this->free_indices()) {
+                in_stack.set(free);
+            }
+
+            in_stack.set(source);
+
             const auto& children = this->children_set(source);
             std::vector<int> stack {children.begin(), children.end()};
 
-            while (!stack.empty()) {
+            for (auto children : stack) {
+                in_stack.set(children);
+            }
+
+            while(!stack.empty()) {
                 auto v = stack.back();
                 stack.pop_back();
 
                 const auto& children = this->children_set(v);
-        
+
                 if (children.find(target) != children.end())
                     return true;
-                
-                stack.insert(stack.end(), children.begin(), children.end());
+
+                for (auto ch : children) {
+                    if (!in_stack[ch]) {
+                        stack.push_back(ch);
+                        in_stack.set(ch);
+                    }
+                }
             }
 
             return false;
@@ -2228,22 +2246,39 @@ namespace graph {
     // Checks if there is a path between source and target without taking into account the possible arc source -> target.
     template<typename Derived, template<typename> typename BaseClass>
     bool DirectedImpl<Derived, BaseClass>::has_path_unsafe_no_direct_arc(int source, int target) const {
+        dynamic_bitset in_stack(static_cast<size_t>(this->num_raw_nodes()));
+        in_stack.reset(0, this->num_raw_nodes());
+
+        for (auto free : this->free_indices()) {
+            in_stack.set(free);
+        }
+
+        in_stack.set(source);
+
         const auto& children = this->children_set(source);
-        std::vector<int> stack {children.begin(), children.end()};
+        std::vector<int> stack;
+        for (auto ch : children) {
+            if (ch != target) {
+                stack.push_back(ch);
+                in_stack.set(ch);
+            }
+        }
 
-        if (this->has_arc_unsafe(source, target))
-            util::swap_remove_v(stack, target);
-
-        while (!stack.empty()) {
+        while(!stack.empty()) {
             auto v = stack.back();
             stack.pop_back();
 
             const auto& children = this->children_set(v);
-    
+
             if (children.find(target) != children.end())
                 return true;
-            
-            stack.insert(stack.end(), children.begin(), children.end());
+
+            for (auto ch : children) {
+                if (!in_stack[ch]) {
+                    stack.push_back(ch);
+                    in_stack.set(ch);
+                }
+            }
         }
 
         return false;

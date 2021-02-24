@@ -169,8 +169,6 @@ namespace dataset {
     VectorXd means(Array_iterator begin, Array_iterator end);
     VectorXd means(const Buffer_ptr& bitmap, Array_iterator begin, Array_iterator end);
 
-
-
     template<typename ArrowType>
     typename ArrowType::c_type mean(const Buffer_ptr& bitmap, Array_ptr& a) {
         using CType = typename ArrowType::c_type;
@@ -2023,6 +2021,8 @@ namespace dataset {
         }
 
         std::vector<int> continuous_columns() const;
+
+        DataFrame normalize() const;
 
         std::shared_ptr<RecordBatch> operator->() const { return m_batch; }
         friend std::pair<DataFrame, DataFrame> generate_cv_pair(const DataFrame& df, int fold,

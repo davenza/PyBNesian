@@ -5,6 +5,7 @@
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
 #include <util/parameter_traits.hpp>
+#include <util/basic_eigen_ops.hpp>
 
 using Eigen::MatrixXd;
 
@@ -208,7 +209,9 @@ namespace dataset {
                 return "LARGE_LIST";
             case Type::MAX_ID:
                 return "MAX_ID";
-        }   
+        }
+
+        return {};
     }
 
     std::vector<std::string> DataFrame::column_names() const {
@@ -402,4 +405,57 @@ namespace dataset {
 
         return res;
     }
+
+    template<typename ArrowType, typename EigenArray>
+    Array_ptr normalize_column(const Array_ptr& array, EigenArray& eig) {
+        util::normalize_cols(eig);
+
+        arrow::NumericBuilder<ArrowType> builder;
+        RAISE_STATUS_ERROR(builder.Reserve(array->length()));
+        if (array->null_count() == 0) {
+            RAISE_STATUS_ERROR(builder.AppendValues(eig.data(), eig.rows()));
+        } else {
+            auto bitmap_data = array->null_bitmap_data();
+            for (int i = 0, j = 0; i < array->length(); ++i) {
+                if (arrow::BitUtil::GetBit(bitmap_data, i)) {
+                    builder.UnsafeAppend(eig(j++));
+                } else {
+                    builder.UnsafeAppendNull();
+                }
+            }
+        }
+
+        std::shared_ptr<arrow::Array> out;
+        RAISE_STATUS_ERROR(builder.Finish(&out));
+
+        return out;
+    }
+
+    DataFrame DataFrame::normalize() const {
+        auto continuous_cols = continuous_columns();
+
+        std::vector<Array_ptr> columns;
+
+        for (auto i = 0; i < this->num_columns(); ++i) {
+            auto column = col(i);
+
+            switch(column->type_id()) {
+                case Type::DOUBLE: {
+                    auto eigen_vec = to_eigen<false, arrow::DoubleType>(i);
+                    columns.push_back(normalize_column<arrow::DoubleType>(column, *eigen_vec));
+                    break;
+                }
+                case Type::FLOAT: {
+                    auto eigen_vec = to_eigen<false, arrow::FloatType>(i);
+                    columns.push_back(normalize_column<arrow::FloatType>(column, *eigen_vec));
+                    break;
+                }
+                default:
+                    columns.push_back(column);
+            }
+        }
+
+        return DataFrame(arrow::RecordBatch::Make(m_batch->schema(), this->num_rows(), columns));
+    }
+
 }

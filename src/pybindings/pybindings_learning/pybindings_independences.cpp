@@ -4,14 +4,14 @@
 #include <learning/independences/independence.hpp>
 #include <learning/independences/continuous/linearcorrelation.hpp>
 #include <learning/independences/continuous/mutual_information.hpp>
+#include <learning/independences/continuous/RCoT.hpp>
 
 namespace py = pybind11;
 
-using learning::independences::IndependenceTest, learning::independences::continuous::LinearCorrelation;
-using learning::independences::DynamicIndependenceTest, learning::independences::continuous::DynamicLinearCorrelation;
+using learning::independences::IndependenceTest, learning::independences::continuous::LinearCorrelation,
+      learning::independences::continuous::KMutualInformation, learning::independences::continuous::RCoT;
 
-// using kdtree::KDTree;
-using learning::independences::continuous::KMutualInformation,
+using learning::independences::DynamicIndependenceTest, learning::independences::continuous::DynamicLinearCorrelation,
       learning::independences::continuous::DynamicKMutualInformation;
 
 void pybindings_independence_tests(py::module& root) {
@@ -70,6 +70,13 @@ void pybindings_independence_tests(py::module& root) {
         .def("mi", [](KMutualInformation& self, const std::string& x, const std::string& y, const std::vector<std::string>& z) {
             return self.mi(x, y, z.begin(), z.end());
         });
+    
+    py::class_<RCoT, IndependenceTest, std::shared_ptr<RCoT>>(independence_tests, "RCoT")
+        .def(py::init<const DataFrame&, int, int>(),
+            py::arg("df"),
+            py::arg("random_fourier_xy") = 5,
+            py::arg("random_fourier_z") = 100
+        );
 
     py::class_<DynamicIndependenceTest, std::shared_ptr<DynamicIndependenceTest>>
                         (independence_tests, "DynamicIndependenceTest")

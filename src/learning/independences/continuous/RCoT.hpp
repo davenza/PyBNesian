@@ -25,13 +25,20 @@ namespace learning::independences::continuous {
 
         // Compute median
         int median_index = distances.rows() / 2;
+
+        double median;
         if (distances.rows() % 2 == 1) {
             std::nth_element(distances.data(), distances.data() + median_index, distances.data() + distances.rows());
-            return distances[median_index];
+            median =  distances[median_index];
         } else {
             std::sort(distances.data(), distances.data() + distances.rows());
-            return 0.5 * (distances[median_index-1] + distances[median_index]);
+            median = 0.5 * (distances[median_index-1] + distances[median_index]);
         }
+
+        if (median == 0)
+            median = 1;
+
+        return median;
     }
 
     class RCoT : public IndependenceTest {
@@ -83,7 +90,7 @@ namespace learning::independences::continuous {
                     for (auto c : continuous_indices) {
                         if (m_df.null_count(c) == 0) {
                             auto x_vec = m_df.to_eigen<false, arrow::FloatType, false>(c);
-                            m_dsigma(c) = rf_sigma_impl(*x_vec);
+                            m_fsigma(c) = rf_sigma_impl(*x_vec);
                         }
                     }
 
@@ -279,9 +286,7 @@ namespace learning::independences::continuous {
             tmp_mat.block(0, i*fourier_y.cols(), tmp_mat.rows(), fourier_y.cols()) = 
                 fourier_y.array().colwise() * fourier_x.col(i).array();
         }
-
         auto cov = util::sse_mat(tmp_mat) * (1 / static_cast<Scalar>(fourier_x.rows()));
-
         auto eigen_solver = Eigen::SelfAdjointEigenSolver<MatrixType>(cov, Eigen::DecompositionOptions::EigenvaluesOnly);
         return eigen_solver.eigenvalues();
     }
@@ -335,6 +340,13 @@ namespace learning::independences::continuous {
         auto sta = x.rows() * Cxy.squaredNorm();
         auto eigs = eigenvalues_covariance(feat_x, feat_y);
         auto pos_eigs = filter_positive_elements(eigs);
+
+        if (pos_eigs.rows() < 4) {
+            auto pvalue = util::hbe_complement(pos_eigs, sta);
+            if (pvalue < 0)
+                return 0;
+            return pvalue; 
+        }
 
         try {
             auto pvalue = util::lpb4_complement(pos_eigs, sta);
@@ -411,7 +423,7 @@ namespace learning::independences::continuous {
         auto eigs = eigenvalues_covariance(feat_x, feat_y);
         auto pos_eigs = filter_positive_elements(eigs);
 
-        if (m_num_random_fourier_z == 1) {
+        if (m_num_random_fourier_z == 1 || pos_eigs.rows() < 4) {
             auto pvalue = util::hbe_complement(pos_eigs, sta);
             if (pvalue < 0)
                 return 0;

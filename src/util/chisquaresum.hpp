@@ -231,7 +231,6 @@ namespace detail {
                                                     typename VectorType::Scalar quantile) {
         using Scalar = typename VectorType::Scalar;
         auto k = 1. / lambda_tilde;
-
         Scalar res = 0;
         for (int i = 0; i < prop.rows(); ++i) {
             auto theta = mu(i)* lambda_tilde;

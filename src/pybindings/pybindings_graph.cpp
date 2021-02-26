@@ -238,6 +238,9 @@ void add_pdag_methods(PyClass& c) {
     })
     .def("to_dag", [](const CppClass& self) {
         return self.to_dag();
+    })
+    .def("to_approximate_dag", [](const CppClass& self) {
+        return self.to_approximate_dag();
     });
 }
 

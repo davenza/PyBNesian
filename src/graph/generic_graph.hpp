@@ -1598,6 +1598,7 @@ namespace graph {
         }
 
         GraphClass<DirectedAcyclic> to_dag() const;
+        GraphClass<DirectedAcyclic> to_approximate_dag() const;
         
         py::tuple __getstate__() const {
             return graph::__getstate__(static_cast<const Derived&>(*this));
@@ -2110,6 +2111,135 @@ namespace graph {
 
         return directed;
     }
+
+    template<typename Derived, template<typename> typename BaseClass>
+    typename PartiallyDirectedImpl<Derived, BaseClass>::template GraphClass<DirectedAcyclic> 
+    PartiallyDirectedImpl<Derived, BaseClass>::to_approximate_dag() const {
+        GraphClass<DirectedAcyclic> directed;
+
+        if constexpr (util::is_template_instantation_v<GraphBase, BaseClass<Derived>>)
+            directed = GraphClass<DirectedAcyclic>(this->nodes());
+        else if constexpr (util::is_template_instantation_v<ConditionalGraphBase, BaseClass<Derived>>)
+            directed = GraphClass<DirectedAcyclic>(this->nodes(), this->interface_nodes());
+        else
+            static_assert(util::always_false<Derived>, "Wrong BaseClass for PartiallyDirectedImpl");
+        
+        for (const auto& arc : this->arcs()) {
+            directed.add_arc_unsafe(directed.index(arc.first), 
+                                    directed.index(arc.second));
+        }
+
+        if constexpr (util::is_template_instantation_v<ConditionalGraphBase, BaseClass<Derived>>) {
+            auto interface_edges = this->derived().interface_edges();
+            for (const auto& arc : interface_edges) {
+                directed.add_arc_unsafe(directed.index(arc.first),
+                                        directed.index(arc.second));
+            }
+        }
+        
+        std::vector<int> incoming_arcs;
+        incoming_arcs.reserve(this->num_raw_nodes());
+
+        for (const auto& raw_node : this->raw_nodes()) {
+            if (raw_node.is_valid()) {
+                incoming_arcs.push_back(raw_node.parents().size());
+            } else {
+                incoming_arcs.push_back(std::numeric_limits<int>::max());
+            }
+        }
+
+        // Create a pseudo topological sort.
+        std::vector<std::string> top_sort;
+        dynamic_bitset in_top_sort(static_cast<size_t>(this->num_raw_nodes()));
+        in_top_sort.reset(0, this->num_raw_nodes());
+        for (auto free : this->free_indices()) {
+            in_top_sort.set(free);
+        }
+
+        if constexpr (is_conditional_graph_v<Derived>)
+            top_sort.reserve(this->num_total_nodes());
+        else
+            top_sort.reserve(this->num_nodes());
+
+        std::vector<int> stack{this->roots().begin(), this->roots().end()};
+
+        size_t expected_num_nodes;
+        if constexpr (is_conditional_graph_v<Derived>)
+            expected_num_nodes = static_cast<size_t>(this->num_total_nodes());
+        else
+            expected_num_nodes = static_cast<size_t>(this->num_nodes());
+
+
+        while (top_sort.size() != expected_num_nodes) {
+            // Possible cycle found. This would have not happened in a DAG.
+            // Find the next node among the children of the already explored nodes.
+            if (stack.empty()) {
+                auto min_cardinality = std::numeric_limits<int>::max();
+                auto min_cardinality_index = std::numeric_limits<int>::max();
+                for (const auto& explored : top_sort) {
+                    for (auto ch : directed.children_set(explored)) {
+                        const auto& ch_name = directed.name(ch);
+                        auto ch_this_index = this->index(ch_name);
+                        if (!in_top_sort[ch_this_index] && directed.num_parents(ch) < min_cardinality) {
+                            min_cardinality = directed.num_parents(ch);
+                            min_cardinality_index = ch_this_index;
+                        }
+                    }
+                }
+
+                if (min_cardinality_index == std::numeric_limits<int>::max()) {
+                    // Find the node without less parents
+                    for (int i = 0; i < this->num_raw_nodes(); ++i) {
+                        if (!in_top_sort[i] && directed.num_parents(this->name(i)) < min_cardinality) {
+                            min_cardinality = directed.num_parents(this->name(i));
+                            min_cardinality_index = i;
+                        }
+                    }
+                }
+
+                stack.push_back(min_cardinality_index);
+            }
+
+            auto idx = stack.back();
+            stack.pop_back();
+
+            top_sort.push_back(this->name(idx));
+            in_top_sort.set(idx);
+
+            for (const auto& children : this->children_set(idx)) {
+                --incoming_arcs[children];
+
+                if (in_top_sort[children]) {
+                    const auto& idx_name = this->name(idx);
+                    const auto& children_name = this->name(children);
+                    directed.flip_arc_unsafe(directed.index(idx_name), directed.index(children_name));
+                } else if (incoming_arcs[children] == 0) {
+                    stack.push_back(children);
+                }
+            }
+        }
+
+        // directed is DAG now, with topological sort equal to top_sort
+        if (this->num_edges() > 0) {
+            std::unordered_map<std::string, int> top_sort_index;
+            for (int i = 0, end = top_sort.size(); i < end; ++i) {
+                top_sort_index.insert({top_sort[i], i});
+            }
+
+            for (const auto& edge : this->edges()) {
+                auto first_top_sort_idx = top_sort_index.at(edge.first);
+                auto second_top_sort_idx = top_sort_index.at(edge.second);
+                if (first_top_sort_idx < second_top_sort_idx) {
+                    directed.add_arc_unsafe(directed.index(edge.first), directed.index(edge.second));
+                } else {
+                    directed.add_arc_unsafe(directed.index(edge.second), directed.index(edge.first));
+                }
+            }
+        }
+
+        return directed;
+    }
+
 
     template<typename Derived, template<typename> typename BaseClass>
     inline ConditionalGraph<PartiallyDirected>

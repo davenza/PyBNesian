@@ -215,7 +215,7 @@ namespace learning::algorithms {
         }
 
         if (callback)
-            callback->call(*current_model, nullptr, score, iter);
+            callback->call(*best_model, nullptr, score, iter);
 
         spinner->mark_as_completed("Finished Hill-climbing!");
         indicators::show_console_cursor(true);

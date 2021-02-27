@@ -17,39 +17,44 @@ namespace learning::independences::continuous {
         return cov(v1, v2) / sqrt(cov(v1, v1) * cov(v2, v2));
     }
 
-    template<typename EigenMat>
-    double cor_1cond(const EigenMat& cov, int v1, int v2, int cond) {
-        double a11 = cov(v2, v2)*cov(cond, cond) - cov(v2, cond)*cov(v2,cond);
-
-        double det = cov(v1, v1)*a11
-                     - cov(v1, v2)*(cov(v1, v2)*cov(cond, cond) - cov(v2, cond)*cov(v1, cond))
-                     + cov(v1, cond)*(cov(v1, v2)*cov(v2, cond) - cov(v2, v2)* cov(v1, cond));
-        
-        double inv_det = 1. / det;
-        double p12 = (cov(v1, cond) * cov(v2, cond) - cov(v1, v2)*cov(cond, cond)) * inv_det;
-        double p11 = a11 * inv_det;
-        double p22 = (cov(v1, v1) * cov(cond, cond) - cov(v1, cond) * cov(v1, cond)) * inv_det;
+    template<typename EigenValues, typename EigenVectors>
+    double cor_svd(const EigenValues& d, const EigenVectors u) {
+        double p11 = 0;
+        double p12 = 0;
+        double p22 = 0;
+        double tol = d.rows() * d[d.rows()-1] * std::numeric_limits<double>::epsilon();
+        for (int i = 0; i < d.rows(); ++i) {
+            if (d[i] > tol) {
+                double inv_d = 1./d[i];
+                p11 += u(0, i) * u(0,i) * inv_d;
+                p12 += u(0, i) * u(1,i) * inv_d;
+                p22 += u(1, i) * u(1,i) * inv_d;
+            }
+        }
 
         return -p12 / (sqrt(p11 * p22));
     }
 
     template<typename EigenMatrix>
+    double cor_1cond(EigenMatrix& cov, int v1, int v2, int cond) {
+        Eigen::Matrix3d m;
+        m << cov(v1, v1), cov(v1, v2), cov(v1, cond),
+             cov(v2, v1), cov(v2, v2), cov(v2, cond),
+             cov(cond, v1), cov(cond, v2), cov(cond, cond);
+
+        auto eigen_solver = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(m);
+
+        auto& d = eigen_solver.eigenvalues();
+        auto& u = eigen_solver.eigenvectors();
+        return cor_svd(d, u);
+    }
+
+    template<typename EigenMatrix>
     double cor_general(EigenMatrix& cov) {
-        using Scalar = typename EigenMatrix::Scalar;
-        LLT<Ref<EigenMatrix>> llt(cov);
-
-        int d = cov.rows();
-        auto Lmatrix = llt.matrixL();
-        EigenMatrix identity = EigenMatrix::Identity(d, d);
-
-        // Solves and saves the result in identity
-        Lmatrix.solveInPlace(identity);
-
-        Scalar p11 = identity(d-1, d-1)*identity(d-1, d-1);
-        Scalar p22 = identity(d-1, d-2)*identity(d-1, d-2) + identity(d-2, d-2)*identity(d-2, d-2);
-        Scalar p12 = identity(d-1, d-1)*identity(d-1, d-2);
-        
-        return static_cast<double>(-p12 / sqrt(p11 * p22));
+        auto eigen_solver = Eigen::SelfAdjointEigenSolver<EigenMatrix>(cov);
+        auto& d = eigen_solver.eigenvalues();
+        auto& u = eigen_solver.eigenvectors();
+        return cor_svd(d, u);
     }
 
     class LinearCorrelation : public IndependenceTest {
@@ -223,14 +228,14 @@ namespace learning::independences::continuous {
                 case Type::DOUBLE: {
                     auto cov_ptr = m_df.cov<arrow::DoubleType>(v1, v2, cond);
                     auto& cov = *cov_ptr;
-                    double cor = cor_1cond(cov, 0, 1, 2);
+                    double cor = cor_general(cov);
                     return std::make_pair(cor, m_df.valid_rows(v1, v2, cond) - 3);
 
                 }
                 case Type::FLOAT: {
                     auto cov_ptr = m_df.cov<arrow::FloatType>(v1, v2, cond);
                     auto& cov = *cov_ptr;
-                    double cor = cor_1cond(cov, 0, 1, 2);
+                    double cor = cor_general(cov);
                     return std::make_pair(cor, m_df.valid_rows(v1, v2, cond) - 3);
                 }
                 default:
@@ -245,12 +250,12 @@ namespace learning::independences::continuous {
     double LinearCorrelation::pvalue_cached(const VarType& v1, const VarType& v2, Iter evidence_begin, Iter evidence_end) const {
         std::vector<int> cached_indices;
    
+        cached_indices.push_back(cached_index(v1));
+        cached_indices.push_back(cached_index(v2));
+
         for (auto it = evidence_begin; it != evidence_end; ++it) {
             cached_indices.push_back(cached_index(*it));
         }
-
-        cached_indices.push_back(cached_index(v1));
-        cached_indices.push_back(cached_index(v2));
 
         int k = cached_indices.size();
         MatrixXd cov(k, k);
@@ -273,7 +278,7 @@ namespace learning::independences::continuous {
             int k = std::distance(evidence_begin, evidence_end);
             switch(m_df.col(v1)->type_id()) {
                 case Type::DOUBLE: {
-                    auto cov_ptr = m_df.cov<arrow::DoubleType>(std::make_pair(evidence_begin, evidence_end), v1, v2) ;
+                    auto cov_ptr = m_df.cov<arrow::DoubleType>(v1, v2, std::make_pair(evidence_begin, evidence_end)) ;
                     auto& cov = *cov_ptr;
                     double cor = cor_general(cov);
                     return std::make_pair(cor, 
@@ -281,7 +286,7 @@ namespace learning::independences::continuous {
                             );
                 }
                 case Type::FLOAT: {
-                    auto cov_ptr = m_df.cov<arrow::FloatType>(std::make_pair(evidence_begin, evidence_end), v1, v2);
+                    auto cov_ptr = m_df.cov<arrow::FloatType>(v1, v2, std::make_pair(evidence_begin, evidence_end));
                     auto& cov = *cov_ptr;
                     double cor = cor_general(cov);
                     return std::make_pair(cor, 

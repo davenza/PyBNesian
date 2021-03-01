@@ -466,7 +466,7 @@ namespace models {
                 auto variable = full_variable.substr(0, full_variable.size()-4);
                 const auto& cpd = dbn.transition_bn().cpd(full_variable);
 
-                auto sampled = cpd.sample(1, slice_ddf.transition_df(), seed);
+                auto sampled = cpd.sample(1, slice_ddf.transition_df(), seed+i);
 
                 switch (types.at(variable)) {
                     case Type::DOUBLE: {

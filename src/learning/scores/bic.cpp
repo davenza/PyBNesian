@@ -12,11 +12,15 @@ namespace learning::scores {
 
                 auto mle_params = mle.estimate(m_df, variable, evidence);
 
+                if (mle_params.variance < util::machine_tol) {
+                    return -std::numeric_limits<double>::infinity();
+                }
+
                 auto rows = m_df.valid_rows(variable, evidence);
                 auto num_evidence = evidence.size();
                 auto loglik = 0.5 * (1 + static_cast<double>(num_evidence) - static_cast<double>(rows)) 
                                 - 0.5 * rows*std::log(2*util::pi<double>) 
-                                - rows * std::log(std::sqrt(mle_params.variance));
+                                - rows * 0.5 * std::log(mle_params.variance);
 
                 return loglik - std::log(rows) * 0.5 * (num_evidence + 2);
             }

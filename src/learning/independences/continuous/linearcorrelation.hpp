@@ -1,8 +1,10 @@
 #ifndef PYBNESIAN_LEARNING_INDEPENDENCES_CONTINUOUS_LINEARCORRELATION_HPP
 #define PYBNESIAN_LEARNING_INDEPENDENCES_CONTINUOUS_LINEARCORRELATION_HPP
 
+#include <algorithm>
 #include <dataset/dataset.hpp>
 #include <learning/independences/independence.hpp>
+#include <util/math_constants.hpp>
 
 using dataset::DataFrame;
 using learning::independences::IndependenceTest;
@@ -14,7 +16,13 @@ namespace learning::independences::continuous {
 
     template<typename EigenMat>
     double cor_0cond(const EigenMat& cov, int v1, int v2) {
-        return cov(v1, v2) / sqrt(cov(v1, v1) * cov(v2, v2));
+        using CType = typename EigenMat::Scalar;
+        if (cov(v1, v1) < util::machine_tol || cov(v2, v2) < util::machine_tol)
+            return 0;
+
+        auto cor = cov(v1, v2) / sqrt(cov(v1, v1) * cov(v2, v2));
+
+        return std::clamp(cor, static_cast<CType>(-1.), static_cast<CType>(1.));
     }
 
     template<typename EigenValues, typename EigenVectors>
@@ -32,7 +40,10 @@ namespace learning::independences::continuous {
             }
         }
 
-        return -p12 / (sqrt(p11 * p22));
+        if (p11 < util::machine_tol || p22 < util::machine_tol)
+            return 0;
+
+        return std::clamp(-p12 / (sqrt(p11 * p22)), -1., 1.);
     }
 
     template<typename EigenMatrix>

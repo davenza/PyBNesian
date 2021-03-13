@@ -880,6 +880,8 @@ namespace models {
         } else {
             for (int i = 0; i < nraw_nodes; ++i) {
                 if (static_cast<Derived&>(*this).can_have_cpd(i)) {
+                    df.raise_has_columns(name(i), parents(i));
+                    
                     if (static_cast<const Derived&>(*this).must_construct_cpd(m_cpds[i])) {
                         m_cpds[i] = static_cast<Derived&>(*this).create_cpd(name(i));
                         m_cpds[i].fit(df);

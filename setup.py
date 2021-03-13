@@ -3,26 +3,9 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import os
-
 from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.0.1'
-
-class get_pybind_include(object):
-    """Helper class to determine the pybind11 include path
-
-    The purpose of this class is to postpone importing pybind11
-    until it is actually installed, so that the ``get_include()``
-    method can be invoked. """
-
-    def __init__(self, user=False):
-        self.user = user
-
-    def __str__(self):
-        import pybind11
-        return pybind11.get_include(self.user)
-
-import pyarrow as pa
 
 # https://stackoverflow.com/questions/49266003/setuptools-build-shared-libary-from-c-code-then-build-cython-wrapper-linked
 ext_lib_path = 'lib/libfort'
@@ -35,8 +18,7 @@ ext_libraries = [['fort', {
 ]]
 
 # Ignore warnings from this files.
-system_headers = ['-isystem' + d for d in [pa.get_include()]] +\
-                 ['-isystemlib/eigen-3.3.7'] +\
+system_headers = ['-isystemlib/eigen-3.3.7'] +\
                  ['-isystemlib/OpenCL'] +\
                  ['-isystemlib/boost'] +\
                  ['-isystemlib/indicators']
@@ -94,19 +76,16 @@ ext_modules = [
          'src/opencl/opencl_config.cpp'
          ],
         include_dirs=[
-        #     # Path to pybind11 headers
-            get_pybind_include(),
-            get_pybind_include(user=True),
             "src",
             "lib/libfort"
         ],
-        libraries=pa.get_libraries() + ["OpenCL"],
-        library_dirs=pa.get_library_dirs(),
+        libraries=["OpenCL"],
+        # library_dirs=get_pyarrow_library_dirs(),
         language='c++',
         # Included as isystem to avoid errors in arrow headers.
         extra_compile_args=system_headers,
         # Include this to find the Apache Arrow shared library at runtime (this is equal to set RPATH)
-        runtime_library_dirs=pa.get_library_dirs()
+        # runtime_library_dirs=get_pyarrow_library_dirs()
     ),
 ]
 
@@ -140,42 +119,6 @@ def cpp_flag(compiler):
                        'is needed!')
 
 
-def expand_sources():
-    sources = ['src/factors/continuous/opencl/CKDE.cl.src']
-
-    for source in sources:
-        (base, _) = os.path.splitext(source)
-        outstr = process_c_file(source)
-        with open(base, 'w') as fid:
-            fid.write(outstr)
-
-def copy_opencl_code():
-    sources = ['src/factors/continuous/opencl/CKDE.cl']
-
-    code_str = ""
-    for source in sources:
-        code_str += '\n'
-        with open(source) as f:
-            source_code = f.read()
-            code_str += source_code
-
-    cpp_code = \
-    """#ifndef PYBNESIAN_OPENCL_OPENCL_CODE_HPP
-#define PYBNESIAN_OPENCL_OPENCL_CODE_HPP
-
-namespace opencl {{
-    const std::string OPENCL_CODE = R"foo({})foo";
-}}
-#endif //PYBNESIAN_OPENCL_OPENCL_CODE_HPP
-    """.format(code_str)
-    
-    with open('src/opencl/opencl_code.hpp', 'w') as f:
-        f.write(cpp_code)
-    
-
-def create_symlinks():
-    pa.create_library_symlinks()
-
 
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
@@ -193,10 +136,83 @@ class BuildExt(build_ext):
         c_opts['unix'] += darwin_opts
         l_opts['unix'] += darwin_opts
 
+    # Include libraries from https://stackoverflow.com/questions/54117786/add-numpy-get-include-argument-to-setuptools-without-preinstalled-numpy
+    def finalize_options(self):
+        build_ext.finalize_options(self)
+        import pybind11
+        import pyarrow
+
+        if hasattr(self, 'include_dirs'):
+            self.include_dirs.append(pybind11.get_include())
+        else:
+            self.include_dirs = [pybind11.get_include()]
+
+        for ext in self.extensions:
+            if hasattr(ext, 'extra_compile_args'):
+                ext.extra_compile_args.append('-isystem/' + pyarrow.get_include())
+            else:
+                ext.extra_compile_args = ['-isystem/' + pyarrow.get_include()]
+
+        if hasattr(self, 'libraries'):
+            self.libraries.extend(pyarrow.get_libraries())
+        else:
+            self.libraries = pyarrow.get_libraries()
+        
+        if hasattr(self, 'library_dirs'):
+            self.library_dirs.extend(pyarrow.get_library_dirs())
+        else:
+            self.library_dirs = pyarrow.get_library_dirs()
+
+        if hasattr(self, 'rpath'):
+            self.rpath.extend(pyarrow.get_library_dirs())
+        else:
+            self.rpath = pyarrow.get_library_dirs()
+
+    def create_symlinks(self):
+        import pyarrow
+        pyarrow.create_library_symlinks()
+
+    def expand_sources(self):
+        sources = ['src/factors/continuous/opencl/CKDE.cl.src']
+        
+        for source in sources:
+            (base, _) = os.path.splitext(source)
+            outstr = process_c_file(source)
+            with open(base, 'w') as fid:
+                fid.write(outstr)
+
+    def copy_opencl_code(self):
+        sources = ['src/factors/continuous/opencl/CKDE.cl']
+
+        code_str = ""
+        for source in sources:
+            code_str += '\n'
+            with open(source) as f:
+                source_code = f.read()
+                code_str += source_code
+
+        cpp_code = \
+        """#ifndef PYBNESIAN_OPENCL_OPENCL_CODE_HPP
+#define PYBNESIAN_OPENCL_OPENCL_CODE_HPP
+
+namespace opencl {{
+    const std::string OPENCL_CODE = R"foo({})foo";
+}}
+#endif //PYBNESIAN_OPENCL_OPENCL_CODE_HPP
+    """.format(code_str)
+    
+        with open('src/opencl/opencl_code.hpp', 'w') as f:
+            f.write(cpp_code)
+
     def build_extensions(self):
-        expand_sources()
-        copy_opencl_code()
-        create_symlinks()
+        from distutils import log
+        old_log_threshold = log._global_log.threshold
+        self.expand_sources()
+        # Import numpy distutils in expand_sources() changes the verbosity level so restart again
+        log.set_threshold(old_log_threshold)
+
+        self.copy_opencl_code()
+        self.create_symlinks()
 
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
@@ -226,6 +242,7 @@ class BuildExt(build_ext):
         for ext in self.extensions:
             ext.extra_compile_args.extend(opts)
             ext.extra_link_args.extend(link_opts)
+
         build_ext.build_extensions(self)
 
 setup(

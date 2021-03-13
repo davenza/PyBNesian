@@ -179,14 +179,6 @@ namespace util {
 
     template<typename T, typename R = void>
     using enable_if_index_iterator_t = std::enable_if_t<is_index_iterator_v<T>, R>;
-}
-
-namespace dataset {
-    template<typename Index, typename = util::enable_if_index_t<Index, void>>
-    struct DynamicVariable;
-}
-
-namespace util {
 
     // From https://stackoverflow.com/questions/44012938/how-to-tell-if-template-type-is-an-instance-of-a-template-class
     template <template <typename...> typename, typename...>
@@ -237,60 +229,6 @@ namespace util {
         template<template <T> typename TemplatedClass, typename Derived, typename R = void>
         using enable_if_template_instantation_t = std::enable_if_t<is_template_instantation_v<TemplatedClass, Derived>, R>; 
     };
-
-    template<typename T, typename = void>
-    struct is_dynamic_index : public std::false_type {};
-
-    template<typename T>
-    struct is_dynamic_index<T,
-                            std::void_t<
-                                enable_if_template_instantation_t<
-                                    dataset::DynamicVariable, 
-                                    T
-                                >
-                            >
-    > : public std::true_type {};
-
-    template<typename T>
-    inline constexpr auto is_dynamic_index_v = is_dynamic_index<T>::value;
-    
-    template<typename T, typename R = void>
-    using enable_if_dynamic_index_t = std::enable_if_t<is_dynamic_index_v<T>, R>;
-
-    template<typename T, typename = void>
-    struct is_dynamic_index_container : public std::false_type {};
-
-    template<typename T>
-    struct is_dynamic_index_container<T,
-                                      std::void_t<
-                                        enable_if_container_t<T>,
-                                        enable_if_dynamic_index_t<typename T::value_type>
-                                     >
-    > : public std::true_type {};
-
-    template<typename T>
-    inline constexpr auto is_dynamic_index_container_v = is_dynamic_index_container<T>::value;
-
-    template<typename T, typename R = void>
-    using enable_if_dynamic_index_container_t = std::enable_if_t<is_dynamic_index_container_v<T>, R>;
-
-    template<typename T, typename _ = void>
-    struct is_dynamic_index_iterator : std::false_type {};
-
-    template<typename T>
-    struct is_dynamic_index_iterator<
-            T,
-            std::void_t<
-                enable_if_iterator_t<T>,
-                enable_if_dynamic_index_t<typename std::iterator_traits<T>::value_type>
-            >
-    > : public std::true_type {};
-
-    template<typename T>
-    inline constexpr auto is_dynamic_index_iterator_v = is_dynamic_index_iterator<T>::value;
-
-    template<typename T, typename R = void>
-    using enable_if_dynamic_index_iterator_t = std::enable_if_t<is_dynamic_index_iterator_v<T>, R>;
 
     template<typename V, typename T>
     using is_vector_of_type = std::is_same<

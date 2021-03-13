@@ -8,6 +8,7 @@
 #include <util/bidirectionalmap_index.hpp>
 #include <util/vector.hpp>
 #include <util/parameter_traits.hpp>
+#include <util/temporal.hpp>
 
 #include <iostream>
 
@@ -16,7 +17,7 @@ namespace py = pybind11;
 using graph::DNode, graph::UNode, graph::PDNode;
 using boost::dynamic_bitset;
 using util::ArcStringVector, util::EdgeStringVector, util::ArcSet, util::EdgeSet, util::BidirectionalMapIndex;
-
+using util::TemporalIndex;
 
 namespace graph {
 
@@ -31,6 +32,8 @@ namespace graph {
     class Graph;
     template<GraphType Type>
     class ConditionalGraph;
+    template<GraphType Type>
+    class TemporalGraph;
 
     using DirectedGraph = Graph<Directed>;
     using Dag = Graph<DirectedAcyclic>;
@@ -41,6 +44,11 @@ namespace graph {
     using ConditionalDag = ConditionalGraph<DirectedAcyclic>;
     using ConditionalUndirectedGraph = ConditionalGraph<Undirected>;
     using ConditionalPartiallyDirectedGraph = ConditionalGraph<PartiallyDirected>;
+
+    using TemporalDirectedGraph = TemporalGraph<Directed>;
+    using TemporalDag = TemporalGraph<DirectedAcyclic>;
+    using TemporalUndirectedGraph = TemporalGraph<Undirected>;
+    using TemporalPartiallyDirectedGraph = TemporalGraph<PartiallyDirected>;
 
     template<typename G>
     struct GraphTraits;
@@ -994,11 +1002,341 @@ namespace graph {
     }
 
     template<typename Derived>
+    class TemporalGraphBase {
+    public:
+        using NodeType = typename GraphTraits<Derived>::NodeType;
+
+        TemporalGraphBase() = default;
+        TemporalGraphBase(const std::vector<std::string>& variables,
+                          int markovian_order,
+                          const std::vector<std::string>& free_nodes) : m_nodes(),
+                                                                        m_indices(),
+                                                                        m_slice_indices(),
+                                                                        m_string_nodes(),
+                                                                        m_variables(variables),
+                                                                        m_free_indices(),
+                                                                        m_markovian(markovian_order) {
+            m_nodes.reserve(variables.size() * (markovian_order + 1) + free_nodes.size());
+
+            int nindex = 0;
+            for (int i = 0; i <= markovian_order; ++i) {
+                for (const auto& v : m_variables) {
+                    auto name = util::temporal_name(v, i);
+                    NodeType n(nindex, name);
+                    m_nodes.push_back(n);
+                    m_indices.insert({name, nindex});
+                    m_slice_indices.insert({m_variables.index(v), i}, nindex++);
+                    m_string_nodes.insert(name);
+                }
+            }
+
+            for (auto& name : free_nodes) {
+                NodeType n(nindex, name);
+                m_nodes.push_back(n);
+                m_indices.insert({name, nindex});
+                m_string_nodes.insert(name);
+            }
+        }
+
+        int num_nodes() const {
+            return m_nodes.size() - m_free_indices.size();
+        }
+
+        int num_variables() const {
+            return m_variables.size();
+        }
+
+        int num_raw_nodes() const {
+            return m_nodes.size();
+        }
+
+        template<typename V>
+        const NodeType& raw_node(const V& idx) const {
+            return m_nodes[check_index(idx)]; 
+        }
+
+        const std::vector<std::string>& nodes() const {
+            return m_string_nodes.elements();
+        }
+
+        const std::vector<NodeType>& raw_nodes() const { return m_nodes; }
+
+        const std::unordered_map<std::string, int>& indices() const {
+            return m_indices;
+        }
+
+        bool contains_node(const std::string& name) const {
+            return m_string_nodes.contains(name);
+        }
+
+        template<typename Index>
+        bool contains_node(const TemporalIndex<Index>& name) const {
+            return contains_node(name.temporal_name());
+        }
+
+        bool contains_variable(const std::string& variable) const {
+            return m_variables.contains(variable);
+        }
+
+        bool is_free_node(const std::string& name) const {
+            auto tindex = TemporalIndex<std::string>::from_string(name);
+
+            if (tindex && contains_variable(tindex->variable) && tindex->temporal_slice >= 0 && tindex->temporal_slice <= m_markovian) {
+                return true;
+            }
+
+            return false;
+        }
+
+        int add_node(const std::string& node);
+        int add_variable(const std::string& variable);
+
+        template<typename V>
+        void remove_node(const V& idx) {
+            remove_node_unsafe(check_index(idx));
+        }
+
+        void remove_node_unsafe(int index);
+
+        void remove_variable(const std::string& variable);
+
+
+        const std::string& name(int global_idx) const {
+            return m_nodes[check_index(global_idx)].name();
+        }
+
+        const std::string& collapsed_name(int collapsed_index) const {
+            return m_string_nodes.element(collapsed_index);
+        }
+
+        const std::string& collapsed_variable(int collapsed_variable) const {
+            return m_variables.element(collapsed_variable);
+        }
+
+        template<typename Index>
+        int index(const Index& index) const {
+            return check_index(index);
+        }
+
+        int collapsed_index(const std::string& node) const {
+            return m_string_nodes.index(node);
+        }
+
+        template<typename Index>
+        int collapsed_index(const TemporalIndex<Index>& node) const {
+            return collapsed_index(node.temporal_name());
+        }
+        
+        int collapsed_variable_index(const std::string& variable) const {
+            return m_variables.index(variable);
+        }
+
+        int index_from_collapsed(int collapsed_index) const {
+            return index(m_string_nodes.element(collapsed_index));
+        }
+
+        int collapsed_from_index(int index) const {
+            return collapsed_index(name(index));
+        }
+
+        const std::unordered_map<std::string, int>& collapsed_indices() const {
+            return m_string_nodes.indices();
+        }
+
+        const std::unordered_map<std::string, int>& collapsed_variable_indices() const {
+            return m_variables.indices();
+        }
+
+        const std::vector<int>& free_indices() const {
+            return m_free_indices;
+        }
+
+        bool is_valid(int global_idx) const {
+            return global_idx >= 0 && global_idx < num_raw_nodes() && m_nodes[global_idx].is_valid();
+        }
+
+        int check_index(int global_idx) const {
+            if (!is_valid(global_idx)) {
+                throw std::invalid_argument("Node index " + std::to_string(global_idx) + " invalid.");
+            }
+
+            return global_idx;
+        }
+
+        int check_index(const std::string& name) const {
+            auto f = m_indices.find(name);
+            if (f == m_indices.end()) {
+                throw std::invalid_argument("Node " + name + " not present in the graph.");
+            }
+
+            return f->second;
+        }
+
+        int check_index(const TemporalIndex<int>& ti) const {
+            auto f = m_slice_indices.find(ti);
+            if (f == m_slice_indices.end()) {
+                throw std::invalid_argument("Node " + ti.temporal_name() + " not present in the graph.");
+            }
+
+            return f->second;
+        }
+
+        int check_index(const TemporalIndex<std::string>& ti) const {
+            return check_index({collapsed_variable_index(ti.variable), temporal_slice})
+        }
+    protected:
+        int create_node(const std::string& node);
+        int create_variable(const std::string& variable);
+        void remove_node_arcs_edges(int index);
+        void remove_variable_arcs_edges(int index);
+
+    private:
+        std::vector<NodeType> m_nodes;
+        std::unordered_map<std::string, int> m_indices;
+        std::unordered_map<TemporalIndex<int>, int> m_slice_indices;
+        BidirectionalMapIndex<std::string> m_string_nodes;
+        BidirectionalMapIndex<std::string> m_variables;
+        std::vector<int> m_free_indices;
+        int m_markovian;
+    };
+
+    template<typename Derived>
+    int TemporalGraphBase<Derived>::create_node(const std::string& node) {
+        if (!m_free_indices.empty()) {
+            int idx = m_free_indices.back();
+            m_free_indices.pop_back();
+            NodeType n(idx, node);
+            m_nodes[idx] = n;
+            return idx;
+        }
+        else {
+            int idx = m_nodes.size();
+            NodeType n(idx, node);
+            m_nodes.push_back(n);
+            return idx;
+        }
+    }
+
+
+    template<typename Derived>
+    int TemporalGraphBase<Derived>::add_node(const std::string& node) {
+        if (contains_node(node)) {
+            throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
+        }
+
+        int idx = create_node(node);
+
+        m_indices.insert(std::make_pair(node, idx));
+        m_string_nodes.insert(node);
+
+        if constexpr (GraphTraits<Derived>::has_arcs) {
+            auto& arcg = static_cast<Derived&>(*this).arc_base();
+            arcg.add_root(idx);
+            arcg.add_leaf(idx);
+        }
+
+        return idx;
+    }
+    
+    template<typename Derived>
+    int TemporalGraphBase<Derived>::add_variable(const std::string& variable) {
+        if (contains_variable(variable)) {
+            throw std::invalid_argument("Can not add variable " + variable + " because a variable with the same name already exists.");
+        }
+
+        for (int i = 0; i <= m_markovian; ++i) {
+            auto tindex = TemporalIndex(variable, i);
+            if (contains_node(tindex)) {
+                throw std::invalid_argument("Can not add variable " + variable + " because a free node " + tindex.temporal_name() 
+                                            + " in the graph collides with the variable node.");
+            }
+        }
+
+        for (int i = 0; i <= m_markovian; ++i) {
+            auto tindex = TemporalIndex(variable, i);
+
+            int idx = create_node(tindex.temporal_name());
+
+            m_indices.insert({tindex.temporal_name(), idx});
+            m_slice_indices.insert({TemporalIndex{index(tindex.variable), tindex.temporal_slice}, idx});
+            m_string_nodes.insert(tindex.temporal_name());
+        }
+
+        m_variables.insert(variable);
+
+        return m_variables.index(variable);
+    }
+
+    template<typename Derived>
+    void TemporalGraphBase<Derived>::remove_node_arcs_edges(int index) {
+        if constexpr (GraphTraits<Derived>::has_edges) {
+            auto& derived = static_cast<Derived&>(*this);
+            for (auto neighbor : derived.neighbor_indices(index)) {
+                derived.remove_edge_unsafe(index, neighbor);
+            }
+        }
+
+        if constexpr (GraphTraits<Derived>::has_arcs) {
+            if (m_nodes[index].is_root()) {
+                auto& arcg = static_cast<Derived&>(*this).arc_base();
+                arcg.remove_root(index);
+            }
+
+            if (m_nodes[index].is_leaf()) {
+                auto& arcg = static_cast<Derived&>(*this).arc_base();
+                arcg.remove_leaf(index);
+            }
+
+            auto& derived = static_cast<Derived&>(*this);
+            for (auto p : derived.parent_indices(index)) {
+                derived.remove_arc_unsafe(p, index);
+            }
+
+            for (auto ch : derived.children_indices(index)) {
+                derived.remove_arc_unsafe(index, ch);
+            }
+        }
+    }
+    
+    template<typename Derived>
+    void TemporalGraphBase<Derived>::remove_node_unsafe(int index) {
+        remove_node_arcs_edges(index);
+
+        m_string_nodes.remove(m_nodes[index].name());
+        m_indices.erase(m_nodes[index].name());
+        m_nodes[index].invalidate();
+        m_free_indices.push_back(index);
+    }
+
+    template<typename Derived>
+    void TemporalGraphBase<Derived>::remove_variable(const std::string& variable) {
+        if (!contains_variable(variable)) {
+            throw std::invalid_argument("Variable " + variable + " not present in the graph.");
+        }
+
+        auto variable_index = collapsed_variable_index(variable);
+        for (int i = 0; i <= m_markovian; ++i) {
+            remove_node({variable_index, i});
+            m_slice_indices.erase({variable_index, i});
+        }
+
+        m_variables.remove(variable);
+    }
+
+    template<typename Derived>
     bool can_exist_arc(const GraphBase<Derived>&, int, int) { return true; }
     template<typename Derived>
     bool can_exist_arc(const ConditionalGraphBase<Derived>& g, int, int target) {
         if (g.is_interface(target)) {
             return false;
+        }
+
+        return true;
+    }
+    template<typename Derived>
+    bool can_exist_arc(const TemporalGraphBase<Derived>& g, int source, int target) {
+        if (!is_free_node(source) && !is_free_node(target)) {
+
         }
 
         return true;
@@ -1023,6 +1361,13 @@ namespace graph {
             throw std::invalid_argument("Interface node can not have parents.");
         }
     }
+    template<typename Derived>
+    void check_can_exist_arc(const TemporalGraphBase<Derived>& g, int source, int target) {
+        if (!can_exist_arc(g, source, target)) {
+            throw std::invalid_argument("Cannot add arc " + g.name(source) + " -> " + g.name(target));
+        }
+    }
+
     template<typename Derived>
     void check_can_exist_edge(const GraphBase<Derived>&, int, int) {}
     template<typename Derived>

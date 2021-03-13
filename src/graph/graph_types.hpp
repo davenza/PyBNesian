@@ -77,6 +77,22 @@ namespace graph {
         std::unordered_set<int> m_children;
     };
 
+    class TemporalDNode : public DNode {
+    public:
+        TemporalDNode(int idx,
+                      std::string name,
+                      int temporal_slice,
+                      std::unordered_set<int> parents = {},
+                      std::unordered_set<int> children = {}) : DNode(idx, name, parents, children),
+                                                               m_temporal_slice(temporal_slice) {}
+
+        int temporal_slice() const {
+            return m_temporal_slice;
+        }
+    private:
+        int m_temporal_slice;     
+    };
+
     using Arc = std::pair<int, int>;
 
     struct ArcHash {
@@ -133,6 +149,21 @@ namespace graph {
         int m_idx;
         std::string m_name;
         std::unordered_set<int> m_neighbors;
+    };
+
+    class TemporalUNode : public UNode {
+    public:
+        TemporalUNode(int idx,
+                      std::string name,
+                      int temporal_slice,
+                      std::unordered_set<int> neighbors = {}) : UNode(idx, name, neighbors),
+                                                                m_temporal_slice(temporal_slice) {}
+
+        int temporal_slice() const {
+            return m_temporal_slice;
+        }
+    private:
+        int m_temporal_slice;     
     };
 
     using Edge = std::pair<int, int>;
@@ -254,6 +285,23 @@ namespace graph {
         std::unordered_set<int> m_neighbors;
         std::unordered_set<int> m_parents;
         std::unordered_set<int> m_children;
+    };
+
+    class TemporalPDNode : public PDNode {
+    public:
+        TemporalPDNode(int idx,
+                      std::string name,
+                      int temporal_slice,
+                      std::unordered_set<int> parents = {},
+                      std::unordered_set<int> children = {},
+                      std::unordered_set<int> neighbors = {}) : PDNode(idx, name, parents, children, neighbors),
+                                                                m_temporal_slice(temporal_slice) {}
+
+        int temporal_slice() const {
+            return m_temporal_slice;
+        }
+    private:
+        int m_temporal_slice;     
     };
 }
 

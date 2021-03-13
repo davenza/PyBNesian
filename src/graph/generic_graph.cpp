@@ -1,4 +1,5 @@
 #include <graph/generic_graph.hpp>
+#include <graph/temporal_graph.hpp>
 #include <util/vector.hpp>
 
 namespace graph {

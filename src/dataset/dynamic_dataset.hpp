@@ -21,31 +21,15 @@ namespace dataset {
 
     void append_slice(const DataFrame& slice, Array_vector& columns, Field_vector& fields);
 
-    template<typename Index, typename>
-    struct DynamicVariable {
-        using variable_type = Index;
-        
-        DynamicVariable(Index v, int s) : variable(v), temporal_slice(s) {}
-        DynamicVariable(std::pair<Index, int> t) : DynamicVariable(t.first, t.second) {}
-
-        template<typename T = Index, util::enable_if_stringable_t<T, int> = 0>
-        std::string temporal_name() const {
-            return util::temporal_name(variable, temporal_slice);
-        }
-
-        Index variable;
-        int temporal_slice;
-    };
-
     class DynamicDataFrame;
     template<>
     struct dataframe_traits<DynamicDataFrame> {
         template<typename T, typename R>
-        using enable_if_index_t = util::enable_if_dynamic_index_t<T, R>;
+        using enable_if_index_t = util::enable_if_temporal_index_t<T, R>;
         template<typename T, typename R>
-        using enable_if_index_container_t = util::enable_if_dynamic_index_container_t<T, R>;
+        using enable_if_index_container_t = util::enable_if_temporal_index_container_t<T, R>;
         template<typename T, typename R>
-        using enable_if_index_iterator_t = util::enable_if_dynamic_index_iterator_t<T, R>;
+        using enable_if_index_iterator_t = util::enable_if_temporal_index_iterator_t<T, R>;
         using loc_return = DataFrame;
     };
 

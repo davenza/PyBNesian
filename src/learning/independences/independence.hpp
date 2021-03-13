@@ -7,7 +7,7 @@
 #include <dataset/dynamic_dataset.hpp>
 #include <util/util_types.hpp>
 
-using dataset::DataFrame, dataset::DynamicDataFrame, dataset::DynamicVariable, dataset::DynamicAdaptator;
+using dataset::DataFrame, dataset::DynamicDataFrame, dataset::DynamicAdaptator;
 using util::ArcStringVector;
 
 namespace learning::independences {

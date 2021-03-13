@@ -1,15 +1,17 @@
 #include <dataset/dynamic_dataset.hpp>
 #include <util/util_types.hpp>
+#include <util/temporal.hpp>
 
 using util::ArcStringVector;
+using util::TemporalIndex;
 
 namespace dataset {
 
-    std::string index_to_string(const DynamicVariable<int>& index) {
+    std::string index_to_string(const TemporalIndex<int>& index) {
         return "(" + std::to_string(index.variable) + ", " + std::to_string(index.temporal_slice) + ")";
     }
 
-    std::string index_to_string(const DynamicVariable<std::string>& index) {
+    std::string index_to_string(const TemporalIndex<std::string>& index) {
         return "(" + index.variable + ", " + std::to_string(index.temporal_slice) + ")";
     }
 

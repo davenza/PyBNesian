@@ -6,6 +6,7 @@
 #include <pybind11/pybind11.h>
 #include <Eigen/Dense>
 #include <util/parameter_traits.hpp>
+#include <util/temporal.hpp>
 #include <util/bit_util.hpp>
 #include <util/arrow_macros.hpp>
 
@@ -18,6 +19,7 @@ using Eigen::MatrixXd, Eigen::MatrixXf, Eigen::VectorXd, Eigen::VectorXf, Eigen:
         Eigen::DenseBase;
 using arrow::Type, arrow::Buffer, arrow::DoubleType, arrow::FloatType, arrow::RecordBatch;
 
+using util::TemporalIndex;
 
 using Field_ptr = std::shared_ptr<arrow::Field>;
 using Array_ptr = std::shared_ptr<arrow::Array>;
@@ -556,8 +558,8 @@ namespace dataset {
 
     std::string index_to_string(int i);
     std::string index_to_string(const std::string& name);
-    std::string index_to_string(const DynamicVariable<int>& i);
-    std::string index_to_string(const DynamicVariable<std::string>& name);
+    std::string index_to_string(const TemporalIndex<int>& i);
+    std::string index_to_string(const TemporalIndex<std::string>& name);
 
     template<typename T, util::enable_if_index_container_t<T, int> = 0>
     inline int size_argument(int, const T& arg) { return arg.size(); }
@@ -573,14 +575,14 @@ namespace dataset {
     inline int size_argument(int, const StringType&) { return 1; }
 
     template<typename Index>
-    inline int size_argument(int, const DynamicVariable<Index>&) {
+    inline int size_argument(int, const TemporalIndex<Index>&) {
         return 1;
     }
 
-    template<typename T, util::enable_if_dynamic_index_container_t<T, int> = 0>
+    template<typename T, util::enable_if_temporal_index_container_t<T, int> = 0>
     inline int size_argument(int, const T& arg) { return arg.size(); }
 
-    template<typename IndexIter, util::enable_if_dynamic_index_iterator_t<IndexIter, int> = 0>
+    template<typename IndexIter, util::enable_if_temporal_index_iterator_t<IndexIter, int> = 0>
     inline int size_argument(int, const std::pair<IndexIter, IndexIter>& it) { 
         return std::distance(it.first, it.second); 
     }

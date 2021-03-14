@@ -459,7 +459,7 @@ namespace learning::algorithms {
         assoc.reset_maxmin();
 
         for (auto it = to_be_checked.begin(); it != to_be_checked.end();) {
-            double pvalue = test.pvalue(variable_name, g.name(*it), cpc_vec.begin(), cpc_vec.end());
+            double pvalue = test.pvalue(variable_name, g.name(*it), cpc_vec);
             assoc.initialize_assoc(*it, pvalue);
             progress.tick();
         }
@@ -519,7 +519,7 @@ namespace learning::algorithms {
                 double pvalue = test.pvalue(variable_name, v_name, last_added_name);
                 assoc.update_assoc(v, pvalue);
 
-                pvalue = test.pvalue(variable_name, v_name, cond.begin(), cond.end());
+                pvalue = test.pvalue(variable_name, v_name, cond);
                 assoc.update_assoc(v, pvalue);
 
                 progress.tick();
@@ -559,20 +559,20 @@ namespace learning::algorithms {
                 // Conditioning in the last variable and another variable added.
                 for (const auto& pc : old_cpc) {
                     cond[0] = pc;
-                    pvalue = test.pvalue(variable_name, v_name, cond.begin(), cond.end());
+                    pvalue = test.pvalue(variable_name, v_name, cond);
                     assoc.update_assoc(v, pvalue);
                 }
                 
                 if (cpc.size() > 3) {
                     for (const auto& subset : comb) {
-                        pvalue = test.pvalue(variable_name, v_name, subset.begin(), subset.end());
+                        pvalue = test.pvalue(variable_name, v_name, subset);
                         assoc.update_assoc(v, pvalue);
                     }
                 }
 
                 // Conditioning in all the variables.
                 old_cpc.push_back(last_added_name);
-                pvalue = test.pvalue(variable_name, v_name, old_cpc.begin(), old_cpc.end());
+                pvalue = test.pvalue(variable_name, v_name, old_cpc);
                 assoc.update_assoc(v, pvalue);
                 old_cpc.pop_back();
             }
@@ -701,7 +701,7 @@ namespace learning::algorithms {
                     AllSubsets comb(subset_variables, 2, subset_variables.size()-1);
 
                     for (const auto& s : comb) {
-                        if (test.pvalue(variable_name, it_name, s.begin(), s.end()) > alpha) {
+                        if (test.pvalue(variable_name, it_name, s) > alpha) {
                             it = cpc.erase(it);
                             progress.set_max_progress(cpc.size());
                             found_sepset = true;
@@ -711,8 +711,7 @@ namespace learning::algorithms {
                 }
 
                 // Independence sepset length of subset size.
-                if (!found_sepset && subset_variables.size() > 1 && 
-                    test.pvalue(variable_name, it_name, subset_variables.begin(), subset_variables.end()) > alpha) {
+                if (!found_sepset && subset_variables.size() > 1 && test.pvalue(variable_name, it_name, subset_variables) > alpha) {
                     it = cpc.erase(it);
                     progress.set_max_progress(cpc.size());
                     found_sepset = true;

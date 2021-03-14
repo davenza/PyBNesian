@@ -31,10 +31,10 @@ void pybindings_independence_tests(py::module& root) {
             return self.pvalue(v1, v2, cond);
         })
         .def("pvalue", [](IndependenceTest& self, int v1, int v2, std::vector<int>& cond) {
-            return self.pvalue(v1, v2, cond.begin(), cond.end());
+            return self.pvalue(v1, v2, cond);
         })
         .def("pvalue", [](IndependenceTest& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
-            return self.pvalue(v1, v2, cond.begin(), cond.end());
+            return self.pvalue(v1, v2, cond);
         })
         .def("num_variables", &IndependenceTest::num_variables)
         .def("variable_names", &IndependenceTest::variable_names)
@@ -65,10 +65,10 @@ void pybindings_independence_tests(py::module& root) {
             return self.mi(x, y, z);
         })
         .def("mi", [](KMutualInformation& self, int x, int y, const std::vector<int>& z) {
-            return self.mi(x, y, z.begin(), z.end());
+            return self.mi(x, y, z);
         })
         .def("mi", [](KMutualInformation& self, const std::string& x, const std::string& y, const std::vector<std::string>& z) {
-            return self.mi(x, y, z.begin(), z.end());
+            return self.mi(x, y, z);
         });
     
     py::class_<RCoT, IndependenceTest, std::shared_ptr<RCoT>>(independence_tests, "RCoT")

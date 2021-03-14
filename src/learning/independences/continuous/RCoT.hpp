@@ -108,23 +108,19 @@ namespace learning::independences::continuous {
         template<typename ArrowType, typename VarType>
         double pvalue(const VarType& x, const VarType& y) const;
 
-        double pvalue(int v1, int v2, int cond) const override;
-        double pvalue(const std::string& v1, const std::string& v2, const std::string& cond) const override;
+        double pvalue(int v1, int v2, int z) const override;
+        double pvalue(const std::string& v1, const std::string& v2, const std::string& z) const override;
         template<typename VarType>
         double pvalue(const VarType& x, const VarType& y, const VarType& z) const;
         template<typename ArrowType, typename VarType>
         double pvalue(const VarType& x, const VarType& y, const VarType& z) const;
 
-        double pvalue(int v1, int v2, 
-                      const int_iterator evidence_begin, 
-                      const int_iterator evidence_end) const override;
-        double pvalue(const std::string& v1, const std::string& v2, 
-                      const string_iterator evidence_begin, 
-                      const string_iterator evidence_end) const override;
-        template<typename VarType, typename It>
-        double pvalue(const VarType& x, const VarType& y, It z_begin, It z_end) const;
-        template<typename ArrowType, typename VarType, typename It>
-        double pvalue(const VarType& x, const VarType& y, It z_begin, It z_end) const;
+        double pvalue(int v1, int v2, const std::vector<int>& z) const override;
+        double pvalue(const std::string& v1, const std::string& v2, const std::vector<std::string>& z) const override;
+        template<typename VarType>
+        double pvalue(const VarType& x, const VarType& y, const std::vector<VarType>& z) const;
+        template<typename ArrowType, typename VarType>
+        double pvalue(const VarType& x, const VarType& y, const std::vector<VarType>& z) const;
 
         int num_variables() const override {
             return m_df->num_columns();
@@ -321,7 +317,6 @@ namespace learning::independences::continuous {
 
         return res;
     }
-
 
     template<typename VectorType, typename FeatureType>
     double RCoT::RIT_impl(VectorType& x,

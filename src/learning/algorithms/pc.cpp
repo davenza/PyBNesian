@@ -160,7 +160,7 @@ namespace learning::algorithms {
         const auto& first_name = g.name(edge.first);
         const auto& second_name = g.name(edge.second);
         for (const auto& sepset : comb) {
-            double pvalue = test.pvalue(first_name, second_name, sepset.begin(), sepset.end());
+            double pvalue = test.pvalue(first_name, second_name, sepset);
             if (pvalue > alpha) {
                 std::unordered_set<int> indices;
                 std::transform(sepset.begin(), sepset.end(),

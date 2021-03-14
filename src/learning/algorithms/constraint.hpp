@@ -114,7 +114,7 @@ namespace learning::algorithms {
         const auto& p2_name = g.name(vs.p2);
 
         for (const auto& sepset : comb) {
-            double pvalue = test.pvalue(p1_name, p2_name, sepset.begin(), sepset.end());
+            double pvalue = test.pvalue(p1_name, p2_name, sepset);
             if (pvalue > alpha) {
                 ++indep_sepsets;
                 if(std::find(sepset.begin(), sepset.end(), g.name(vs.children)) != sepset.end()) {

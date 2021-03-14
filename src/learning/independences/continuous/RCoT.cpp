@@ -100,9 +100,8 @@ namespace learning::independences::continuous {
         return pvalue<>(v1, v2, cond);
     }
 
-    template<typename ArrowType, typename VarType, typename It>
-    double RCoT::pvalue(const VarType& x, const VarType& y, It z_begin, It z_end) const {
-        auto z = std::make_pair(z_begin, z_end);
+    template<typename ArrowType, typename VarType>
+    double RCoT::pvalue(const VarType& x, const VarType& y, const std::vector<VarType>& z) const {
         if (m_df.null_count(x, y, z) == 0) {
             auto x_vec = m_df.to_eigen<false, ArrowType, false>(x);
             auto y_vec = m_df.to_eigen<false, ArrowType, false>(y);
@@ -110,7 +109,7 @@ namespace learning::independences::continuous {
             if (util::sse(*x_vec) == 0 || util::sse(*y_vec) == 0)
                 return 1;
 
-            auto z_mat = m_df.to_eigen<false, ArrowType, false>(z_begin, z_end);
+            auto z_mat = m_df.to_eigen<false, ArrowType, false>(z);
             
             auto z_sse = util::sse_cols(*z_mat);
             
@@ -123,13 +122,11 @@ namespace learning::independences::continuous {
             }
 
             if (!zall_valid) {
-                auto names = m_df.names(z_begin, z_end);
-
                 std::vector<std::string> valid_names;
 
                 for (auto i = 0; i < z_sse.rows(); ++i) {
                     if (z_sse(i) > 0) {
-                        valid_names.push_back(names[i]);
+                        valid_names.push_back(m_df.name(z[i]));
                     }
                 }
 
@@ -148,7 +145,7 @@ namespace learning::independences::continuous {
             if (util::sse(*x_vec) == 0 || util::sse(*y_vec) == 0)
                 return 1;
 
-            auto z_mat = m_df.to_eigen<false, ArrowType>(combined_bitmap, z_begin, z_end);
+            auto z_mat = m_df.to_eigen<false, ArrowType>(combined_bitmap, z);
 
             auto z_sse = util::sse_cols(*z_mat);
             
@@ -161,13 +158,11 @@ namespace learning::independences::continuous {
             }
 
             if (!zall_valid) {
-                auto names = m_df.names(z_begin, z_end);
-
                 std::vector<std::string> valid_names;
 
                 for (auto i = 0; z_sse.rows(); ++i) {
                     if (z_sse(i) > 0) {
-                        valid_names.push_back(names[i]);
+                        valid_names.push_back(m_df.name(z[i]));
                     }
                 }
 
@@ -185,32 +180,27 @@ namespace learning::independences::continuous {
         }
     }
 
-    template<typename VarType, typename It>
-    double RCoT::pvalue(const VarType& x, const VarType& y, It z_begin, It z_end) const {
-        auto type = m_df.same_type(x, y, std::make_pair(z_begin, z_end));
+    template<typename VarType>
+    double RCoT::pvalue(const VarType& x, const VarType& y, const std::vector<VarType>& z) const {
+        auto type = m_df.same_type(x, y, z);
         switch (type) {
             case Type::DOUBLE: {
-                return pvalue<arrow::DoubleType>(x, y, z_begin, z_end);
+                return pvalue<arrow::DoubleType>(x, y, z);
             }
             case Type::FLOAT: {
-                return pvalue<arrow::FloatType>(x, y, z_begin, z_end);
+                return pvalue<arrow::FloatType>(x, y, z);
             }
             default:
                 throw std::invalid_argument("Column are not continuous.");
         }
     }
 
-
-    double RCoT::pvalue(int x, int y, 
-                            const int_iterator z_begin, 
-                            const int_iterator z_end) const {
-        return pvalue<>(x, y, z_begin, z_end);
+    double RCoT::pvalue(int x, int y, const std::vector<int>& z) const {
+        return pvalue<>(x, y, z);
     }
 
-    double RCoT::pvalue(const std::string& x, const std::string& y, 
-                            const string_iterator z_begin, 
-                            const string_iterator z_end) const {
-        return pvalue<>(x, y, z_begin, z_end);
+    double RCoT::pvalue(const std::string& x, const std::string& y, const std::vector<std::string>& z) const {
+        return pvalue<>(x, y, z);
     }
 
 }

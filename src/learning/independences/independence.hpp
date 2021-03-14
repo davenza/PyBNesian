@@ -21,16 +21,11 @@ namespace learning::independences {
         virtual double pvalue(int v1, int v2) const = 0;
         virtual double pvalue(const std::string& v1, const std::string& v2) const = 0;
 
-        virtual double pvalue(int v1, int v2, int cond) const = 0;
-        virtual double pvalue(const std::string& v1, const std::string& v2, const std::string& cond) const = 0;
+        virtual double pvalue(int v1, int v2, int ev) const = 0;
+        virtual double pvalue(const std::string& v1, const std::string& v2, const std::string& ev) const = 0;
 
-        virtual double pvalue(int v1, int v2, 
-                              const int_iterator evidence_begin, 
-                              const int_iterator evidence_end) const = 0;
-
-        virtual double pvalue(const std::string& v1, const std::string& v2, 
-                              const string_iterator evidence_begin, 
-                              const string_iterator evidence_end) const = 0;
+        virtual double pvalue(int v1, int v2, const std::vector<int>& ev) const = 0;
+        virtual double pvalue(const std::string& v1, const std::string& v2,  const std::vector<std::string>& ev) const = 0;
         
         virtual int num_variables() const = 0;
         virtual std::vector<std::string> variable_names() const = 0;

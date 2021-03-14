@@ -93,8 +93,8 @@ namespace learning::independences::continuous {
         double pvalue(const VarType& x, const VarType& y) const;
         template<typename VarType>
         double pvalue(const VarType& x, const VarType& y, const VarType& z) const;
-        template<typename VarType, typename Iter>
-        double pvalue(const VarType& x, const VarType& y, const Iter z_begin, const Iter z_end) const;
+        template<typename VarType>
+        double pvalue(const VarType& x, const VarType& y, const std::vector<VarType>& z) const;
 
         double pvalue(int x, int y) const override {
             return pvalue<int>(x, y);
@@ -110,18 +110,13 @@ namespace learning::independences::continuous {
             return pvalue<std::string>(x, y, z);
         }
 
-        double pvalue(int x, int y, 
-                        const typename std::vector<int>::const_iterator z_begin, 
-                        const typename std::vector<int>::const_iterator z_end) const override {
-            return pvalue<int, std::vector<int>::const_iterator>(x, y, z_begin, z_end);
+        double pvalue(int x, int y, const std::vector<int>& z) const override {
+            return pvalue<int>(x, y, z);
         }
 
-        double pvalue(const std::string& x, const std::string& y, 
-                        const typename std::vector<std::string>::const_iterator z_begin, 
-                        const typename std::vector<std::string>::const_iterator z_end) const override {
-            return pvalue<std::string, std::vector<std::string>::const_iterator>(x, y, z_begin, z_end);
+        double pvalue(const std::string& x, const std::string& y, const std::vector<std::string>& z) const override {
+            return pvalue<std::string>(x, y, z);
         }
-
 
         template<typename MICalculator>
         double shuffled_pvalue(double original_mi,
@@ -134,8 +129,8 @@ namespace learning::independences::continuous {
         double mi(const VarType& x, const VarType& y) const;
         template<typename VarType>
         double mi(const VarType& x, const VarType& y, const VarType& z) const;
-        template<typename VarType, typename Iter>
-        double mi(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const;
+        template<typename VarType>
+        double mi(const VarType& x, const VarType& y, const std::vector<VarType>& z) const;
 
         int num_variables() const override { return m_df->num_columns(); }
 
@@ -175,9 +170,9 @@ namespace learning::independences::continuous {
         return mi_triple(subset_df, m_k);
     }
 
-    template<typename VarType, typename Iter>
-    double KMutualInformation::mi(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const {
-        auto subset_df = m_ranked_df.loc(x, y, std::make_pair(z_begin, z_end));
+    template<typename VarType>
+    double KMutualInformation::mi(const VarType& x, const VarType& y, const std::vector<VarType>& z) const {
+        auto subset_df = m_ranked_df.loc(x, y, z);
         return mi_general(subset_df, m_k);
     }
 
@@ -313,11 +308,11 @@ namespace learning::independences::continuous {
         return shuffled_pvalue(original_mi, original_rank_x, z_df, shuffled_df, MITriple{});
     }
 
-    template<typename VarType, typename Iter>
-    double KMutualInformation::pvalue(const VarType& x, const VarType& y, Iter z_begin, Iter z_end) const {
-        auto original_mi = mi(x, y, z_begin, z_end);
-        auto z_df = m_df.loc(z_begin, z_end);
-        auto shuffled_df = m_ranked_df.loc(Copy(x), y, std::make_pair(z_begin, z_end));
+    template<typename VarType>
+    double KMutualInformation::pvalue(const VarType& x, const VarType& y, const std::vector<VarType>& z) const {
+        auto original_mi = mi(x, y, z);
+        auto z_df = m_df.loc(z);
+        auto shuffled_df = m_ranked_df.loc(Copy(x), y, z);
         auto original_rank_x = m_ranked_df.template data<arrow::FloatType>(x);
         
         return shuffled_pvalue(original_mi, original_rank_x, z_df, shuffled_df, MIGeneral{});

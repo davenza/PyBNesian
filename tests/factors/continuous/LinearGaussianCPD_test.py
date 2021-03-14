@@ -30,6 +30,10 @@ def fit_numpy(_df, variable, evidence):
     
     return beta, res / (df_na.count()[variable] - len(evidence) - 1)
 
+def test_lg_data_type():
+    cpd = LinearGaussianCPD("a", [])
+    assert cpd.data_type() == pa.float64()
+
 def test_lg_fit():
     for variable, evidence in [("a", []), ("b", ["a"]), ("c", ["a", "b"]), ("d", ["a", "b", "c"])]:
         cpd = LinearGaussianCPD(variable, evidence)

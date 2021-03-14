@@ -141,7 +141,6 @@ cython_debug/
 .idea
 
 # Ignore generated OpenCL
-src/factors/continuous/opencl/CKDE.cl
-src/factors/continuous/opencl/cumsum.cl
+pybnesian/factors/continuous/opencl/CKDE.cl
 # Automatically generated code.
-src/opencl/opencl_code.hpp
+pybnesian/opencl/opencl_code.hpp

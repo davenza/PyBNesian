@@ -1,0 +1,19 @@
+﻿---
+BasedOnStyle: Google
+AccessModifierOffset: '-4'
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: 'true'
+AllowShortCaseLabelsOnASingleLine: 'false'
+BinPackArguments: 'false'
+BinPackParameters: 'false'
+ColumnLimit: '120'
+IndentWidth: '4'
+SortIncludes: 'false'
+SpaceInEmptyParentheses: 'false'
+SpacesInAngles: 'false'
+SpacesInContainerLiterals: 'false'
+SpacesInParentheses: 'false'
+SpacesInSquareBrackets: 'false'
+UseTab: Never
+
+...

@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from pybnesian.models import GaussianNetwork
-from pybnesian.factors.continuous import LinearGaussianCPD
+from pybnesian.models import *
+from pybnesian.factors.continuous import *
 import util_test
 
 df = util_test.generate_normal_data(10000)
@@ -25,7 +25,6 @@ def test_create_bn():
 
     with pytest.raises(TypeError) as ex:
         gbn = GaussianNetwork(['a', 'b', 'c'], [('a', 'c', 'b')])
-
     assert "incompatible constructor arguments" in str(ex.value)
     
     with pytest.raises(IndexError) as ex:
@@ -39,6 +38,10 @@ def test_create_bn():
     with pytest.raises(ValueError) as ex:
         gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('b', 'c'), ('c', 'a')])
     assert "must be a DAG" in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        gbn = BayesianNetwork(GaussianNetworkType(), ['a', 'b', 'c', 'd'], [], [('a', CKDEType())])
+    assert "Wrong factor type" in str(ex.value)
     
 def gbn_generator():
     # Test different Networks created with different constructors.
@@ -85,11 +88,6 @@ def test_parent_children():
     assert gbn.parents('c') == []
     assert gbn.parents('d') == []
 
-    assert gbn.parent_indices('a') == []
-    assert gbn.parent_indices('b') == []
-    assert gbn.parent_indices('c') == []
-    assert gbn.parent_indices('d') == []
-
     assert gbn.num_children('a') == 0
     assert gbn.num_children('b') == 0
     assert gbn.num_children('c') == 0
@@ -107,11 +105,6 @@ def test_parent_children():
     assert gbn.parents('c') == ['a']
     assert set(gbn.parents('d')) == set(['b', 'c'])
 
-    assert gbn.parent_indices('a') == []
-    assert gbn.parent_indices('b') == []
-    assert gbn.parent_indices('c') == [0]
-    assert set(gbn.parent_indices('d')) == set([2, 1])
-
     assert gbn.num_children('a') == 1
     assert gbn.num_children('b') == 1
     assert gbn.num_children('c') == 1
@@ -128,11 +121,6 @@ def test_parent_children():
     assert gbn.parents('b') == ['a']
     assert gbn.parents('c') == ['b']
     assert gbn.parents('d') == []
-
-    assert gbn.parent_indices('a') == []
-    assert gbn.parent_indices('b') == [0]
-    assert gbn.parent_indices('c') == [1]
-    assert gbn.parent_indices('d') == []
 
     assert gbn.num_children('a') == 1
     assert gbn.num_children('b') == 1
@@ -257,45 +245,6 @@ def test_bn_fit():
     cpd_b = gbn.cpd('b')
     assert cpd_b.evidence == gbn.parents('b')
 
-def test_bn_cpd():
-    gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
-
-    with pytest.raises(ValueError) as ex:
-        gbn.cpd('a')
-    assert "not added" in str(ex.value)
-
-    gbn.add_cpds([LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)])
-
-    # Always return a reference
-    cpd_a = gbn.cpd('a')
-    # TODO: Is hex(id()) the correct way to check the validity of the reference ? Operator is ?
-    address_a = hex(id(cpd_a))
-    assert not cpd_a.fitted
-    gbn.cpd('a').fit(df)
-    assert cpd_a.fitted
-    assert address_a == hex(id(cpd_a))
-
-    cpd_b = gbn.cpd('b')
-    address_b = hex(id(cpd_b))
-    assert cpd_b.fitted
-    gbn.cpd('b').fit(df)
-    assert cpd_b.fitted
-    assert address_b == hex(id(cpd_b))
-
-    cpd_c = gbn.cpd('c')
-    address_c = hex(id(cpd_c))
-    assert not cpd_c.fitted
-    gbn.cpd('c').fit(df)
-    assert cpd_c.fitted
-    assert address_c == hex(id(cpd_c))
-
-    cpd_d = gbn.cpd('d')
-    address_d = hex(id(cpd_d))
-    assert not cpd_d.fitted
-    gbn.cpd('d').fit(df)
-    assert cpd_d.fitted
-    assert address_d == hex(id(cpd_d))
-
 def test_add_cpds():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
@@ -331,12 +280,17 @@ def test_add_cpds():
     assert np.all(cpd_b.beta == np.asarray([2.5, 1.65]))
     assert cpd_b.variance == 4
 
-    cpd_a = gbn.cpd('a')
-    assert not cpd_a.fitted
-    cpd_c = gbn.cpd('c')
-    assert not cpd_c.fitted
-    cpd_d = gbn.cpd('d')
-    assert not cpd_d.fitted
+    with pytest.raises(ValueError) as ex:
+        cpd_a = gbn.cpd('a')
+    assert "CPD of variable \"a\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        cpd_c = gbn.cpd('c')
+    assert "CPD of variable \"c\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)
+
+    with pytest.raises(ValueError) as ex:
+        cpd_d = gbn.cpd('d')
+    assert "CPD of variable \"d\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
         gbn.add_cpds([LinearGaussianCPD('e', [])])

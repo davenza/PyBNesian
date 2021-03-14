@@ -1,5 +1,4 @@
 import pytest
-from pybnesian.models import BayesianNetworkType
 from pybnesian.learning.operators import OperatorTabuSet, AddArc, RemoveArc, FlipArc, RemoveArc
 
 

@@ -1,14 +1,13 @@
 import pytest
 import numpy as np
-from pybnesian.learning.operators import ArcOperatorSet, ChangeNodeTypeSet, OperatorTabuSet, AddArc, OperatorType
+from pybnesian.learning.operators import ArcOperatorSet, ChangeNodeTypeSet, OperatorTabuSet, AddArc
 from pybnesian.learning.scores import BIC, CVLikelihood
 from pybnesian.models import GaussianNetwork, SemiparametricBN
-from pybnesian.factors import NodeType
+from pybnesian.factors.continuous import LinearGaussianCPDType, CKDEType
 import util_test
 
 SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
-
 
 def test_create():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
@@ -21,17 +20,17 @@ def test_create():
 
     with pytest.raises(ValueError) as ex:
         arc_op.cache_scores(spbn, bic)
-    "Invalid score" in str(ex.value)
+    assert "is not compatible with the score" in str(ex.value)
 
     node_op = ChangeNodeTypeSet()
 
     with pytest.raises(ValueError) as ex:
         node_op.cache_scores(gbn, cv)
-    "can only be used with SemiparametricBN" in str(ex.value)
+    assert "can only be used with SemiparametricBN" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
         node_op.cache_scores(spbn, bic)
-    "Invalid score" in str(ex.value)
+    assert "is not compatible with the score" in str(ex.value)
 
 def test_lists():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
@@ -41,21 +40,21 @@ def test_lists():
     arc_op.set_arc_blacklist([("b", "a")])
     arc_op.set_arc_whitelist([("b", "c")])
     arc_op.set_max_indegree(3)
-    arc_op.set_type_whitelist([("a", NodeType.LinearGaussianCPD)])
+    arc_op.set_type_whitelist([("a", LinearGaussianCPDType())])
 
     arc_op.cache_scores(gbn, bic)
 
     arc_op.set_arc_blacklist([("e", "a")])
 
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(IndexError) as ex:
         arc_op.cache_scores(gbn, bic)
-    "present in the blacklist, but not" in str(ex.value)
+    assert "not present in the graph" in str(ex.value)
 
     arc_op.set_arc_whitelist([("e", "a")])
 
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(IndexError) as ex:
         arc_op.cache_scores(gbn, bic)
-    "present in the whitelist, but not" in str(ex.value)
+    assert "not present in the graph" in str(ex.value)
 
 
 def test_check_max_score():
@@ -77,7 +76,7 @@ def test_check_max_score():
 
     assert op.source == op2.target
     assert op.target == op2.source
-    assert (op.type == op2.type) and (op.type == OperatorType.ADD_ARC)
+    assert (type(op) == type(op2)) and (type(op) == AddArc)
 
 def test_nomax():
     gbn = GaussianNetwork(['a', 'b'])

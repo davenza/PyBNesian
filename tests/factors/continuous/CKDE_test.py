@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 import pyarrow as pa
 import pandas as pd
@@ -26,6 +27,18 @@ def test_evidence():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         cpd = CKDE(variable, evidence)
         assert cpd.evidence == evidence
+
+def test_kde_data_type():
+    k = CKDE("a", [])
+
+    with pytest.raises(ValueError) as ex:
+        k.data_type()
+    "CKDE factor not fitted" in str(ex.value)
+
+    k.fit(df)
+    assert k.data_type() == pa.float64()
+    k.fit(df_float)
+    assert k.data_type() == pa.float32()
 
 def test_ckde_kde_joint():
     def _test_ckde_kde_joint_iter(variable, evidence, _df):

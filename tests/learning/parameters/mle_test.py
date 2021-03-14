@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from pybnesian.learning.parameters import MLE
-from pybnesian.factors import NodeType
+from pybnesian.factors.continuous import LinearGaussianCPDType, CKDEType
 import util_test
 
 SIZE = 10000
@@ -28,13 +28,13 @@ def numpy_fit_mle_lg(data, variable, evidence):
 
 def test_mle_create():
     with pytest.raises(ValueError) as ex:
-        mle = MLE(NodeType.CKDE)
-    "MLE not available" in str(ex.value)
+        mle = MLE(CKDEType())
+    assert "MLE not available" in str(ex.value)
 
-    mle = MLE(NodeType.LinearGaussianCPD)
+    mle = MLE(LinearGaussianCPDType())
 
 def test_mle_lg():
-    mle = MLE(NodeType.LinearGaussianCPD)
+    mle = MLE(LinearGaussianCPDType())
 
     p = mle.estimate(df, "a", [])
     np_beta, np_var = numpy_fit_mle_lg(df, "a", [])

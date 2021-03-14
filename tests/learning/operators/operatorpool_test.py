@@ -14,7 +14,7 @@ def test_create():
 
     with pytest.raises(ValueError) as ex:
         pool = OperatorPool([])
-    "cannot be empty" in str(ex.value)
+    assert "cannot be empty" in str(ex.value)
 
 def test_find_max():
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'])

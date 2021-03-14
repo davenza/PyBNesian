@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pyarrow as pa
 from pybnesian.factors.continuous import KDE
 from scipy.stats import gaussian_kde
 
@@ -53,6 +54,19 @@ def test_kde_bandwidth():
     cpd.fit(df_float)
     cpd.bandwidth = [[1]]
     assert cpd.bandwidth == np.asarray([[1]]), "Could not change bandwidth."
+
+def test_kde_data_type():
+    k = KDE(["a"])
+
+    with pytest.raises(ValueError) as ex:
+        k.data_type()
+    "KDE factor not fitted" in str(ex.value)
+
+    k.fit(df)
+    assert k.data_type() == pa.float64()
+    k.fit(df_float)
+    assert k.data_type() == pa.float32()
+
 
 def test_kde_fit():
     def _test_kde_fit_iter(variables, _df, instances):

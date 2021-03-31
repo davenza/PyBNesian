@@ -994,7 +994,7 @@ namespace factors::continuous {
         matrixL.solveInPlace(inverseL);
         auto R = inverseL * bandwidth.bottomLeftCorner(d, 1);
         auto cond_var = bandwidth(0,0) - R.squaredNorm();
-        auto transform = (R.transpose() * inverseL).template cast<CType>();
+        auto transform = (R.transpose() * inverseL).transpose().template cast<CType>();
 
         MatrixType training_dataset(N, m_variables.size());
         auto& opencl = OpenCLConfig::get();

@@ -230,6 +230,10 @@ namespace opencl {{
         opts.append("-march=native")
         opts.append("-fdiagnostics-color=always")
 
+        # Activate debug mode.
+        # opts.append("-UNDEBUG")
+        # opts.append("-DDEBUG")
+
         # This reduces the binary size because it removes the debug symbols. Check strip command to create release builds.
         # opts.append("-g0")
         if ct == 'unix':

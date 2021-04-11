@@ -117,12 +117,12 @@ ConditionalGraph<Type> to_conditional_graph(const GraphClass<Type>& g,
     if constexpr (is_unconditional_graph_v<GraphClass<Type>>) {
         num_total_nodes = g.num_nodes();
     } else if constexpr (is_conditional_graph_v<GraphClass<Type>>) {
-        num_total_nodes = g.num_total_nodes();
+        num_total_nodes = g.num_joint_nodes();
     }
 
-    if (cgraph.num_total_nodes() != num_total_nodes) {
+    if (cgraph.num_joint_nodes() != num_total_nodes) {
         throw std::invalid_argument("The graph has " + std::to_string(g.num_nodes()) + " nodes, but " +
-                                    std::to_string(cgraph.num_total_nodes()) +
+                                    std::to_string(cgraph.num_joint_nodes()) +
                                     " nodes have been specified in the nodes/interface_nodes lists.");
     }
 
@@ -132,7 +132,7 @@ ConditionalGraph<Type> to_conditional_graph(const GraphClass<Type>& g,
                 throw std::invalid_argument("Node " + node + "in node list, not present in the graph");
 
         } else if constexpr (is_conditional_graph_v<GraphClass<Type>>) {
-            if (!g.contains_total_node(node))
+            if (!g.contains_joint_node(node))
                 throw std::invalid_argument("Node " + node + "in node list, not present in the graph");
         } else
             static_assert(util::always_false<GraphClass<Type>>, "Wrong GraphType.");
@@ -144,7 +144,7 @@ ConditionalGraph<Type> to_conditional_graph(const GraphClass<Type>& g,
                 throw std::invalid_argument("Node " + node + "in interface_node list, not present in the graph");
 
         } else if constexpr (is_conditional_graph_v<GraphClass<Type>>) {
-            if (!g.contains_total_node(node))
+            if (!g.contains_joint_node(node))
                 throw std::invalid_argument("Node " + node + "in interface_node list, not present in the graph");
         } else
             static_assert(util::always_false<GraphClass<Type>>, "Wrong GraphType.");
@@ -171,7 +171,7 @@ Graph<Type> to_unconditional_graph(const GraphClass<Type>& g) {
         return g;
     } else {
         std::vector<std::string> nodes;
-        nodes.reserve(g.num_total_nodes());
+        nodes.reserve(g.num_joint_nodes());
         nodes.insert(nodes.end(), g.nodes().begin(), g.nodes().end());
         nodes.insert(nodes.end(), g.interface_nodes().begin(), g.interface_nodes().end());
 
@@ -562,15 +562,10 @@ void GraphBase<Derived>::remove_node_arcs_edges(int index) {
     }
 
     if constexpr (GraphTraits<Derived>::has_arcs) {
-        if (m_nodes[index].is_root()) {
-            auto& arcg = static_cast<Derived&>(*this).arc_base();
-            arcg.remove_root(index);
-        }
+        auto& arcg = static_cast<Derived&>(*this).arc_base();
 
-        if (m_nodes[index].is_leaf()) {
-            auto& arcg = static_cast<Derived&>(*this).arc_base();
-            arcg.remove_leaf(index);
-        }
+        arcg.remove_root(index);
+        arcg.remove_leaf(index);
 
         auto& derived = static_cast<Derived&>(*this);
         for (auto p : derived.parent_indices(index)) {
@@ -611,21 +606,21 @@ public:
         : m_nodes(),
           m_string_nodes(nodes),
           m_interface_nodes(interface_nodes),
-          m_total_nodes(),
+          m_joint_nodes(),
           m_indices(),
           m_free_indices() {
         if (nodes.empty()) throw std::invalid_argument("Nodes can not be empty.");
 
-        m_total_nodes.reserve(nodes.size() + interface_nodes.size());
-        m_total_nodes.insert(m_string_nodes.begin(), m_string_nodes.end());
-        m_total_nodes.insert(m_interface_nodes.begin(), m_interface_nodes.end());
+        m_joint_nodes.reserve(nodes.size() + interface_nodes.size());
+        m_joint_nodes.insert(m_string_nodes.begin(), m_string_nodes.end());
+        m_joint_nodes.insert(m_interface_nodes.begin(), m_interface_nodes.end());
 
-        m_nodes.reserve(m_total_nodes.size());
-        for (size_t i = 0; i < m_total_nodes.size(); ++i) {
-            NodeType n(i, m_total_nodes[i]);
+        m_nodes.reserve(m_joint_nodes.size());
+        for (size_t i = 0; i < m_joint_nodes.size(); ++i) {
+            NodeType n(i, m_joint_nodes[i]);
             m_nodes.push_back(n);
 
-            m_indices.insert({m_total_nodes[i], i});
+            m_indices.insert({m_joint_nodes[i], i});
         }
 
         if (m_indices.size() != (nodes.size() + interface_nodes.size()))
@@ -638,7 +633,7 @@ public:
 
     int num_interface_nodes() const { return m_interface_nodes.size(); }
 
-    int num_total_nodes() const { return m_total_nodes.size(); }
+    int num_joint_nodes() const { return m_joint_nodes.size(); }
 
     template <typename V>
     const NodeType& raw_node(const V& idx) const {
@@ -649,7 +644,7 @@ public:
 
     const std::vector<std::string>& interface_nodes() const { return m_interface_nodes.elements(); }
 
-    const std::vector<std::string>& all_nodes() const { return m_total_nodes.elements(); }
+    const std::vector<std::string>& joint_nodes() const { return m_joint_nodes.elements(); }
 
     const std::vector<NodeType>& raw_nodes() const { return m_nodes; }
 
@@ -661,15 +656,15 @@ public:
         return m_interface_nodes.indices();
     }
 
-    const std::unordered_map<std::string, int>& joint_collapsed_indices() const { return m_total_nodes.indices(); }
+    const std::unordered_map<std::string, int>& joint_collapsed_indices() const { return m_joint_nodes.indices(); }
 
     bool contains_node(const std::string& name) const { return m_string_nodes.contains(name); }
 
     bool contains_interface_node(const std::string& name) const {
-        return contains_total_node(name) && !contains_node(name);
+        return contains_joint_node(name) && !contains_node(name);
     }
 
-    bool contains_total_node(const std::string& name) const { return m_total_nodes.contains(name); }
+    bool contains_joint_node(const std::string& name) const { return m_joint_nodes.contains(name); }
 
     int add_node(const std::string& node);
     int add_interface_node(const std::string& node);
@@ -710,7 +705,7 @@ public:
 
     const std::string& joint_collapsed_name(int joint_collapsed_index) const {
         try {
-            return m_total_nodes.element(joint_collapsed_index);
+            return m_joint_nodes.element(joint_collapsed_index);
         } catch (std::out_of_range&) {
             throw std::out_of_range("Joint collapsed index " + std::to_string(joint_collapsed_index) +
                                     " not present in the graph.");
@@ -737,7 +732,7 @@ public:
 
     int joint_collapsed_index(const std::string& node) const {
         try {
-            return m_total_nodes.index(node);
+            return m_joint_nodes.index(node);
         } catch (std::out_of_range&) {
             throw std::out_of_range("Node " + node + " not present in the graph.");
         }
@@ -757,7 +752,7 @@ public:
 
     int interface_collapsed_from_index(int index) const { return m_interface_nodes[name(index)]; }
 
-    int joint_collapsed_from_index(int index) const { return m_total_nodes[name(index)]; }
+    int joint_collapsed_from_index(int index) const { return m_joint_nodes[name(index)]; }
 
     bool is_interface(int index) const { return contains_interface_node(m_nodes[check_index(index)].name()); }
 
@@ -825,7 +820,7 @@ private:
     // std::vector<std::string> m_string_nodes;
     BidirectionalMapIndex<std::string> m_string_nodes;
     BidirectionalMapIndex<std::string> m_interface_nodes;
-    BidirectionalMapIndex<std::string> m_total_nodes;
+    BidirectionalMapIndex<std::string> m_joint_nodes;
 
     // all nodes -> index
     std::unordered_map<std::string, int> m_indices;
@@ -850,7 +845,7 @@ int ConditionalGraphBase<Derived>::create_node(const std::string& node) {
 
 template <typename Derived>
 int ConditionalGraphBase<Derived>::add_node(const std::string& node) {
-    if (contains_total_node(node)) {
+    if (contains_joint_node(node)) {
         throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
     }
 
@@ -858,7 +853,7 @@ int ConditionalGraphBase<Derived>::add_node(const std::string& node) {
     m_indices.insert({node, idx});
 
     m_string_nodes.insert(node);
-    m_total_nodes.insert(node);
+    m_joint_nodes.insert(node);
 
     if constexpr (GraphTraits<Derived>::has_arcs) {
         auto& arcg = static_cast<Derived&>(*this).arc_base();
@@ -871,20 +866,14 @@ int ConditionalGraphBase<Derived>::add_node(const std::string& node) {
 
 template <typename Derived>
 int ConditionalGraphBase<Derived>::add_interface_node(const std::string& node) {
-    if (contains_total_node(node)) {
+    if (contains_joint_node(node)) {
         throw std::invalid_argument("Cannot add node " + node + " because a node with the same name already exists.");
     }
 
     int idx = create_node(node);
     m_indices.insert({node, idx});
     m_interface_nodes.insert(node);
-    m_total_nodes.insert(node);
-
-    if constexpr (GraphTraits<Derived>::has_arcs) {
-        auto& arcg = static_cast<Derived&>(*this).arc_base();
-        arcg.add_root(idx);
-        arcg.add_leaf(idx);
-    }
+    m_joint_nodes.insert(node);
 
     return idx;
 }
@@ -899,15 +888,10 @@ void ConditionalGraphBase<Derived>::remove_node_arcs_edges(int index) {
     }
 
     if constexpr (GraphTraits<Derived>::has_arcs) {
-        if (m_nodes[index].is_root()) {
-            auto& arcg = static_cast<Derived&>(*this).arc_base();
-            arcg.remove_root(index);
-        }
+        auto& arcg = static_cast<Derived&>(*this).arc_base();
 
-        if (m_nodes[index].is_leaf()) {
-            auto& arcg = static_cast<Derived&>(*this).arc_base();
-            arcg.remove_leaf(index);
-        }
+        arcg.remove_root(index);
+        arcg.remove_leaf(index);
 
         auto& derived = static_cast<Derived&>(*this);
         for (auto p : derived.parent_indices(index)) {
@@ -927,7 +911,7 @@ void ConditionalGraphBase<Derived>::remove_node_unsafe(int index) {
     m_indices.erase(m_nodes[index].name());
 
     m_string_nodes.remove(m_nodes[index].name());
-    m_total_nodes.remove(m_nodes[index].name());
+    m_joint_nodes.remove(m_nodes[index].name());
 
     m_nodes[index].invalidate();
     m_free_indices.push_back(index);
@@ -940,7 +924,7 @@ void ConditionalGraphBase<Derived>::remove_interface_node_unsafe(int index) {
     m_indices.erase(m_nodes[index].name());
 
     m_interface_nodes.remove(m_nodes[index].name());
-    m_total_nodes.remove(m_nodes[index].name());
+    m_joint_nodes.remove(m_nodes[index].name());
 
     m_nodes[index].invalidate();
     m_free_indices.push_back(index);
@@ -1004,8 +988,18 @@ public:
     ArcGraph() = default;
     ArcGraph(const std::vector<std::string>& nodes) : m_arcs(), m_roots(), m_leaves() {
         for (const auto& name : nodes) {
-            m_roots.insert(base().index(name));
-            m_leaves.insert(base().index(name));
+            const auto& this_base = base();
+            if constexpr (is_unconditional_graph_v<Derived>) {
+                m_roots.insert(this_base.index(name));
+                m_leaves.insert(this_base.index(name));
+            } else if constexpr (is_conditional_graph_v<Derived>) {
+                if (!this_base.is_interface(name)) {
+                    m_roots.insert(this_base.index(name));
+                    m_leaves.insert(this_base.index(name));
+                }
+            } else {
+                static_assert(util::always_false<Derived>, "Wrong Derived class for ArcGraph");
+            }
         }
     }
 
@@ -1114,8 +1108,39 @@ public:
 
     void flip_arc_unsafe(int source, int target);
 
-    const std::unordered_set<int>& roots() const { return m_roots; }
+    template <typename V>
+    bool is_root(const V& node) {
+        if constexpr (is_conditional_graph_v<Derived>) {
+            if (base().is_interface(node)) {
+                return true;
+            }
+        }
 
+        auto it = m_roots.find(base().check_index(node));
+
+        if (it != m_roots.end())
+            return true;
+        else
+            return false;
+    }
+
+    template <typename V>
+    bool is_leaf(const V& node) {
+        if constexpr (is_conditional_graph_v<Derived>) {
+            if (base().is_interface(node) && base().raw_node(node).is_leaf()) {
+                return true;
+            }
+        }
+
+        auto it = m_leaves.find(base().check_index(node));
+
+        if (it != m_leaves.end())
+            return true;
+        else
+            return false;
+    }
+
+    const std::unordered_set<int>& roots() const { return m_roots; }
     const std::unordered_set<int>& leaves() const { return m_leaves; }
 
 private:
@@ -1168,12 +1193,28 @@ ArcStringVector ArcGraph<Derived, BaseClass>::interface_arcs() const {
 
 template <typename Derived, template <typename> typename BaseClass>
 void ArcGraph<Derived, BaseClass>::add_arc_unsafe(int source, int target) {
-    if (base().m_nodes[target].is_root()) {
-        m_roots.erase(target);
+    if (is_root(target)) {
+        if constexpr (is_unconditional_graph_v<Derived>) {
+            m_roots.erase(target);
+        } else if constexpr (is_conditional_graph_v<Derived>) {
+            if (!base().is_interface(source)) {
+                m_roots.erase(target);
+            }
+        } else {
+            static_assert(util::always_false<Derived>, "Wrong Derived class for ArcGraph");
+        }
     }
 
-    if (base().m_nodes[source].is_leaf()) {
-        m_leaves.erase(source);
+    if (is_leaf(source)) {
+        if constexpr (is_unconditional_graph_v<Derived>) {
+            m_leaves.erase(source);
+        } else if constexpr (is_conditional_graph_v<Derived>) {
+            if (!base().is_interface(source)) {
+                m_leaves.erase(source);
+            }
+        } else {
+            static_assert(util::always_false<Derived>, "Wrong Derived class for ArcGraph");
+        }
     }
 
     m_arcs.insert({source, target});
@@ -1189,10 +1230,30 @@ void ArcGraph<Derived, BaseClass>::remove_arc_unsafe(int source, int target) {
 
     if (base().m_nodes[target].is_root()) {
         m_roots.insert(target);
+    } else if constexpr (is_conditional_graph_v<Derived>) {
+        const auto& pa = base().m_nodes[target].parents();
+
+        bool real_root = true;
+        for (auto p : pa) {
+            if (!base().is_interface(p)) {
+                real_root = false;
+                break;
+            }
+        }
+
+        if (real_root) {
+            m_roots.insert(target);
+        }
     }
 
     if (base().m_nodes[source].is_leaf()) {
-        m_leaves.insert(source);
+        if constexpr (is_unconditional_graph_v<Derived>) {
+            m_leaves.insert(source);
+        } else if constexpr (is_conditional_graph_v<Derived>) {
+            if (!base().is_interface(source)) m_leaves.insert(source);
+        } else {
+            static_assert(util::always_false<Derived>, "Wrong Derived class for ArcGraph");
+        }
     }
 }
 
@@ -1482,7 +1543,7 @@ public:
               typename = util::enable_if_template_instantation_t<graph::ConditionalGraphBase, BaseClass<D>, void>>
     PartiallyDirectedImpl(const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes)
         : BaseClass<Derived>(nodes, interface_nodes),
-          ArcGraph<Derived, BaseClass>(this->all_nodes()),
+          ArcGraph<Derived, BaseClass>(this->joint_nodes()),
           EdgeGraph<Derived, BaseClass>() {}
 
     template <typename D = Derived,
@@ -1492,7 +1553,7 @@ public:
                           const ArcStringVector& arcs,
                           const EdgeStringVector& edges)
         : BaseClass<Derived>(nodes, interface_nodes),
-          ArcGraph<Derived, BaseClass>(this->all_nodes()),
+          ArcGraph<Derived, BaseClass>(this->joint_nodes()),
           EdgeGraph<Derived, BaseClass>() {
         for (auto& arc : arcs) {
             this->add_arc(arc.first, arc.second);
@@ -1731,14 +1792,14 @@ public:
     template <typename D = Derived,
               typename = util::enable_if_template_instantation_t<graph::ConditionalGraphBase, BaseClass<D>, void>>
     DirectedImpl(const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes)
-        : BaseClass<Derived>(nodes, interface_nodes), ArcGraph<Derived, BaseClass>(this->all_nodes()) {}
+        : BaseClass<Derived>(nodes, interface_nodes), ArcGraph<Derived, BaseClass>(this->joint_nodes()) {}
 
     template <typename D = Derived,
               typename = util::enable_if_template_instantation_t<graph::ConditionalGraphBase, BaseClass<D>, void>>
     DirectedImpl(const std::vector<std::string>& nodes,
                  const std::vector<std::string>& interface_nodes,
                  const ArcStringVector& arcs)
-        : BaseClass<Derived>(nodes, interface_nodes), ArcGraph<Derived, BaseClass>(this->all_nodes()) {
+        : BaseClass<Derived>(nodes, interface_nodes), ArcGraph<Derived, BaseClass>(this->joint_nodes()) {
         for (auto& arc : arcs) {
             this->add_arc(arc.first, arc.second);
         }
@@ -1846,7 +1907,10 @@ public:
                                      " addition would break acyclity.");
         }
 
-        BaseClass::add_arc_unsafe(s, t);
+        if (!this->has_arc_unsafe(s, t)) {
+            check_can_exist_arc(*this, s, t);
+            BaseClass::add_arc_unsafe(s, t);
+        }
     }
 
     template <typename V>
@@ -1858,7 +1922,10 @@ public:
             throw std::runtime_error("Arc " + this->name(s) + " -> " + this->name(t) + " flip would break acyclity.");
         }
 
-        BaseClass::flip_arc_unsafe(s, t);
+        if (this->has_arc_unsafe(s, t)) {
+            check_can_exist_arc(*this, t, s);
+            BaseClass::flip_arc_unsafe(s, t);
+        }
     }
 
     GraphClass<PartiallyDirected> to_pdag() const;
@@ -1933,13 +2000,13 @@ public:
 class ConditionalDagBase : public DagBase {
 public:
     virtual int num_interface_nodes() const = 0;
-    virtual int num_total_nodes() const = 0;
+    virtual int num_joint_nodes() const = 0;
     virtual const std::vector<std::string>& interface_nodes() const = 0;
-    virtual const std::vector<std::string>& all_nodes() const = 0;
+    virtual const std::vector<std::string>& joint_nodes() const = 0;
     virtual const std::unordered_map<std::string, int>& interface_collapsed_indices() const = 0;
     virtual const std::unordered_map<std::string, int>& joint_collapsed_indices() const = 0;
     virtual bool contains_interface_node(const std::string& name) const = 0;
-    virtual bool contains_total_node(const std::string& name) const = 0;
+    virtual bool contains_joint_node(const std::string& name) const = 0;
     virtual int add_interface_node(const std::string& node) = 0;
     virtual void remove_interface_node(const std::string& node) = 0;
     virtual const std::string& interface_collapsed_name(int interface_collapsed_index) const = 0;
@@ -1959,8 +2026,8 @@ public:
 template <typename Derived, typename BaseDirected, typename DagInterface>
 class DagBaseImpl : public DagImpl<Derived, BaseDirected>, public DagInterface {
 public:
-    using DagImpl<Derived, BaseDirected>::DagImpl;
     using B = DagImpl<Derived, BaseDirected>;
+    using B::B;
 
     int num_nodes() const override { return B::num_nodes(); }
 
@@ -2071,11 +2138,11 @@ public:
 
     int num_interface_nodes() const override { return B::num_interface_nodes(); }
 
-    int num_total_nodes() const override { return B::num_total_nodes(); }
+    int num_joint_nodes() const override { return B::num_joint_nodes(); }
 
     const std::vector<std::string>& interface_nodes() const override { return B::interface_nodes(); }
 
-    const std::vector<std::string>& all_nodes() const override { return B::all_nodes(); }
+    const std::vector<std::string>& joint_nodes() const override { return B::joint_nodes(); }
 
     const std::unordered_map<std::string, int>& interface_collapsed_indices() const override {
         return B::interface_collapsed_indices();
@@ -2087,7 +2154,7 @@ public:
 
     bool contains_interface_node(const std::string& name) const override { return B::contains_interface_node(name); }
 
-    bool contains_total_node(const std::string& name) const override { return B::contains_total_node(name); }
+    bool contains_joint_node(const std::string& name) const override { return B::contains_joint_node(name); }
 
     int add_interface_node(const std::string& node) override { return B::add_interface_node(node); }
 
@@ -2223,9 +2290,9 @@ PartiallyDirectedImpl<Derived, BaseClass>::to_dag() const {
     // oriented graph.
     GraphClass<DirectedAcyclic> directed;
 
-    if constexpr (util::is_template_instantation_v<graph::GraphBase, BaseClass<Derived>>)
+    if constexpr (is_unconditional_graph_v<Derived>)
         directed = GraphClass<DirectedAcyclic>(this->nodes());
-    else if constexpr (util::is_template_instantation_v<graph::ConditionalGraphBase, BaseClass<Derived>>)
+    else if constexpr (is_conditional_graph_v<Derived>)
         directed = GraphClass<DirectedAcyclic>(this->nodes(), this->interface_nodes());
     else
         static_assert(util::always_false<Derived>, "Wrong BaseClass for PartiallyDirectedImpl");
@@ -2235,7 +2302,7 @@ PartiallyDirectedImpl<Derived, BaseClass>::to_dag() const {
     }
 
     ArcStringVector interface_edges;
-    if constexpr (util::is_template_instantation_v<graph::ConditionalGraphBase, BaseClass<Derived>>) {
+    if constexpr (is_conditional_graph_v<Derived>) {
         interface_edges = this->derived().interface_edges();
         for (const auto& arc : interface_edges) {
             directed.add_arc_unsafe(directed.index(arc.first), directed.index(arc.second));
@@ -2250,7 +2317,7 @@ PartiallyDirectedImpl<Derived, BaseClass>::to_dag() const {
         PartiallyDirectedImpl copy(*this);
 
         // Remove compelled arcs, as they are already included.
-        if constexpr (util::is_template_instantation_v<graph::ConditionalGraphBase, BaseClass<Derived>>) {
+        if constexpr (is_conditional_graph_v<Derived>) {
             for (const auto& arc : interface_edges) {
                 copy.remove_edge_unsafe(copy.index(arc.first), copy.index(arc.second));
             }
@@ -2288,9 +2355,9 @@ typename PartiallyDirectedImpl<Derived, BaseClass>::template GraphClass<Directed
 PartiallyDirectedImpl<Derived, BaseClass>::to_approximate_dag() const {
     GraphClass<DirectedAcyclic> directed;
 
-    if constexpr (util::is_template_instantation_v<graph::GraphBase, BaseClass<Derived>>)
+    if constexpr (is_unconditional_graph_v<Derived>)
         directed = GraphClass<DirectedAcyclic>(this->nodes());
-    else if constexpr (util::is_template_instantation_v<graph::ConditionalGraphBase, BaseClass<Derived>>)
+    else if constexpr (is_conditional_graph_v<Derived>)
         directed = GraphClass<DirectedAcyclic>(this->nodes(), this->interface_nodes());
     else
         static_assert(util::always_false<Derived>, "Wrong BaseClass for PartiallyDirectedImpl");
@@ -2299,90 +2366,89 @@ PartiallyDirectedImpl<Derived, BaseClass>::to_approximate_dag() const {
         directed.add_arc_unsafe(directed.index(arc.first), directed.index(arc.second));
     }
 
-    if constexpr (util::is_template_instantation_v<graph::ConditionalGraphBase, BaseClass<Derived>>) {
+    if constexpr (is_conditional_graph_v<Derived>) {
         auto interface_edges = this->derived().interface_edges();
         for (const auto& arc : interface_edges) {
             directed.add_arc_unsafe(directed.index(arc.first), directed.index(arc.second));
         }
     }
 
-    std::vector<int> incoming_arcs;
-    incoming_arcs.reserve(this->num_raw_nodes());
+    std::vector<int> incoming_arcs(this->num_nodes());
 
-    for (const auto& raw_node : this->raw_nodes()) {
-        if (raw_node.is_valid()) {
-            incoming_arcs.push_back(raw_node.parents().size());
+    for (const auto& n : this->nodes()) {
+        auto coll_idx = this->collapsed_index(n);
+        const auto& pa = this->parent_set(n);
+
+        if constexpr (is_conditional_graph_v<Derived>) {
+            incoming_arcs[coll_idx] = 0;
+
+            for (auto p : pa) {
+                if (!this->is_interface(p)) ++incoming_arcs[coll_idx];
+            }
         } else {
-            incoming_arcs.push_back(std::numeric_limits<int>::max());
+            incoming_arcs[coll_idx] = pa.size();
         }
     }
 
     // Create a pseudo topological sort.
     std::vector<std::string> top_sort;
-    dynamic_bitset in_top_sort(static_cast<size_t>(this->num_raw_nodes()));
-    in_top_sort.reset(0, this->num_raw_nodes());
-    for (auto free : this->free_indices()) {
-        in_top_sort.set(free);
+    dynamic_bitset in_top_sort(static_cast<size_t>(this->num_nodes()));
+    in_top_sort.reset(0, this->num_nodes());
+
+    top_sort.reserve(this->num_nodes());
+
+    std::vector<int> stack;
+    for (auto r : this->roots()) {
+        stack.push_back(this->collapsed_from_index(r));
     }
 
-    if constexpr (is_conditional_graph_v<Derived>)
-        top_sort.reserve(this->num_total_nodes());
-    else
-        top_sort.reserve(this->num_nodes());
-
-    std::vector<int> stack{this->roots().begin(), this->roots().end()};
-
-    size_t expected_num_nodes;
-    if constexpr (is_conditional_graph_v<Derived>)
-        expected_num_nodes = static_cast<size_t>(this->num_total_nodes());
-    else
-        expected_num_nodes = static_cast<size_t>(this->num_nodes());
-
-    while (top_sort.size() != expected_num_nodes) {
+    while (static_cast<int>(top_sort.size()) != this->num_nodes()) {
         // Possible cycle found. This would have not happened in a DAG.
         // Find the next node among the children of the already explored nodes.
         if (stack.empty()) {
             auto min_cardinality = std::numeric_limits<int>::max();
-            auto min_cardinality_index = std::numeric_limits<int>::max();
+            auto min_cardinality_coll_index = std::numeric_limits<int>::max();
             for (const auto& explored : top_sort) {
                 for (auto ch : directed.children_set(explored)) {
                     const auto& ch_name = directed.name(ch);
-                    auto ch_this_index = this->index(ch_name);
-                    if (!in_top_sort[ch_this_index] && directed.num_parents(ch) < min_cardinality) {
+                    auto ch_coll_this_index = this->collapsed_index(ch_name);
+                    if (!in_top_sort[ch_coll_this_index] && directed.num_parents(ch) < min_cardinality) {
                         min_cardinality = directed.num_parents(ch);
-                        min_cardinality_index = ch_this_index;
+                        min_cardinality_coll_index = ch_coll_this_index;
                     }
                 }
             }
 
-            if (min_cardinality_index == std::numeric_limits<int>::max()) {
+            if (min_cardinality_coll_index == std::numeric_limits<int>::max()) {
                 // Find the node without less parents
-                for (int i = 0; i < this->num_raw_nodes(); ++i) {
-                    if (!in_top_sort[i] && directed.num_parents(this->name(i)) < min_cardinality) {
-                        min_cardinality = directed.num_parents(this->name(i));
-                        min_cardinality_index = i;
+                for (int i = 0; i < this->num_nodes(); ++i) {
+                    if (!in_top_sort[i] && directed.num_parents(this->collapsed_name(i)) < min_cardinality) {
+                        min_cardinality = directed.num_parents(this->collapsed_name(i));
+                        min_cardinality_coll_index = i;
                     }
                 }
             }
 
-            stack.push_back(min_cardinality_index);
+            stack.push_back(min_cardinality_coll_index);
         }
 
-        auto idx = stack.back();
+        auto coll_idx = stack.back();
+        auto idx = this->index_from_collapsed(coll_idx);
         stack.pop_back();
 
         top_sort.push_back(this->name(idx));
-        in_top_sort.set(idx);
+        in_top_sort.set(coll_idx);
 
         for (const auto& children : this->children_set(idx)) {
-            --incoming_arcs[children];
+            auto coll_ch = this->collapsed_from_index(children);
+            --incoming_arcs[coll_ch];
 
-            if (in_top_sort[children]) {
+            if (in_top_sort[coll_ch]) {
                 const auto& idx_name = this->name(idx);
                 const auto& children_name = this->name(children);
                 directed.flip_arc_unsafe(directed.index(idx_name), directed.index(children_name));
-            } else if (incoming_arcs[children] == 0) {
-                stack.push_back(children);
+            } else if (incoming_arcs[coll_ch] == 0) {
+                stack.push_back(coll_ch);
             }
         }
     }
@@ -2394,13 +2460,19 @@ PartiallyDirectedImpl<Derived, BaseClass>::to_approximate_dag() const {
             top_sort_index.insert({top_sort[i], i});
         }
 
-        for (const auto& edge : this->edges()) {
-            auto first_top_sort_idx = top_sort_index.at(edge.first);
-            auto second_top_sort_idx = top_sort_index.at(edge.second);
+        for (const auto& edge : this->edge_indices()) {
+            if constexpr (is_conditional_graph_v<Derived>) {
+                if (this->is_interface(edge.first) || this->is_interface(edge.second)) continue;
+            }
+
+            const auto& first_name = this->name(edge.first);
+            const auto& second_name = this->name(edge.second);
+            auto first_top_sort_idx = top_sort_index.at(first_name);
+            auto second_top_sort_idx = top_sort_index.at(second_name);
             if (first_top_sort_idx < second_top_sort_idx) {
-                directed.add_arc_unsafe(directed.index(edge.first), directed.index(edge.second));
+                directed.add_arc_unsafe(directed.index(first_name), directed.index(second_name));
             } else {
-                directed.add_arc_unsafe(directed.index(edge.second), directed.index(edge.first));
+                directed.add_arc_unsafe(directed.index(second_name), directed.index(first_name));
             }
         }
     }
@@ -2595,35 +2667,43 @@ inline Graph<Directed> DirectedImpl<Derived, BaseClass>::unconditional_graph() c
 
 template <typename Derived, typename BaseClass>
 std::vector<std::string> DagImpl<Derived, BaseClass>::topological_sort() const {
-    std::vector<int> incoming_edges;
-    incoming_edges.reserve(this->num_raw_nodes());
+    std::vector<int> incoming_edges(this->num_nodes());
 
-    for (const auto& raw_node : this->raw_nodes()) {
-        if (raw_node.is_valid()) {
-            incoming_edges.push_back(raw_node.parents().size());
+    for (const auto& n : this->nodes()) {
+        auto coll_idx = this->collapsed_index(n);
+        const auto& pa = this->parent_set(n);
+
+        if constexpr (is_conditional_graph_v<Derived>) {
+            incoming_edges[coll_idx] = 0;
+
+            for (auto p : pa) {
+                if (!this->is_interface(p)) ++incoming_edges[coll_idx];
+            }
         } else {
-            incoming_edges.push_back(-1);
+            incoming_edges[coll_idx] = pa.size();
         }
     }
 
     std::vector<std::string> top_sort;
-    if constexpr (is_conditional_graph_v<Derived>)
-        top_sort.reserve(this->num_total_nodes());
-    else
-        top_sort.reserve(this->num_nodes());
+    top_sort.reserve(this->num_nodes());
 
-    std::vector<int> stack{this->roots().begin(), this->roots().end()};
+    std::vector<int> stack;
+    for (auto r : this->roots()) {
+        stack.push_back(this->collapsed_from_index(r));
+    }
 
     while (!stack.empty()) {
-        auto idx = stack.back();
+        auto coll_idx = stack.back();
+        auto idx = this->index_from_collapsed(coll_idx);
         stack.pop_back();
 
-        top_sort.push_back(this->name(idx));
+        top_sort.push_back(this->collapsed_name(coll_idx));
 
         for (const auto& children : this->children_set(idx)) {
-            --incoming_edges[children];
-            if (incoming_edges[children] == 0) {
-                stack.push_back(children);
+            auto coll_ch = this->collapsed_from_index(children);
+            --incoming_edges[coll_ch];
+            if (incoming_edges[coll_ch] == 0) {
+                stack.push_back(coll_ch);
             }
         }
     }
@@ -2682,10 +2762,8 @@ std::vector<Arc> sort_arcs(const DagImpl<Derived, BaseClass>& g) {
     }
 
     std::vector<Arc> res;
-    res.reserve(g.num_arcs());
 
-    int included_arcs = 0;
-    for (size_t i = 0; i < top_sort.size() && included_arcs < g.num_arcs(); ++i) {
+    for (size_t i = 0; i < top_sort.size(); ++i) {
         auto p = g.parent_indices(top_sort[i]);
 
         std::sort(p.begin(), p.end(), [&top_rank](int a, int b) { return top_rank[a] > top_rank[b]; });
@@ -2712,9 +2790,9 @@ typename DagImpl<Derived, BaseClass>::template GraphClass<PartiallyDirected> Dag
     std::vector<Arc> sorted_arcs = sort_arcs(*this);
     GraphClass<PartiallyDirected> pdag;
 
-    if constexpr (std::is_same_v<DirectedGraph, BaseClass>) {
+    if constexpr (is_unconditional_graph_v<Derived>) {
         pdag = GraphClass<PartiallyDirected>(this->nodes());
-    } else if constexpr (std::is_same_v<ConditionalDirectedGraph, BaseClass>) {
+    } else if constexpr (is_conditional_graph_v<Derived>) {
         pdag = GraphClass<PartiallyDirected>(this->nodes(), this->interface_nodes());
 
         for (const auto& compelled : this->interface_arcs()) {

@@ -63,61 +63,20 @@ def test_new_factor_type():
 
     assert a1 != b1
 
-def test_factor_create_factor_type():
-    class F(Factor):
-        def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence)
-
-    f1 = F("a", [])
-    f2 = F("b", ["a"])
-    f3 = F("c", ["a", "b"])
-
-    assert f1.type() == f2.type()
-    assert f1.type() == f3.type()
-    assert f2.type() == f3.type()
-
-    assert f1.type().ToString() == f2.type().ToString() == f3.type().ToString() == "FType"
-
-    with pytest.raises(RuntimeError) as ex:
-        f4 = f1.type().new_factor("d", ["a", "b", "c"])
-    assert 'Tried to call pure virtual function "Factor::new_factor"' in str(ex.value)
-
-    class G(Factor):
-        def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence)
-
-        def new_factor(self, variable, evidence):
-            return G(variable, evidence)
-
-    g1 = G("a", [])
-    g2 = G("b", ["a"])
-    g3 = G("c", ["a", "b"])
-
-    assert g1.type() == g2.type()
-    assert g1.type() == g3.type()
-    assert g2.type() == g3.type()
-
-    assert f1.type() != g1.type()
-
-    assert g1.type().ToString() == g2.type().ToString() == g3.type().ToString() == "GType"
-
-    g4 = g1.type().new_factor("d", ["a", "b", "c"])
-
-    assert g1.type() == g4.type()
-    assert g4.variable == "d"
-    assert g4.evidence == ["a", "b", "c"]
-
 def test_factor_defined_factor_type():
     class F_type(FactorType):
         def __init__(self):
             FactorType.__init__(self)
 
-        def ToString(self):
+        def __str__(self):
             return "FType"
 
     class F(Factor):
         def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence, F_type)
+            Factor.__init__(self, variable, evidence)
+
+        def type(self):
+            return F_type()
 
     f1 = F("a", [])
     f2 = F("b", ["a"])
@@ -127,25 +86,30 @@ def test_factor_defined_factor_type():
     assert f1.type() == f3.type()
     assert f2.type() == f3.type()
 
-    assert f1.type().ToString() == f2.type().ToString() == f3.type().ToString() == "FType"
+    assert str(f1.type()) == str(f2.type()) == str(f3.type()) == "FType"
 
+    from pybnesian.models import GaussianNetwork
+    dummy_network = GaussianNetwork(["a", "b", "c", "d"])
     with pytest.raises(RuntimeError) as ex:
-        f4 = f1.type().new_factor("d", ["a", "b", "c"])
-    assert 'Tried to call pure virtual function "Factor::new_factor"' in str(ex.value)
+        f4 = f1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
+    assert 'Tried to call pure virtual function "FactorType::new_factor"' in str(ex.value)
 
     class G_type(FactorType):
         def __init__(self):
             FactorType.__init__(self)
             
-        def ToString(self):
+        def new_factor(self, model, variable, evidence):
+            return G(variable, evidence)
+
+        def __str__(self):
             return "GType"
 
     class G(Factor):
         def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence, G_type)
+            Factor.__init__(self, variable, evidence)
 
-        def new_factor(self, variable, evidence):
-            return G(variable, evidence)
+        def type(self):
+            return G_type()
 
     g1 = G("a", [])
     g2 = G("b", ["a"])
@@ -157,32 +121,10 @@ def test_factor_defined_factor_type():
 
     assert f1.type() != g1.type()
 
-    assert g1.type().ToString() == g2.type().ToString() == g3.type().ToString() == "GType"
+    assert str(g1.type()) == str(g2.type()) == str(g3.type()) == "GType"
 
-    g4 = g1.type().new_factor("d", ["a", "b", "c"])
+    g4 = g1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
 
     assert g1.type() == g4.type()
-    assert g4.variable == "d"
-    assert g4.evidence == ["a", "b", "c"]
-
-def test_factor_raise_wrong_type():
-    class WrongFactor(Factor):
-        def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence, int)
-
-    with pytest.raises(ValueError) as ex:
-        f = WrongFactor("c", ["a", "b"])
-    '"factor_type" argument must be a class type that inherits FactorType' in str(ex.value)
-
-    class F_type(FactorType):
-        def __init__(self):
-            FactorType.__init__(self)
-
-    class WrongFactor2(Factor):
-        def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence, F_type())
-
-    with pytest.raises(ValueError) as ex:
-        f2 = WrongFactor("c", ["a", "b"])
-    '"factor_type" argument must be a class type that inherits FactorType' in str(ex.value)
-
+    assert g4.variable() == "d"
+    assert g4.evidence() == ["a", "b", "c"]

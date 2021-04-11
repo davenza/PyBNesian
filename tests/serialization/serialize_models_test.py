@@ -35,13 +35,16 @@ class MyRestrictedGaussianNetworkType(BayesianNetworkType):
     def default_node_type(self):
         return LinearGaussianCPDType()
 
-    def can_add_arc(self, model, source, target):
+    def can_have_arc(self, model, source, target):
         return "a" in source
 
-    def can_flip_arc(self, model, source, target):
-        return not "a" in target
+    def new_bn(self, nodes):
+        return NewBN(nodes)
 
-    def ToString(self):
+    def new_cbn(self, nodes, interface_nodes):
+        return ConditionalNewBN(nodes, interface_nodes)
+
+    def __str__(self):
         return "MyRestrictedGaussianNetworkType"
 
 @pytest.fixture
@@ -71,7 +74,13 @@ class NonHomogeneousType(BayesianNetworkType):
     def default_node_type(self):
         return LinearGaussianCPDType()
 
-    def ToString(self):
+    def new_bn(self, nodes):
+        return OtherBN(nodes)
+
+    def new_cbn(self, nodes, interface_nodes):
+        return ConditionalOtherBN(nodes, interface_nodes)
+
+    def __str__(self):
         return "NonHomogeneousType"
 
 
@@ -206,10 +215,10 @@ def test_serialization_fitted_bn(gaussian_partial_fit_bytes, gaussian_fit_bytes,
     # Gaussian partial fit
     # ####################
     loaded_partial = pickle.loads(gaussian_partial_fit_bytes)
-    assert not loaded_partial.fitted
+    assert not loaded_partial.fitted()
     cpd = loaded_partial.cpd("b")
-    assert cpd.variable == "b"
-    assert cpd.evidence == ["a"]
+    assert cpd.variable() == "b"
+    assert cpd.evidence() == ["a"]
     assert list(cpd.beta) == [1, 2]
     assert cpd.variance == 2
 
@@ -217,29 +226,29 @@ def test_serialization_fitted_bn(gaussian_partial_fit_bytes, gaussian_fit_bytes,
     # Gaussian fit
     # ####################
     loaded_fitted = pickle.loads(gaussian_fit_bytes)
-    assert loaded_fitted.fitted
+    assert loaded_fitted.fitted()
 
     cpd_a = loaded_fitted.cpd("a")
-    assert cpd_a.variable == "a"
-    assert cpd_a.evidence == []
+    assert cpd_a.variable() == "a"
+    assert cpd_a.evidence() == []
     assert cpd_a.beta == [0]
     assert cpd_a.variance == 0.5
 
     cpd_b = loaded_fitted.cpd("b")
-    assert cpd_b.variable == "b"
-    assert cpd_b.evidence == ["a"]
+    assert cpd_b.variable() == "b"
+    assert cpd_b.evidence() == ["a"]
     assert list(cpd_b.beta) == [1, 2]
     assert cpd_b.variance == 2
 
     cpd_c = loaded_fitted.cpd("c")
-    assert cpd_c.variable == "c"
-    assert cpd_c.evidence == []
+    assert cpd_c.variable() == "c"
+    assert cpd_c.evidence() == []
     assert cpd_c.beta == [2]
     assert cpd_c.variance == 1
     
     cpd_d = loaded_fitted.cpd("d")
-    assert cpd_d.variable == "d"
-    assert cpd_d.evidence == []
+    assert cpd_d.variable() == "d"
+    assert cpd_d.evidence() == []
     assert cpd_d.beta == [3]
     assert cpd_d.variance == 1.5
 
@@ -247,10 +256,10 @@ def test_serialization_fitted_bn(gaussian_partial_fit_bytes, gaussian_fit_bytes,
     # OtherBN homogeneous partial fit
     # ####################
     loaded_other = pickle.loads(other_partial_fit_bytes)
-    assert not loaded_other.fitted
+    assert not loaded_other.fitted()
     cpd = loaded_partial.cpd("b")
-    assert cpd.variable == "b"
-    assert cpd.evidence == ["a"]
+    assert cpd.variable() == "b"
+    assert cpd.evidence() == ["a"]
     assert list(cpd.beta) == [1, 2]
     assert cpd.variance == 2
 
@@ -258,33 +267,33 @@ def test_serialization_fitted_bn(gaussian_partial_fit_bytes, gaussian_fit_bytes,
     # OtherBN homogeneous fit
     # ####################
     loaded_other_fitted = pickle.loads(other_fit_bytes)
-    assert loaded_other_fitted.fitted
+    assert loaded_other_fitted.fitted()
 
     cpd_a = loaded_other_fitted.cpd("a")
-    assert cpd_a.variable == "a"
-    assert cpd_a.evidence == []
+    assert cpd_a.variable() == "a"
+    assert cpd_a.evidence() == []
     assert cpd_a.beta == [0]
     assert cpd_a.variance == 0.5
     assert cpd_a.type() == LinearGaussianCPDType()
 
     cpd_b = loaded_other_fitted.cpd("b")
-    assert cpd_b.variable == "b"
-    assert cpd_b.evidence == ["a"]
+    assert cpd_b.variable() == "b"
+    assert cpd_b.evidence() == ["a"]
     assert list(cpd_b.beta) == [1, 2]
     assert cpd_b.variance == 2
     assert cpd_b.type() == LinearGaussianCPDType()
 
     cpd_c = loaded_other_fitted.cpd("c")
-    assert cpd_c.variable == "c"
-    assert cpd_c.evidence == []
-    assert cpd_c.fitted
-    assert cpd_c.N == 100
+    assert cpd_c.variable() == "c"
+    assert cpd_c.evidence() == []
+    assert cpd_c.fitted()
+    assert cpd_c.num_instances() == 100
     assert cpd_c.type() == CKDEType()
 
     cpd_d = loaded_other_fitted.cpd("d")
-    assert cpd_d.variable == "d"
-    assert cpd_d.evidence == []
-    assert cpd_d.fitted
+    assert cpd_d.variable() == "d"
+    assert cpd_d.evidence() == []
+    assert cpd_d.fitted()
     assert cpd_d.type() == DiscreteFactorType()
 
 
@@ -470,10 +479,10 @@ def test_serialization_fitted_conditional_bn(cond_gaussian_partial_fit_bytes, co
     # Gaussian partial fit
     # ####################
     loaded_partial = pickle.loads(cond_gaussian_partial_fit_bytes)
-    assert not loaded_partial.fitted
+    assert not loaded_partial.fitted()
     cpd = loaded_partial.cpd("c")
-    assert cpd.variable == "c"
-    assert cpd.evidence == ["a"]
+    assert cpd.variable() == "c"
+    assert cpd.evidence() == ["a"]
     assert list(cpd.beta) == [1, 2]
     assert cpd.variance == 2
 
@@ -481,17 +490,17 @@ def test_serialization_fitted_conditional_bn(cond_gaussian_partial_fit_bytes, co
     # Gaussian fit
     # ####################
     loaded_fitted = pickle.loads(cond_gaussian_fit_bytes)
-    assert loaded_fitted.fitted
+    assert loaded_fitted.fitted()
 
     cpd_c = loaded_fitted.cpd("c")
-    assert cpd_c.variable == "c"
-    assert cpd_c.evidence == ["a"]
+    assert cpd_c.variable() == "c"
+    assert cpd_c.evidence() == ["a"]
     assert list(cpd_c.beta) == [1, 2]
     assert cpd_c.variance == 2
     
     cpd_d = loaded_fitted.cpd("d")
-    assert cpd_d.variable == "d"
-    assert cpd_d.evidence == []
+    assert cpd_d.variable() == "d"
+    assert cpd_d.evidence() == []
     assert cpd_d.beta == [3]
     assert cpd_d.variance == 1.5
 
@@ -499,10 +508,10 @@ def test_serialization_fitted_conditional_bn(cond_gaussian_partial_fit_bytes, co
     # OtherBN homogeneous partial fit
     # ####################
     loaded_other = pickle.loads(cond_other_partial_fit_bytes)
-    assert not loaded_other.fitted
+    assert not loaded_other.fitted()
     cpd = loaded_other.cpd("d")
-    assert cpd.variable == "d"
-    assert cpd.evidence == []
+    assert cpd.variable() == "d"
+    assert cpd.evidence() == []
     assert cpd.beta == [3]
     assert cpd.variance == 1.5
 
@@ -510,19 +519,19 @@ def test_serialization_fitted_conditional_bn(cond_gaussian_partial_fit_bytes, co
     # OtherBN homogeneous fit
     # ####################
     loaded_other_fitted = pickle.loads(cond_other_fit_bytes)
-    assert loaded_other_fitted.fitted
+    assert loaded_other_fitted.fitted()
 
     cpd_c = loaded_other_fitted.cpd("c")
-    assert cpd_c.variable == "c"
-    assert cpd_c.evidence == ["a"]
-    assert cpd_c.fitted
-    assert cpd_c.N == 100
+    assert cpd_c.variable() == "c"
+    assert cpd_c.evidence() == ["a"]
+    assert cpd_c.fitted()
+    assert cpd_c.num_instances() == 100
     assert cpd_c.type() == CKDEType()
 
     cpd_d = loaded_other_fitted.cpd("d")
-    assert cpd_d.variable == "d"
-    assert cpd_d.evidence == []
-    assert cpd_d.fitted
+    assert cpd_d.variable() == "d"
+    assert cpd_d.evidence() == []
+    assert cpd_d.fitted()
     assert cpd_d.type() == DiscreteFactorType()
 
     assert loaded_other_fitted.extra_info == "extra"
@@ -744,18 +753,18 @@ def test_serialization_fitted_dbn(dyn_gaussian_partial_fit_bytes, dyn_gaussian_f
     # Gaussian partial fit
     # ####################
     loaded_partial = pickle.loads(dyn_gaussian_partial_fit_bytes)
-    assert not loaded_partial.fitted
-    assert not loaded_partial.static_bn().fitted
-    assert not loaded_partial.transition_bn().fitted
+    assert not loaded_partial.fitted()
+    assert not loaded_partial.static_bn().fitted()
+    assert not loaded_partial.transition_bn().fitted()
     cpd = loaded_partial.static_bn().cpd("d_t_1")
-    assert cpd.variable == "d_t_1"
-    assert cpd.evidence == ["a_t_2"]
+    assert cpd.variable() == "d_t_1"
+    assert cpd.evidence() == ["a_t_2"]
     assert list(cpd.beta) == [1, 2]
     assert cpd.variance == 2
 
     cpd = loaded_partial.transition_bn().cpd("b_t_0")
-    assert cpd.variable == "b_t_0"
-    assert cpd.evidence == ["c_t_2"]
+    assert cpd.variable() == "b_t_0"
+    assert cpd.evidence() == ["c_t_2"]
     assert list(cpd.beta) == [3, 4]
     assert cpd.variance == 5
 
@@ -763,17 +772,17 @@ def test_serialization_fitted_dbn(dyn_gaussian_partial_fit_bytes, dyn_gaussian_f
     # Gaussian fit
     # ####################
     loaded_fitted = pickle.loads(dyn_gaussian_fit_bytes)
-    assert loaded_fitted.fitted
-    assert loaded_fitted.static_bn().fitted
-    assert loaded_fitted.transition_bn().fitted
+    assert loaded_fitted.fitted()
+    assert loaded_fitted.static_bn().fitted()
+    assert loaded_fitted.transition_bn().fitted()
 
     # ####################
     # Other partial fit
     # ####################
     loaded_partial = pickle.loads(dyn_other_partial_fit_bytes)
-    assert not loaded_partial.fitted
-    assert not loaded_partial.static_bn().fitted
-    assert not loaded_partial.transition_bn().fitted
+    assert not loaded_partial.fitted()
+    assert not loaded_partial.static_bn().fitted()
+    assert not loaded_partial.transition_bn().fitted()
     assert loaded_partial.static_bn().node_type("b_t_1") == DiscreteFactorType()
     assert loaded_partial.static_bn().node_type("c_t_1") == CKDEType()
     assert loaded_partial.static_bn().node_type("d_t_1") == LinearGaussianCPDType()
@@ -783,14 +792,14 @@ def test_serialization_fitted_dbn(dyn_gaussian_partial_fit_bytes, dyn_gaussian_f
     assert loaded_partial.transition_bn().node_type("d_t_0") == LinearGaussianCPDType()
 
     cpd = loaded_partial.static_bn().cpd("d_t_1")
-    assert cpd.variable == "d_t_1"
-    assert cpd.evidence == ["a_t_2"]
+    assert cpd.variable() == "d_t_1"
+    assert cpd.evidence() == ["a_t_2"]
     assert list(cpd.beta) == [1, 2]
     assert cpd.variance == 2
 
     cpd = loaded_partial.transition_bn().cpd("d_t_0")
-    assert cpd.variable == "d_t_0"
-    assert cpd.evidence == ["a_t_2"]
+    assert cpd.variable() == "d_t_0"
+    assert cpd.evidence() == ["a_t_2"]
     assert list(cpd.beta) == [3, 4]
     assert cpd.variance == 1.5
 
@@ -798,9 +807,9 @@ def test_serialization_fitted_dbn(dyn_gaussian_partial_fit_bytes, dyn_gaussian_f
     # Other fit
     # ####################
     loaded_fitted = pickle.loads(dyn_other_fit_bytes)
-    assert loaded_fitted.fitted
-    assert loaded_fitted.static_bn().fitted
-    assert loaded_fitted.transition_bn().fitted
+    assert loaded_fitted.fitted()
+    assert loaded_fitted.static_bn().fitted()
+    assert loaded_fitted.transition_bn().fitted()
     assert loaded_partial.static_bn().node_type("b_t_1") == DiscreteFactorType()
     assert loaded_partial.static_bn().node_type("c_t_1") == CKDEType()
     assert loaded_partial.static_bn().node_type("d_t_1") == LinearGaussianCPDType()
@@ -810,13 +819,13 @@ def test_serialization_fitted_dbn(dyn_gaussian_partial_fit_bytes, dyn_gaussian_f
     assert loaded_partial.transition_bn().node_type("d_t_0") == LinearGaussianCPDType()
 
     cpd = loaded_partial.static_bn().cpd("d_t_1")
-    assert cpd.variable == "d_t_1"
-    assert cpd.evidence == ["a_t_2"]
+    assert cpd.variable() == "d_t_1"
+    assert cpd.evidence() == ["a_t_2"]
     assert list(cpd.beta) == [1, 2]
     assert cpd.variance == 2
 
     cpd = loaded_partial.transition_bn().cpd("d_t_0")
-    assert cpd.variable == "d_t_0"
-    assert cpd.evidence == ["a_t_2"]
+    assert cpd.variable() == "d_t_0"
+    assert cpd.evidence() == ["a_t_2"]
     assert list(cpd.beta) == [3, 4]
     assert cpd.variance == 1.5

@@ -1,7 +1,9 @@
 #include <factors/continuous/CKDE.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
+#include <models/BayesianNetwork.hpp>
 #include <opencl/opencl_config.hpp>
 
+using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
 using opencl::OpenCLConfig;
 
 namespace factors::continuous {
@@ -163,9 +165,16 @@ KDE KDE::__setstate__(py::tuple& t) {
     return kde;
 }
 
-std::shared_ptr<Factor> CKDEType::new_factor(const std::string& variable,
-                                             const std::vector<std::string>& parents) const {
-    return std::make_shared<CKDE>(variable, parents);
+std::shared_ptr<Factor> CKDEType::new_factor(const BayesianNetworkBase&,
+                                             const std::string& variable,
+                                             const std::vector<std::string>& evidence) const {
+    return std::make_shared<CKDE>(variable, evidence);
+}
+
+std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBase&,
+                                             const std::string& variable,
+                                             const std::vector<std::string>& evidence) const {
+    return std::make_shared<CKDE>(variable, evidence);
 }
 
 std::shared_ptr<FactorType> CKDEType::opposite_semiparametric() const { return LinearGaussianCPDType::get(); }

@@ -6,24 +6,24 @@ from pybnesian.learning.operators import AddArc, RemoveArc, FlipArc, ChangeNodeT
 
 def test_create():
     o = AddArc("a", "b", 1)
-    assert o.source == 'a'
-    assert o.target == 'b'
-    assert o.delta == 1
+    assert o.source() == 'a'
+    assert o.target() == 'b'
+    assert o.delta() == 1
 
     o = RemoveArc("a", "b", 2)
-    assert o.source == 'a'
-    assert o.target == 'b'
-    assert o.delta == 2
+    assert o.source() == 'a'
+    assert o.target() == 'b'
+    assert o.delta() == 2
 
     o = FlipArc("a", "b", 3)
-    assert o.source == 'a'
-    assert o.target == 'b'
-    assert o.delta == 3
+    assert o.source() == 'a'
+    assert o.target() == 'b'
+    assert o.delta() == 3
 
     o = ChangeNodeType("a", CKDEType(), 4)
-    assert o.node == 'a'
-    assert o.node_type == CKDEType()
-    assert o.delta == 4
+    assert o.node() == 'a'
+    assert o.node_type() == CKDEType()
+    assert o.delta() == 4
 
 def test_apply():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
@@ -79,28 +79,28 @@ def test_apply():
 def test_opposite():
     o = AddArc("a", "b", 1)
     oppo = o.opposite()
-    assert oppo.source == 'a'
-    assert oppo.target == 'b'
-    assert oppo.delta == -1
+    assert oppo.source() == 'a'
+    assert oppo.target() == 'b'
+    assert oppo.delta() == -1
     assert type(oppo) == RemoveArc
 
     o = RemoveArc("a", "b", 1)
     oppo = o.opposite()
-    assert oppo.source == 'a'
-    assert oppo.target == 'b'
-    assert oppo.delta == -1
+    assert oppo.source() == 'a'
+    assert oppo.target() == 'b'
+    assert oppo.delta() == -1
     assert type(oppo) == AddArc
 
     o = FlipArc("a", "b", 1)
     oppo = o.opposite()
-    assert oppo.source == 'b'
-    assert oppo.target == 'a'
-    assert oppo.delta == -1
+    assert oppo.source() == 'b'
+    assert oppo.target() == 'a'
+    assert oppo.delta() == -1
     assert type(oppo) == FlipArc
 
     o = ChangeNodeType("a", CKDEType(), 1)
     oppo = o.opposite()
-    assert oppo.node == 'a'
-    assert oppo.node_type == LinearGaussianCPDType()
-    assert oppo.delta == -1
+    assert oppo.node() == 'a'
+    assert oppo.node_type() == LinearGaussianCPDType()
+    assert oppo.delta() == -1
     assert type(oppo) == ChangeNodeType

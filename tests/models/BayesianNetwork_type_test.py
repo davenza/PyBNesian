@@ -57,7 +57,7 @@ def test_new_bn_type():
         def is_homogeneous(self):
             return True
 
-        def can_add_arc(self, model, source, target):
+        def can_have_arc(self, model, source, target):
             return source == "a"
 
     a1 = MyGaussianNetworkType()
@@ -89,40 +89,38 @@ def test_new_bn_type():
     assert not mybn.can_add_arc("b", "a")
     assert not mybn.can_add_arc("c", "d")
 
+
+class MyRestrictedGaussianNetworkType(BayesianNetworkType):
+    def __init__(self):
+        BayesianNetworkType.__init__(self)
+
+    def is_homogeneous(self):
+        return True
+
+    def default_node_type(self):
+        return LinearGaussianCPDType()
+
+    def can_have_arc(self, model, source, target):
+        return source == "a"
+
+    def __str__(self):
+        return "MyRestrictedGaussianNetworkType"
+
+class SpecificNetwork(BayesianNetwork):
+    def __init__(self, variables, arcs=None):
+        if arcs is None:
+            BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables)
+        else:
+            BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, arcs)
+
+class ConditionalSpecificNetwork(ConditionalBayesianNetwork):
+    def __init__(self, variables, interface, arcs=None):
+        if arcs is None:
+            ConditionalBayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, interface)
+        else:
+            ConditionalBayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, interface, arcs)
+
 def test_new_specific_bn_type():
-    class MyRestrictedGaussianNetworkType(BayesianNetworkType):
-        def __init__(self):
-            BayesianNetworkType.__init__(self)
-
-        def is_homogeneous(self):
-            return True
-
-        def default_node_type(self):
-            return LinearGaussianCPDType()
-
-        def can_add_arc(self, model, source, target):
-            return source == "a"
-    
-        def can_flip_arc(self, model, source, target):
-            return target != "a"
-
-        def ToString(self):
-            return "MyRestrictedGaussianNetworkType"
-
-    class SpecificNetwork(BayesianNetwork):
-        def __init__(self, variables, arcs=None):
-            if arcs is None:
-                BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables)
-            else:
-                BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, arcs)
-
-    class ConditionalSpecificNetwork(ConditionalBayesianNetwork):
-        def __init__(self, variables, interface, arcs=None):
-            if arcs is None:
-                ConditionalBayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, interface)
-            else:
-                ConditionalBayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, interface, arcs)
-
     sp1 = SpecificNetwork(["a", "b", "c", "d"])
     sp2 = SpecificNetwork(["a", "b", "c", "d"], [("a", "b")])
     sp3 = SpecificNetwork(["a", "b", "c", "d"])

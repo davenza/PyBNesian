@@ -1,6 +1,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 #include <factors/discrete/DiscreteFactor.hpp>
+#include <models/BayesianNetwork.hpp>
 #include <learning/parameters/mle_base.hpp>
 #include <util/math_constants.hpp>
 #include <fort.hpp>
@@ -10,11 +11,20 @@ using learning::parameters::MLE;
 
 using DataType_ptr = std::shared_ptr<arrow::DataType>;
 
+using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
+
 namespace factors::discrete {
 
-std::shared_ptr<Factor> DiscreteFactorType::new_factor(const std::string& variable,
-                                                       const std::vector<std::string>& parents) const {
-    return std::make_shared<DiscreteFactor>(variable, parents);
+std::shared_ptr<Factor> DiscreteFactorType::new_factor(const BayesianNetworkBase&,
+                                                       const std::string& variable,
+                                                       const std::vector<std::string>& evidence) const {
+    return std::make_shared<DiscreteFactor>(variable, evidence);
+}
+
+std::shared_ptr<Factor> DiscreteFactorType::new_factor(const ConditionalBayesianNetworkBase&,
+                                                       const std::string& variable,
+                                                       const std::vector<std::string>& evidence) const {
+    return std::make_shared<DiscreteFactor>(variable, evidence);
 }
 
 void sum_to_discrete_indices_null(VectorXi& accum_indices,
@@ -75,7 +85,11 @@ void DiscreteFactor::fit(const DataFrame& df) {
 
     m_logprob = params.logprob;
     m_cardinality = params.cardinality;
-    m_strides = params.strides;
+    m_strides = VectorXi(m_cardinality.rows());
+    m_strides(0) = 1;
+    for (size_t i = 1, i_end = static_cast<size_t>(m_strides.rows()); i < i_end; ++i) {
+        m_strides(i) = m_strides(i - 1) * m_cardinality(i - 1);
+    }
 
     auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(variable()));
     auto dict_variable_values = std::static_pointer_cast<arrow::StringArray>(dict_variable->dictionary());

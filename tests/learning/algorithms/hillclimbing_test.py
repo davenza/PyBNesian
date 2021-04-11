@@ -1,8 +1,10 @@
 import numpy as np
+from pybnesian.factors.continuous import LinearGaussianCPDType
 from pybnesian.learning.algorithms import GreedyHillClimbing, hc
 from pybnesian.learning.operators import ArcOperatorSet, OperatorPool
 from pybnesian.learning.scores import BIC, ValidatedLikelihood
-from pybnesian.models import GaussianNetwork, ConditionalGaussianNetwork
+from pybnesian.models import BayesianNetworkType, BayesianNetwork, GaussianNetworkType, GaussianNetwork,\
+                             ConditionalGaussianNetwork
 import util_test
 
 df = util_test.generate_normal_data(1000)
@@ -154,3 +156,55 @@ def test_hc_estimate_validation():
     # leading to a different search path. Execute the code, just to check no error is given.
     res = hc.estimate(arc_set, vl, start, verbose=False)
     res_removed = hc.estimate(arc_set, vl, start_removed_nodes, verbose=False)
+
+def test_hc_shortcut_function():
+    model = hc(df, bn_type=GaussianNetworkType())
+    assert type(model) == GaussianNetwork
+
+    model = hc(df, bn_type=MyRestrictedGaussianNetworkType(), score="bic", operators=["arcs"])
+    assert type(model) == NewBN
+
+class MyRestrictedGaussianNetworkType(BayesianNetworkType):
+    def __init__(self):
+        BayesianNetworkType.__init__(self)
+
+    def is_homogeneous(self):
+        return True
+
+    def default_node_type(self):
+        return LinearGaussianCPDType()
+
+    def can_have_arc(self, model, source, target):
+        return "a" in source
+
+    def new_bn(self, nodes):
+        return NewBN(nodes)
+
+    def __str__(self):
+        return "MyRestrictedGaussianNetworkType"
+
+class NewBN(BayesianNetwork):
+    def __init__(self, variables, arcs=None):
+        if arcs is None:
+            BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables)
+        else:
+            BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, arcs)
+
+        self.extra_data = "extra"
+
+    def __getstate_extra__(self):
+        return self.extra_data
+
+    def __setstate_extra__(self, extra):
+        self.extra_data = extra
+
+def test_newbn_estimate_validation():
+    start = NewBN(["a", "b", "c", "d"])
+    hc = GreedyHillClimbing()
+    arc = ArcOperatorSet()
+    bic = BIC(df)
+
+    estimated = hc.estimate(arc, bic, start)
+
+    assert type(start) == type(estimated)
+    assert estimated.extra_data == "extra"

@@ -3,10 +3,6 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import os
-from numpy.distutils.conv_template import process_file as process_c_file
-
-import pybind11
-import pyarrow as pa
 
 __version__ = '0.1.0dev0'
 
@@ -66,6 +62,12 @@ ext_modules = [
          'pybnesian/learning/scores/holdout_likelihood.cpp',
          'pybnesian/graph/generic_graph.cpp',
          'pybnesian/models/BayesianNetwork.cpp',
+         'pybnesian/models/GaussianNetwork.cpp',
+         'pybnesian/models/SemiparametricBN.cpp',
+         'pybnesian/models/KDENetwork.cpp',
+         'pybnesian/models/DiscreteBN.cpp',
+         'pybnesian/models/HomogeneousBN.cpp',
+         'pybnesian/models/HeterogeneousBN.cpp',
          'pybnesian/models/DynamicBayesianNetwork.cpp',
          'pybnesian/opencl/opencl_config.cpp'
          ],
@@ -101,42 +103,45 @@ def path_to_build_folder():
 
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
-    import pybind11
-    import pyarrow
-    import numpy as np
 
-    c_opts = {
-        'msvc': ['/EHsc', "/std:c++17", "/experimental:external", "/external:W0",
-                 "/external:I" + pa.get_include(),
-                 "/external:I" + np.get_include(),
-                 "/external:Ilib\\eigen-3.3.7",
-                 "/external:Ilib\\OpenCL",
-                 "/external:Ilib\\boost",
-                 "/external:Ilib\\indicators",
-                 "-DNOGDI"],
-        'unix': ["-std=c++17",
-                 "-isystem" + pa.get_include(),
-                 "-isystem" + np.get_include(),
-                 "-isystemlib/eigen-3.3.7",
-                 "-isystemlib/OpenCL",
-                 "-isystemlib/boost",
-                 "-isystemlib/indicators"]
-    }
+    def create_options(self):
+        import pyarrow as pa
+        import numpy as np
 
-    l_opts = {
-        'msvc': [],
-        'unix': [],
-    }
+        c_opts = {
+            'msvc': ['/EHsc', "/std:c++17", "/experimental:external", "/external:W0",
+                    "/external:I" + pa.get_include(),
+                    "/external:I" + np.get_include(),
+                    "/external:Ilib\\eigen-3.3.7",
+                    "/external:Ilib\\OpenCL",
+                    "/external:Ilib\\boost",
+                    "/external:Ilib\\indicators",
+                    "-DNOGDI"],
+            'unix': ["-std=c++17",
+                    "-isystem" + pa.get_include(),
+                    "-isystem" + np.get_include(),
+                    "-isystemlib/eigen-3.3.7",
+                    "-isystemlib/OpenCL",
+                    "-isystemlib/boost",
+                    "-isystemlib/indicators"]
+        }
 
-    if sys.platform == 'darwin':
-        darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-        c_opts['unix'] += darwin_opts
-        l_opts['unix'] += darwin_opts
+        l_opts = {
+            'msvc': [],
+            'unix': [],
+        }
+
+        if sys.platform == 'darwin':
+            darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+            c_opts['unix'] += darwin_opts
+            l_opts['unix'] += darwin_opts
+
+        return (c_opts, l_opts)
 
     # Include libraries from https://stackoverflow.com/questions/54117786/add-numpy-get-include-argument-to-setuptools-without-preinstalled-numpy
     def finalize_options(self):
         import pybind11
-        import pyarrow
+        import pyarrow as pa
         build_ext.finalize_options(self)
 
         if not hasattr(self, 'include_dirs'):
@@ -164,10 +169,12 @@ class BuildExt(build_ext):
             self.rpath.extend(pa.get_library_dirs())
 
     def create_symlinks(self):
-        import pyarrow
+        import pyarrow as pa
         pa.create_library_symlinks()
 
     def expand_sources(self):
+        from numpy.distutils.conv_template import process_file as process_c_file
+
         sources = ['pybnesian/factors/continuous/opencl/CKDE.cl.src']
         
         for source in sources:
@@ -245,8 +252,11 @@ namespace opencl {
         self.create_clang_tidy_compilation_db(self.extensions)
 
         ct = self.compiler.compiler_type
-        opts = self.c_opts.get(ct, [])
-        link_opts = self.l_opts.get(ct, [])
+
+        c_opts, l_opts = self.create_options()
+
+        opts = c_opts.get(ct, [])
+        link_opts = l_opts.get(ct, [])
 
         if sys.platform == "win32":
             opts.append("/external:IC:\\Program Files (x86)\\OCL_SDK_Light\\include")

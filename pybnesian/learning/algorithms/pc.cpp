@@ -346,6 +346,10 @@ PartiallyDirectedGraph PC::estimate(const IndependenceTest& test,
                                     double ambiguous_threshold,
                                     bool allow_bidirected,
                                     int verbose) const {
+    if (alpha <= 0 || alpha >= 1) throw std::invalid_argument("alpha must be a number between 0 and 1.");
+    if (ambiguous_threshold < 0 || ambiguous_threshold > 1)
+        throw std::invalid_argument("ambiguous_threshold must be a number between 0 and 1.");
+
     PartiallyDirectedGraph skeleton;
     if (nodes.empty())
         skeleton = PartiallyDirectedGraph::CompleteUndirected(test.variable_names());
@@ -382,6 +386,10 @@ ConditionalPartiallyDirectedGraph PC::estimate_conditional(const IndependenceTes
                                                            double ambiguous_threshold,
                                                            bool allow_bidirected,
                                                            int verbose) const {
+    if (alpha <= 0 || alpha >= 1) throw std::invalid_argument("alpha must be a number between 0 and 1.");
+    if (ambiguous_threshold < 0 || ambiguous_threshold > 1)
+        throw std::invalid_argument("ambiguous_threshold must be a number between 0 and 1.");
+
     if (nodes.empty()) throw std::invalid_argument("Node list cannot be empty to train a Conditional graph.");
     if (interface_nodes.empty())
         return PC::estimate(test,

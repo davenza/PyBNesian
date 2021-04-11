@@ -33,7 +33,7 @@ void check_arc_list(const Model& g, const ArcStringVector& list) {
 template <typename Model, util::enable_if_conditionalbn_t<Model, int> = 0>
 void check_arc_list(const Model& g, const ArcStringVector& list) {
     for (auto pair : list) {
-        if (!g.contains_total_node(pair.first))
+        if (!g.contains_joint_node(pair.first))
             throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
 
         if (!g.contains_node(pair.second))
@@ -49,10 +49,10 @@ void check_edge_list(const Model& g, const EdgeStringVector& list) {
 template <typename Model, util::enable_if_conditionalbn_t<Model, int> = 0>
 void check_edge_list(const Model& g, const EdgeStringVector& list) {
     for (auto pair : list) {
-        if (!g.contains_total_node(pair.first))
+        if (!g.contains_joint_node(pair.first))
             throw std::invalid_argument("Node " + pair.first + " not present in the graph.");
 
-        if (!g.contains_total_node(pair.second))
+        if (!g.contains_joint_node(pair.second))
             throw std::invalid_argument("Node " + pair.second + " not present in the graph.");
     }
 }

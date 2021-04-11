@@ -21,12 +21,12 @@ df_small_float = df_small.astype('float32')
 def test_variable():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         cpd = CKDE(variable, evidence)
-        assert cpd.variable == variable
+        assert cpd.variable() == variable
 
 def test_evidence():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         cpd = CKDE(variable, evidence)
-        assert cpd.evidence == evidence
+        assert cpd.evidence() == evidence
 
 def test_kde_data_type():
     k = CKDE("a", [])
@@ -45,8 +45,8 @@ def test_ckde_kde_joint():
         cpd = CKDE(variable, evidence)
         cpd.fit(_df)
         kde_joint = cpd.kde_joint
-        kde_joint.bandwidth = np.eye(len(evidence) + 1)
-        assert np.all(cpd.kde_joint.bandwidth == np.eye(len(evidence) + 1)), "kde_joint do not return a reference to the KDE joint, but a copy."
+        kde_joint().bandwidth = np.eye(len(evidence) + 1)
+        assert np.all(cpd.kde_joint().bandwidth == np.eye(len(evidence) + 1)), "kde_joint do not return a reference to the KDE joint, but a copy."
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         _test_ckde_kde_joint_iter(variable, evidence, df)
@@ -59,9 +59,9 @@ def test_ckde_kde_marg():
         kde_marg = cpd.kde_marg
 
         if evidence:
-            assert kde_marg.fitted
-            kde_marg.bandwidth = np.eye(len(evidence))
-            assert np.all(cpd.kde_marg.bandwidth == np.eye(len(evidence))), "kde_marg do not return a reference to the KDE joint, but a copy."
+            assert kde_marg().fitted()
+            kde_marg().bandwidth = np.eye(len(evidence))
+            assert np.all(cpd.kde_marg().bandwidth == np.eye(len(evidence))), "kde_marg do not return a reference to the KDE joint, but a copy."
         else:
             # kde_marg contains garbage if there is no evidence
             pass
@@ -76,18 +76,18 @@ def test_ckde_fit():
         scipy_kde = gaussian_kde(npdata[:instances, :].T)
 
         cpd = CKDE(variable, evidence)
-        assert not cpd.fitted
+        assert not cpd.fitted()
         cpd.fit(_df.iloc[:instances])
-        assert cpd.fitted
+        assert cpd.fitted()
 
         kde_joint = cpd.kde_joint
-        assert np.all(np.isclose(kde_joint.bandwidth, scipy_kde.covariance))
+        assert np.all(np.isclose(kde_joint().bandwidth, scipy_kde.covariance))
         
         if evidence:
             kde_marg = cpd.kde_marg
-            assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
+            assert np.all(np.isclose(kde_marg().bandwidth, scipy_kde.covariance[1:,1:]))
         
-        assert cpd.N == instances
+        assert cpd.num_instances() == instances
 
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         variables = [variable] + evidence
@@ -98,9 +98,9 @@ def test_ckde_fit():
 def test_ckde_fit_null():
     def _test_ckde_fit_null(variable, evidence, variables, _df, instances):
         cpd = CKDE(variable, evidence)
-        assert not cpd.fitted
+        assert not cpd.fitted()
         cpd.fit(_df.iloc[:instances])
-        assert cpd.fitted
+        assert cpd.fitted()
 
         npdata = _df.loc[:, variables].to_numpy()
         npdata_instances = npdata[:instances,:]
@@ -109,13 +109,13 @@ def test_ckde_fit_null():
         scipy_kde = gaussian_kde(npdata_no_null.T)
 
         kde_joint = cpd.kde_joint
-        assert np.all(np.isclose(kde_joint.bandwidth, scipy_kde.covariance))
+        assert np.all(np.isclose(kde_joint().bandwidth, scipy_kde.covariance))
         
         if evidence:
             kde_marg = cpd.kde_marg
-            assert np.all(np.isclose(kde_marg.bandwidth, scipy_kde.covariance[1:,1:]))
+            assert np.all(np.isclose(kde_marg().bandwidth, scipy_kde.covariance[1:,1:]))
 
-        assert cpd.N == scipy_kde.n
+        assert cpd.num_instances() == scipy_kde.n
 
     np.random.seed(0)
     a_null = np.random.randint(0, SIZE, size=100)

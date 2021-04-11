@@ -25,14 +25,14 @@ using util::ArcStringVector;
 namespace learning::algorithms {
 
 std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
+                                        const std::shared_ptr<BayesianNetworkType> bn_type,
                                         const std::shared_ptr<BayesianNetworkBase> start,
-                                        const std::string& bn_str,
                                         const std::optional<std::string>& score_str,
                                         const std::optional<std::vector<std::string>>& operators_str,
                                         const ArcStringVector& arc_blacklist,
                                         const ArcStringVector& arc_whitelist,
                                         const FactorTypeVector& type_whitelist,
-                                        const Callback* callback,
+                                        const std::shared_ptr<Callback> callback,
                                         int max_indegree,
                                         int max_iters,
                                         double epsilon,
@@ -41,6 +41,10 @@ std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
                                         int num_folds,
                                         double test_holdout_ratio,
                                         int verbose) {
+    if (!bn_type && !start) {
+        throw std::invalid_argument("\"bn_type\" or \"start\" parameter must be specified.");
+    }
+
     auto iseed = [seed]() {
         if (seed)
             return *seed;
@@ -48,30 +52,27 @@ std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
             return std::random_device{}();
     }();
 
-    auto bn_type = [start, &bn_str]() {
+    const auto& bn_type_ = [&start, &bn_type]() -> const BayesianNetworkType& {
         if (start)
-            return start->type();
+            return start->type_ref();
         else
-            return util::check_valid_bn_string(bn_str);
+            return *bn_type;
     }();
 
     auto operators = util::check_valid_operators(
-        *bn_type, operators_str, arc_blacklist, arc_whitelist, max_indegree, type_whitelist);
+        bn_type_, operators_str, arc_blacklist, arc_whitelist, max_indegree, type_whitelist);
 
     if (max_iters == 0) max_iters = std::numeric_limits<int>::max();
 
-    std::shared_ptr<BayesianNetworkBase> created_start_model =
-        std::make_shared<BayesianNetwork>(bn_type, df.column_names());
-
-    const auto start_model = [&start, &created_start_model]() -> const BayesianNetworkBase* {
+    const auto start_model = [&start, &bn_type_, &df]() -> const std::shared_ptr<BayesianNetworkBase> {
         if (start)
-            return start.get();
+            return start;
         else
-            return created_start_model.get();
+            return bn_type_.new_bn(df.column_names());
     }();
 
     GreedyHillClimbing hc;
-    auto score = util::check_valid_score(df, *bn_type, score_str, iseed, num_folds, test_holdout_ratio);
+    auto score = util::check_valid_score(df, bn_type_, score_str, iseed, num_folds, test_holdout_ratio);
 
     return hc.estimate(*operators,
                        *score,
@@ -94,7 +95,7 @@ std::shared_ptr<T> estimate_checks(OperatorSet& op_set,
                                    const ArcStringVector& arc_blacklist,
                                    const ArcStringVector& arc_whitelist,
                                    const FactorTypeVector& type_whitelist,
-                                   const Callback* callback,
+                                   const std::shared_ptr<Callback> callback,
                                    int max_indegree,
                                    int max_iters,
                                    double epsilon,
@@ -131,7 +132,7 @@ std::shared_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorSet& o
                                                                   const ArcStringVector& arc_blacklist,
                                                                   const ArcStringVector& arc_whitelist,
                                                                   const FactorTypeVector& type_whitelist,
-                                                                  const Callback* callback,
+                                                                  const std::shared_ptr<Callback> callback,
                                                                   int max_indegree,
                                                                   int max_iters,
                                                                   double epsilon,
@@ -158,7 +159,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> GreedyHillClimbing::estimate(
     const ArcStringVector& arc_blacklist,
     const ArcStringVector& arc_whitelist,
     const FactorTypeVector& type_whitelist,
-    const Callback* callback,
+    const std::shared_ptr<Callback> callback,
     int max_indegree,
     int max_iters,
     double epsilon,

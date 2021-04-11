@@ -5,6 +5,8 @@
 #include <models/DynamicBayesianNetwork.hpp>
 #include <factors/continuous/CKDE.hpp>
 
+using factors::continuous::CKDEType;
+
 namespace models {
 
 class KDENetworkType : public BayesianNetworkType {
@@ -21,6 +23,10 @@ public:
         static KDENetworkType& ref = *KDENetworkType::get();
         return ref;
     }
+
+    std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const override;
+    std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
+        const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes) const override;
 
     bool is_homogeneous() const override { return true; }
 

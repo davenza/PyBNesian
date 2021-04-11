@@ -81,11 +81,6 @@ public:
           m_shuffle_neighbors(shuffle_neighbors),
           m_samples(samples) {}
 
-    int samples() { return m_samples; }
-    void set_samples(int s) { m_samples = s; }
-    unsigned int seed() { return m_seed; }
-    void set_seed(unsigned int seed) { m_seed = seed; }
-
     double pvalue(const std::string& x, const std::string& y) const override;
     double pvalue(const std::string& x, const std::string& y, const std::string& z) const override;
     double pvalue(const std::string& x, const std::string& y, const std::vector<std::string>& z) const override;

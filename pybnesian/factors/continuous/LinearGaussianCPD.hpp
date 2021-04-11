@@ -29,7 +29,12 @@ public:
         return ref;
     }
 
-    std::shared_ptr<Factor> new_factor(const std::string&, const std::vector<std::string>&) const override;
+    std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
+                                       const std::string&,
+                                       const std::vector<std::string>&) const override;
+    std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
+                                       const std::string&,
+                                       const std::vector<std::string>&) const override;
 
     std::shared_ptr<FactorType> opposite_semiparametric() const override;
 
@@ -54,10 +59,7 @@ public:
 
     LinearGaussianCPD() = default;
     LinearGaussianCPD(std::string variable, std::vector<std::string> evidence);
-    LinearGaussianCPD(std::string variable,
-                      std::vector<std::string> evidence,
-                      std::vector<double> beta,
-                      double variance);
+    LinearGaussianCPD(std::string variable, std::vector<std::string> evidence, VectorXd beta, double variance);
 
     std::shared_ptr<FactorType> type() const override { return LinearGaussianCPDType::get(); }
 
@@ -91,7 +93,7 @@ public:
         }
 
         m_variance = v;
-        if (m_beta.rows() == static_cast<int>(evidence().size())) m_fitted = true;
+        if (m_beta.rows() == static_cast<int>(evidence().size() + 1)) m_fitted = true;
     }
 
     Array_ptr sample(int n,

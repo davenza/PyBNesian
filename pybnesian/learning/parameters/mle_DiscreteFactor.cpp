@@ -66,8 +66,7 @@ typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
     }
 
     return typename DiscreteFactor::ParamsClass{/*.logprob = */ logprob,
-                                                /*.cardinality = */ cardinality,
-                                                /*.strides = */ strides};
+                                                /*.cardinality = */ cardinality};
 }
 
 template <>

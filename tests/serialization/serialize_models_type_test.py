@@ -27,7 +27,7 @@ class NewBNType(BayesianNetworkType):
     def __init__(self):
         BayesianNetworkType.__init__(self)
 
-    def ToString(self):
+    def __str__(self):
         return "NewType"
 
 @pytest.fixture
@@ -40,7 +40,7 @@ class OtherBNType(BayesianNetworkType):
         BayesianNetworkType.__init__(self)
         self.some_useful_info = "info"
 
-    def ToString(self):
+    def __str__(self):
         return "OtherType"
 
     def __getstate_extra__(self):

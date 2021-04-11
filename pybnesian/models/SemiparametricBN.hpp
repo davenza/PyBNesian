@@ -29,6 +29,10 @@ public:
         return ref;
     }
 
+    std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const override;
+    std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
+        const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes) const override;
+
     bool is_homogeneous() const override { return false; }
 
     std::shared_ptr<FactorType> default_node_type() const override { return LinearGaussianCPDType::get(); }
@@ -36,11 +40,6 @@ public:
     bool compatible_node_type(const BayesianNetworkBase& m, const std::string& variable) const override {
         auto nt = m.node_type(variable);
         if (*nt != LinearGaussianCPDType::get_ref() && *nt != CKDEType::get_ref()) return false;
-
-        for (const auto& p : m.parents(variable)) {
-            auto pnt = m.node_type(p);
-            if (*pnt != LinearGaussianCPDType::get_ref() && *pnt != CKDEType::get_ref()) return false;
-        }
 
         return true;
     }

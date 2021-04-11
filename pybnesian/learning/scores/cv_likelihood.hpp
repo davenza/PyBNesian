@@ -37,7 +37,7 @@ public:
     }
 
     bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
-        return m_cv.data().has_columns(model.all_nodes());
+        return m_cv.data().has_columns(model.joint_nodes());
     }
 
 private:

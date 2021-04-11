@@ -187,7 +187,7 @@ class BNCPCAssoc<ConditionalPartiallyDirectedGraph> {
 public:
     BNCPCAssoc(const ConditionalPartiallyDirectedGraph& g, double alpha)
         : m_graph(g), m_assoc(), m_interface_assoc(), m_alpha(alpha) {
-        m_assoc = CPCAssoc{/*.min_assoc = */ MatrixXd::Zero(g.num_total_nodes(), g.num_nodes()),
+        m_assoc = CPCAssoc{/*.min_assoc = */ MatrixXd::Zero(g.num_joint_nodes(), g.num_nodes()),
                            /*.maxmin_assoc = */ VectorXd::Constant(g.num_nodes(), m_alpha),
                            /*.maxmin_index = */ VectorXi::Constant(g.num_nodes(), MMPC_FORWARD_PHASE_STOP)};
 
@@ -877,8 +877,8 @@ std::pair<std::vector<std::unordered_set<int>>, std::vector<std::unordered_set<i
     const ArcSet& arc_whitelist,
     const EdgeSet& edge_blacklist,
     const EdgeSet& edge_whitelist) {
-    std::vector<std::unordered_set<int>> cpcs(g.num_total_nodes());
-    std::vector<std::unordered_set<int>> to_be_checked(g.num_total_nodes());
+    std::vector<std::unordered_set<int>> cpcs(g.num_joint_nodes());
+    std::vector<std::unordered_set<int>> to_be_checked(g.num_joint_nodes());
 
     // Add whitelisted CPCs
     for (const auto& edge : edge_whitelist) {
@@ -894,7 +894,7 @@ std::pair<std::vector<std::unordered_set<int>>, std::vector<std::unordered_set<i
     // Generate to_be_checked indices
     for (const auto& node : g.nodes()) {
         auto index = g.index(node);
-        for (const auto& other : g.all_nodes()) {
+        for (const auto& other : g.joint_nodes()) {
             auto other_index = g.index(other);
 
             if (index != other_index && edge_blacklist.count({index, other_index}) == 0) {
@@ -989,7 +989,7 @@ std::vector<std::unordered_set<int>> mmpc_all_variables(const IndependenceTest& 
                                                         const EdgeSet& edge_whitelist,
                                                         util::BaseProgressBar& progress) {
     return mmpc_all_variables(
-        test, g, g.num_total_nodes(), alpha, arc_whitelist, edge_blacklist, edge_whitelist, progress);
+        test, g, g.num_joint_nodes(), alpha, arc_whitelist, edge_blacklist, edge_whitelist, progress);
 }
 
 template <typename G>
@@ -1080,6 +1080,10 @@ PartiallyDirectedGraph MMPC::estimate(const IndependenceTest& test,
                                       double ambiguous_threshold,
                                       bool allow_bidirected,
                                       int verbose) const {
+    if (alpha <= 0 || alpha >= 1) throw std::invalid_argument("alpha must be a number between 0 and 1.");
+    if (ambiguous_threshold < 0 || ambiguous_threshold > 1)
+        throw std::invalid_argument("ambiguous_threshold must be a number between 0 and 1.");
+
     PartiallyDirectedGraph skeleton;
     if (nodes.empty())
         skeleton = PartiallyDirectedGraph(test.variable_names());
@@ -1114,6 +1118,10 @@ ConditionalPartiallyDirectedGraph MMPC::estimate_conditional(const IndependenceT
                                                              double ambiguous_threshold,
                                                              bool allow_bidirected,
                                                              int verbose) const {
+    if (alpha <= 0 || alpha >= 1) throw std::invalid_argument("alpha must be a number between 0 and 1.");
+    if (ambiguous_threshold < 0 || ambiguous_threshold > 1)
+        throw std::invalid_argument("ambiguous_threshold must be a number between 0 and 1.");
+
     if (nodes.empty()) throw std::invalid_argument("Node list cannot be empty to train a Conditional graph.");
     if (interface_nodes.empty())
         return MMPC::estimate(test,

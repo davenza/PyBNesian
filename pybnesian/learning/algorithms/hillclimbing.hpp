@@ -24,14 +24,14 @@ using util::ArcStringVector;
 namespace learning::algorithms {
 
 std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
+                                        const std::shared_ptr<BayesianNetworkType> bn_type,
                                         const std::shared_ptr<BayesianNetworkBase> start,
-                                        const std::string& bn_str,
                                         const std::optional<std::string>& score_str,
                                         const std::optional<std::vector<std::string>>& operators_str,
                                         const ArcStringVector& arc_blacklist,
                                         const ArcStringVector& arc_whitelist,
                                         const FactorTypeVector& type_whitelist,
-                                        const Callback* callback,
+                                        const std::shared_ptr<Callback> callback,
                                         int max_indegree,
                                         int max_iters,
                                         double epsilon,
@@ -47,7 +47,7 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
                                const T& start,
                                const ArcStringVector& arc_blacklist,
                                const ArcStringVector& arc_whitelist,
-                               const Callback* callback,
+                               const std::shared_ptr<Callback> callback,
                                int max_indegree,
                                int max_iters,
                                double epsilon,
@@ -87,6 +87,8 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
         spinner->update_status(best_op->ToString());
     }
 
+    op_set.finished();
+
     if (callback) callback->call(*current_model, nullptr, score, iter);
 
     spinner->mark_as_completed("Finished Hill-climbing!");
@@ -116,7 +118,7 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
                                           const ArcStringVector& arc_blacklist,
                                           const ArcStringVector& arc_whitelist,
                                           const FactorTypeVector& type_whitelist,
-                                          const Callback* callback,
+                                          const std::shared_ptr<Callback> callback,
                                           int max_indegree,
                                           int max_iters,
                                           double epsilon,
@@ -182,6 +184,8 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
         ++iter;
     }
 
+    op_set.finished();
+
     if (callback) callback->call(*best_model, nullptr, score, iter);
 
     spinner->mark_as_completed("Finished Hill-climbing!");
@@ -196,7 +200,7 @@ public:
                                                   const ArcStringVector& arc_blacklist,
                                                   const ArcStringVector& arc_whitelist,
                                                   const FactorTypeVector& type_whitelist,
-                                                  const Callback* callback,
+                                                  const std::shared_ptr<Callback> callback,
                                                   int max_indegree,
                                                   int max_iters,
                                                   double epsilon,
@@ -209,7 +213,7 @@ public:
                                                              const ArcStringVector& arc_blacklist,
                                                              const ArcStringVector& arc_whitelist,
                                                              const FactorTypeVector& type_whitelist,
-                                                             const Callback* callback,
+                                                             const std::shared_ptr<Callback> callback,
                                                              int max_indegree,
                                                              int max_iters,
                                                              double epsilon,

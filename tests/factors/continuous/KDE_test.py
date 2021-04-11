@@ -31,7 +31,7 @@ def test_check_type():
 def test_kde_variables():
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         cpd = KDE(variables)
-        assert cpd.variables == variables
+        assert cpd.variables() == variables
 
 def test_kde_bandwidth():
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
@@ -71,15 +71,15 @@ def test_kde_data_type():
 def test_kde_fit():
     def _test_kde_fit_iter(variables, _df, instances):
         cpd = KDE(variables)
-        assert not cpd.fitted
+        assert not cpd.fitted()
         cpd.fit(_df.iloc[:instances,:])
-        assert cpd.fitted
+        assert cpd.fitted()
 
         npdata = _df.loc[:, variables].to_numpy()
         scipy_kde = gaussian_kde(npdata[:instances, :].T)
 
-        assert scipy_kde.n == cpd.N, "Wrong number of training instances."
-        assert scipy_kde.d == cpd.d, "Wrong number of training variables."
+        assert scipy_kde.n == cpd.num_instances(), "Wrong number of training instances."
+        assert scipy_kde.d == cpd.num_variables(), "Wrong number of training variables."
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         for instances in [50, 1000, 10000]:
@@ -89,9 +89,9 @@ def test_kde_fit():
 def test_kde_fit_null():
     def _test_kde_fit_null_iter(variables, _df, instances):
         cpd = KDE(variables)
-        assert not cpd.fitted
+        assert not cpd.fitted()
         cpd.fit(_df.iloc[:instances,:])
-        assert cpd.fitted
+        assert cpd.fitted()
 
         npdata = _df.loc[:, variables].to_numpy()
         npdata_instances = npdata[:instances,:]
@@ -100,8 +100,8 @@ def test_kde_fit_null():
         npdata_no_null = npdata_instances[~nan_rows,:]
         scipy_kde = gaussian_kde(npdata_no_null.T)
 
-        assert scipy_kde.n == cpd.N, "Wrong number of training instances with null values."
-        assert scipy_kde.d == cpd.d, "Wrong number of training variables with null values."
+        assert scipy_kde.n == cpd.num_instances(), "Wrong number of training instances with null values."
+        assert scipy_kde.d == cpd.num_variables(), "Wrong number of training variables with null values."
         assert np.all(np.isclose(scipy_kde.covariance, cpd.bandwidth)), "Wrong bandwidth with null values."
 
     np.random.seed(0)

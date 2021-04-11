@@ -33,7 +33,7 @@ def test_find_max():
 
     op_combined = pool.find_max(spbn)
 
-    if arcs_max.delta >= node_max.delta:
+    if arcs_max.delta() >= node_max.delta():
         assert op_combined == arcs_max
     else:
         assert op_combined == node_max

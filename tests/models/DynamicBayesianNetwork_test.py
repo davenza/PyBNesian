@@ -72,23 +72,23 @@ def test_variable_operations_dbn():
 def test_fit_dbn():
     variables = ["a", "b", "c", "d"]
     gbn = DynamicGaussianNetwork(variables, 2)
-    assert not gbn.fitted
-    assert not gbn.static_bn().fitted
-    assert not gbn.transition_bn().fitted
+    assert not gbn.fitted()
+    assert not gbn.static_bn().fitted()
+    assert not gbn.transition_bn().fitted()
     gbn.fit(df)
-    assert gbn.fitted
+    assert gbn.fitted()
 
     ddf = DynamicDataFrame(df, 2)
     gbn2 = DynamicGaussianNetwork(variables, 2)
     gbn2.static_bn().fit(ddf.static_df())
-    assert not gbn2.fitted
-    assert gbn2.static_bn().fitted
-    assert not gbn2.transition_bn().fitted
+    assert not gbn2.fitted()
+    assert gbn2.static_bn().fitted()
+    assert not gbn2.transition_bn().fitted()
 
     gbn2.transition_bn().fit(ddf.transition_df())
-    assert gbn2.fitted
-    assert gbn2.static_bn().fitted
-    assert gbn2.transition_bn().fitted
+    assert gbn2.fitted()
+    assert gbn2.static_bn().fitted()
+    assert gbn2.transition_bn().fitted()
 
 def lg_logl_row(row, variable, evidence, beta, variance):
     m = beta[0] + beta[1:].dot(row[evidence])
@@ -99,7 +99,7 @@ def static_logl(dbn, test_data, index, variable):
 
     node_name = variable + "_t_" + str(dbn.markovian_order() - index)
     cpd = dbn.static_bn().cpd(node_name)
-    evidence = cpd.evidence
+    evidence = cpd.evidence()
 
     row_values = [sl.loc[index, variable]]
     for e in evidence:
@@ -116,7 +116,7 @@ def static_logl(dbn, test_data, index, variable):
 def transition_logl(dbn, test_data, index, variable):
     node_name = variable + "_t_0"
     cpd = dbn.transition_bn().cpd(node_name)
-    evidence = cpd.evidence
+    evidence = cpd.evidence()
 
     row_values = [test_data.loc[index, variable]]
     for e in evidence:

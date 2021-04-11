@@ -23,18 +23,30 @@ public:
     Operator(double delta) : m_delta(delta) {}
     virtual ~Operator(){};
 
+    virtual bool is_python_derived() const { return false; }
+
     virtual void apply(BayesianNetworkBase& m) const = 0;
     virtual std::vector<std::string> nodes_changed(const BayesianNetworkBase&) const = 0;
     virtual std::vector<std::string> nodes_changed(const ConditionalBayesianNetworkBase&) const = 0;
     virtual std::shared_ptr<Operator> opposite() const = 0;
     double delta() const { return m_delta; }
-    virtual std::shared_ptr<Operator> copy() const = 0;
 
     virtual std::string ToString() const = 0;
 
     virtual std::size_t hash() const = 0;
     virtual bool operator==(const Operator& a) const = 0;
     bool operator!=(const Operator& a) const { return !(*this == a); }
+
+    static std::shared_ptr<Operator> keep_python_alive(std::shared_ptr<Operator>& op) {
+        if (op && op->is_python_derived()) {
+            auto o = py::cast(op);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<Operator*>();
+            return std::shared_ptr<Operator>(keep_python_state_alive, ptr);
+        }
+
+        return op;
+    }
 
 private:
     double m_delta;
@@ -75,9 +87,6 @@ public:
     }
 
     std::shared_ptr<Operator> opposite() const override;
-    std::shared_ptr<Operator> copy() const override {
-        return std::make_shared<AddArc>(this->source(), this->target(), this->delta());
-    }
     std::string ToString() const override {
         return "AddArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) + ")";
     }
@@ -111,9 +120,7 @@ public:
     std::shared_ptr<Operator> opposite() const override {
         return std::make_shared<AddArc>(this->source(), this->target(), -this->delta());
     }
-    std::shared_ptr<Operator> copy() const override {
-        return std::make_shared<RemoveArc>(this->source(), this->target(), this->delta());
-    }
+
     std::string ToString() const override {
         return "RemoveArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) +
                ")";
@@ -150,9 +157,7 @@ public:
     std::shared_ptr<Operator> opposite() const override {
         return std::make_shared<FlipArc>(this->target(), this->source(), -this->delta());
     }
-    std::shared_ptr<Operator> copy() const override {
-        return std::make_shared<FlipArc>(this->source(), this->target(), this->delta());
-    }
+
     std::string ToString() const override {
         return "FlipArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) +
                ")";
@@ -188,9 +193,7 @@ public:
     std::shared_ptr<Operator> opposite() const override {
         return std::make_shared<ChangeNodeType>(m_node, m_new_node_type->opposite_semiparametric(), -this->delta());
     }
-    std::shared_ptr<Operator> copy() const override {
-        return std::make_shared<ChangeNodeType>(m_node, m_new_node_type, this->delta());
-    }
+
     std::string ToString() const override {
         return "ChangeNodeType(" + node() + " -> " + m_new_node_type->ToString() +
                "; Delta: " + std::to_string(this->delta()) + ")";
@@ -267,7 +270,6 @@ class LocalScoreCache {
 public:
     LocalScoreCache() : m_local_score() {}
     LocalScoreCache(const BayesianNetworkBase& m) : m_local_score(m.num_nodes()) {}
-    LocalScoreCache(const ConditionalBayesianNetworkBase& m) : m_local_score(m.num_nodes()) {}
 
     void cache_local_scores(const BayesianNetworkBase& model, const Score& score) {
         if (m_local_score.rows() != model.num_nodes()) {
@@ -311,7 +313,7 @@ private:
 
 class OperatorSet {
 public:
-    OperatorSet() : m_local_cache(nullptr) {}
+    OperatorSet() : m_local_cache(nullptr), m_owns_local_cache(false) {}
     virtual ~OperatorSet() {}
     virtual void cache_scores(const BayesianNetworkBase&, const Score&) = 0;
     virtual std::shared_ptr<Operator> find_max(const BayesianNetworkBase&) const = 0;
@@ -325,23 +327,27 @@ public:
                                const Score&,
                                const std::vector<std::string>&) = 0;
 
-    void set_local_score_cache(std::shared_ptr<LocalScoreCache>& score_cache) { m_local_cache = score_cache; }
+    void set_local_score_cache(std::shared_ptr<LocalScoreCache> score_cache) {
+        m_local_cache = score_cache;
+        m_owns_local_cache = false;
+    }
 
-    std::shared_ptr<LocalScoreCache>& local_score_cache() { return m_local_cache; }
+    std::shared_ptr<LocalScoreCache> local_score_cache() { return m_local_cache; }
 
-    virtual void set_arc_blacklist(const ArcStringVector&) = 0;
-    virtual void set_arc_whitelist(const ArcStringVector&) = 0;
-    virtual void set_max_indegree(int) = 0;
-    virtual void set_type_whitelist(const FactorTypeVector&) = 0;
+    virtual void set_arc_blacklist(const ArcStringVector&){};
+    virtual void set_arc_whitelist(const ArcStringVector&){};
+    virtual void set_max_indegree(int){};
+    virtual void set_type_whitelist(const FactorTypeVector&){};
+    virtual void finished() { m_local_cache = nullptr; }
 
 protected:
-    bool owns_local_cache() const { return m_local_cache.use_count() == 1; }
+    bool owns_local_cache() const { return m_owns_local_cache; }
 
     template <typename M>
     void initialize_local_cache(M& model) {
-        if (this->m_local_cache == nullptr) {
-            auto lc = std::make_shared<LocalScoreCache>(model);
-            this->set_local_score_cache(lc);
+        if (!this->m_local_cache) {
+            m_local_cache = std::make_shared<LocalScoreCache>(model);
+            m_owns_local_cache = true;
         }
     }
 
@@ -352,6 +358,7 @@ protected:
     }
 
     std::shared_ptr<LocalScoreCache> m_local_cache;
+    bool m_owns_local_cache;
 };
 
 class ArcOperatorSet : public OperatorSet {
@@ -400,20 +407,16 @@ public:
     void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
 
     void set_arc_blacklist(const ArcStringVector& blacklist) override {
-        m_blacklist.clear();
         m_blacklist = blacklist;
         required_arclist_update = true;
     }
 
     void set_arc_whitelist(const ArcStringVector& whitelist) override {
-        m_whitelist.clear();
         m_whitelist = whitelist;
         required_arclist_update = true;
     }
 
     void set_max_indegree(int indegree) override { max_indegree = indegree; }
-
-    void set_type_whitelist(const FactorTypeVector&) override {}
 
 private:
     MatrixXd delta;
@@ -473,8 +476,8 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
 
     for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
         auto idx = *it;
-        auto source_joint_collapsed = idx % model.num_total_nodes();
-        auto target_collapsed = idx / model.num_total_nodes();
+        auto source_joint_collapsed = idx % model.num_joint_nodes();
+        auto target_collapsed = idx / model.num_joint_nodes();
 
         const auto& source = model.joint_collapsed_name(source_joint_collapsed);
         const auto& target = model.collapsed_name(target_collapsed);
@@ -492,7 +495,8 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
             }
             // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have
             // parents.
-            if (model.type_ref().can_add_arc(model, source, target)) return std::make_shared<AddArc>(source, target, d);
+            if (model.type_ref().can_have_arc(model, source, target))
+                return std::make_shared<AddArc>(source, target, d);
         } else {
             if (model.has_arc(target, source) && model.can_flip_arc(target, source)) {
                 if constexpr (limited_indegree) {
@@ -571,8 +575,8 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
 
     for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
         auto idx = *it;
-        auto source_joint_collapsed = idx % model.num_total_nodes();
-        auto target_collapsed = idx / model.num_total_nodes();
+        auto source_joint_collapsed = idx % model.num_joint_nodes();
+        auto target_collapsed = idx / model.num_joint_nodes();
 
         const auto& source = model.joint_collapsed_name(source_joint_collapsed);
         const auto& target = model.collapsed_name(target_collapsed);
@@ -596,7 +600,7 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
             }
             // If source is interface, the arc has a unique direction, and cannot produce cycles as source cannot have
             // parents.
-            if (model.type_ref().can_add_arc(model, source, target)) {
+            if (model.type_ref().can_have_arc(model, source, target)) {
                 std::shared_ptr<Operator> op = std::make_shared<AddArc>(source, target, d);
                 if (!tabu_set.contains(op)) return op;
             }
@@ -680,9 +684,6 @@ public:
         }
     }
 
-    void set_arc_blacklist(const ArcStringVector&) override {}
-    void set_arc_whitelist(const ArcStringVector&) override {}
-    void set_max_indegree(int) override {}
     void set_type_whitelist(const FactorTypeVector& type_whitelist) override {
         m_type_whitelist = type_whitelist;
         required_whitelist_update = true;
@@ -769,13 +770,21 @@ public:
         }
     }
 
+    virtual void finished() override {
+        for (auto& opset : m_op_sets) {
+            opset->finished();
+        }
+
+        OperatorSet::finished();
+    }
+
 private:
     std::vector<std::shared_ptr<OperatorSet>> m_op_sets;
 };
 
 template <typename M>
 void OperatorPool::cache_scores(const M& model, const Score& score) {
-    if (this->local_score_cache() == nullptr) {
+    if (!this->m_local_cache) {
         initialize_local_cache(model);
 
         for (auto& op_set : m_op_sets) {

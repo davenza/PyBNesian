@@ -59,13 +59,11 @@ DataFrame ConditionalBayesianNetwork::sample(const DataFrame& evidence,
 
     auto top_sort = this->g.topological_sort();
     for (size_t i = 0; i < top_sort.size(); ++i) {
-        if (!is_interface(top_sort[i])) {
-            auto idx = this->index(top_sort[i]);
-            auto array = this->m_cpds[idx]->sample(evidence->num_rows(), parents, seed + i);
+        auto idx = this->index(top_sort[i]);
+        auto array = this->m_cpds[idx]->sample(evidence->num_rows(), parents, seed + i);
 
-            auto res = parents->AddColumn(evidence->num_columns() + i, top_sort[i], array);
-            parents = DataFrame(std::move(res).ValueOrDie());
-        }
+        auto res = parents->AddColumn(evidence->num_columns() + i, top_sort[i], array);
+        parents = DataFrame(std::move(res).ValueOrDie());
     }
 
     std::vector<Field_ptr> fields;

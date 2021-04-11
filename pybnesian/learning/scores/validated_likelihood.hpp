@@ -41,7 +41,7 @@ public:
     bool compatible_bn(const BayesianNetworkBase& model) const override { return m_cv.has_variables(model.nodes()); }
 
     bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
-        return m_cv.has_variables(model.all_nodes());
+        return m_cv.has_variables(model.joint_nodes());
     }
 
     double vlocal_score(const BayesianNetworkBase& model,

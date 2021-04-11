@@ -146,7 +146,7 @@ double cache_score_interface(const ConditionalBayesianNetworkBase& model,
 
 void ArcOperatorSet::update_valid_ops(const ConditionalBayesianNetworkBase& model) {
     int num_nodes = model.num_nodes();
-    int total_nodes = model.num_total_nodes();
+    int total_nodes = model.num_joint_nodes();
 
     bool changed_size = delta.rows() != total_nodes || delta.cols() != num_nodes;
     if (changed_size) {
@@ -223,7 +223,7 @@ void ArcOperatorSet::cache_scores(const ConditionalBayesianNetworkBase& model, c
         auto target_collapsed = model.collapsed_index(target_node);
         auto new_parents_target = model.parents(target_node);
 
-        for (const auto& source_node : model.all_nodes()) {
+        for (const auto& source_node : model.joint_nodes()) {
             int source_joint_collapsed = model.joint_collapsed_index(source_node);
             if (valid_op(source_joint_collapsed, target_collapsed)) {
                 if (model.is_interface(source_node)) {
@@ -360,7 +360,7 @@ void ArcOperatorSet::update_incoming_arcs_scores(const ConditionalBayesianNetwor
     auto target_collapsed = model.collapsed_index(target_node);
     auto parents = model.parents(target_node);
 
-    for (const auto& source_node : model.all_nodes()) {
+    for (const auto& source_node : model.joint_nodes()) {
         auto source_joint_collapsed = model.joint_collapsed_index(source_node);
 
         if (valid_op(source_joint_collapsed, target_collapsed)) {

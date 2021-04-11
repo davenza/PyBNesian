@@ -9,15 +9,14 @@ using models::BayesianNetworkType;
 
 namespace util {
 
-std::shared_ptr<BayesianNetworkType> check_valid_bn_string(const std::string& bn_type);
 std::unique_ptr<Score> check_valid_score(const DataFrame& df,
-                                         BayesianNetworkType& bn_type,
+                                         const BayesianNetworkType& bn_type,
                                          const std::optional<std::string>& score,
                                          int seed,
                                          int num_folds,
                                          double test_holdout_ratio);
 
-std::shared_ptr<OperatorSet> check_valid_operators(BayesianNetworkType& bn_type,
+std::shared_ptr<OperatorSet> check_valid_operators(const BayesianNetworkType& bn_type,
                                                    const std::optional<std::vector<std::string>>& operators,
                                                    const ArcStringVector& arc_blacklist,
                                                    const ArcStringVector& arc_whitelist,

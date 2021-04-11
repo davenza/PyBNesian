@@ -77,30 +77,29 @@ std::shared_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test
                                                     OperatorSet& op_set,
                                                     Score& score,
                                                     const std::vector<std::string>& nodes,
-                                                    const std::string& bn_str,
+                                                    const BayesianNetworkType& bn_type,
                                                     const ArcStringVector& varc_blacklist,
                                                     const ArcStringVector& varc_whitelist,
                                                     const EdgeStringVector& vedge_blacklist,
                                                     const EdgeStringVector& vedge_whitelist,
                                                     const FactorTypeVector& type_whitelist,
+                                                    const std::shared_ptr<Callback> callback,
                                                     int max_indegree,
                                                     int max_iters,
                                                     double epsilon,
                                                     int patience,
                                                     double alpha,
                                                     int verbose) {
-    auto bn_type = util::check_valid_bn_string(bn_str);
-
     PartiallyDirectedGraph skeleton;
     std::shared_ptr<BayesianNetworkBase> bn;
     if (nodes.empty()) {
         skeleton = PartiallyDirectedGraph(test.variable_names());
-        bn = std::make_shared<BayesianNetwork>(bn_type, test.variable_names());
+        bn = bn_type.new_bn(test.variable_names());
     } else {
         if (!test.has_variables(nodes))
             throw std::invalid_argument("IndependenceTest do not contain all the variables in nodes list.");
         skeleton = PartiallyDirectedGraph(nodes);
-        bn = std::make_shared<BayesianNetwork>(bn_type, nodes);
+        bn = bn_type.new_bn(nodes);
     }
 
     if (!score.compatible_bn(*bn)) {
@@ -140,7 +139,7 @@ std::shared_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test
                                                             hc_blacklist,
                                                             arc_whitelist,
                                                             type_whitelist,
-                                                            nullptr,
+                                                            callback,
                                                             max_indegree,
                                                             max_iters,
                                                             epsilon,
@@ -148,7 +147,7 @@ std::shared_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test
                                                             verbose);
     } else {
         return learning::algorithms::estimate_hc(
-            op_set, score, *bn, hc_blacklist, arc_whitelist, nullptr, max_indegree, max_iters, epsilon, verbose);
+            op_set, score, *bn, hc_blacklist, arc_whitelist, callback, max_indegree, max_iters, epsilon, verbose);
     }
 }
 
@@ -158,12 +157,13 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
     Score& score,
     const std::vector<std::string>& nodes,
     const std::vector<std::string>& interface_nodes,
-    const std::string& bn_str,
+    const BayesianNetworkType& bn_type,
     const ArcStringVector& varc_blacklist,
     const ArcStringVector& varc_whitelist,
     const EdgeStringVector& vedge_blacklist,
     const EdgeStringVector& vedge_whitelist,
     const FactorTypeVector& type_whitelist,
+    const std::shared_ptr<Callback> callback,
     int max_indegree,
     int max_iters,
     double epsilon,
@@ -177,12 +177,13 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
                               op_set,
                               score,
                               nodes,
-                              bn_str,
+                              bn_type,
                               varc_blacklist,
                               varc_whitelist,
                               vedge_blacklist,
                               vedge_whitelist,
                               type_whitelist,
+                              callback,
                               max_indegree,
                               max_iters,
                               epsilon,
@@ -199,8 +200,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
 
     ConditionalPartiallyDirectedGraph skeleton(nodes, interface_nodes);
 
-    auto bn_type = util::check_valid_bn_string(bn_str);
-    auto bn = std::make_shared<ConditionalBayesianNetwork>(bn_type, nodes, interface_nodes);
+    auto bn = bn_type.new_cbn(nodes, interface_nodes);
 
     if (!score.compatible_bn(*bn)) {
         throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
@@ -235,7 +235,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
                                                             hc_blacklist,
                                                             arc_whitelist,
                                                             type_whitelist,
-                                                            nullptr,
+                                                            callback,
                                                             max_indegree,
                                                             max_iters,
                                                             epsilon,
@@ -243,7 +243,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
                                                             verbose);
     } else {
         return learning::algorithms::estimate_hc(
-            op_set, score, *bn, hc_blacklist, arc_whitelist, nullptr, max_indegree, max_iters, epsilon, verbose);
+            op_set, score, *bn, hc_blacklist, arc_whitelist, callback, max_indegree, max_iters, epsilon, verbose);
     }
 }
 

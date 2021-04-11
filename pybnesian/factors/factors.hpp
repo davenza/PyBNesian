@@ -13,6 +13,13 @@ using dataset::DataFrame;
 
 namespace py = pybind11;
 
+namespace models {
+class BayesianNetworkBase;
+class ConditionalBayesianNetworkBase;
+}  // namespace models
+
+using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
+
 namespace factors {
 
 class Factor;
@@ -22,10 +29,8 @@ public:
     virtual ~FactorType() {}
 
     bool operator==(const FactorType& o) const { return this->hash() == o.hash(); }
-
     bool operator!=(const FactorType& o) const { return !(*this == o); }
     bool operator==(FactorType&& o) const { return this->hash() == o.hash(); }
-
     bool operator!=(FactorType&& o) const { return !(*this == o); }
 
     virtual bool is_python_derived() const { return false; }
@@ -41,7 +46,12 @@ public:
         return f;
     }
 
-    virtual std::shared_ptr<Factor> new_factor(const std::string&, const std::vector<std::string>&) const = 0;
+    virtual std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
+                                               const std::string&,
+                                               const std::vector<std::string>&) const = 0;
+    virtual std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
+                                               const std::string&,
+                                               const std::vector<std::string>&) const = 0;
     virtual std::shared_ptr<FactorType> opposite_semiparametric() const = 0;
     virtual std::string ToString() const = 0;
 
@@ -72,6 +82,19 @@ public:
         : m_variable(variable), m_evidence(evidence) {}
 
     virtual ~Factor() {}
+
+    virtual bool is_python_derived() const { return false; }
+
+    static std::shared_ptr<Factor> keep_python_alive(std::shared_ptr<Factor>& f) {
+        if (f && f->is_python_derived()) {
+            auto o = py::cast(f);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<Factor*>();
+            return std::shared_ptr<Factor>(keep_python_state_alive, ptr);
+        }
+
+        return f;
+    }
 
     const std::string& variable() const { return m_variable; }
 

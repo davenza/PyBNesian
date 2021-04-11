@@ -78,8 +78,6 @@ public:
 
     virtual bool has_variables(const std::string& name) const = 0;
     virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
-    virtual bool compatible_bn(const BayesianNetworkBase& model) const = 0;
-    virtual bool compatible_bn(const ConditionalBayesianNetworkBase& model) const = 0;
 };
 
 template <typename BaseScore>
@@ -98,14 +96,6 @@ public:
 
     bool has_variables(const std::vector<std::string>& cols) const override {
         return DynamicAdaptator<BaseScore>::has_variables(cols);
-    }
-
-    bool compatible_bn(const BayesianNetworkBase& model) const override {
-        return DynamicAdaptator<BaseScore>::has_variables(model.nodes());
-    }
-
-    bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
-        return DynamicAdaptator<BaseScore>::has_variables(model.all_nodes());
     }
 };
 

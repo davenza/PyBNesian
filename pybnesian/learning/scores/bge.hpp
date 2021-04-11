@@ -96,7 +96,7 @@ public:
     bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
         const auto& model_type = model.type_ref();
         return model_type.is_homogeneous() && *model_type.default_node_type() == LinearGaussianCPDType::get_ref() &&
-               m_df.has_columns(model.nodes());
+               m_df.has_columns(model.joint_nodes());
     }
 
 private:
@@ -230,6 +230,8 @@ double BGe::bge_parents(const std::string& variable,
     logprob += 0.5 * (N + m_iss_w - total_nodes + p) * log(r_parents.determinant());
     return logprob;
 }
+
+using DynamicBGe = DynamicScoreAdaptator<BGe>;
 
 }  // namespace learning::scores
 

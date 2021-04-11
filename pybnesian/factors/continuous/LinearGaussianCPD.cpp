@@ -6,6 +6,7 @@
 #include <arrow/api.h>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <models/BayesianNetwork.hpp>
 #include <dataset/dataset.hpp>
 #include <util/bit_util.hpp>
 #include <util/math_constants.hpp>
@@ -19,19 +20,26 @@ namespace py = pybind11;
 using arrow::Type;
 using Eigen::Matrix, Eigen::Dynamic, Eigen::Array;
 
-using dataset::DataFrame;
-
 using boost::math::normal_distribution;
+using dataset::DataFrame;
 using learning::parameters::MLE;
+using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
 using util::pi, util::one_div_root_two;
 
 typedef std::shared_ptr<arrow::Array> Array_ptr;
 
 namespace factors::continuous {
 
-std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const std::string& variable,
-                                                          const std::vector<std::string>& parents) const {
-    return std::make_shared<LinearGaussianCPD>(variable, parents);
+std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const BayesianNetworkBase&,
+                                                          const std::string& variable,
+                                                          const std::vector<std::string>& evidence) const {
+    return std::make_shared<LinearGaussianCPD>(variable, evidence);
+}
+
+std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayesianNetworkBase&,
+                                                          const std::string& variable,
+                                                          const std::vector<std::string>& evidence) const {
+    return std::make_shared<LinearGaussianCPD>(variable, evidence);
 }
 
 std::shared_ptr<FactorType> LinearGaussianCPDType::opposite_semiparametric() const { return CKDEType::get(); }
@@ -41,10 +49,10 @@ LinearGaussianCPD::LinearGaussianCPD(std::string variable, std::vector<std::stri
 
 LinearGaussianCPD::LinearGaussianCPD(std::string variable,
                                      std::vector<std::string> evidence,
-                                     std::vector<double> beta,
+                                     VectorXd beta,
                                      double variance)
     : Factor(variable, evidence), m_fitted(true), m_variance(variance) {
-    if (beta.size() != (evidence.size() + 1)) {
+    if (static_cast<size_t>(beta.rows()) != (evidence.size() + 1)) {
         throw py::value_error("Wrong number of beta parameters. Beta vector size: " + std::to_string(beta.size()) +
                               ". Expected beta vector size: " + std::to_string(evidence.size() + 1) + ".");
     }
@@ -53,10 +61,7 @@ LinearGaussianCPD::LinearGaussianCPD(std::string variable,
         throw py::value_error("Variance must be a positive value.");
     }
 
-    m_beta = VectorXd(beta.size());
-    auto m_ptr = m_beta.data();
-    auto vec_ptr = beta.data();
-    std::memcpy(m_ptr, vec_ptr, sizeof(double) * beta.size());
+    m_beta = beta;
 };
 
 void LinearGaussianCPD::fit(const DataFrame& df) {

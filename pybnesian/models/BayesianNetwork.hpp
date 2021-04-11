@@ -23,10 +23,10 @@ namespace models {
 class ConditionalBayesianNetworkBase;
 class BayesianNetworkType;
 
-class BayesianNetworkBase
-    : public clone_inherit<abstract_class<BayesianNetworkBase>, std::enable_shared_from_this<BayesianNetworkBase>> {
+class BayesianNetworkBase : public std::enable_shared_from_this<BayesianNetworkBase> {
 public:
     virtual ~BayesianNetworkBase() = default;
+    virtual bool is_python_derived() const { return false; }
     virtual const DagBase& graph() const = 0;
     virtual DagBase& graph() = 0;
     virtual int num_nodes() const = 0;
@@ -94,18 +94,47 @@ public:
     virtual void set_node_type(const std::string& node, const std::shared_ptr<FactorType>& new_type) = 0;
     virtual void force_type_whitelist(const FactorTypeVector& type_whitelist) = 0;
     virtual std::string ToString() const = 0;
+
+    std::shared_ptr<BayesianNetworkBase> clone() const {
+        if (is_python_derived()) {
+            auto self = py::cast(this);
+
+            // Clone with pickle because it conserves the Python derived type and includes the extra info.
+            auto bytes = py::module_::import("pickle").attr("dumps")(self);
+            auto cloned = py::module_::import("pickle").attr("loads")(bytes);
+
+            auto keep_python_state_alive = std::make_shared<py::object>(cloned);
+            auto ptr = cloned.cast<BayesianNetworkBase*>();
+            return std::shared_ptr<BayesianNetworkBase>(keep_python_state_alive, ptr);
+        } else {
+            return std::shared_ptr<BayesianNetworkBase>(clone_impl());
+        }
+    }
+
+    static std::shared_ptr<BayesianNetworkBase> keep_python_alive(std::shared_ptr<BayesianNetworkBase>& m) {
+        if (m && m->is_python_derived()) {
+            auto o = py::cast(m);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<BayesianNetworkBase*>();
+            return std::shared_ptr<BayesianNetworkBase>(keep_python_state_alive, ptr);
+        }
+
+        return m;
+    }
+
+private:
+    virtual BayesianNetworkBase* clone_impl() const = 0;
 };
 
-class ConditionalBayesianNetworkBase
-    : public clone_inherit<abstract_class<ConditionalBayesianNetworkBase>, BayesianNetworkBase> {
+class ConditionalBayesianNetworkBase : public BayesianNetworkBase {
 public:
     virtual ~ConditionalBayesianNetworkBase() = default;
     virtual const ConditionalDagBase& graph() const = 0;
     virtual ConditionalDagBase& graph() = 0;
     virtual int num_interface_nodes() const = 0;
-    virtual int num_total_nodes() const = 0;
+    virtual int num_joint_nodes() const = 0;
     virtual const std::vector<std::string>& interface_nodes() const = 0;
-    virtual const std::vector<std::string>& all_nodes() const = 0;
+    virtual const std::vector<std::string>& joint_nodes() const = 0;
     virtual int interface_collapsed_index(const std::string& name) const = 0;
     virtual int joint_collapsed_index(const std::string& name) const = 0;
     virtual const std::unordered_map<std::string, int>& interface_collapsed_indices() const = 0;
@@ -117,7 +146,7 @@ public:
     virtual const std::string& interface_collapsed_name(int interface_collapsed_index) const = 0;
     virtual const std::string& joint_collapsed_name(int joint_collapsed_index) const = 0;
     virtual bool contains_interface_node(const std::string& name) const = 0;
-    virtual bool contains_total_node(const std::string& name) const = 0;
+    virtual bool contains_joint_node(const std::string& name) const = 0;
     virtual int add_interface_node(const std::string& node) = 0;
     virtual void remove_interface_node(const std::string& node) = 0;
     virtual bool is_interface(const std::string& name) const = 0;
@@ -128,6 +157,37 @@ public:
                              unsigned int seed = std::random_device{}(),
                              bool concat_evidence = false,
                              bool ordered = false) const = 0;
+
+    std::shared_ptr<ConditionalBayesianNetworkBase> clone() const {
+        if (is_python_derived()) {
+            auto self = py::cast(this);
+
+            // Clone with pickle because it conserves the Python derived type and includes the extra info.
+            auto bytes = py::module_::import("pickle").attr("dumps")(self);
+            auto cloned = py::module_::import("pickle").attr("loads")(bytes);
+
+            auto keep_python_state_alive = std::make_shared<py::object>(cloned);
+            auto ptr = cloned.cast<ConditionalBayesianNetworkBase*>();
+            return std::shared_ptr<ConditionalBayesianNetworkBase>(keep_python_state_alive, ptr);
+        } else {
+            return std::shared_ptr<ConditionalBayesianNetworkBase>(clone_impl());
+        }
+    }
+
+    static std::shared_ptr<ConditionalBayesianNetworkBase> keep_python_alive(
+        std::shared_ptr<ConditionalBayesianNetworkBase>& m) {
+        if (m && m->is_python_derived()) {
+            auto o = py::cast(m);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<ConditionalBayesianNetworkBase*>();
+            return std::shared_ptr<ConditionalBayesianNetworkBase>(keep_python_state_alive, ptr);
+        }
+
+        return m;
+    }
+
+private:
+    virtual ConditionalBayesianNetworkBase* clone_impl() const = 0;
 };
 
 class BayesianNetworkType {
@@ -135,6 +195,10 @@ public:
     virtual ~BayesianNetworkType() {}
 
     virtual bool is_python_derived() const { return false; }
+
+    virtual std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const = 0;
+    virtual std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
+        const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes) const = 0;
 
     static std::shared_ptr<BayesianNetworkType> keep_python_alive(std::shared_ptr<BayesianNetworkType>& s) {
         if (s && s->is_python_derived()) {
@@ -154,15 +218,9 @@ public:
 
     virtual bool compatible_node_type(const ConditionalBayesianNetworkBase&, const std::string&) const { return true; }
 
-    virtual bool can_add_arc(const BayesianNetworkBase&, const std::string&, const std::string&) const { return true; }
+    virtual bool can_have_arc(const BayesianNetworkBase&, const std::string&, const std::string&) const { return true; }
 
-    virtual bool can_flip_arc(const BayesianNetworkBase&, const std::string&, const std::string&) const { return true; }
-
-    virtual bool can_add_arc(const ConditionalBayesianNetworkBase&, const std::string&, const std::string&) const {
-        return true;
-    }
-
-    virtual bool can_flip_arc(const ConditionalBayesianNetworkBase&, const std::string&, const std::string&) const {
+    virtual bool can_have_arc(const ConditionalBayesianNetworkBase&, const std::string&, const std::string&) const {
         return true;
     }
 
@@ -215,9 +273,10 @@ private:
         if (m_type->is_homogeneous()) {
             for (const auto& p : node_types) {
                 // Check also null
-                if (p.second != m_type->default_node_type())
-                    throw std::invalid_argument("Wrong factor type (" + p.second->ToString() + ") for variable " +
-                                                p.first + " in Bayesian network type: " + m_type->ToString());
+                if (*p.second != *m_type->default_node_type())
+                    throw std::invalid_argument("Wrong factor type \"" + p.second->ToString() + "\" for node \"" +
+                                                p.first + "\" in Bayesian network type \"" + m_type->ToString() +
+                                                "\".");
             }
         } else {
             m_node_types.resize(g.num_raw_nodes());
@@ -447,11 +506,11 @@ public:
     void flip_arc_unsafe(const std::string& source, const std::string& target) override { g.flip_arc(source, target); }
 
     bool can_add_arc(const std::string& source, const std::string& target) const override {
-        return g.can_add_arc(source, target) && m_type->can_add_arc(*this, source, target);
+        return g.can_add_arc(source, target) && m_type->can_have_arc(*this, source, target);
     }
 
     bool can_flip_arc(const std::string& source, const std::string& target) const override {
-        return g.can_flip_arc(source, target) && m_type->can_flip_arc(*this, source, target);
+        return g.can_flip_arc(source, target) && m_type->can_have_arc(*this, target, source);
     }
 
     void force_whitelist(const ArcStringVector& arc_whitelist) override {
@@ -464,8 +523,11 @@ public:
                                                 arc.second + " -> " + arc.first +
                                                 " is present"
                                                 " in the Bayesian Network.");
-                } else {
+                } else if (can_add_arc(arc.first, arc.second)) {
                     add_arc_unsafe(arc.first, arc.second);
+                } else {
+                    throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second +
+                                                " not allowed in this Bayesian network.");
                 }
             }
         }
@@ -552,7 +614,8 @@ public:
     void set_node_type(const std::string& node, const std::shared_ptr<FactorType>& new_type) override {
         if (m_type->is_homogeneous()) {
             if (*new_type != *m_type->default_node_type())
-                throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node " + node);
+                throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node \"" + node +
+                                            "\" in Bayesian network type \"" + m_type->ToString() + "\".");
         } else {
             auto node_index = check_index(node);
             auto old_node_type = m_node_types[node_index];
@@ -560,7 +623,8 @@ public:
 
             if (!m_type->compatible_node_type(*this, node)) {
                 m_node_types[node_index] = old_node_type;
-                throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node " + node);
+                throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node \"" + node +
+                                            "\" in Bayesian network type \"" + m_type->ToString() + "\".");
             }
         }
     }
@@ -569,9 +633,10 @@ public:
         if (m_type->is_homogeneous()) {
             for (const auto& p : type_whitelist) {
                 // Check also null
-                if (p.second != m_type->default_node_type())
-                    throw std::invalid_argument("Wrong factor type (" + p.second->ToString() + ") for variable " +
-                                                p.first + " in Bayesian network type: " + m_type->ToString());
+                if (*p.second != *m_type->default_node_type())
+                    throw std::invalid_argument("Wrong factor type \"" + p.second->ToString() + "\" for node \"" +
+                                                p.first + "\" in Bayesian network type \"" + m_type->ToString() +
+                                                "\".");
             }
         } else {
             FactorTypeVector old_data;
@@ -643,7 +708,7 @@ void BNGeneric<DagType>::check_fitted() const {
         for (const auto& nn : nodes()) {
             auto i = check_index(nn);
             if (!m_cpds[i] || !m_cpds[i]->fitted() ||
-                (!m_type->is_homogeneous() && *m_cpds[i]->type() != *m_node_types[i])) {
+                (!m_type->is_homogeneous() && m_cpds[i]->type_ref() != *m_node_types[i])) {
                 if (all_fitted) {
                     err += "Some CPDs are not fitted:\n";
                     all_fitted = false;
@@ -671,7 +736,7 @@ void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
                                             cpd.ToString());
             }
         } else if constexpr (graph::is_conditional_graph_v<DagType>) {
-            if (!this->contains_total_node(ev)) {
+            if (!this->contains_joint_node(ev)) {
                 throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" +
                                             cpd.ToString());
             }
@@ -766,7 +831,7 @@ void BNGeneric<DagType>::fit(const DataFrame& df) {
         auto node_type_ = node_type(nn);
 
         if (!m_cpds[i] || must_construct_cpd(*m_cpds[i], *node_type_, p)) {
-            m_cpds[i] = node_type_->new_factor(nn, p);
+            m_cpds[i] = node_type_->new_factor(*this, nn, p);
             m_cpds[i]->fit(df);
         } else if (!m_cpds[i]->fitted()) {
             m_cpds[i]->fit(df);
@@ -973,7 +1038,7 @@ void __nonderived_bn_setstate__(py::object& self, py::tuple& t) {
         }
     }
 
-    auto cpp_self = self.cast<std::shared_ptr<BNGeneric<DagType>>>();
+    auto cpp_self = self.cast<std::shared_ptr<BNType>>();
 
     if (t[3].cast<bool>()) {
         auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
@@ -1014,17 +1079,50 @@ std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t) {
     return bn;
 }
 
+template <typename DerivedBN>
+std::shared_ptr<DerivedBN> __generic_bn_setstate__(py::tuple& t) {
+    using DagType = typename DerivedBN::DagClass;
+    if (t.size() != 5) throw std::runtime_error("Not valid BayesianNetwork.");
+
+    auto dag = t[0].cast<DagType>();
+    auto type = t[1].cast<std::shared_ptr<BayesianNetworkType>>();
+
+    std::shared_ptr<DerivedBN> bn = [&t, &type, &dag]() {
+        if (type->is_homogeneous()) {
+            return std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag));
+        } else {
+            auto node_types = t[2].cast<FactorTypeVector>();
+            if (node_types.empty()) return std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag));
+
+            if constexpr (std::
+                              is_constructible_v<DerivedBN, std::shared_ptr<FactorType>, DagType&&, FactorTypeVector>) {
+                return std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag), node_types);
+            } else {
+                throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
+            }
+        }
+    }();
+
+    if (t[3].cast<bool>()) {
+        auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
+
+        bn->add_cpds(cpds);
+    }
+
+    return bn;
+}
+
 class ConditionalBayesianNetwork : public clone_inherit<ConditionalBayesianNetwork, BNGeneric<ConditionalDag>> {
 public:
     using clone_inherit<ConditionalBayesianNetwork, BNGeneric<ConditionalDag>>::clone_inherit;
 
     int num_interface_nodes() const override { return this->g.num_interface_nodes(); }
 
-    int num_total_nodes() const override { return this->g.num_total_nodes(); }
+    int num_joint_nodes() const override { return this->g.num_joint_nodes(); }
 
     const std::vector<std::string>& interface_nodes() const override { return this->g.interface_nodes(); }
 
-    const std::vector<std::string>& all_nodes() const override { return this->g.all_nodes(); }
+    const std::vector<std::string>& joint_nodes() const override { return this->g.joint_nodes(); }
 
     int interface_collapsed_index(const std::string& name) const override {
         return this->g.interface_collapsed_index(name);
@@ -1066,7 +1164,7 @@ public:
         return this->g.contains_interface_node(name);
     }
 
-    bool contains_total_node(const std::string& name) const override { return this->g.contains_total_node(name); }
+    bool contains_joint_node(const std::string& name) const override { return this->g.contains_joint_node(name); }
 
     int add_interface_node(const std::string& node) override { return this->g.add_interface_node(node); }
 

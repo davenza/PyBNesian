@@ -2,10 +2,12 @@
 #define PYBNESIAN_MODELS_DISCRETEBN_HPP
 
 #include <models/BayesianNetwork.hpp>
+#include <models/DynamicBayesianNetwork.hpp>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <util/virtual_clone.hpp>
 
 using factors::discrete::DiscreteFactorType, factors::discrete::DiscreteFactor;
+using models::DynamicBayesianNetwork;
 using util::clone_inherit;
 
 namespace models {
@@ -24,6 +26,10 @@ public:
         static DiscreteBNType& ref = *DiscreteBNType::get();
         return ref;
     }
+
+    std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const override;
+    std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
+        const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes) const override;
 
     bool is_homogeneous() const override { return true; }
 

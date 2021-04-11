@@ -29,7 +29,12 @@ public:
         return ref;
     }
 
-    std::shared_ptr<Factor> new_factor(const std::string&, const std::vector<std::string>&) const override;
+    std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
+                                       const std::string&,
+                                       const std::vector<std::string>&) const override;
+    std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
+                                       const std::string&,
+                                       const std::vector<std::string>&) const override;
 
     std::shared_ptr<FactorType> opposite_semiparametric() const override { return nullptr; }
 
@@ -125,7 +130,6 @@ VectorXi discrete_indices(const DataFrame& df,
 struct DiscreteFactor_Params {
     VectorXd logprob;
     VectorXi cardinality;
-    VectorXi strides;
 };
 
 class DiscreteFactor : public Factor {

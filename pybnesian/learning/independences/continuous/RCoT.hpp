@@ -448,6 +448,8 @@ double RCoT::RMultiZ(int x_index, int y_index, VectorType& x, VectorType& y, Mat
     }
 }
 
+using DynamicRCoT = DynamicIndependenceTestAdaptator<RCoT>;
+
 }  // namespace learning::independences::continuous
 
 #endif  // PYBNESIAN_LEARNING_INDEPENDENCES_CONTINUOUS_RCOT_HPP

@@ -34,7 +34,7 @@ public:
     virtual double slogl(const DataFrame& df) const = 0;
     virtual std::shared_ptr<BayesianNetworkType> type() const = 0;
     virtual BayesianNetworkType& type_ref() const = 0;
-    virtual DataFrame sample(int n, unsigned int seed) const = 0;
+    virtual DataFrame sample(int n, unsigned int seed = std::random_device{}()) const = 0;
     virtual py::tuple __getstate__() const = 0;
     virtual void save(std::string name, bool include_cpd = false) const = 0;
     virtual std::string ToString() const = 0;
@@ -61,8 +61,8 @@ public:
             }
         }
 
-        m_static = std::make_shared<BayesianNetwork>(type, static_nodes);
-        m_transition = std::make_shared<ConditionalBayesianNetwork>(type, transition_nodes, static_nodes);
+        m_static = type->new_bn(static_nodes);
+        m_transition = type->new_cbn(transition_nodes, static_nodes);
     }
 
     DynamicBayesianNetwork(const std::vector<std::string>& variables,

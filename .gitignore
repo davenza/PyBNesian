@@ -144,3 +144,5 @@ cython_debug/
 pybnesian/factors/continuous/opencl/CKDE.cl
 # Automatically generated code.
 pybnesian/opencl/opencl_code.hpp
+docs/build
+docs/source/_build

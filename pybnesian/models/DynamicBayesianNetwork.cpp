@@ -34,21 +34,6 @@ Array_ptr new_discrete_array(const std::vector<std::string>& values, int length)
     return out;
 }
 
-std::vector<std::string> conditional_topological_sort(const ConditionalDagBase& dag) {
-    auto top_sort = dag.topological_sort();
-
-    std::vector<std::string> filtered_sort;
-    filtered_sort.reserve(dag.num_nodes());
-
-    for (const auto& v : top_sort) {
-        if (dag.contains_node(v)) {
-            filtered_sort.push_back(v);
-        }
-    }
-
-    return filtered_sort;
-}
-
 void DynamicBayesianNetwork::add_variable(const std::string& name) {
     if (contains_variable(name)) {
         throw std::invalid_argument("Cannot add variable " + name +
@@ -341,7 +326,7 @@ void sample_transition_bn(DataFrame& df,
                           const DynamicBayesianNetwork& dbn,
                           int n,
                           unsigned int seed) {
-    auto top_sort = conditional_topological_sort(dbn.transition_bn().graph());
+    auto top_sort = dbn.transition_bn().graph().topological_sort();
 
     for (int i = dbn.markovian_order(); i < n; ++i) {
         auto evidence_slice = df.slice(i - dbn.markovian_order(), dbn.markovian_order() + 1);

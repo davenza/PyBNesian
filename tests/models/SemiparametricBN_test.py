@@ -125,8 +125,8 @@ def test_fit():
         assert cpd.type() == LinearGaussianCPDType()
 
         assert type(cpd) == LinearGaussianCPD
-        assert cpd.variable == n
-        assert set(cpd.evidence) == set(spbn.parents(n))
+        assert cpd.variable() == n
+        assert set(cpd.evidence()) == set(spbn.parents(n))
 
     spbn.fit(df)
     
@@ -139,7 +139,7 @@ def test_fit():
     spbn.fit(df)
     cpd_b = spbn.cpd('b')
     assert type(cpd_b) == LinearGaussianCPD
-    assert cpd_b.evidence == spbn.parents('b')
+    assert cpd_b.evidence() == spbn.parents('b')
 
     spbn.set_node_type('c', CKDEType())
 
@@ -165,10 +165,10 @@ def test_cpd():
     assert spbn.cpd('c').type() == LinearGaussianCPDType()
     assert spbn.cpd('d').type() == CKDEType()
 
-    assert spbn.cpd('a').fitted
-    assert spbn.cpd('b').fitted
-    assert spbn.cpd('c').fitted
-    assert spbn.cpd('d').fitted
+    assert spbn.cpd('a').fitted()
+    assert spbn.cpd('b').fitted()
+    assert spbn.cpd('c').fitted()
+    assert spbn.cpd('d').fitted()
 
 def test_add_cpds():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')], [('d', CKDEType())])
@@ -183,22 +183,22 @@ def test_add_cpds():
 
     lg = LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)
     ckde = CKDE('d', ['a', 'b', 'c'])
-    assert lg.fitted
-    assert not ckde.fitted
+    assert lg.fitted()
+    assert not ckde.fitted()
 
     spbn.add_cpds([lg, ckde])
 
     with pytest.raises(ValueError) as ex:
-        not spbn.cpd('a').fitted
+        not spbn.cpd('a').fitted()
     assert "CPD of variable \"a\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)
 
-    assert spbn.cpd('b').fitted
+    assert spbn.cpd('b').fitted()
 
     with pytest.raises(ValueError) as ex:
-        not spbn.cpd('c').fitted
+        not spbn.cpd('c').fitted()
     assert "CPD of variable \"c\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)
 
-    assert not spbn.cpd('d').fitted
+    assert not spbn.cpd('d').fitted()
 
 def test_logl():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])

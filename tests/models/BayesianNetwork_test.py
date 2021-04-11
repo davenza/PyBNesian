@@ -230,8 +230,8 @@ def test_bn_fit():
 
     for n in gbn.nodes():
         cpd = gbn.cpd(n)
-        assert cpd.variable == n
-        assert cpd.evidence == gbn.parents(n)
+        assert cpd.variable() == n
+        assert cpd.evidence() == gbn.parents(n)
 
     gbn.fit(df)
     
@@ -243,7 +243,7 @@ def test_bn_fit():
     gbn.fit(df)
 
     cpd_b = gbn.cpd('b')
-    assert cpd_b.evidence == gbn.parents('b')
+    assert cpd_b.evidence() == gbn.parents('b')
 
 def test_add_cpds():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
@@ -269,14 +269,14 @@ def test_add_cpds():
     assert "CPD do not have the model's parent set as evidence" in str(ex.value)
 
     lg = LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)
-    assert lg.fitted
+    assert lg.fitted()
 
     gbn.add_cpds([lg])
 
     cpd_b = gbn.cpd('b')
-    assert cpd_b.variable == 'b'
-    assert cpd_b.evidence == ['a']
-    assert cpd_b.fitted
+    assert cpd_b.variable() == 'b'
+    assert cpd_b.evidence() == ['a']
+    assert cpd_b.fitted()
     assert np.all(cpd_b.beta == np.asarray([2.5, 1.65]))
     assert cpd_b.variance == 4
 

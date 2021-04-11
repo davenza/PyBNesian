@@ -66,16 +66,16 @@ def test_check_max_score():
     arc_op.cache_scores(gbn, bic)
     op = arc_op.find_max(gbn)
 
-    assert np.isclose(op.delta, (bic.local_score_unsafe(gbn, 'd', ['c']) - bic.local_score_unsafe(gbn, 'd')))
+    assert np.isclose(op.delta(), (bic.local_score(gbn, 'd', ['c']) - bic.local_score(gbn, 'd')))
 
     # BIC is decomposable so the best operation is the arc in reverse direction.
-    arc_op.set_arc_blacklist([(op.source, op.target)])
+    arc_op.set_arc_blacklist([(op.source(), op.target())])
     arc_op.cache_scores(gbn, bic)
     
     op2 = arc_op.find_max(gbn)
 
-    assert op.source == op2.target
-    assert op.target == op2.source
+    assert op.source() == op2.target()
+    assert op.target() == op2.source()
     assert (type(op) == type(op2)) and (type(op) == AddArc)
 
 def test_nomax():

@@ -15,12 +15,12 @@ df = util_test.generate_normal_data(SIZE)
 def test_lg_variable():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         cpd = LinearGaussianCPD(variable, evidence)
-        assert cpd.variable == variable
+        assert cpd.variable() == variable
 
 def test_lg_evidence():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
         cpd = LinearGaussianCPD(variable, evidence)
-        assert cpd.evidence == evidence
+        assert cpd.evidence() == evidence
 
 
 def fit_numpy(_df, variable, evidence):
@@ -37,9 +37,9 @@ def test_lg_data_type():
 def test_lg_fit():
     for variable, evidence in [("a", []), ("b", ["a"]), ("c", ["a", "b"]), ("d", ["a", "b", "c"])]:
         cpd = LinearGaussianCPD(variable, evidence)
-        assert not cpd.fitted
+        assert not cpd.fitted()
         cpd.fit(df)
-        assert cpd.fitted
+        assert cpd.fitted()
 
         npbeta, npvar = fit_numpy(df, variable, evidence)
         
@@ -61,9 +61,9 @@ def test_lg_fit_null():
 
     for variable, evidence in [("a", []), ("b", ["a"]), ("c", ["a", "b"]), ("d", ["a", "b", "c"])]:
         cpd = LinearGaussianCPD(variable, evidence)
-        assert not cpd.fitted
+        assert not cpd.fitted()
         cpd.fit(df_null)
-        assert cpd.fitted
+        assert cpd.fitted()
 
         npbeta, npvar = fit_numpy(df_null, variable, evidence)
         

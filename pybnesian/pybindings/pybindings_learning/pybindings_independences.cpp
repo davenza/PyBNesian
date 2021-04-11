@@ -13,7 +13,7 @@ using learning::independences::IndependenceTest, learning::independences::contin
     learning::independences::continuous::KMutualInformation, learning::independences::continuous::RCoT;
 
 using learning::independences::DynamicIndependenceTest, learning::independences::continuous::DynamicLinearCorrelation,
-    learning::independences::continuous::DynamicKMutualInformation;
+    learning::independences::continuous::DynamicKMutualInformation, learning::independences::continuous::DynamicRCoT;
 
 using util::random_seed_arg;
 
@@ -93,32 +93,117 @@ public:
 void pybindings_independence_tests(py::module& root) {
     auto independence_tests = root.def_submodule("independences", "Independence Hypothesis tests.");
 
-    py::class_<IndependenceTest, PyIndependenceTest, std::shared_ptr<IndependenceTest>>(independence_tests,
-                                                                                        "IndependenceTest")
-        .def(py::init<>())
-        .def("pvalue",
-             [](IndependenceTest& self, const std::string& v1, const std::string& v2) { return self.pvalue(v1, v2); })
-        .def("pvalue",
-             [](IndependenceTest& self, const std::string& v1, const std::string& v2, const std::string& cond) {
-                 return self.pvalue(v1, v2, cond);
-             })
-        .def("pvalue",
-             [](IndependenceTest& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
-                 return self.pvalue(v1, v2, cond);
-             })
-        .def("num_variables", &IndependenceTest::num_variables)
-        .def("variable_names", &IndependenceTest::variable_names)
-        .def("name", &IndependenceTest::name)
-        .def("has_variables", py::overload_cast<const std::string&>(&IndependenceTest::has_variables, py::const_))
-        .def("has_variables",
-             py::overload_cast<const std::vector<std::string>&>(&IndependenceTest::has_variables, py::const_));
+    py::class_<IndependenceTest, PyIndependenceTest, std::shared_ptr<IndependenceTest>> indep_test(
+        independence_tests, "IndependenceTest", R"doc(
+The :class:`IndependenceTest` is an abstract class defining an interface for a conditional test of independence.
 
-    py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(independence_tests,
-                                                                                        "LinearCorrelation")
-        .def(py::init<const DataFrame&>());
+An :class:`IndependenceTest` is defined over a set of variables and can calculate the p-value of any conditional test on
+these variables.
+)doc");
+    indep_test
+        .def(py::init<>(), R"doc(
+Initializes an :class:`IndependenceTest`.
+)doc")
+        .def(
+            "pvalue",
+            [](IndependenceTest& self, const std::string& v1, const std::string& v2) { return self.pvalue(v1, v2); },
+            py::arg("x"),
+            py::arg("y"),
+            R"doc(
+Calculates the p-value of the unconditional test of independence :math:`x \perp y`.
 
-    py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(independence_tests,
-                                                                                          "KMutualInformation")
+:param x: A variable name.
+:param y: A variable name.
+:returns: The p-value of the unconditional test of independence :math:`x \perp y`.
+)doc")
+        .def(
+            "pvalue",
+            [](IndependenceTest& self, const std::string& v1, const std::string& v2, const std::string& cond) {
+                return self.pvalue(v1, v2, cond);
+            },
+            py::arg("x"),
+            py::arg("y"),
+            py::arg("z"),
+            R"doc(
+Calculates the p-value of an univariate conditional test of independence :math:`x \perp y \mid z`.
+
+:param x: A variable name.
+:param y: A variable name.
+:param z: A variable name.
+:returns: The p-value of an univariate conditional test of independence :math:`x \perp y \mid z`.
+)doc")
+        .def(
+            "pvalue",
+            [](IndependenceTest& self, const std::string& v1, const std::string& v2, std::vector<std::string>& cond) {
+                return self.pvalue(v1, v2, cond);
+            },
+            py::arg("x"),
+            py::arg("y"),
+            py::arg("z"),
+            R"doc(
+Calculates the p-value of a multivariate conditional test of independence :math:`x \perp y \mid \mathbf{z}`.
+
+:param x: A variable name.
+:param y: A variable name.
+:param z: A list of variable names.
+:returns: The p-value of a multivariate conditional test of independence :math:`x \perp y \mid \mathbf{z}`.
+)doc")
+        .def("num_variables", &IndependenceTest::num_variables, R"doc(
+Gets the number of variables of the :class:`IndependenceTest`.
+
+:returns: Number of variables of the :class:`IndependenceTest`.
+)doc")
+        .def("variable_names", &IndependenceTest::variable_names, R"doc(
+Gets the list of variable names of the :class:`IndependenceTest`.
+
+:returns: List of variable names of the :class:`IndependenceTest`.
+)doc")
+        .def("name", &IndependenceTest::name, py::arg("index"), R"doc(
+Gets the variable name of the index-th variable.
+
+:param index: Index of the variable.
+:returns: Variable name at the ``index`` position.
+)doc");
+
+    {
+        py::options options;
+        options.disable_function_signatures();
+
+        indep_test
+            .def("has_variables",
+                 py::overload_cast<const std::string&>(&IndependenceTest::has_variables, py::const_),
+                 py::arg("variables"))
+            .def("has_variables",
+                 py::overload_cast<const std::vector<std::string>&>(&IndependenceTest::has_variables, py::const_),
+                 py::arg("variables"),
+                 R"doc(
+has_variables(self: pybnesian.learning.independences.IndependenceTest, variables: str or List[str]) -> bool
+
+Checks whether this :class:`IndependenceTest` has the given ``variables``.
+
+:param variables: Name or list of variables.
+:returns: True if the :class:`IndependenceTest` is defined over the set of ``variables``, False otherwise.
+)doc");
+    }
+
+    py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(
+        independence_tests, "LinearCorrelation", R"doc(
+This class implements a partial linear correlation independence test. This independence is only valid for continuous
+data.
+)doc")
+        .def(py::init<const DataFrame&>(), py::arg("df"), R"doc(
+Initializes a :class:`LinearCorrelation` for the continuous variables in the DataFrame ``df``.
+
+:param df: DataFrame on which to calculate the independence tests.
+)doc");
+
+    py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(
+        independence_tests, "KMutualInformation", R"doc(
+This class implements a non-parametric independence test that is based on the estimation of the mutual information
+using k-nearest neighbors. This independence is only implemented for continuous data.
+
+This independence test is based on [CMIknn]_.
+)doc")
         .def(py::init([](DataFrame df, int k, std::optional<unsigned int> seed, int shuffle_neighbors, int samples) {
                  return KMutualInformation(df, k, random_seed_arg(seed), shuffle_neighbors, samples);
              }),
@@ -126,46 +211,170 @@ void pybindings_independence_tests(py::module& root) {
              py::arg("k"),
              py::arg("seed") = std::nullopt,
              py::arg("shuffle_neighbors") = 5,
-             py::arg("samples") = 1000)
-        .def_property("samples", &KMutualInformation::samples, &KMutualInformation::set_samples)
-        .def_property("seed", &KMutualInformation::seed, &KMutualInformation::set_seed)
-        .def("mi", [](KMutualInformation& self, const std::string& x, const std::string& y) { return self.mi(x, y); })
-        .def("mi",
-             [](KMutualInformation& self, const std::string& x, const std::string& y, const std::string& z) {
-                 return self.mi(x, y, z);
-             })
-        .def("mi",
-             [](KMutualInformation& self,
-                const std::string& x,
-                const std::string& y,
-                const std::vector<std::string>& z) { return self.mi(x, y, z); });
+             py::arg("samples") = 1000,
+             R"doc(
+Initializes a :class:`KMutualInformation` for data ``df``. ``k`` is the number of neighbors in the k-nn model used to
+estimate the mutual information.
 
-    py::class_<RCoT, IndependenceTest, std::shared_ptr<RCoT>>(independence_tests, "RCoT")
+This is a permutation independence test, so ``samples`` defines the number of permutations. ``shuffle neighbors``
+(:math:`k_{perm}` in the original paper [CMIknn]_) defines how many neighbors are used to perform the conditional
+permutations.
+
+:param df: DataFrame on which to calculate the independence tests.
+:param k: number of neighbors in the k-nn model used to estimate the mutual information.
+:param seed: A random seed number. If not specified or ``None``, a random seed is generated.
+:param shuffle_neighbors: Number of neighbors used to perform the conditional permutation.
+:param samples: Number of permutations for the :class:`KMutualInformation`.
+)doc")
+        .def(
+            "mi",
+            [](KMutualInformation& self, const std::string& x, const std::string& y) { return self.mi(x, y); },
+            py::arg("x"),
+            py::arg("y"),
+            R"doc(
+Estimates the unconditional mutual information :math:`\text{MI}(x, y)`.
+
+:param x: A variable name.
+:param y: A variable name.
+:returns: The unconditional mutual information :math:`\text{MI}(x, y)`.
+)doc")
+        .def(
+            "mi",
+            [](KMutualInformation& self, const std::string& x, const std::string& y, const std::string& z) {
+                return self.mi(x, y, z);
+            },
+            py::arg("x"),
+            py::arg("y"),
+            py::arg("z"),
+            R"doc(
+Estimates the univariate conditional mutual information :math:`\text{MI}(x, y \mid z)`.
+
+:param x: A variable name.
+:param y: A variable name.
+:param z: A variable name.
+:returns: The univariate conditional mutual information :math:`\text{MI}(x, y \mid z)`.
+)doc")
+        .def(
+            "mi",
+            [](KMutualInformation& self,
+               const std::string& x,
+               const std::string& y,
+               const std::vector<std::string>& z) { return self.mi(x, y, z); },
+            py::arg("x"),
+            py::arg("y"),
+            py::arg("z"),
+            R"doc(
+Estimates the multivariate conditional mutual information :math:`\text{MI}(x, y \mid \mathbf{z})`.
+
+:param x: A variable name.
+:param y: A variable name.
+:param z: A list of variable names.
+:returns: The multivariate conditional mutual information :math:`\text{MI}(x, y \mid \mathbf{z})`.
+)doc");
+
+    py::class_<RCoT, IndependenceTest, std::shared_ptr<RCoT>>(independence_tests, "RCoT", R"doc(
+This class implements a non-parametric independence test called Randomized Conditional Correlation Test (RCoT). This
+method is described in [RCoT]_. This independence is only implemented for continuous data.
+
+This method uses random fourier features and is designed to be a fast non-parametric independence test.
+)doc")
         .def(py::init<const DataFrame&, int, int>(),
              py::arg("df"),
              py::arg("random_fourier_xy") = 5,
-             py::arg("random_fourier_z") = 100);
+             py::arg("random_fourier_z") = 100,
+             R"doc(
+Initializes a :class:`RCoT` for data `df`. The number of random fourier features used for the ``x`` and ``y`` variables
+in :class:`IndependenceTest.pvalue` is ``random_fourier_xy``. The number of random features used for ``z`` is equal
+to ``random_fourier_z``.
 
-    py::class_<DynamicIndependenceTest, std::shared_ptr<DynamicIndependenceTest>>(independence_tests,
-                                                                                  "DynamicIndependenceTest")
-        .def("static_tests", &DynamicIndependenceTest::static_tests, py::return_value_policy::reference_internal)
-        .def(
-            "transition_tests", &DynamicIndependenceTest::transition_tests, py::return_value_policy::reference_internal)
-        .def("variable_names", &DynamicIndependenceTest::variable_names)
-        .def("name", &DynamicIndependenceTest::name)
-        .def("has_variables",
-             py::overload_cast<const std::string&>(&DynamicIndependenceTest::has_variables, py::const_))
-        .def("has_variables",
-             py::overload_cast<const std::vector<std::string>&>(&DynamicIndependenceTest::has_variables, py::const_))
-        .def("num_variables", &DynamicIndependenceTest::num_variables)
-        .def("markovian_order", &DynamicIndependenceTest::markovian_order);
+:param df: DataFrame on which to calculate the independence tests.
+:param random_fourier_xy: Number of random fourier features for the variables of the independence test.
+:param randoum_fourier_z: Number of random fourier features for the conditioning variables of the independence test.
+)doc");
+
+    py::class_<DynamicIndependenceTest, std::shared_ptr<DynamicIndependenceTest>> dynamic_indep_test(
+        independence_tests, "DynamicIndependenceTest", R"doc(
+A :class:`DynamicIndependenceTest` adapts the static :class:`IndependenceTest` to learn dynamic Bayesian networks.
+It generates a static and a transition independence test to learn the static and transition components of the dynamic
+Bayesian network.
+
+The dynamic independence tests are usually implemented using a
+:class:`DynamicDataFrame <pybnesian.dataset.DynamicDataFrame>` with the methods
+:func:`DynamicDataFrame.static_df <pybnesian.dataset.DynamicDataFrame.static_df>` and
+:func:`DynamicDataFrame.transition_df <pybnesian.dataset.DynamicDataFrame.transition_df>`.
+)doc");
+    dynamic_indep_test
+        .def("static_tests", &DynamicIndependenceTest::static_tests, py::return_value_policy::reference_internal, R"doc(
+It returns the static independence test component of the :class:`DynamicIndependenceTest`.
+
+:returns: The static independence test component.
+)doc")
+        .def("transition_tests",
+             &DynamicIndependenceTest::transition_tests,
+             py::return_value_policy::reference_internal,
+             R"doc(
+It returns the transition independence test component of the :class:`DynamicIndependenceTest`.
+
+:returns: The transition independence test component.
+)doc")
+        .def("variable_names", &DynamicIndependenceTest::variable_names, R"doc(
+Gets the list of variable names of the :class:`DynamicIndependenceTest`.
+
+:returns: List of variable names of the :class:`DynamicIndependenceTest`.
+)doc")
+        .def("name", &DynamicIndependenceTest::name, py::arg("index"), R"doc(
+Gets the variable name of the index-th variable.
+
+:param index: Index of the variable.
+:returns: Variable name at the ``index`` position.
+)doc")
+        .def("num_variables", &DynamicIndependenceTest::num_variables, R"doc(
+Gets the number of variables of the :class:`DynamicIndependenceTest`.
+
+:returns: Number of variables of the :class:`DynamicIndependenceTest`.
+)doc")
+        .def("markovian_order", &DynamicIndependenceTest::markovian_order, R"doc(
+Gets the markovian order used in this :class:`DynamicIndependenceTest`.
+
+:returns: Markovian order of the :class:`DynamicIndependenceTest`.
+)doc");
+
+    {
+        py::options options;
+        options.disable_function_signatures();
+
+        dynamic_indep_test
+            .def("has_variables",
+                 py::overload_cast<const std::string&>(&DynamicIndependenceTest::has_variables, py::const_),
+                 py::arg("variables"))
+            .def(
+                "has_variables",
+                py::overload_cast<const std::vector<std::string>&>(&DynamicIndependenceTest::has_variables, py::const_),
+                py::arg("variables"),
+                R"doc(
+has_variables(self: pybnesian.learning.scores.DynamicScore, variables: str or List[str]) -> bool
+
+Checks whether this :class:`DynamicScore` has the given ``variables``.
+
+:param variables: Name or list of variables.
+:returns: True if the :class:`DynamicScore` is defined over the set of ``variables``, False otherwise.
+)doc");
+    }
 
     py::class_<DynamicLinearCorrelation, DynamicIndependenceTest, std::shared_ptr<DynamicLinearCorrelation>>(
-        independence_tests, "DynamicLinearCorrelation", py::multiple_inheritance())
-        .def(py::init<const DynamicDataFrame&>());
+        independence_tests, "DynamicLinearCorrelation", py::multiple_inheritance(), R"doc(
+The dynamic adaptation of the :class:`LinearCorrelation` independence test.
+)doc")
+        .def(py::init<const DynamicDataFrame&>(), py::arg("ddf"), R"doc(
+Initializes a :class:`DynamicLinearCorrelation` with the given :class:`DynamicDataFrame` ``ddf``.
+
+:param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicLinearCorrelation`.
+)doc");
 
     py::class_<DynamicKMutualInformation, DynamicIndependenceTest, std::shared_ptr<DynamicKMutualInformation>>(
-        independence_tests, "DynamicKMutualInformation", py::multiple_inheritance())
+        independence_tests, "DynamicKMutualInformation", py::multiple_inheritance(), R"doc(
+The dynamic adaptation of the :class:`KMutualInformation` independence test.
+)doc")
         .def(py::init([](const DynamicDataFrame& df,
                          int k,
                          std::optional<unsigned int> seed,
@@ -174,9 +383,38 @@ void pybindings_independence_tests(py::module& root) {
                  return DynamicKMutualInformation(
                      df, k, static_cast<unsigned int>(random_seed_arg(seed)), shuffle_neighbors, samples);
              }),
-             py::arg("df"),
+             py::arg("ddf"),
              py::arg("k"),
              py::arg("seed") = std::nullopt,
              py::arg("shuffle_neighbors") = 5,
-             py::arg("samples") = 1000);
+             py::arg("samples") = 1000,
+             R"doc(
+Initializes a :class:`DynamicKMutualInformation` with the given :class:`DynamicDataFrame` ``df``. The ``k``, ``seed``,
+``shuffle_neighbors`` and ``samples`` parameters are passed to the static and transition components of
+:class:`KMutualInformation`.
+
+:param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicKMutualInformation`.
+:param k: number of neighbors in the k-nn model used to estimate the mutual information.
+:param seed: A random seed number. If not specified or ``None``, a random seed is generated.
+:param shuffle_neighbors: Number of neighbors used to perform the conditional permutation.
+:param samples: Number of permutations for the :class:`KMutualInformation`.
+)doc");
+
+    py::class_<DynamicRCoT, DynamicIndependenceTest, std::shared_ptr<DynamicRCoT>>(
+        independence_tests, "DynamicRCoT", py::multiple_inheritance(), R"doc(
+The dynamic adaptation of the :class:`RCoT` independence test.
+)doc")
+        .def(py::init<const DynamicDataFrame&, int, int>(),
+             py::arg("ddf"),
+             py::arg("random_fourier_xy") = 5,
+             py::arg("random_fourier_z") = 100,
+             R"doc(
+Initializes a :class:`DynamicRCoT` with the given :class:`DynamicDataFrame` ``df``. The ``random_fourier_xy`` and
+``random_fourier_z`` parameters are passed to the static and transition components of
+:class:`RCoT`.
+
+:param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicRCoT`.
+:param random_fourier_xy: Number of random fourier features for the variables of the independence test.
+:param randoum_fourier_z: Number of random fourier features for the conditioning variables of the independence test.
+)doc");
 }

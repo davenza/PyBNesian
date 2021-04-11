@@ -2,30 +2,19 @@
 #include <models/GaussianNetwork.hpp>
 #include <models/KDENetwork.hpp>
 #include <models/SemiparametricBN.hpp>
+#include <models/DiscreteBN.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/bge.hpp>
 #include <learning/scores/validated_likelihood.hpp>
 
 using learning::operators::ArcOperatorSet, learning::operators::ChangeNodeTypeSet, learning::operators::OperatorPool;
 using learning::scores::BIC, learning::scores::BGe, learning::scores::ValidatedLikelihood;
-using models::GaussianNetworkType, models::KDENetworkType, models::SemiparametricBNType;
+using models::GaussianNetworkType, models::KDENetworkType, models::SemiparametricBNType, models::DiscreteBNType;
 
 namespace util {
 
-std::shared_ptr<BayesianNetworkType> check_valid_bn_string(const std::string& bn_type) {
-    if (bn_type == "gbn") return GaussianNetworkType::get();
-    if (bn_type == "spbn") return SemiparametricBNType::get();
-    if (bn_type == "kdebn")
-        return KDENetworkType::get();
-    else
-        throw std::invalid_argument("Wrong Bayesian Network type \"" + bn_type +
-                                    "\" specified. The possible alternatives are "
-                                    "\"gbn\" (Gaussian Bayesian networks), \"spbn\" (Semiparametric Bayesian networks)"
-                                    " or \"kdebn\" (KDE Bayesian network).");
-}
-
 std::unique_ptr<Score> check_valid_score(const DataFrame& df,
-                                         BayesianNetworkType& bn_type,
+                                         const BayesianNetworkType& bn_type,
                                          const std::optional<std::string>& score,
                                          int seed,
                                          int num_folds,
@@ -55,7 +44,7 @@ std::unique_ptr<Score> check_valid_score(const DataFrame& df,
     }
 }
 
-std::shared_ptr<OperatorSet> check_valid_operators(BayesianNetworkType& bn_type,
+std::shared_ptr<OperatorSet> check_valid_operators(const BayesianNetworkType& bn_type,
                                                    const std::optional<std::vector<std::string>>& operators,
                                                    const ArcStringVector& arc_blacklist,
                                                    const ArcStringVector& arc_whitelist,

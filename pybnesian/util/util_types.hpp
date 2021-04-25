@@ -1,6 +1,7 @@
 #ifndef PYBNESIAN_UTIL_UTIL_TYPES_HPP
 #define PYBNESIAN_UTIL_UTIL_TYPES_HPP
 
+#include <optional>
 #include <vector>
 #include <factors/factors.hpp>
 #include <graph/graph_types.hpp>

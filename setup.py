@@ -299,6 +299,7 @@ namespace opencl {
 
         # Copy the pyarrow dlls because Windows do not have the concept of RPATH.
         if sys.platform == "win32":
+            import pyarrow as pa
             for lib in pa.get_libraries():
                 import shutil
                 shutil.copyfile(pa.get_library_dirs()[0] + '/' + lib + '.dll',

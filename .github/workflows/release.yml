@@ -35,6 +35,7 @@ jobs:
         pip install wheel twine
           
     - name: Compile inplace
+      run: |
         pip install -e .
     
     - name: Publishing

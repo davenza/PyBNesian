@@ -4,7 +4,7 @@ import sys
 import setuptools
 import os
 
-__version__ = '0.1.0dev0'
+__version__ = '0.1.0'
 
 # https://stackoverflow.com/questions/49266003/setuptools-build-shared-libary-from-c-code-then-build-cython-wrapper-linked
 ext_lib_path = 'lib/libfort'

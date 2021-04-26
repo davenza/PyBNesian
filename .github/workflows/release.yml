@@ -18,5 +18,7 @@ jobs:
     
     - name: Find OpenCL installation
       run: |
-        tree "C:\Program Files (x86)"
-        tree "C:\Program Files"
+        dir "C:\Program Files (x86)"
+        dir "C:\Program Files"
+        tree "C:\Program Files (x86)\Common Files\Intel\OpenCL"
+        

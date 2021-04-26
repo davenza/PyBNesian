@@ -3,6 +3,7 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import os
+import find_opencl
 
 __version__ = '0.1.0'
 
@@ -160,7 +161,14 @@ class BuildExt(build_ext):
         self.library_dirs.extend(pa.get_library_dirs())
 
         if sys.platform == "win32":
-            self.library_dirs.append("C:\\Program Files (x86)\\OCL_SDK_Light\\lib\\x86_64")
+            if "CL_LIBRARY_PATH" in os.environ:
+                cl_library_path = os.environ["CL_LIBRARY_PATH"]
+            else:
+                cl_library_path = find_opencl.find_opencl_library_dir()
+                if cl_library_path is None:
+                    raise RuntimeError("OpenCL library path not found. Set \"CL_LIBRARY_PATH\" environment variable to provide the OpenCL library folder.")
+
+            self.library_dirs.append(cl_library_path)
 
         if not hasattr(self, 'rpath'):
             self.rpath = []
@@ -259,7 +267,14 @@ namespace opencl {
         link_opts = l_opts.get(ct, [])
 
         if sys.platform == "win32":
-            opts.append("/external:IC:\\Program Files (x86)\\OCL_SDK_Light\\include")
+            if "CL_INCLUDE_PATH" in os.environ:
+                cl_include_path = os.environ["CL_INCLUDE_PATH"]
+            else:
+                cl_include_path = find_opencl.find_opencl_include_dir()
+                if cl_include_path is None:
+                    raise RuntimeError("OpenCL include path not found. Set \"CL_INCLUDE_PATH\" environment variable to provide the OpenCL headers folder.")
+
+            opts.append("/external:I" + cl_include_path)
 
         # Include this because the name mangling affects to find the pyarrow functions.
         opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")

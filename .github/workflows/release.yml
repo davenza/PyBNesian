@@ -18,5 +18,6 @@ jobs:
     
     - name: Find OpenCL installation
       run: |
-        dir %ProgramData%
-        tree %ProgramData%\chocolatey
+        echo %ProgramData%
+        echo %ProgramData%\chocolatey
+        tree C:\ProgramData\chocolatey

@@ -18,32 +18,32 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9]
         
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
       
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
     
-      - name: Install OpenCL dependencies
-        run: choco install opencl-intel-cpu-runtime
+    - name: Install OpenCL dependencies
+      run: choco install opencl-intel-cpu-runtime
     
-      - name: Install python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade setuptools
-          pip install wheel twine
+    - name: Install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools
+        pip install wheel twine
           
-      - name: Compile inplace
-          pip install -e .
+    - name: Compile inplace
+        pip install -e .
     
-      - name: Publishing
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run:
-          python setup.py bdist_wheel
-          twine upload --repository testpypi dist/*
+    - name: Publishing
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run:
+        python setup.py bdist_wheel
+        twine upload --repository testpypi dist/*
           
   build_manylinux2010:
     name: Create manylinux2010 wheels.

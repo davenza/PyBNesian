@@ -134,7 +134,7 @@ Usage example
 ===========================
 
 ```python
-from pybnesian.models import GaussianNetwork
+from pybnesian.models import GaussianNetwork, GaussianNetworkType
 from pybnesian.factors.continuous import LinearGaussianCPD
 # Create a GaussianNetwork with 4 nodes and no arcs.
 gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
@@ -237,7 +237,7 @@ loaded_gbn = load('test.pickle')
 
 # Learn the structure using greedy hill-climbing.
 from pybnesian.learning.algorithms import hc
-learned = hc(df)
+learned = hc(df, bn_type=GaussianNetworkType())
 print("Learned arcs: " + str(learned.arcs()))
 
 ```

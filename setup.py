@@ -281,7 +281,7 @@ namespace opencl {
         # opts.append("-DDEBUG")
 
         # This reduces the binary size because it removes the debug symbols. Check strip command to create release builds.
-        # opts.append("-g0")
+        opts.append("-g0")
         if ct == 'unix':
             opts.append("-march=native")
             opts.append("-fdiagnostics-color=always")
@@ -305,14 +305,26 @@ namespace opencl {
                 shutil.copyfile(pa.get_library_dirs()[0] + '/' + lib + '.dll',
                                 path_to_build_folder() + '/' + lib + '.dll')
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setup(
     name='pybnesian',
     version=__version__,
     author='David Atienza',
     author_email='datienza@fi.upm.es',
     url='https://github.com/davenza/PyBNesian',
-    description='A library for Bayesian Networks.',
-    long_description='',
+    description='PyBNesian is a Python package that implements Bayesian networks. PyBNesian allows extending its'
+                'functionality using Python code, so new research can be easily developed.',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Programming Language :: C++",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence"
+    ],
     packages=['pybnesian'],
     ext_modules=ext_modules,
     libraries=ext_libraries,

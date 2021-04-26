@@ -18,6 +18,5 @@ jobs:
     
     - name: Find OpenCL installation
       run: |
-        echo %ProgramData%
-        echo %ProgramData%\chocolatey
-        tree C:\ProgramData\chocolatey
+        dir C:\ProgramData\chocolatey\opencl-intel-cpu-runtime
+        dir C:\ProgramData\chocolatey\opencl-intel-cpu-runtime\tools

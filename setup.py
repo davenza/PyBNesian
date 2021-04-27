@@ -139,7 +139,7 @@ class BuildExt(build_ext):
             c_opts['unix'].extend(darwin_opts)
 
             l_opts['unix'].extend(darwin_opts)
-            l_opts['unix'].extend(opèncl_opts)
+            l_opts['unix'].extend(opencl_opts)
 
         return (c_opts, l_opts)
 

@@ -22,13 +22,12 @@ jobs:
         
     - name: Check directory
       run: |
-        dir .
+        tree .
         
     - name: Unzip SDK
       run: |
-        mkdir OCLSDK
-        7z e lightOCLSDK.zip
+        7z x lightOCLSDK.zip
         
     - name: Check unzip
       run: |
-        tree lightOCLSDK
+        tree .

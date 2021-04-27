@@ -49,7 +49,7 @@ jobs:
         OCL_ROOT: OCLSDK
         DISTUTILS_DEBUG: 1
       run: |
-        python setup.py  bdist_wheel
+        python setup.py -vv bdist_wheel
     
     - name: Publishing
       env:

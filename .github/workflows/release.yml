@@ -49,6 +49,7 @@ jobs:
         OCL_ROOT: OCLSDK
         DISTUTILS_DEBUG: 1
       run: |
+        pip install numpy
         python setup.py -vv bdist_wheel
     
     - name: Publishing

@@ -26,7 +26,8 @@ jobs:
         
     - name: Unzip SDK
       run: |
-        7z x lightOCLSDK.zip
+        mkdir OCLSDK
+        7z x lightOCLSDK.zip -oOCLSDK
         
     - name: Check unzip
       run: |

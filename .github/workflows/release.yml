@@ -10,25 +10,81 @@ jobs:
   build_win:
     name: Create Windows wheels.
     
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
         
     steps:
+    - uses: actions/checkout@v2
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
     
-    - name: Download OCL SDK
+    - name: Download OpenCL SDK
       uses: suisei-cn/actions-download-file@v1
       with:
         url: "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip"
         target: "."
-        
-    - name: Check directory
-      run: |
-        tree .
         
     - name: Unzip SDK
       run: |
         mkdir OCLSDK
         7z x lightOCLSDK.zip -oOCLSDK
         
-    - name: Check unzip
+    - name: Install python dependencies
       run: |
-        tree .
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools
+        pip install wheel twine
+          
+    - name: Compile inplace
+      env:
+        OCL_ROOT: OCLSDK
+      run: |
+        python setup.py bdist_wheel
+    
+    - name: Publishing
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run:
+        python -m twine upload --repository testpypi dist/*
+          
+  build_manylinux2010:
+    name: Create manylinux2010 wheels.
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Build (manylinux2010)
+      uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2010_x86_64
+      with:
+        python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
+        build-requirements: 'pybind11 numpy pyarrow'
+        system-packages: 'opencl-headers ocl-icd ocl-icd-devel'
+        pip-wheel-args: '-w ./dist --no-deps'
+        
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+        
+    - name: Install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools
+        pip install wheel twine
+        
+    - name: Publishing
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run:
+        python -m twine upload --repository testpypi dist/*

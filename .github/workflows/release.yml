@@ -12,13 +12,23 @@ jobs:
     
     runs-on: windows-latest
         
-    steps:    
-    - name: Install OpenCL dependencies
-      run: choco install opencl-intel-cpu-runtime
+    steps:
     
-    - name: Find OpenCL installation
-      run: |
-        dir "C:\Program Files (x86)"
-        dir "C:\Program Files"
-        tree "C:\Program Files (x86)\Common Files\Intel\OpenCL"
+    - name: Download OCL SDK
+      uses: suisei-cn/actions-download-file@v1
+      with:
+        url: "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip"
+        target: "."
         
+    - name: Check directory
+      run: |
+        dir .
+        
+    - name: Unzip SDK
+      run: |
+        mkdir OCLSDK
+        7z e lightOCLSDK.zip -o.\OCLSDK
+        
+    - name: Check unzip
+      run: |
+        tree OCLSDK

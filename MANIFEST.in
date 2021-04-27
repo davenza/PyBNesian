@@ -1,3 +1,4 @@
+include conv_template.py
 include find_opencl.py
 graft lib
 graft pybnesian

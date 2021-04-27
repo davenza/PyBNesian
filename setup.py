@@ -4,7 +4,6 @@ import sys
 import setuptools
 import os
 import find_opencl
-from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.1.0'
 
@@ -186,13 +185,13 @@ class BuildExt(build_ext):
         pa.create_library_symlinks()
 
     def expand_sources(self):
-        from numpy.distutils.conv_template import process_file as process_c_file
+        import conv_template
 
         sources = ['pybnesian/factors/continuous/opencl/CKDE.cl.src']
         
         for source in sources:
             (base, _) = os.path.splitext(source)
-            outstr = process_c_file(source)
+            outstr = conv_template.process_file(source)
             with open(base, 'w') as fid:
                 fid.write(outstr)
 

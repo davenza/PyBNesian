@@ -113,4 +113,4 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         python setup.py sdist
-        twine upload dist/*
+        python -m twine upload --repository testpypi dist/*

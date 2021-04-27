@@ -133,11 +133,11 @@ class BuildExt(build_ext):
             'unix': [],
         }
 
-        # if sys.platform == 'darwin':
-        #     # darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-        #     darwin_opts = ['-framework OpenCL']
-        #     # c_opts['unix'] += darwin_opts
-        #     l_opts['unix'] += darwin_opts
+        if sys.platform == 'darwin':
+            # darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+            darwin_opts = ["-framework", "OpenCL"]
+            # c_opts['unix'] += darwin_opts
+            l_opts['unix'].extend(darwin_opts)
 
         return (c_opts, l_opts)
 
@@ -157,8 +157,6 @@ class BuildExt(build_ext):
             self.libraries = []
         if sys.platform != 'darwin':
             self.libraries.append("OpenCL")
-        else:
-            self.extra_link_args(["-framework", "OpenCL"])
         self.libraries.extend(pa.get_libraries())
         
         if not hasattr(self, 'library_dirs'):

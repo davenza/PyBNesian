@@ -7,14 +7,14 @@ on:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
-  build_win:
-    name: Create Windows wheels.
+  build_win_macos:
+    name: Create Windows and MacOS wheels.
     
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
-        os: [windows-latest]
+        os: [windows-latest, macos-latest]
         python-version: [3.6, 3.7, 3.8, 3.9]
         
     steps:
@@ -26,12 +26,14 @@ jobs:
         python-version: ${{ matrix.python-version }}
     
     - name: Download OpenCL SDK
+      if: matrix.os == 'windows-latest'
       uses: suisei-cn/actions-download-file@v1
       with:
         url: "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip"
         target: "."
         
-    - name: Unzip SDK
+    - name: Unzip OpenCL SDK
+      if: matrix.os == 'windows-latest'
       run: |
         mkdir OCLSDK
         7z x lightOCLSDK.zip -oOCLSDK
@@ -42,7 +44,7 @@ jobs:
         python -m pip install --upgrade setuptools
         pip install wheel twine
           
-    - name: Compile inplace
+    - name: Build wheel
       env:
         OCL_ROOT: OCLSDK
       run: |

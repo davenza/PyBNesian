@@ -27,8 +27,8 @@ jobs:
     - name: Unzip SDK
       run: |
         mkdir OCLSDK
-        7z e lightOCLSDK.zip -o.\OCLSDK
+        7z e lightOCLSDK.zip
         
     - name: Check unzip
       run: |
-        tree OCLSDK
+        tree lightOCLSDK

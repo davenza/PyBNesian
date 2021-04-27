@@ -4,6 +4,7 @@ import sys
 import setuptools
 import os
 import find_opencl
+from numpy.distutils.conv_template import process_file as process_c_file
 
 __version__ = '0.1.0'
 

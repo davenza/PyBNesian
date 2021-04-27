@@ -134,10 +134,12 @@ class BuildExt(build_ext):
         }
 
         if sys.platform == 'darwin':
-            # darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-            darwin_opts = ["-framework", "OpenCL"]
-            # c_opts['unix'] += darwin_opts
+            darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+            opencl_opts = ["-framework", "OpenCL"]
+            c_opts['unix'].extend(darwin_opts)
+
             l_opts['unix'].extend(darwin_opts)
+            l_opts['unix'].extend(opèncl_opts)
 
         return (c_opts, l_opts)
 

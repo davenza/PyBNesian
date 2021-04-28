@@ -459,17 +459,12 @@ std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(const BayesianNetworkBase&
 
     auto delta_ptr = delta.data();
     // TODO: Not checking sorted_idx empty
-    std::sort(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] > delta_ptr[i2]; });
+    auto it_max = std::max_element(
+        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] < delta_ptr[i2]; });
 
-    for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
-        int idx_max = *it;
-        const auto& node = model.collapsed_name(idx_max);
-        auto node_type = model.node_type(node);
-        return std::make_shared<ChangeNodeType>(node, node_type->opposite_semiparametric(), delta(idx_max));
-    }
-
-    return nullptr;
+    const auto& node = model.collapsed_name(*it_max);
+    auto node_type = model.node_type(node);
+    return std::make_shared<ChangeNodeType>(node, node_type->opposite_semiparametric(), delta(*it_max));
 }
 
 std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(const BayesianNetworkBase& model,

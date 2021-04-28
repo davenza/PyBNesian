@@ -388,12 +388,12 @@ G __setstate__(py::tuple&& t) {
 
 template <typename G>
 void save_graph(const G& graph, std::string name) {
-    auto open = py::module::import("io").attr("open");
+    auto open = py::module_::import("io").attr("open");
 
     if (name.size() < 7 || name.substr(name.size() - 7) != ".pickle") name += ".pickle";
 
     auto file = open(name, "wb");
-    py::module::import("pickle").attr("dump")(py::cast(&graph), file, 2);
+    py::module_::import("pickle").attr("dump")(py::cast(&graph), file, 2);
     file.attr("close")();
 }
 

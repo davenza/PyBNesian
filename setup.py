@@ -178,7 +178,11 @@ class BuildExt(build_ext):
             self.rpath = []
 
         if sys.platform == "linux":
-            self.rpath.extend(pa.get_library_dirs())
+            # Use relative RPATH to support out-of-source builds, i.e. pip install .
+            # Check https://man7.org/linux/man-pages/man8/ld.so.8.html for the $ORIGIN syntax
+            self.rpath.append("$ORIGIN/../pyarrow")
+
+            # self.rpath.extend(pa.get_library_dirs())
 
     def create_symlinks(self):
         import pyarrow as pa
@@ -258,6 +262,8 @@ namespace opencl {
             f.write(json)
 
     def build_extensions(self):
+        import pyarrow as pa
+
         self.create_symlinks()
         self.expand_sources()
         self.copy_opencl_code()
@@ -282,6 +288,13 @@ namespace opencl {
 
         # Include this because the name mangling affects to find the pyarrow functions.
         opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")
+
+        for ext in self.extensions:
+            ext.define_macros.append(("PYARROW_VERSION_INFO", pa.__version__))
+
+        # The compiled extension depends on a specific version of pyarrow.
+        self.distribution.install_requires = ['pybind11>=2.6', 'pyarrow=='+pa.__version__, "numpy"],
+        self.distribution.setup_requires = ['pybind11>=2.6', 'pyarrow=='+pa.__version__, "numpy"],
 
         # opts.append("-g")
         # opts.append("-O0")
@@ -318,11 +331,11 @@ namespace opencl {
 
         # Copy the pyarrow dlls because Windows do not have the concept of RPATH.
         if sys.platform == "win32":
-            import pyarrow as pa
             for lib in pa.get_libraries():
                 import shutil
                 shutil.copyfile(pa.get_library_dirs()[0] + '/' + lib + '.dll',
                                 path_to_build_folder() + '/' + lib + '.dll')
+
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()

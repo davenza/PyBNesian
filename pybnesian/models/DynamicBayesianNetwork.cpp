@@ -486,7 +486,7 @@ void DynamicBayesianNetwork::save(std::string name, bool include_cpd) const {
     if (name.size() < 7 || name.substr(name.size() - 7) != ".pickle") name += ".pickle";
 
     auto file = open(name, "wb");
-    py::module::import("pickle").attr("dump")(py::cast(this), file, 2);
+    py::module_::import("pickle").attr("dump")(py::cast(this), file, 2);
     file.attr("close")();
 }
 

@@ -12,7 +12,7 @@ jobs:
     
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
         python-version: [3.6, 3.7, 3.8, 3.9]
@@ -42,27 +42,30 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
-        pip install wheel twine
+        python -m pip install wheel
           
     - name: Build wheel
       env:
         OCL_ROOT: OCLSDK
-        DISTUTILS_DEBUG: 1
       run: |
-        pip install numpy
-        python setup.py -vv bdist_wheel
+        python setup.py bdist_wheel
+
+    - name: Cache wheel
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ matrix.os }}_${{ matrix.python-version }}_wheel
+        path: dist/*
     
-    - name: Publishing
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run:
-        python -m twine upload --repository testpypi dist/*
           
   build_manylinux2010:
     name: Create manylinux2010 wheels.
     
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     
     steps:
     - uses: actions/checkout@v2
@@ -70,28 +73,20 @@ jobs:
     - name: Build (manylinux2010)
       uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2010_x86_64
       with:
-        python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
+        python-versions: ${{ matrix.python-version }}
         build-requirements: 'pybind11 numpy pyarrow'
         system-packages: 'opencl-headers ocl-icd ocl-icd-devel'
         pip-wheel-args: '-w ./dist --no-deps'
-        
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
-        
-    - name: Install python dependencies
+
+    - name: Retrieve Python version
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools
-        pip install wheel twine
-        
-    - name: Publishing
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run:
-        python -m twine upload --repository testpypi dist/*-manylinux2010*.whl
+        echo "PYVERSION=$(echo ${{ matrix.python-version }} | sed -r 's/.*cp([0-9])([0-9]+).*/\1.\2/')" >> $GITHUB_ENV
+
+    - name: Cache wheel
+      uses: actions/upload-artifact@v2
+      with:
+        name: ubuntu-latest_${{ env.PYVERSION }}_wheel
+        path: dist/*-manylinux2010*.whl
         
   sdist:
     name: Create source release
@@ -106,15 +101,68 @@ jobs:
       with:
         python-version: 3.8
 
+    - name: Create source distribution
+      run: |
+        python setup.py sdist
+
+    - name: Cache source distribution
+      uses: actions/upload-artifact@v2
+      with:
+        name: source_distribution
+        path: dist/*
+        
+  publish:
+    name: Publish the package to PyPi
+    needs: [build_win_macos, build_manylinux2010, sdist]
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        source: [false]
+        include:
+          - os: ubuntu-latest
+            python-version: 3.8
+            source: true
+
+    steps:
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    
     - name: Install python dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
-        pip install wheel twine
-    - name: Publishing
+        python -m pip install twine
+    
+    - name: Download source distribution
+      if: ${{ matrix.source == true }}
+      uses: actions/download-artifact@v2
+      with:
+        name: source_distribution
+
+    - name: Publish source distribution
+      if: ${{ matrix.source == true }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        python setup.py sdist
-        python -m twine upload --repository testpypi dist/*
+        python -m twine upload --repository testpypi *.tar.gz
+
+    - name: Download wheel
+      if: ${{ matrix.source == false }}
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ matrix.os }}_${{ matrix.python-version }}_wheel
+
+    - name: Publish wheel
+      if: ${{ matrix.source == false }}
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        python -m twine upload --repository testpypi *.whl

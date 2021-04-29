@@ -7,15 +7,20 @@ import find_opencl
 
 __version__ = '0.1.0'
 
+if sys.platform == 'darwin':
+    darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+else:
+    darwin_opts = []
+
 # https://stackoverflow.com/questions/49266003/setuptools-build-shared-libary-from-c-code-then-build-cython-wrapper-linked
 ext_lib_path = 'lib/libfort'
 sources = ['fort.c']
-ext_libraries = [['fort', {
+ext_libraries = [('fort', {
                'sources': [os.path.join(ext_lib_path, src) for src in sources],
                'include_dirs': [ext_lib_path],
-               'extra_compile_args': ['-D_GLIBCXX_USE_CXX11_ABI=0']
-               }
-]]
+               'cflags': ['-D_GLIBCXX_USE_CXX11_ABI=0'] + darwin_opts
+               })
+]
 
 ext_modules = [
     Extension(
@@ -133,7 +138,6 @@ class BuildExt(build_ext):
         }
 
         if sys.platform == 'darwin':
-            darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
             opencl_opts = ["-framework", "OpenCL"]
             c_opts['unix'].extend(darwin_opts)
 
@@ -182,7 +186,8 @@ class BuildExt(build_ext):
             # Check https://man7.org/linux/man-pages/man8/ld.so.8.html for the $ORIGIN syntax
             self.rpath.append("$ORIGIN/../pyarrow")
 
-            # self.rpath.extend(pa.get_library_dirs())
+            # Use absolute path so auditwheel and develop builds can find pyarrow.
+            self.rpath.extend(pa.get_library_dirs())
 
     def create_symlinks(self):
         import pyarrow as pa
@@ -326,6 +331,13 @@ namespace opencl {
         for ext in self.extensions:
             ext.extra_compile_args.extend(opts)
             ext.extra_link_args.extend(link_opts)
+
+        # https://stackoverflow.com/questions/37752901/dylib-built-on-ci-cant-be-loaded
+        # Create the RPATH for MacOSX
+        if sys.platform == "darwin":
+            for ext in self.extensions:
+                ext.extra_link_args.append("-Wl,-rpath,@loader_path/../pyarrow")
+                ext.extra_link_args.append("-Wl,-rpath," + pa.get_library_dirs()[0])
 
         build_ext.build_extensions(self)
 

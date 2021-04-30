@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/pybnesian/badge/?version=latest)](https://pybnesian.readthedocs.io/en/latest/?badge=latest)
+
 # PyBNesian
 
 - `PyBNesian` is a Python package that implements Bayesian networks. Currently, it is mainly dedicated to learning Bayesian networks.

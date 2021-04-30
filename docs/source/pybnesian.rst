@@ -7,11 +7,9 @@ PyBNesian
 Dependencies
 ============
 
-- Python 3.x.
-- C++17 compatible compiler.
-- OpenCL 1.2 headers/library available.
+- Python 3.6, 3.7, 3.8 and 3.9.
 
-The library has been tested on Ubuntu 16.04/20.04, but should be compatible with other operating systems.
+The library has been tested on Ubuntu 16.04/20.04 and Windows 10, but should be compatible with other operating systems.
 
 Libraries
 ---------
@@ -19,21 +17,56 @@ Libraries
 The library depends on `NumPy <https://numpy.org/>`_, `Apache Arrow`_, and
 `pybind11 <https://github.com/pybind/pybind11>`_.
 
-Installation
-============
+Building PyBNesian requires linking to `Apache Arrow`_. Therefore, even though the library is compatible with
+``pyarrow>=3.0`` each compiled binary is compatible with a specific ``pyarrow`` version. The pip repository provides
+compiled binaries for all the major operating systems (Linux, Windows, Mac OS X) targeting the last ``pyarrow`` version.
 
-PyBNesian is not uploaded to PyPI right now, but you can still install it with pip:
+If you need a different version of ``pyarrow`` you will have to build PyBNesian from source. For example, if you need to
+use a ``pyarrow==3.0`` with PyBNesian, first install the required version of ``pyarrow``:
 
 .. code-block:: bash
 
-    pip install git+https://github.com/davenza/PyBNesian
+    pip install pyarrow==3.0.0
+
+Then, proceed with the `Building`_ steps.
+
+Installation
+============
+
+PyBNesian can be installed with pip:
+
+.. code-block:: bash
+
+    pip install pybnesian
+
+Build from Source
+=================
+
+Prerequisites
+-------------
+
+- Python 3.6, 3.7, 3.8 or 3.9.
+- C++17 compatible compiler.
+- OpenCL 1.2 headers/library available.
 
 If needed you can select a C++ compiler by setting the environment variable `CC`. For example, in Ubuntu, we can use
-Clang 11 with the following command before installing `PyBNesian`:
+Clang 11 with the following command before installing PyBNesian:
 
 .. code-block:: bash
 
     export CC=clang-11
+
+Building
+--------
+
+Clone the repository:
+
+.. code-block:: bash
+
+    git clone https://github.com/davenza/PyBNesian.git
+    cd PyBNesian
+    git checkout v0.1.0 # You can checkout a specific version if you want
+    python setup.py install
 
 Testing
 =======

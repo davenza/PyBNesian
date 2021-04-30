@@ -243,41 +243,54 @@ print("Learned arcs: " + str(learned.arcs()))
 ```
 
 Dependencies
-==========================
+============
 
-- Python 3.x.
-- C++17 compatible compiler.
-- OpenCL 1.2 headers available.
+- Python 3.6, 3.7, 3.8 and 3.9.
 
-The library has been tested on Ubuntu 16.04/20.04, but should be compatible with other operating systems.
+The library has been tested on Ubuntu 16.04/20.04 and Windows 10, but should be compatible with other operating systems.
 
 Libraries
----------------
+---------
 
-The library depends on [NumPy](https://numpy.org/), [Apache Arrow](https://arrow.apache.org/), [pybind11](https://github.com/pybind/pybind11).
+The library depends on [NumPy](https://numpy.org/), [Apache Arrow](https://arrow.apache.org/), and
+[pybind11](https://github.com/pybind/pybind11).
 
 Installation
-==========================
+============
 
-The installation requires a Python interpreter with at least `numpy`  installed. Install it first:
+PyBNesian can be installed with pip:
 
-``
-pip install numpy
-``
+```
+pip install pybnesian
+```
+Build from Source
+=================
 
-Then, you can install `PyBNesian`.
+Prerequisites
+-------------
 
-`PyBNesian` is not uploaded to PyPI right now, but you can still install it with `pip`:
+- Python 3.6, 3.7, 3.8 or 3.9.
+- C++17 compatible compiler.
+- OpenCL 1.2 headers/library available.
 
-``
-pip install git+https://github.com/davenza/PyBNesian
-``
+If needed you can select a C++ compiler by setting the environment variable `CC`. For example, in Ubuntu, we can use
+Clang 11 with the following command before installing PyBNesian:
 
-If needed you can select a C++ compiler by setting the environment variable `CC`. For example, in Ubuntu, we can use Clang 11 with the following command before installing `PyBNesian`:
-
-``
+```
 export CC=clang-11
-``
+```
+
+Building
+--------
+
+Clone the repository:
+
+```
+git clone https://github.com/davenza/PyBNesian.git
+cd PyBNesian
+git checkout v0.1.0 # You can checkout a specific version if you want
+python setup.py install
+```
 
 Testing
 =========================

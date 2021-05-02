@@ -3,10 +3,10 @@
 
 #include <models/BayesianNetwork.hpp>
 #include <models/DynamicBayesianNetwork.hpp>
-#include <factors/discrete/DiscreteFactor.hpp>
+#include <factors/discrete/DiscreteCPD.hpp>
 #include <util/virtual_clone.hpp>
 
-using factors::discrete::DiscreteFactorType, factors::discrete::DiscreteFactor;
+using factors::discrete::DiscreteFactorType, factors::discrete::DiscreteCPD;
 using models::DynamicBayesianNetwork;
 using util::clone_inherit;
 

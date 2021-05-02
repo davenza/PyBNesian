@@ -1861,7 +1861,7 @@ This :class:`BayesianNetworkType` represents a KDE Bayesian network: homogeneous
 
     py::class_<DiscreteBNType, BayesianNetworkType, std::shared_ptr<DiscreteBNType>>(models, "DiscreteBNType", R"doc(
 This :class:`BayesianNetworkType` represents a discrete Bayesian network: homogeneous with
-:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` factors.
+:class:`DiscreteCPD <pybnesian.factors.discrete.DiscreteCPD>` factors.
 )doc")
         .def(py::init(&DiscreteBNType::get))
         .def(py::pickle([](const DiscreteBNType& self) { return self.__getstate__(); },

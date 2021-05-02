@@ -3,23 +3,23 @@
 #include <pybind11/eigen.h>
 #include <pybindings/pybindings_learning/pybindings_mle.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
-#include <factors/discrete/DiscreteFactor.hpp>
+#include <factors/discrete/DiscreteCPD.hpp>
 #include <learning/parameters/mle_base.hpp>
 #include <learning/parameters/mle_LinearGaussianCPD.hpp>
 
 namespace py = pybind11;
 
 using factors::continuous::LinearGaussianCPD;
-using factors::discrete::DiscreteFactor;
+using factors::discrete::DiscreteCPD;
 using learning::parameters::MLE;
 
-DiscreteFactor::ParamsClass numpy_to_discrete_params(
+DiscreteCPD::ParamsClass numpy_to_discrete_params(
     py::array_t<double, py::array::f_style | py::array::forcecast> logprob) {
     auto size = logprob.size();
     auto info = logprob.request();
     double* ptr = static_cast<double*>(info.ptr);
 
-    DiscreteFactor::ParamsClass params{VectorXd(logprob.size()), VectorXi(logprob.ndim())};
+    DiscreteCPD::ParamsClass params{VectorXd(logprob.size()), VectorXi(logprob.ndim())};
 
     std::copy(ptr, ptr + size, params.logprob.data());
     std::copy(logprob.shape(), logprob.shape() + logprob.ndim(), params.cardinality.data());
@@ -94,13 +94,13 @@ given ``variable`` and ``evidence``. The parameters are estimated with maximum l
 :param evidence: Evidence of the :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
 )doc");
 
-    py::class_<DiscreteFactor::ParamsClass>(parameters, "DiscreteFactorParams")
+    py::class_<DiscreteCPD::ParamsClass>(parameters, "DiscreteFactorParams")
         .def(py::init(&numpy_to_discrete_params), py::arg("logprob"), R"doc(
 Initializes :class:`DiscreteFactorParams` with a given ``logprob`` (see :attr:`DiscreteFactorParams.logprob`).
 )doc")
         .def_property(
             "logprob",
-            [](DiscreteFactor::ParamsClass& self) {
+            [](DiscreteCPD::ParamsClass& self) {
                 if (self.logprob.rows() > 0) {
                     std::vector<size_t> shape, strides;
                     shape.reserve(self.cardinality.rows());
@@ -124,7 +124,7 @@ Initializes :class:`DiscreteFactorParams` with a given ``logprob`` (see :attr:`D
                     return py::array_t<double>{};
                 }
             },
-            [](DiscreteFactor::ParamsClass& self,
+            [](DiscreteCPD::ParamsClass& self,
                py::array_t<double, py::array::f_style | py::array::forcecast> logprob) {
                 auto new_logprob = numpy_to_discrete_params(logprob);
                 self.logprob = std::move(new_logprob.logprob);
@@ -139,7 +139,7 @@ Each dimension have a shape equal to the cardinality of the corresponding variab
 to the log-probability of the assignments for all the variables.
 
 For example, if we are modelling the parameters for the
-:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` of a variable with two evidence variables:
+:class:`DiscreteCPD <pybnesian.factors.discrete.DiscreteCPD>` of a variable with two evidence variables:
 
 .. math::
 
@@ -168,8 +168,8 @@ As logprob defines a conditional probability table, the sum of conditional proba
     >>> assert np.all(np.isclose(ss, np.ones(2)))
 )doc");
 
-    py::class_<MLE<DiscreteFactor>>(parameters, "MLEDiscreteFactor", R"doc(
-Maximum Likelihood Estimator (MLE) for :class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>`.
+    py::class_<MLE<DiscreteCPD>>(parameters, "MLEDiscreteCPD", R"doc(
+Maximum Likelihood Estimator (MLE) for :class:`DiscreteCPD <pybnesian.factors.discrete.DiscreteCPD>`.
 
 This class is created using the function :func:`MLE`.
 
@@ -182,7 +182,7 @@ This class is created using the function :func:`MLE`.
 )doc")
         .def(
             "estimate",
-            [](MLE<DiscreteFactor> self, const DataFrame& df, std::string var, std::vector<std::string> evidence) {
+            [](MLE<DiscreteCPD> self, const DataFrame& df, std::string var, std::vector<std::string> evidence) {
                 return self.estimate(df, var, evidence);
             },
             py::return_value_policy::take_ownership,
@@ -190,11 +190,11 @@ This class is created using the function :func:`MLE`.
             py::arg("variable"),
             py::arg("evidence"),
             R"doc(
-Estimate the parameters of a :class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` with the
+Estimate the parameters of a :class:`DiscreteCPD <pybnesian.factors.discrete.DiscreteCPD>` with the
 given ``variable`` and ``evidence``. The parameters are estimated with maximum likelihood estimation on the data ``df``.
 
 :param df: DataFrame to estimate the parameters.
-:param variable: Variable of the :class:`DiscreteFactor <pybnesian.factors.continuous.DiscreteFactor>`.
-:param evidence: Evidence of the :class:`DiscreteFactor <pybnesian.factors.continuous.DiscreteFactor>`.
+:param variable: Variable of the :class:`DiscreteCPD <pybnesian.factors.continuous.DiscreteCPD>`.
+:param evidence: Evidence of the :class:`DiscreteCPD <pybnesian.factors.continuous.DiscreteCPD>`.
 )doc");
 }

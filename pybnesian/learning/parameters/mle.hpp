@@ -3,6 +3,6 @@
 
 #include <learning/parameters/mle_base.hpp>
 #include <learning/parameters/mle_LinearGaussianCPD.hpp>
-#include <learning/parameters/mle_DiscreteFactor.hpp>
+#include <learning/parameters/mle_DiscreteCPD.hpp>
 
 #endif  // PYBNESIAN_LEARNING_PARAMETERS_MLE_HPP

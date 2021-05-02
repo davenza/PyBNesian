@@ -18,7 +18,7 @@ def ckde_bytes():
 
 @pytest.fixture
 def discrete_bytes():
-    discrete = DiscreteFactor("c", ["a", "b"])
+    discrete = DiscreteCPD("c", ["a", "b"])
     return pickle.dumps(discrete)
 
 class NewType(FactorType):
@@ -162,7 +162,7 @@ def ckde_fitted_bytes():
 
 @pytest.fixture
 def discrete_fitted_bytes():
-    discrete = DiscreteFactor("c", ["a", "b"])
+    discrete = DiscreteCPD("c", ["a", "b"])
 
     data = pd.DataFrame({'a': ["a1", "a2", "a1", "a2", "a2", "a2", "a2", "a2"], 
                          'b': ["b1", "b1", "b1", "b1", "b1", "b2", "b1", "b2"],

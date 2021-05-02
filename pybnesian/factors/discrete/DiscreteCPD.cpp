@@ -1,6 +1,6 @@
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
-#include <factors/discrete/DiscreteFactor.hpp>
+#include <factors/discrete/DiscreteCPD.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <learning/parameters/mle_base.hpp>
 #include <util/math_constants.hpp>
@@ -18,13 +18,13 @@ namespace factors::discrete {
 std::shared_ptr<ConditionalFactor> DiscreteFactorType::new_cfactor(const BayesianNetworkBase&,
                                                                    const std::string& variable,
                                                                    const std::vector<std::string>& evidence) const {
-    return std::make_shared<DiscreteFactor>(variable, evidence);
+    return std::make_shared<DiscreteCPD>(variable, evidence);
 }
 
 std::shared_ptr<ConditionalFactor> DiscreteFactorType::new_cfactor(const ConditionalBayesianNetworkBase&,
                                                                    const std::string& variable,
                                                                    const std::vector<std::string>& evidence) const {
-    return std::make_shared<DiscreteFactor>(variable, evidence);
+    return std::make_shared<DiscreteCPD>(variable, evidence);
 }
 
 void sum_to_discrete_indices_null(VectorXi& accum_indices,
@@ -78,8 +78,8 @@ VectorXi discrete_indices(const DataFrame& df,
         return discrete_indices<true>(df, variable, evidence, strides);
 }
 
-void DiscreteFactor::fit(const DataFrame& df) {
-    MLE<DiscreteFactor> mle;
+void DiscreteCPD::fit(const DataFrame& df) {
+    MLE<DiscreteCPD> mle;
 
     auto params = mle.estimate(df, variable(), evidence());
 
@@ -138,7 +138,7 @@ void check_domain_variable(const DataFrame& df,
     }
 }
 
-void DiscreteFactor::check_equal_domain(const DataFrame& df) const {
+void DiscreteCPD::check_equal_domain(const DataFrame& df) const {
     check_domain_variable(df, variable(), m_variable_values);
     int i = 0;
     for (auto it = evidence().begin(); it != evidence().end(); ++it, ++i) {
@@ -146,7 +146,7 @@ void DiscreteFactor::check_equal_domain(const DataFrame& df) const {
     }
 }
 
-VectorXd DiscreteFactor::_logl_null(const DataFrame& df) const {
+VectorXd DiscreteCPD::_logl_null(const DataFrame& df) const {
     VectorXi indices = discrete_indices<true>(df);
 
     auto evidence_pair = std::make_pair(evidence().begin(), evidence().end());
@@ -164,7 +164,7 @@ VectorXd DiscreteFactor::_logl_null(const DataFrame& df) const {
     return res;
 }
 
-VectorXd DiscreteFactor::_logl(const DataFrame& df) const {
+VectorXd DiscreteCPD::_logl(const DataFrame& df) const {
     VectorXi indices = discrete_indices<false>(df);
 
     VectorXd res(df->num_rows());
@@ -176,7 +176,7 @@ VectorXd DiscreteFactor::_logl(const DataFrame& df) const {
     return res;
 }
 
-VectorXd DiscreteFactor::logl(const DataFrame& df) const {
+VectorXd DiscreteCPD::logl(const DataFrame& df) const {
     check_fitted();
     auto evidence_pair = std::make_pair(evidence().begin(), evidence().end());
     bool contains_null = df.null_count(variable(), evidence_pair) > 0;
@@ -188,7 +188,7 @@ VectorXd DiscreteFactor::logl(const DataFrame& df) const {
     }
 }
 
-double DiscreteFactor::_slogl_null(const DataFrame& df) const {
+double DiscreteCPD::_slogl_null(const DataFrame& df) const {
     VectorXi indices = discrete_indices<true>(df);
 
     auto evidence_pair = std::make_pair(evidence().begin(), evidence().end());
@@ -203,7 +203,7 @@ double DiscreteFactor::_slogl_null(const DataFrame& df) const {
     return res;
 }
 
-double DiscreteFactor::_slogl(const DataFrame& df) const {
+double DiscreteCPD::_slogl(const DataFrame& df) const {
     VectorXi indices = discrete_indices<false>(df);
 
     double res = 0;
@@ -215,7 +215,7 @@ double DiscreteFactor::_slogl(const DataFrame& df) const {
     return res;
 }
 
-double DiscreteFactor::slogl(const DataFrame& df) const {
+double DiscreteCPD::slogl(const DataFrame& df) const {
     check_fitted();
     auto evidence_pair = std::make_pair(evidence().begin(), evidence().end());
     bool contains_null = df.null_count(variable(), evidence_pair) > 0;
@@ -227,7 +227,7 @@ double DiscreteFactor::slogl(const DataFrame& df) const {
     }
 }
 
-Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, unsigned int seed) const {
+Array_ptr DiscreteCPD::sample(int n, const DataFrame& evidence_values, unsigned int seed) const {
     if (n < 0) {
         throw std::invalid_argument("n should be a non-negative number");
     }
@@ -263,12 +263,12 @@ Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, unsign
     return std::make_shared<arrow::DictionaryArray>(type, indices, dictionary);
 }
 
-std::string DiscreteFactor::ToString() const {
+std::string DiscreteCPD::ToString() const {
     std::stringstream stream;
     stream << std::setprecision(3);
     if (!evidence().empty()) {
         const auto& e = evidence();
-        stream << "[DiscreteFactor] P(" << variable() << " | " << e[0];
+        stream << "[DiscreteCPD] P(" << variable() << " | " << e[0];
 
         for (size_t i = 1; i < e.size(); ++i) {
             stream << ", " << e[i];
@@ -310,7 +310,7 @@ std::string DiscreteFactor::ToString() const {
             stream << " not fitted.";
         }
     } else {
-        stream << "[DiscreteFactor] P(" << variable() << ")";
+        stream << "[DiscreteCPD] P(" << variable() << ")";
 
         if (m_fitted) {
             stream << std::endl;
@@ -334,7 +334,7 @@ std::string DiscreteFactor::ToString() const {
     return stream.str();
 }
 
-py::tuple DiscreteFactor::__getstate__() const {
+py::tuple DiscreteCPD::__getstate__() const {
     std::vector<std::string> variable_values;
     std::vector<std::vector<std::string>> evidence_values;
     VectorXd logprob;
@@ -348,10 +348,10 @@ py::tuple DiscreteFactor::__getstate__() const {
     return py::make_tuple(variable(), evidence(), m_fitted, variable_values, evidence_values, logprob);
 }
 
-DiscreteFactor DiscreteFactor::__setstate__(py::tuple& t) {
-    if (t.size() != 6) throw std::runtime_error("Not valid DiscreteFactor.");
+DiscreteCPD DiscreteCPD::__setstate__(py::tuple& t) {
+    if (t.size() != 6) throw std::runtime_error("Not valid DiscreteCPD.");
 
-    DiscreteFactor dist(t[0].cast<std::string>(), t[1].cast<std::vector<std::string>>());
+    DiscreteCPD dist(t[0].cast<std::string>(), t[1].cast<std::vector<std::string>>());
 
     dist.m_fitted = t[2].cast<bool>();
 

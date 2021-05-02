@@ -1,4 +1,4 @@
-#include <learning/parameters/mle_DiscreteFactor.hpp>
+#include <learning/parameters/mle_DiscreteCPD.hpp>
 
 namespace learning::parameters {
 
@@ -20,7 +20,7 @@ VectorXd _joint_counts(const DataFrame& df,
     return counts;
 }
 
-typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
+typename DiscreteCPD::ParamsClass _fit(const DataFrame& df,
                                           const std::string& variable,
                                           const std::vector<std::string>& evidence) {
     auto num_variables = evidence.size() + 1;
@@ -65,18 +65,18 @@ typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
         }
     }
 
-    return typename DiscreteFactor::ParamsClass{/*.logprob = */ logprob,
+    return typename DiscreteCPD::ParamsClass{/*.logprob = */ logprob,
                                                 /*.cardinality = */ cardinality};
 }
 
 template <>
-typename DiscreteFactor::ParamsClass MLE<DiscreteFactor>::estimate(const DataFrame& df,
+typename DiscreteCPD::ParamsClass MLE<DiscreteCPD>::estimate(const DataFrame& df,
                                                                    const std::string& variable,
                                                                    const std::vector<std::string>& evidence) {
     auto type = df.same_type(variable, evidence);
 
     if (type->id() != Type::DICTIONARY) {
-        throw py::value_error("Wrong data type to fit DiscreteFactor. Categorical data is expected.");
+        throw py::value_error("Wrong data type to fit DiscreteCPD. Categorical data is expected.");
     }
 
     return _fit(df, variable, evidence);

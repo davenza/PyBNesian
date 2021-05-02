@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_FACTORS_DISCRETE_DISCRETEFACTOR_HPP
-#define PYBNESIAN_FACTORS_DISCRETE_DISCRETEFACTOR_HPP
+#ifndef PYBNESIAN_FACTORS_DISCRETE_DISCRETECPD_HPP
+#define PYBNESIAN_FACTORS_DISCRETE_DISCRETECPD_HPP
 
 #include <random>
 #include <dataset/dataset.hpp>
@@ -132,12 +132,12 @@ struct DiscreteFactor_Params {
     VectorXi cardinality;
 };
 
-class DiscreteFactor : public ConditionalFactor {
+class DiscreteCPD : public ConditionalFactor {
 public:
     using ParamsClass = DiscreteFactor_Params;
 
-    DiscreteFactor() = default;
-    DiscreteFactor(std::string variable, std::vector<std::string> evidence)
+    DiscreteCPD() = default;
+    DiscreteCPD(std::string variable, std::vector<std::string> evidence)
         : ConditionalFactor(variable, evidence),
           m_variable_values(),
           m_evidence_values(),
@@ -194,12 +194,12 @@ public:
                      unsigned int seed = std::random_device{}()) const override;
 
     py::tuple __getstate__() const override;
-    static DiscreteFactor __setstate__(py::tuple& t);
-    static DiscreteFactor __setstate__(py::tuple&& t) { return __setstate__(t); }
+    static DiscreteCPD __setstate__(py::tuple& t);
+    static DiscreteCPD __setstate__(py::tuple&& t) { return __setstate__(t); }
 
 private:
     void check_fitted() const {
-        if (!fitted()) throw std::invalid_argument("DiscreteFactor factor not fitted.");
+        if (!fitted()) throw std::invalid_argument("DiscreteCPD factor not fitted.");
     }
 
     VectorXd _logl(const DataFrame& df) const;
@@ -219,7 +219,7 @@ private:
 };
 
 template <typename ArrowType>
-Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values, unsigned int seed) const {
+Array_ptr DiscreteCPD::sample_indices(int n, const DataFrame& evidence_values, unsigned int seed) const {
     int parent_configurations = m_logprob.rows() / m_variable_values.size();
     VectorXd accum_prob(m_logprob.rows());
 
@@ -288,4 +288,4 @@ Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values
 
 }  // namespace factors::discrete
 
-#endif  // PYBNESIAN_FACTORS_DISCRETE_DISCRETEFACTOR_HPP
+#endif  // PYBNESIAN_FACTORS_DISCRETE_DISCRETECPD_HPP

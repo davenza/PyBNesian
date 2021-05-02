@@ -183,13 +183,13 @@ std::unordered_map<std::string, std::shared_ptr<arrow::DataType>> DynamicBayesia
 std::vector<std::string> discretefactor_possible_values(const DynamicBayesianNetwork& dbn,
                                                         const std::string& variable) {
     const auto& cpd = dbn.transition_bn().cpd(util::temporal_name(variable, 0));
-    const auto& discrete_cpd = std::static_pointer_cast<DiscreteFactor>(cpd);
+    const auto& discrete_cpd = std::static_pointer_cast<DiscreteCPD>(cpd);
 
     std::vector<std::string> values = discrete_cpd->variable_values();
 
     for (int i = 1; i < dbn.markovian_order(); ++i) {
         const auto& cpd = dbn.static_bn().cpd(util::temporal_name(variable, i));
-        const auto& discrete_cpd = std::static_pointer_cast<DiscreteFactor>(cpd);
+        const auto& discrete_cpd = std::static_pointer_cast<DiscreteCPD>(cpd);
 
         if (values != discrete_cpd->variable_values()) {
             throw std::invalid_argument("CPD of transition Bayesian network node " + util::temporal_name(variable, 0) +

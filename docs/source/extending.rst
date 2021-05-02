@@ -71,43 +71,46 @@ Factor Extension
 ================
 
 Implementing a new factor usually involves creating two new classes that inherit from
-:class:`FactorType <pybnesian.factors.FactorType>` and :class:`Factor <pybnesian.factors.Factor>`. A
-:class:`FactorType <pybnesian.factors.FactorType>` is the representation of a
-:class:`Factor <pybnesian.factors.Factor>` type. A :class:`Factor <pybnesian.factors.Factor>` is an specific instance of
-a factor (a conditional probability distribution for a given variable and evidence).
+:class:`FactorType <pybnesian.factors.FactorType>` and :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>`.
+A :class:`FactorType <pybnesian.factors.FactorType>` is the representation of a
+:class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` type. A
+:class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` is an specific instance of a factor (a conditional
+probability distribution for a given variable and evidence).
 
 These two classes are
 usually related: a :class:`FactorType <pybnesian.factors.FactorType>` can create instances of
-:class:`Factor <pybnesian.factors.Factor>` (with :func:`FactorType.new_factor() <pybnesian.factors.FactorType.new_factor>`),
-and a :class:`Factor <pybnesian.factors.Factor>` returns its corresponding :class:`FactorType <pybnesian.factors.FactorType>`
-(with :func:`Factor.type() <pybnesian.factors.Factor.type>`).
+:class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` (with
+:func:`FactorType.new_cfactor() <pybnesian.factors.FactorType.new_cfactor>`), and a
+:class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` returns its corresponding
+:class:`FactorType <pybnesian.factors.FactorType>` (with
+:func:`ConditionalFactor.type() <pybnesian.factors.ConditionalFactor.type>`).
 
 A new :class:`FactorType <pybnesian.factors.FactorType>` need to implement the following methods:
 
 - :func:`FactorType.__str__() <pybnesian.factors.FactorType.__str__>`.
-- :func:`FactorType.new_factor() <pybnesian.factors.FactorType.new_factor>`.
+- :func:`FactorType.new_cfactor() <pybnesian.factors.FactorType.new_cfactor>`.
 - :func:`FactorType.opposite_semiparametric() <pybnesian.factors.FactorType.opposite_semiparametric>`. This method is
   optional. This method is needed to learn a Bayesian network structure with
   :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`.
 
-A new :class:`Factor <pybnesian.factors.Factor>` need to implement the following methods:
+A new :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` need to implement the following methods:
 
-- :func:`Factor.__str__() <pybnesian.factors.Factor.__str__>`.
-- :func:`Factor.type() <pybnesian.factors.Factor.type>`.
-- :func:`Factor.fitted() <pybnesian.factors.Factor.fitted>`.
-- :func:`Factor.fit() <pybnesian.factors.Factor.fit>`. This method is needed for
+- :func:`ConditionalFactor.__str__() <pybnesian.factors.ConditionalFactor.__str__>`.
+- :func:`ConditionalFactor.type() <pybnesian.factors.ConditionalFactor.type>`.
+- :func:`ConditionalFactor.fitted() <pybnesian.factors.ConditionalFactor.fitted>`.
+- :func:`ConditionalFactor.fit() <pybnesian.factors.ConditionalFactor.fit>`. This method is needed for
   :func:`BayesianNetwork.fit() <pybnesian.models.BayesianNetworkBase.fit>` or
   :func:`DynamicBayesianNetwork.fit() <pybnesian.models.DynamicBayesianNetworkBase.fit>`.
-- :func:`Factor.logl() <pybnesian.factors.Factor.logl>`. This method is needed for
+- :func:`ConditionalFactor.logl() <pybnesian.factors.ConditionalFactor.logl>`. This method is needed for
   :func:`BayesianNetwork.logl() <pybnesian.models.BayesianNetworkBase.logl>` or
   :func:`DynamicBayesianNetwork.logl() <pybnesian.models.DynamicBayesianNetworkBase.logl>`.
-- :func:`Factor.slogl() <pybnesian.factors.Factor.slogl>`. This method is needed for
+- :func:`ConditionalFactor.slogl() <pybnesian.factors.ConditionalFactor.slogl>`. This method is needed for
   :func:`BayesianNetwork.slogl() <pybnesian.models.BayesianNetworkBase.slogl>` or
   :func:`DynamicBayesianNetwork.slogl() <pybnesian.models.DynamicBayesianNetworkBase.slogl>`.
-- :func:`Factor.sample() <pybnesian.factors.Factor.sample>`. This method is needed for
+- :func:`ConditionalFactor.sample() <pybnesian.factors.ConditionalFactor.sample>`. This method is needed for
   :func:`BayesianNetwork.sample() <pybnesian.models.BayesianNetworkBase.sample>` or
   :func:`DynamicBayesianNetwork.sample() <pybnesian.models.DynamicBayesianNetworkBase.sample>`.
-- :func:`Factor.data_type() <pybnesian.factors.Factor.data_type>`. This method is needed for
+- :func:`ConditionalFactor.data_type() <pybnesian.factors.ConditionalFactor.data_type>`. This method is needed for
   :func:`DynamicBayesianNetwork.sample() <pybnesian.models.DynamicBayesianNetworkBase.sample>`.
 
 You can avoid implementing some of these methods if you do not need them. If a method is needed for a functionality
@@ -126,7 +129,7 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
     import numpy as np
     from scipy.stats import norm
     import pyarrow as pa
-    from pybnesian.factors import FactorType, Factor
+    from pybnesian.factors import FactorType, ConditionalFactor
     from pybnesian.factors.continuous import CKDEType
 
     # Define our Factor type
@@ -140,18 +143,18 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
             return "MyLGType"
         
         # Create the factor instance defined below.
-        def new_factor(self, model, variable, evidence):
+        def new_cfactor(self, model, variable, evidence):
             return MyLG(variable, evidence)
         
         # This method is optional, it must be added to use pybnesian.learning.operators.ChangeNodeTypeSet.
         #def opposite_semiparametric(self):
         #    return CKDEType()
         
-    class MyLG(Factor):
+    class MyLG(ConditionalFactor):
         def __init__(self, variable, evidence):
             # IMPORTANT: Always call the parent class to initialize the C++ object.
             # The variable and evidence are accessible through self.variable() and self.evidence().
-            Factor.__init__(self, variable, evidence)
+            ConditionalFactor.__init__(self, variable, evidence)
             self._fitted = False
             self.beta = np.empty((1 + len(evidence),))
             self.variance = -1
@@ -204,25 +207,27 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
 Serialization
 -------------
 
-All the factors can be saved using pickle with the method :func:`Factor.save() <pybnesian.factors.Factor.save>`. The class
-:class:`Factor <pybnesian.factors.Factor>` already provides a ``__getstate__`` and ``__setstate__``  implementation that
-saves the base information (variable name and evidence variable names). If you need to save more data in your class,
-there are two alternatives:
+All the factors can be saved using pickle with the method
+:func:`ConditionalFactor.save() <pybnesian.factors.ConditionalFactor.save>`. The class
+:class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` already provides a ``__getstate__`` and
+``__setstate__``  implementation that saves the base information (variable name and evidence variable names). If you
+need to save more data in your class, there are two alternatives:
 
-- Implement the methods :func:`Factor.__getstate_extra__()` and :func:`Factor.__setstate_extra__()`. These methods have the
-  the same restrictions as the ``__getstate__`` and ``__setstate__`` methods (the returned objects must be pickleable).
+- Implement the methods :func:`ConditionalFactor.__getstate_extra__()` and
+  :func:`ConditionalFactor.__setstate_extra__()`. These methods have the same restrictions as the ``__getstate__`` and
+  ``__setstate__`` methods (the returned objects must be pickleable).
 
-- Re-implement the :func:`Factor.__getstate__()` and :func:`Factor.__setstate__()` methods. Note, however, that it is
-  needed to call the parent class constructor explicitly in :func:`Factor.__setstate__()` (as in
-  :ref:`warning constructor <warning-constructor>`). This is needed to initialize the C++ part of the object. Also, you
-  will need to add yourself the base information.
+- Re-implement the :func:`ConditionalFactor.__getstate__()` and :func:`ConditionalFactor.__setstate__()` methods. Note,
+  however, that it is needed to call the parent class constructor explicitly in :func:`ConditionalFactor.__setstate__()`
+  (as in :ref:`warning constructor <warning-constructor>`). This is needed to initialize the C++ part of the object.
+  Also, you will need to add yourself the base information.
 
 For example, if we want to implement serialization support for our re-implementation of linear Gaussian CPD, we can add
 the following code:
 
 .. code-block::
 
-    class MyLG(Factor):
+    class MyLG(ConditionalFactor):
         #
         # Previous code
         #
@@ -241,7 +246,7 @@ Alternatively, the following code will also work correctly:
 
 .. code-block::
 
-    class MyLG(Factor):
+    class MyLG(ConditionalFactor):
         #
         # Previous code
         #
@@ -256,7 +261,7 @@ Alternatively, the following code will also work correctly:
 
         def __setstate__(self, extra):
             # Call the parent constructor always in __setstate__ !
-            Factor.__init__(self, extra['variable'], extra['evidence'])
+            ConditionalFactor.__init__(self, extra['variable'], extra['evidence'])
             self._fitted = extra['fitted']
             self.beta = extra['beta']
             self.variance = extra['variance']
@@ -279,7 +284,7 @@ If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raise
     import numpy as np
     from scipy.stats import norm
     import pyarrow as pa
-    from pybnesian.factors import FactorType, Factor
+    from pybnesian.factors import FactorType, ConditionalFactor
     from pybnesian.factors.continuous import CKDEType
 
     # Define our Factor type
@@ -293,18 +298,18 @@ If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raise
             return "MyLGType"
         
         # Create the factor instance defined below.
-        def new_factor(self, model, variable, evidence):
+        def new_cfactor(self, model, variable, evidence):
             return MyLG(variable, evidence)
         
         # This method is optional, it must be added to use pybnesian.learning.operators.ChangeNodeTypeSet.
         #def opposite_semiparametric(self):
         #    return CKDEType()
         
-    class MyLG(Factor):
+    class MyLG(ConditionalFactor):
         def __init__(self, variable, evidence):
             # IMPORTANT: Always call the parent class to initialize the C++ object.
             # The variable and evidence are accessible through self.variable() and self.evidence().
-            Factor.__init__(self, variable, evidence)
+            ConditionalFactor.__init__(self, variable, evidence)
             self._fitted = False
             self.beta = np.empty((1 + len(evidence),))
             self.variance = -1
@@ -371,10 +376,10 @@ If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raise
     ...
     ValueError: Wrong factor type "MyLGType" for node "a" in Bayesian network type "GaussianNetworkType"
 
-There are two alternatives to use an extended :class:`Factor <pybnesian.factors.Factor>`:
+There are two alternatives to use an extended :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>`:
 
 - Create an extended model (see :ref:`model-extension`) that admits the new extended
-  :class:`Factor <pybnesian.factors.Factor>`.
+  :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>`.
 - Use a generic Bayesian network like :class:`HomogeneousBN <pybnesian.models.HomogeneousBN>` and
   :class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>`.
 
@@ -780,8 +785,8 @@ of the Bayesian network and, optionally, the factors within the Bayesian network
 :func:`BayesianNetworkBase.save() <pybnesian.models.BayesianNetworkBase.save>` is called,
 :attr:`.BayesianNetworkBase.include_cpd` property is first set and then ``__getstate__()`` is called. ``__getstate__()``
 saves the factors within the Bayesian network model only if :attr:`.BayesianNetworkBase.include_cpd` is ``True``. The
-factors can be saved only if the :class:`Factor <pybnesian.factors.Factor>` is also plickeable (see
-:ref:`Factor serialization <factor-extension-serialization>`).
+factors can be saved only if the :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` is also plickeable
+(see :ref:`Factor serialization <factor-extension-serialization>`).
 
 As with factor serialization, an implementation of ``__getstate__()`` and ``__setstate__()`` is provided when
 inheriting from :class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`,
@@ -791,7 +796,7 @@ or :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`. Th
 - The underlying graph of the Bayesian network.
 - The underlying :class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>`.
 - The list of :class:`FactorType <pybnesian.factors.FactorType>` for each node.
-- The list of :class:`Factor <pybnesian.factors.Factor>` within the Bayesian network (if
+- The list of :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` within the Bayesian network (if
   :attr:`.BayesianNetworkBase.include_cpd` is ``True``).
 
 In the case of :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`, it saves the above list for

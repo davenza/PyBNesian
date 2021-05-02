@@ -2,16 +2,16 @@ import pytest
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from pybnesian.factors.discrete import DiscreteFactor
+from pybnesian.factors.discrete import DiscreteCPD
 import util_test
 
 df = util_test.generate_discrete_data_dependent(10000)
 
 def test_data_type():
-    a = DiscreteFactor("A", [])
+    a = DiscreteCPD("A", [])
     with pytest.raises(ValueError) as ex:
         a.data_type()
-    "DiscreteFactor factor not fitted." in str(ex.value)
+    "DiscreteCPD factor not fitted." in str(ex.value)
     
     categories = np.asarray(["a1", "a2"])
     a_values = pd.Categorical(categories[np.random.randint(len(categories), size=100)], categories=categories, ordered=False)
@@ -32,6 +32,5 @@ def test_data_type():
     assert a.data_type() == pa.dictionary(pa.int16(), pa.string())
 
 def test_fit():
-    # a = DiscreteFactor('C', ['A', 'B'])
-    a = DiscreteFactor('C', [])
+    a = DiscreteCPD('C', [])
     a.fit(df)

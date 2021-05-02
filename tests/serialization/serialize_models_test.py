@@ -202,7 +202,7 @@ def other_fit_bytes():
 
     df_discrete = util_test.generate_discrete_data_dependent(100)
     df_discrete.columns = df_discrete.columns.str.lower()
-    cpd_d = DiscreteFactor("d", [])
+    cpd_d = DiscreteCPD("d", [])
     cpd_d.fit(df_discrete)
     
     other.add_cpds([cpd_a, cpd_b, cpd_c, cpd_d])
@@ -458,14 +458,14 @@ def cond_other_fit_bytes():
     other = ConditionalOtherBN(["c", "d"], ["a", "b"], [("a", "c")], [("c", CKDEType()),
                                                                       ("d", DiscreteFactorType())])
     cpd_c = CKDE("c", ["a"])
-    cpd_d = DiscreteFactor("d", [])
+    cpd_d = DiscreteCPD("d", [])
     
     df_continuous = util_test.generate_normal_data_indep(100)
     cpd_c.fit(df_continuous)
 
     df_discrete = util_test.generate_discrete_data_dependent(100)
     df_discrete.columns = df_discrete.columns.str.lower()
-    cpd_d = DiscreteFactor("d", [])
+    cpd_d = DiscreteCPD("d", [])
     cpd_d.fit(df_discrete)
 
     other.add_cpds([cpd_c, cpd_d])

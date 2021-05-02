@@ -4,12 +4,12 @@
 #include <dataset/dynamic_dataset.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
-#include <factors/discrete/DiscreteFactor.hpp>
+#include <factors/discrete/DiscreteCPD.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <util/temporal.hpp>
 
 using dataset::DynamicDataFrame;
-using factors::continuous::LinearGaussianCPD, factors::continuous::CKDE, factors::discrete::DiscreteFactor;
+using factors::continuous::LinearGaussianCPD, factors::continuous::CKDE, factors::discrete::DiscreteCPD;
 using models::BayesianNetworkBase;
 
 namespace models {

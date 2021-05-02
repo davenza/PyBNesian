@@ -22,7 +22,8 @@ These objects can be saved using directly :func:`pickle.dump` and :func:`pickle.
     import os
     os.remove('saved_graph.pickle')
 
-We can reduce some boilerplate code using the ``save`` methods: :func:`Factor.save() <pybnesian.factors.Factor.save>`,
+We can reduce some boilerplate code using the ``save`` methods:
+:func:`ConditionalFactor.save() <pybnesian.factors.ConditionalFactor.save>`,
 :func:`UndirectedGraph.save() <pybnesian.graph.UndirectedGraph.save>`,
 :func:`DirectedGraph.save() <pybnesian.graph.DirectedGraph.save>`,
 :func:`BayesianNetworkBase.save() <pybnesian.factors.BayesianNetworkBase.save>`, etc... Also, the :func:`pybnesian.load`

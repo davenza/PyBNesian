@@ -1,7 +1,7 @@
 import pytest
 from pybnesian.factors import FactorType, ConditionalFactor
 from pybnesian.factors.continuous import LinearGaussianCPD, LinearGaussianCPDType, CKDE, CKDEType
-from pybnesian.factors.discrete import DiscreteFactor, DiscreteFactorType
+from pybnesian.factors.discrete import DiscreteCPD, DiscreteFactorType
 
 
 def test_factor_type():
@@ -23,9 +23,9 @@ def test_factor_type():
     assert c1.type() == c3.type()
     assert c2.type() == c3.type()
 
-    d1 = DiscreteFactor("a", [])
-    d2 = DiscreteFactor("b", ["a"])
-    d3 = DiscreteFactor("c", ["b", "a"])
+    d1 = DiscreteCPD("a", [])
+    d2 = DiscreteCPD("b", ["a"])
+    d3 = DiscreteCPD("c", ["b", "a"])
 
     assert d1.type() == DiscreteFactorType()
     assert d1.type() == d2.type()

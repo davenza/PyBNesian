@@ -6,7 +6,7 @@
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
-#include <factors/discrete/DiscreteFactor.hpp>
+#include <factors/discrete/DiscreteCPD.hpp>
 #include <factors/factors.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <util/util_types.hpp>
@@ -17,7 +17,7 @@ using factors::ConditionalFactor, factors::continuous::LinearGaussianCPD, factor
     factors::continuous::CKDE;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
-using factors::discrete::DiscreteFactor;
+using factors::discrete::DiscreteCPD;
 using util::random_seed_arg;
 
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
@@ -640,7 +640,7 @@ Returns the cumulative distribution function values of each instance in the Data
 
     py::class_<DiscreteFactorType, FactorType, std::shared_ptr<DiscreteFactorType>>(
         discrete, "DiscreteFactorType", R"doc(
-:class:`DiscreteFactorType` is the corresponding CPD type of :class:`DiscreteFactor`.
+:class:`DiscreteFactorType` is the corresponding CPD type of :class:`DiscreteCPD`.
 )doc")
         .def(py::init(&DiscreteFactorType::get), R"doc(
 Instantiates a :class:`DiscreteFactorType`.
@@ -648,15 +648,15 @@ Instantiates a :class:`DiscreteFactorType`.
         .def(py::pickle([](const DiscreteFactorType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return DiscreteFactorType::get(); }));
 
-    py::class_<DiscreteFactor, ConditionalFactor, std::shared_ptr<DiscreteFactor>>(discrete, "DiscreteFactor", R"doc(
+    py::class_<DiscreteCPD, ConditionalFactor, std::shared_ptr<DiscreteCPD>>(discrete, "DiscreteCPD", R"doc(
 This is a discrete factor implemented as a conditional probability table (CPT).
 )doc")
         .def(py::init<std::string, std::vector<std::string>>(), py::arg("variable"), py::arg("evidence"), R"doc(
-Initializes a new :class:`DiscreteFactor` with a given ``variable`` and ``evidence``.
+Initializes a new :class:`DiscreteCPD` with a given ``variable`` and ``evidence``.
 
 :param variable: Variable name.
 :param evidence: List of evidence variable names.
 )doc")
-        .def(py::pickle([](const DiscreteFactor& self) { return self.__getstate__(); },
-                        [](py::tuple t) { return DiscreteFactor::__setstate__(t); }));
+        .def(py::pickle([](const DiscreteCPD& self) { return self.__getstate__(); },
+                        [](py::tuple t) { return DiscreteCPD::__setstate__(t); }));
 }

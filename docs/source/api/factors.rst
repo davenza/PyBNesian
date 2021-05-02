@@ -6,13 +6,13 @@ Factors module
 Abstract Types
 ==============
 
-The :class:`FactorType` and :class:`Factor` classes are abstract and both of them need to be implemented to create a new
-factor type. Each :class:`Factor` is always associated with a specific :class:`FactorType`.
+The :class:`FactorType` and :class:`ConditionalFactor` classes are abstract and both of them need to be implemented to
+create a new factor type. Each :class:`ConditionalFactor` is always associated with a specific :class:`FactorType`.
 
 .. autoclass:: pybnesian.factors.FactorType
     :members:
     :special-members: __init__, __str__
-.. autoclass:: pybnesian.factors.Factor
+.. autoclass:: pybnesian.factors.ConditionalFactor
     :members:
     :special-members: __init__, __str__
 
@@ -51,7 +51,7 @@ The discrete factors are implemented in the submodule pybnesian.factors.discrete
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
-.. autoclass:: pybnesian.factors.discrete.DiscreteFactor
+.. autoclass:: pybnesian.factors.discrete.DiscreteCPD
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

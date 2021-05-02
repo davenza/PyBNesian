@@ -15,15 +15,15 @@ using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
 
 namespace factors::discrete {
 
-std::shared_ptr<Factor> DiscreteFactorType::new_factor(const BayesianNetworkBase&,
-                                                       const std::string& variable,
-                                                       const std::vector<std::string>& evidence) const {
+std::shared_ptr<ConditionalFactor> DiscreteFactorType::new_cfactor(const BayesianNetworkBase&,
+                                                                   const std::string& variable,
+                                                                   const std::vector<std::string>& evidence) const {
     return std::make_shared<DiscreteFactor>(variable, evidence);
 }
 
-std::shared_ptr<Factor> DiscreteFactorType::new_factor(const ConditionalBayesianNetworkBase&,
-                                                       const std::string& variable,
-                                                       const std::vector<std::string>& evidence) const {
+std::shared_ptr<ConditionalFactor> DiscreteFactorType::new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                                   const std::string& variable,
+                                                                   const std::vector<std::string>& evidence) const {
     return std::make_shared<DiscreteFactor>(variable, evidence);
 }
 

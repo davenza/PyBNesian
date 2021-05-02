@@ -7,7 +7,7 @@
 
 using dataset::DataFrame;
 using Eigen::VectorXd;
-using factors::Factor;
+using factors::ConditionalFactor;
 
 namespace py = pybind11;
 
@@ -29,12 +29,12 @@ public:
         return ref;
     }
 
-    std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
-                                       const std::string&,
-                                       const std::vector<std::string>&) const override;
-    std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
-                                       const std::string&,
-                                       const std::vector<std::string>&) const override;
+    std::shared_ptr<ConditionalFactor> new_cfactor(const BayesianNetworkBase&,
+                                                   const std::string&,
+                                                   const std::vector<std::string>&) const override;
+    std::shared_ptr<ConditionalFactor> new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                   const std::string&,
+                                                   const std::vector<std::string>&) const override;
 
     std::shared_ptr<FactorType> opposite_semiparametric() const override;
 
@@ -53,7 +53,7 @@ struct LinearGaussianCPD_Params {
     double variance;
 };
 
-class LinearGaussianCPD : public Factor {
+class LinearGaussianCPD : public ConditionalFactor {
 public:
     using ParamsClass = LinearGaussianCPD_Params;
 

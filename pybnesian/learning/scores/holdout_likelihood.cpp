@@ -15,7 +15,7 @@ double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,
                                       const FactorType& variable_type,
                                       const std::string& variable,
                                       const std::vector<std::string>& evidence) const {
-    auto cpd = variable_type.new_factor(model, variable, evidence);
+    auto cpd = variable_type.new_cfactor(model, variable, evidence);
     cpd->fit(training_data());
     return cpd->slogl(test_data());
 }

@@ -720,12 +720,12 @@ public:
         return ref;
     }
 
-    std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
-                                       const std::string&,
-                                       const std::vector<std::string>&) const override;
-    std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
-                                       const std::string&,
-                                       const std::vector<std::string>&) const override;
+    std::shared_ptr<ConditionalFactor> new_cfactor(const BayesianNetworkBase&,
+                                                   const std::string&,
+                                                   const std::vector<std::string>&) const override;
+    std::shared_ptr<ConditionalFactor> new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                   const std::string&,
+                                                   const std::vector<std::string>&) const override;
 
     std::shared_ptr<FactorType> opposite_semiparametric() const override;
 
@@ -739,12 +739,12 @@ private:
     CKDEType() { m_hash = reinterpret_cast<std::uintptr_t>(this); }
 };
 
-class CKDE : public Factor {
+class CKDE : public ConditionalFactor {
 public:
     CKDE() = default;
     CKDE(std::string variable, std::vector<std::string> evidence) : CKDE(variable, evidence, KDEBandwidth::SCOTT) {}
     CKDE(std::string variable, std::vector<std::string> evidence, KDEBandwidth b_selector)
-        : Factor(variable, evidence),
+        : ConditionalFactor(variable, evidence),
           m_variables(),
           m_fitted(false),
           m_bselector(b_selector),

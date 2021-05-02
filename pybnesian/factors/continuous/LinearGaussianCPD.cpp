@@ -30,28 +30,28 @@ typedef std::shared_ptr<arrow::Array> Array_ptr;
 
 namespace factors::continuous {
 
-std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const BayesianNetworkBase&,
-                                                          const std::string& variable,
-                                                          const std::vector<std::string>& evidence) const {
+std::shared_ptr<ConditionalFactor> LinearGaussianCPDType::new_cfactor(const BayesianNetworkBase&,
+                                                                      const std::string& variable,
+                                                                      const std::vector<std::string>& evidence) const {
     return std::make_shared<LinearGaussianCPD>(variable, evidence);
 }
 
-std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayesianNetworkBase&,
-                                                          const std::string& variable,
-                                                          const std::vector<std::string>& evidence) const {
+std::shared_ptr<ConditionalFactor> LinearGaussianCPDType::new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                                      const std::string& variable,
+                                                                      const std::vector<std::string>& evidence) const {
     return std::make_shared<LinearGaussianCPD>(variable, evidence);
 }
 
 std::shared_ptr<FactorType> LinearGaussianCPDType::opposite_semiparametric() const { return CKDEType::get(); }
 
 LinearGaussianCPD::LinearGaussianCPD(std::string variable, std::vector<std::string> evidence)
-    : Factor(variable, evidence), m_fitted(false), m_beta(), m_variance(-1){};
+    : ConditionalFactor(variable, evidence), m_fitted(false), m_beta(), m_variance(-1){};
 
 LinearGaussianCPD::LinearGaussianCPD(std::string variable,
                                      std::vector<std::string> evidence,
                                      VectorXd beta,
                                      double variance)
-    : Factor(variable, evidence), m_fitted(true), m_variance(variance) {
+    : ConditionalFactor(variable, evidence), m_fitted(true), m_variance(variance) {
     if (static_cast<size_t>(beta.rows()) != (evidence.size() + 1)) {
         throw py::value_error("Wrong number of beta parameters. Beta vector size: " + std::to_string(beta.size()) +
                               ". Expected beta vector size: " + std::to_string(evidence.size() + 1) + ".");

@@ -26,15 +26,15 @@ class NewType(FactorType):
         FactorType.__init__(self)
         self.factor_class = factor_class
 
-    def new_factor(self, model, variable, evidence):
+    def new_cfactor(self, model, variable, evidence):
         return self.factor_class(variable, evidence)
 
     def __str__(self):
         return "NewType"
 
-class NewFactor(Factor):
+class NewFactor(ConditionalFactor):
     def __init__(self, variable, evidence):
-        Factor.__init__(self, variable, evidence)
+        ConditionalFactor.__init__(self, variable, evidence)
         self._fitted = False
         self.some_fit_data = None
     
@@ -59,9 +59,9 @@ class NewFactor(Factor):
         self._fitted = d['fitted']
         self.some_fit_data = d['some_fit_data']
 
-class NewFactorBis(Factor):
+class NewFactorBis(ConditionalFactor):
     def __init__(self, variable, evidence):
-        Factor.__init__(self, variable, evidence)
+        ConditionalFactor.__init__(self, variable, evidence)
         self._fitted = False
         self.some_fit_data = None
 
@@ -86,7 +86,7 @@ class NewFactorBis(Factor):
         return d
 
     def __setstate__(self, d):
-        Factor.__init__(self, d['variable'], d['evidence'])
+        ConditionalFactor.__init__(self, d['variable'], d['evidence'])
         self._fitted = d['fitted']
         self.some_fit_data = d['some_fit_data']
 
@@ -129,7 +129,7 @@ def test_serialization_unfitted_factor(lg_bytes, ckde_bytes, discrete_bytes, new
 
     from pybnesian.models import GaussianNetwork
     dummy_network = GaussianNetwork(["a", "b", "c", "d"])
-    assert type(loaded_new.type().new_factor(dummy_network, "a", [])) == NewFactor
+    assert type(loaded_new.type().new_cfactor(dummy_network, "a", [])) == NewFactor
 
     loaded_newbis = pickle.loads(newbis_bytes)
     assert loaded_newbis.variable() == "c"
@@ -138,7 +138,7 @@ def test_serialization_unfitted_factor(lg_bytes, ckde_bytes, discrete_bytes, new
     assert type(loaded_newbis.type()) == NewType
     nnbis = NewFactorBis("a", [])
     assert loaded_newbis.type() == nnbis.type()
-    assert type(loaded_newbis.type().new_factor(dummy_network, "a", [])) == NewFactorBis
+    assert type(loaded_newbis.type().new_cfactor(dummy_network, "a", [])) == NewFactorBis
 
     assert loaded_lg.type() != loaded_ckde.type()
     assert loaded_lg.type() != loaded_discrete.type()

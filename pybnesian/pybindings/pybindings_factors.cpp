@@ -13,7 +13,8 @@
 
 namespace py = pybind11;
 
-using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::KDE, factors::continuous::CKDE;
+using factors::ConditionalFactor, factors::continuous::LinearGaussianCPD, factors::continuous::KDE,
+    factors::continuous::CKDE;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 using factors::discrete::DiscreteFactor;
@@ -31,44 +32,44 @@ public:
 
     bool is_python_derived() const override { return true; }
 
-    std::shared_ptr<Factor> new_factor(const BayesianNetworkBase& model,
-                                       const std::string& variable,
-                                       const std::vector<std::string>& parents) const override {
+    std::shared_ptr<ConditionalFactor> new_cfactor(const BayesianNetworkBase& model,
+                                                   const std::string& variable,
+                                                   const std::vector<std::string>& parents) const override {
         pybind11::gil_scoped_acquire gil;
-        pybind11::function override = pybind11::get_override(static_cast<const FactorType*>(this), "new_factor");
+        pybind11::function override = pybind11::get_override(static_cast<const FactorType*>(this), "new_cfactor");
 
         if (override) {
             auto o = override(model.shared_from_this(), variable, parents);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("FactorType::new_factor can not return None.");
+                throw std::invalid_argument("FactorType::new_cfactor can not return None.");
             }
 
-            auto f = o.cast<std::shared_ptr<Factor>>();
-            return Factor::keep_python_alive(f);
+            auto f = o.cast<std::shared_ptr<ConditionalFactor>>();
+            return ConditionalFactor::keep_python_alive(f);
         }
 
-        py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_factor\"");
+        py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_cfactor\"");
     }
 
-    std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase& model,
-                                       const std::string& variable,
-                                       const std::vector<std::string>& parents) const override {
+    std::shared_ptr<ConditionalFactor> new_cfactor(const ConditionalBayesianNetworkBase& model,
+                                                   const std::string& variable,
+                                                   const std::vector<std::string>& parents) const override {
         pybind11::gil_scoped_acquire gil;
-        pybind11::function override = pybind11::get_override(static_cast<const FactorType*>(this), "new_factor");
+        pybind11::function override = pybind11::get_override(static_cast<const FactorType*>(this), "new_cfactor");
 
         if (override) {
             auto o = override(model.shared_from_this(), variable, parents);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("FactorType::new_factor can not return None.");
+                throw std::invalid_argument("FactorType::new_cfactor can not return None.");
             }
 
-            auto f = o.cast<std::shared_ptr<Factor>>();
-            return Factor::keep_python_alive(f);
+            auto f = o.cast<std::shared_ptr<ConditionalFactor>>();
+            return ConditionalFactor::keep_python_alive(f);
         }
 
-        py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_factor\"");
+        py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_cfactor\"");
     }
 
     std::shared_ptr<FactorType> opposite_semiparametric() const override {
@@ -143,26 +144,27 @@ bool is_factortype_subclass(py::handle& factor_type_class) {
     return subclass == 1;
 }
 
-class PyFactor : public Factor {
+class PyConditionalFactor : public ConditionalFactor {
 public:
-    using Factor::Factor;
+    using ConditionalFactor::ConditionalFactor;
 
     bool is_python_derived() const override { return true; }
 
     std::shared_ptr<FactorType> type() const override {
         py::gil_scoped_acquire gil;
 
-        pybind11::function override = pybind11::get_override(static_cast<const Factor*>(this), "type");
+        pybind11::function override = pybind11::get_override(static_cast<const ConditionalFactor*>(this), "type");
         if (override) {
             auto o = override();
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("Factor::type can not return None.");
+                throw std::invalid_argument("ConditionalFactor::type can not return None.");
             }
 
             auto type = o.get_type();
             if (!is_factortype_subclass(type)) {
-                py::pybind11_fail("Returned object from \"Factor::type\" is not a subclass of \"FactorType\".");
+                py::pybind11_fail(
+                    "Returned object from \"ConditionalFactor::type\" is not a subclass of \"FactorType\".");
             }
 
             m_type = o.cast<std::shared_ptr<FactorType>>();
@@ -170,7 +172,7 @@ public:
             return m_type;
         }
 
-        py::pybind11_fail("Tried to call pure virtual function \"Factor::type\"");
+        py::pybind11_fail("Tried to call pure virtual function \"ConditionalFactor::type\"");
     }
 
     FactorType& type_ref() const override {
@@ -179,28 +181,31 @@ public:
     }
 
     std::shared_ptr<arrow::DataType> data_type() const override {
-        PYBIND11_OVERRIDE_PURE(std::shared_ptr<arrow::DataType>, Factor, data_type, );
+        PYBIND11_OVERRIDE_PURE(std::shared_ptr<arrow::DataType>, ConditionalFactor, data_type, );
     }
 
-    bool fitted() const override { PYBIND11_OVERRIDE_PURE(bool, Factor, fitted, ); }
+    bool fitted() const override { PYBIND11_OVERRIDE_PURE(bool, ConditionalFactor, fitted, ); }
 
-    void fit(const DataFrame& df) override { PYBIND11_OVERRIDE_PURE(void, Factor, fit, df); }
+    void fit(const DataFrame& df) override { PYBIND11_OVERRIDE_PURE(void, ConditionalFactor, fit, df); }
 
-    VectorXd logl(const DataFrame& df) const override { PYBIND11_OVERRIDE_PURE(VectorXd, Factor, logl, df); }
+    VectorXd logl(const DataFrame& df) const override { PYBIND11_OVERRIDE_PURE(VectorXd, ConditionalFactor, logl, df); }
 
-    double slogl(const DataFrame& df) const override { PYBIND11_OVERRIDE_PURE(double, Factor, slogl, df); }
+    double slogl(const DataFrame& df) const override { PYBIND11_OVERRIDE_PURE(double, ConditionalFactor, slogl, df); }
 
-    std::string ToString() const override { PYBIND11_OVERRIDE_PURE_NAME(std::string, Factor, "__str__", ToString, ); }
+    std::string ToString() const override {
+        PYBIND11_OVERRIDE_PURE_NAME(std::string, ConditionalFactor, "__str__", ToString, );
+    }
 
     Array_ptr sample(int n,
                      const DataFrame& evidence_values,
                      unsigned int seed = std::random_device{}()) const override {
-        PYBIND11_OVERRIDE_PURE(Array_ptr, Factor, sample, n, evidence_values, seed);
+        PYBIND11_OVERRIDE_PURE(Array_ptr, ConditionalFactor, sample, n, evidence_values, seed);
     }
 
     py::tuple __getstate__() const override {
         py::gil_scoped_acquire gil;
-        pybind11::function override = pybind11::get_override(static_cast<const Factor*>(this), "__getstate_extra__");
+        pybind11::function override =
+            pybind11::get_override(static_cast<const ConditionalFactor*>(this), "__getstate_extra__");
         if (override) {
             auto o = override();
             return py::make_tuple(variable(), evidence(), true, py::make_tuple(o));
@@ -214,17 +219,18 @@ public:
         auto p = t[1].cast<std::vector<std::string>>();
 
         py::gil_scoped_acquire gil;
-        auto pyfactor_class = py::type::of<Factor>();
+        auto pyfactor_class = py::type::of<ConditionalFactor>();
         pyfactor_class.attr("__init__")(self, v, p);
 
         bool is_extra = t[2].cast<bool>();
         if (is_extra) {
-            pybind11::function override = pybind11::get_override(self.cast<const Factor*>(), "__setstate_extra__");
+            pybind11::function override =
+                pybind11::get_override(self.cast<const ConditionalFactor*>(), "__setstate_extra__");
             if (override) {
                 auto extra_info = t[3].cast<py::tuple>();
                 override(extra_info[0]);
             } else {
-                py::pybind11_fail("Tried to call \"Factor::__setstate_extra__\"");
+                py::pybind11_fail("Tried to call \"ConditionalFactor::__setstate_extra__\"");
             }
         }
     }
@@ -239,10 +245,11 @@ The factors are usually represented as conditional probability functions and are
 )doc");
 
     py::class_<FactorType, PyFactorType, std::shared_ptr<FactorType>> factor_type(factors, "FactorType", R"doc(
-A representation of a :class:`Factor` type.
+A representation of a :class:`ConditionalFactor` type.
 )doc");
 
-    py::class_<Factor, PyFactor, std::shared_ptr<Factor>> factor(factors, "Factor");
+    py::class_<ConditionalFactor, PyConditionalFactor, std::shared_ptr<ConditionalFactor>> cfactor(factors,
+                                                                                                   "ConditionalFactor");
 
     factor_type.def(py::init<>(), R"doc(Initializes a new :class:`FactorType`)doc")
         .def("opposite_semiparametric", &FactorType::opposite_semiparametric, R"doc(
@@ -279,78 +286,78 @@ If the :class:`FactorType` is not designed for semiparametric Bayesian networks,
         py::options options;
         options.disable_function_signatures();
         factor_type
-            .def("new_factor",
+            .def("new_cfactor",
                  py::overload_cast<const ConditionalBayesianNetworkBase&,
                                    const std::string&,
-                                   const std::vector<std::string>&>(&FactorType::new_factor, py::const_),
+                                   const std::vector<std::string>&>(&FactorType::new_cfactor, py::const_),
                  py::arg("model"),
                  py::arg("variable"),
                  py::arg("evidence"))
-            .def("new_factor",
+            .def("new_cfactor",
                  py::overload_cast<const BayesianNetworkBase&, const std::string&, const std::vector<std::string>&>(
-                     &FactorType::new_factor, py::const_),
+                     &FactorType::new_cfactor, py::const_),
                  py::arg("model"),
                  py::arg("variable"),
                  py::arg("evidence"),
                  R"doc(
-new_factor(self: pybnesian.factors.FactorType, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> pybnesian.factors.Factor
+new_cfactor(self: pybnesian.factors.FactorType, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> pybnesian.factors.ConditionalFactor
 
-Create a new corresponding :class:`Factor` for a ``model`` with the given ``variable`` and ``evidence``.
+Create a new corresponding :class:`ConditionalFactor` for a ``model`` with the given ``variable`` and ``evidence``.
 
 Note that ``evidence`` might be different from ``model.parents(variable)``.
 
-:param model: The model that will contain the :class:`Factor`.
+:param model: The model that will contain the :class:`ConditionalFactor`.
 :param variable: Variable name.
 :param evidence: List of evidence variable names.
-:returns: A corresponding :class:`Factor` with the given ``variable`` and ``evidence``.
+:returns: A corresponding :class:`ConditionalFactor` with the given ``variable`` and ``evidence``.
 )doc");
     }
 
-    factor
+    cfactor
         .def(py::init<const std::string&, const std::vector<std::string>&>(),
              py::arg("variable"),
              py::arg("evidence"),
              R"doc(
-Initializes a new :class:`Factor` with a given ``variable`` and ``evidence``.
+Initializes a new :class:`ConditionalFactor` with a given ``variable`` and ``evidence``.
 
 :param variable: Variable name.
 :param evidence: List of evidence variable names.
 )doc")
-        .def("variable", &Factor::variable, R"doc(
-Gets the variable modelled by this :class:`Factor`.
+        .def("variable", &ConditionalFactor::variable, R"doc(
+Gets the variable modelled by this :class:`ConditionalFactor`.
 
 :returns: Variable name.
 )doc")
-        .def("evidence", &Factor::evidence, R"doc(
+        .def("evidence", &ConditionalFactor::evidence, R"doc(
 Gets the evidence variable list.
 
 :returns: Evidence variable list.
 )doc")
-        .def("fitted", &Factor::fitted, R"doc(
+        .def("fitted", &ConditionalFactor::fitted, R"doc(
 Checks whether the factor is fitted.
 
 :returns: True if the factor is fitted, False otherwise.
 )doc")
-        .def("type", &Factor::type, R"doc(
-Returns the corresponding :class:`FactorType` of this :class:`Factor`.
+        .def("type", &ConditionalFactor::type, R"doc(
+Returns the corresponding :class:`FactorType` of this :class:`ConditionalFactor`.
 
-:returns: :class:`FactorType` corresponding to this :class:`Factor`.
+:returns: :class:`FactorType` corresponding to this :class:`ConditionalFactor`.
 )doc")
-        .def("data_type", &Factor::data_type, R"doc(
-Returns the :class:`pyarrow.DataType` that represents the type of data handled by the :class:`Factor`.
+        .def("data_type", &ConditionalFactor::data_type, R"doc(
+Returns the :class:`pyarrow.DataType` that represents the type of data handled by the :class:`ConditionalFactor`.
 
-For a continuous Factor, this usually returns :func:`pyarrow.float64` or :func:`pyarrow.float32`. The discrete factor
+For a continuous ConditionalFactor, this usually returns :func:`pyarrow.float64` or :func:`pyarrow.float32`. The discrete factor
 is usually a :func:`pyarrow.dictionary`.
 
-:returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`Factor`.
+:returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`ConditionalFactor`.
 )doc")
-        .def("fit", &Factor::fit, py::arg("df"), R"doc(
-Fits the :class:`Factor` with the data in ``df``.
+        .def("fit", &ConditionalFactor::fit, py::arg("df"), R"doc(
+Fits the :class:`ConditionalFactor` with the data in ``df``.
 
-:param df: DataFrame to fit the :class:`Factor`.
+:param df: DataFrame to fit the :class:`ConditionalFactor`.
 )doc")
         .def("logl",
-             &Factor::logl,
+             &ConditionalFactor::logl,
              py::arg("df"),
              R"doc(
 Returns the log-likelihood of each instance in the DataFrame ``df``.
@@ -360,16 +367,16 @@ Returns the log-likelihood of each instance in the DataFrame ``df``.
           of the i-th instance of ``df``.
 )doc",
              py::return_value_policy::take_ownership)
-        .def("slogl", &Factor::slogl, py::arg("df"), R"doc(
+        .def("slogl", &ConditionalFactor::slogl, py::arg("df"), R"doc(
 Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. That is, the sum of the result of
-:func:`Factor.logl`.
+:func:`ConditionalFactor.logl`.
 
 :param df: DataFrame to compute the sum of the log-likelihood.
 :returns: The sum of log-likelihood for DataFrame ``df``.
 )doc")
         .def(
             "sample",
-            [](const Factor& self,
+            [](const ConditionalFactor& self,
                int n,
                std::optional<const DataFrame> evidence_values,
                std::optional<unsigned int> seed) {
@@ -382,25 +389,25 @@ Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. 
             py::arg("evidence_values") = std::nullopt,
             py::arg("seed") = std::nullopt,
             R"doc(
-Samples ``n`` values from this :class:`Factor`. This method returns a :class:`pyarrow.Array` with ``n`` values with
-the same type returned by :func:``Factor.data_type``.
+Samples ``n`` values from this :class:`ConditionalFactor`. This method returns a :class:`pyarrow.Array` with ``n`` values with
+the same type returned by :func:``ConditionalFactor.data_type``.
 
-If this :class:`Factor` has evidence variables, the DataFrame ``evidence_values`` contains ``n`` instances for each
+If this :class:`ConditionalFactor` has evidence variables, the DataFrame ``evidence_values`` contains ``n`` instances for each
 evidence variable. Each sampled instance must be conditioned on ``evidence_values``.
 
 :param n: Number of instances to sample.
 :param evidence_values: DataFrame of evidence values to condition the sampling.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
 )doc")
-        .def("save", &Factor::save, py::arg("filename"), R"doc(
-Saves the :class:`Factor` in a pickle file with the given name.
+        .def("save", &ConditionalFactor::save, py::arg("filename"), R"doc(
+Saves the :class:`ConditionalFactor` in a pickle file with the given name.
 
 :param filename: File name of the saved graph.
 )doc")
-        .def("__str__", &Factor::ToString)
-        .def("__repr__", &Factor::ToString)
-        .def("__getstate__", [](const Factor& self) { return self.__getstate__(); })
-        .def("__setstate__", [](py::object& self, py::tuple& t) { PyFactor::__setstate__(self, t); });
+        .def("__str__", &ConditionalFactor::ToString)
+        .def("__repr__", &ConditionalFactor::ToString)
+        .def("__getstate__", [](const ConditionalFactor& self) { return self.__getstate__(); })
+        .def("__setstate__", [](py::object& self, py::tuple& t) { PyConditionalFactor::__setstate__(self, t); });
 
     auto continuous = factors.def_submodule("continuous");
 
@@ -414,7 +421,8 @@ Instantiates a :class:`LinearGaussianCPDType`.
         .def(py::pickle([](const LinearGaussianCPDType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return LinearGaussianCPDType::get(); }));
 
-    py::class_<LinearGaussianCPD, Factor, std::shared_ptr<LinearGaussianCPD>>(continuous, "LinearGaussianCPD", R"doc(
+    py::class_<LinearGaussianCPD, ConditionalFactor, std::shared_ptr<LinearGaussianCPD>>(
+        continuous, "LinearGaussianCPD", R"doc(
 This is a linear Gaussian CPD:
 
 .. math::
@@ -568,7 +576,7 @@ Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. 
 :returns: The sum of log-likelihood for DataFrame ``df``.
 )doc")
         .def("save", &KDE::save, py::arg("filename"), R"doc(
-Saves the :class:`Factor` in a pickle file with the given name.
+Saves the :class:`KDE` in a pickle file with the given name.
 
 :param filename: File name of the saved graph.
 )doc")
@@ -584,7 +592,7 @@ Instantiates a :class:`CKDEType`.
         .def(py::pickle([](const CKDEType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return CKDEType::get(); }));
 
-    py::class_<CKDE, Factor, std::shared_ptr<CKDE>>(continuous, "CKDE", R"doc(
+    py::class_<CKDE, ConditionalFactor, std::shared_ptr<CKDE>>(continuous, "CKDE", R"doc(
 A conditional kernel density estimator (CKDE) is the ratio of two KDE models:
 
 .. math::
@@ -640,7 +648,7 @@ Instantiates a :class:`DiscreteFactorType`.
         .def(py::pickle([](const DiscreteFactorType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return DiscreteFactorType::get(); }));
 
-    py::class_<DiscreteFactor, Factor, std::shared_ptr<DiscreteFactor>>(discrete, "DiscreteFactor", R"doc(
+    py::class_<DiscreteFactor, ConditionalFactor, std::shared_ptr<DiscreteFactor>>(discrete, "DiscreteFactor", R"doc(
 This is a discrete factor implemented as a conditional probability table (CPT).
 )doc")
         .def(py::init<std::string, std::vector<std::string>>(), py::arg("variable"), py::arg("evidence"), R"doc(

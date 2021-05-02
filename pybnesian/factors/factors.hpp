@@ -22,7 +22,7 @@ using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
 
 namespace factors {
 
-class Factor;
+class ConditionalFactor;
 
 class FactorType {
 public:
@@ -46,12 +46,12 @@ public:
         return f;
     }
 
-    virtual std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
-                                               const std::string&,
-                                               const std::vector<std::string>&) const = 0;
-    virtual std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
-                                               const std::string&,
-                                               const std::vector<std::string>&) const = 0;
+    virtual std::shared_ptr<ConditionalFactor> new_cfactor(const BayesianNetworkBase&,
+                                                           const std::string&,
+                                                           const std::vector<std::string>&) const = 0;
+    virtual std::shared_ptr<ConditionalFactor> new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                           const std::string&,
+                                                           const std::vector<std::string>&) const = 0;
     virtual std::shared_ptr<FactorType> opposite_semiparametric() const = 0;
     virtual std::string ToString() const = 0;
 
@@ -75,22 +75,22 @@ void save_factor(const F& factor, std::string name) {
     file.attr("close")();
 }
 
-class Factor {
+class ConditionalFactor {
 public:
-    Factor() = default;
-    Factor(const std::string& variable, const std::vector<std::string>& evidence)
+    ConditionalFactor() = default;
+    ConditionalFactor(const std::string& variable, const std::vector<std::string>& evidence)
         : m_variable(variable), m_evidence(evidence) {}
 
-    virtual ~Factor() {}
+    virtual ~ConditionalFactor() {}
 
     virtual bool is_python_derived() const { return false; }
 
-    static std::shared_ptr<Factor> keep_python_alive(std::shared_ptr<Factor>& f) {
+    static std::shared_ptr<ConditionalFactor> keep_python_alive(std::shared_ptr<ConditionalFactor>& f) {
         if (f && f->is_python_derived()) {
             auto o = py::cast(f);
             auto keep_python_state_alive = std::make_shared<py::object>(o);
-            auto ptr = o.cast<Factor*>();
-            return std::shared_ptr<Factor>(keep_python_state_alive, ptr);
+            auto ptr = o.cast<ConditionalFactor*>();
+            return std::shared_ptr<ConditionalFactor>(keep_python_state_alive, ptr);
         }
 
         return f;

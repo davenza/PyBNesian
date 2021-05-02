@@ -165,15 +165,15 @@ KDE KDE::__setstate__(py::tuple& t) {
     return kde;
 }
 
-std::shared_ptr<Factor> CKDEType::new_factor(const BayesianNetworkBase&,
-                                             const std::string& variable,
-                                             const std::vector<std::string>& evidence) const {
+std::shared_ptr<ConditionalFactor> CKDEType::new_cfactor(const BayesianNetworkBase&,
+                                                         const std::string& variable,
+                                                         const std::vector<std::string>& evidence) const {
     return std::make_shared<CKDE>(variable, evidence);
 }
 
-std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBase&,
-                                             const std::string& variable,
-                                             const std::vector<std::string>& evidence) const {
+std::shared_ptr<ConditionalFactor> CKDEType::new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                         const std::string& variable,
+                                                         const std::vector<std::string>& evidence) const {
     return std::make_shared<CKDE>(variable, evidence);
 }
 

@@ -304,15 +304,15 @@ public:
 
     bool fitted() const override { PYBIND11_OVERRIDE_PURE(bool, Base, fitted, ); }
 
-    std::shared_ptr<Factor> cpd(const std::string& node) override {
-        PYBIND11_OVERRIDE_PURE(std::shared_ptr<Factor>, Base, cpd, node);
+    std::shared_ptr<ConditionalFactor> cpd(const std::string& node) override {
+        PYBIND11_OVERRIDE_PURE(std::shared_ptr<ConditionalFactor>, Base, cpd, node);
     }
 
-    const std::shared_ptr<Factor> cpd(const std::string& node) const override {
-        PYBIND11_OVERRIDE_PURE(const std::shared_ptr<Factor>, Base, cpd, node);
+    const std::shared_ptr<ConditionalFactor> cpd(const std::string& node) const override {
+        PYBIND11_OVERRIDE_PURE(const std::shared_ptr<ConditionalFactor>, Base, cpd, node);
     }
 
-    void add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) override {
+    void add_cpds(const std::vector<std::shared_ptr<ConditionalFactor>>& cpds) override {
         PYBIND11_OVERRIDE_PURE(void, Base, add_cpds, cpds);
     }
 
@@ -570,25 +570,25 @@ public:
 
     bool fitted() const override { PYBIND11_OVERRIDE(bool, Base, fitted, ); }
 
-    std::shared_ptr<Factor> cpd(const std::string& node) override {
-        PYBIND11_OVERRIDE(std::shared_ptr<Factor>, Base, cpd, node);
+    std::shared_ptr<ConditionalFactor> cpd(const std::string& node) override {
+        PYBIND11_OVERRIDE(std::shared_ptr<ConditionalFactor>, Base, cpd, node);
     }
 
-    const std::shared_ptr<Factor> cpd(const std::string& node) const override {
-        PYBIND11_OVERRIDE(const std::shared_ptr<Factor>, Base, cpd, node);
+    const std::shared_ptr<ConditionalFactor> cpd(const std::string& node) const override {
+        PYBIND11_OVERRIDE(const std::shared_ptr<ConditionalFactor>, Base, cpd, node);
     }
 
-    void check_compatible_cpd(const Factor& cpd) const override {
+    void check_compatible_cpd(const ConditionalFactor& cpd) const override {
         PYBIND11_OVERRIDE(void, Base, check_compatible_cpd, cpd);
     }
 
-    bool must_construct_cpd(const Factor& cpd,
+    bool must_construct_cpd(const ConditionalFactor& cpd,
                             const FactorType& model_node_type,
                             const std::vector<std::string>& model_parents) const override {
         PYBIND11_OVERRIDE(bool, Base, must_construct_cpd, cpd, model_node_type, model_parents);
     }
 
-    void add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) override {
+    void add_cpds(const std::vector<std::shared_ptr<ConditionalFactor>>& cpds) override {
         PYBIND11_OVERRIDE(void, Base, add_cpds, cpds);
     }
 
@@ -672,7 +672,7 @@ public:
         auto self_cpp = self.cast<Base*>();
 
         if (bn_base[3].cast<bool>()) {
-            auto cpds = bn_base[4].cast<std::vector<std::shared_ptr<Factor>>>();
+            auto cpds = bn_base[4].cast<std::vector<std::shared_ptr<ConditionalFactor>>>();
 
             self_cpp->add_cpds(cpds);
         }
@@ -1140,20 +1140,20 @@ Include the given whitelisted arcs. It checks the validity of the graph after in
 )doc")
         .def("cpd", py::overload_cast<const std::string&>(&CppClass::cpd), py::arg("node"), R"doc(
 Returns the conditional probability distribution (CPD) associated to ``node``. This is a
-:class:`Factor <pybnesian.factors.Factor>` type.
+:class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` type.
 
 :param node: A node name.
-:returns: The :class:`Factor <pybnesian.factors.Factor>` associated to ``node``
-:raises ValueError: If ``node`` do not have an associated :class:`Factor <pybnesian.factors.Factor>` yet.
+:returns: The :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` associated to ``node``
+:raises ValueError: If ``node`` do not have an associated :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` yet.
 )doc")
         .def("add_cpds", &CppClass::add_cpds, py::arg("cpds"), R"doc(
 Adds a list of CPDs to the Bayesian network. The list may be complete (for all the nodes all the Bayesian network) or
 partial (just some a subset of the nodes).
 
-:param cpds: List of :class:`Factor <pybnesian.factors.Factor>`.
+:param cpds: List of :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>`.
 )doc")
         .def("fit", &CppClass::fit, py::arg("df"), R"doc(
-Fit all the unfitted :class:`Factor <pybnesian.factors.Factor>` with the data ``df``.
+Fit all the unfitted :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` with the data ``df``.
 
 :param df: DataFrame to fit the Bayesian network.
 )doc")
@@ -1452,7 +1452,7 @@ Checks whether a given node name can have an associated CPD. For
         .def("check_compatible_cpd", &CppClass::check_compatible_cpd, py::arg("cpd"), R"doc(
 Checks whether the given CPD is compatible with this Bayesian network.
 
-:param cpd: A :class:`Factor <pybnesian.factors.Factor>`.
+:param cpd: A :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>`.
 :returns: True if ``cpd`` is compatible with this Bayesian network, False otherwise.
 )doc");
 }
@@ -1510,7 +1510,7 @@ Removes a variable. It removes all the corresponding nodes in the static and tra
 :param variable: A variable name.
 )doc")
         .def("fit", &CppClass::fit, py::arg("df"), R"doc(
-Fit all the unfitted :class:`Factor <pybnesian.factors.Factor>` with the data ``df`` in both the static and transition
+Fit all the unfitted :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>` with the data ``df`` in both the static and transition
 Bayesian networks.
 
 :param df: DataFrame to fit the dynamic Bayesian network.

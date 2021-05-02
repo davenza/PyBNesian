@@ -1,5 +1,5 @@
 import pytest
-from pybnesian.factors import FactorType, Factor
+from pybnesian.factors import FactorType, ConditionalFactor
 from pybnesian.factors.continuous import LinearGaussianCPD, LinearGaussianCPDType, CKDE, CKDEType
 from pybnesian.factors.discrete import DiscreteFactor, DiscreteFactorType
 
@@ -71,9 +71,9 @@ def test_factor_defined_factor_type():
         def __str__(self):
             return "FType"
 
-    class F(Factor):
+    class F(ConditionalFactor):
         def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence)
+            ConditionalFactor.__init__(self, variable, evidence)
 
         def type(self):
             return F_type()
@@ -91,22 +91,22 @@ def test_factor_defined_factor_type():
     from pybnesian.models import GaussianNetwork
     dummy_network = GaussianNetwork(["a", "b", "c", "d"])
     with pytest.raises(RuntimeError) as ex:
-        f4 = f1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
-    assert 'Tried to call pure virtual function "FactorType::new_factor"' in str(ex.value)
+        f4 = f1.type().new_cfactor(dummy_network, "d", ["a", "b", "c"])
+    assert 'Tried to call pure virtual function "FactorType::new_cfactor"' in str(ex.value)
 
     class G_type(FactorType):
         def __init__(self):
             FactorType.__init__(self)
             
-        def new_factor(self, model, variable, evidence):
+        def new_cfactor(self, model, variable, evidence):
             return G(variable, evidence)
 
         def __str__(self):
             return "GType"
 
-    class G(Factor):
+    class G(ConditionalFactor):
         def __init__(self, variable, evidence):
-            Factor.__init__(self, variable, evidence)
+            ConditionalFactor.__init__(self, variable, evidence)
 
         def type(self):
             return G_type()
@@ -123,7 +123,7 @@ def test_factor_defined_factor_type():
 
     assert str(g1.type()) == str(g2.type()) == str(g3.type()) == "GType"
 
-    g4 = g1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
+    g4 = g1.type().new_cfactor(dummy_network, "d", ["a", "b", "c"])
 
     assert g1.type() == g4.type()
     assert g4.variable() == "d"

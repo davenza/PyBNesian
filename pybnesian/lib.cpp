@@ -29,7 +29,6 @@ PYBIND11_MODULE(__init__, m) {}
 #endif
 
 PYBIND11_MODULE(pybnesian, m) {
-
     auto pa_version = py::module_::import("pyarrow").attr("__version__").cast<std::string>();
 
     std::string lib_pa_version{MACRO_STRINGIFY(PYARROW_VERSION_INFO)};
@@ -66,7 +65,7 @@ PYBIND11_MODULE(pybnesian, m) {
 #endif
 
     m.def("load", &load, py::arg("filename"), R"doc(
-Load the saved object (a :class:`Factor <pybnesian.factors.Factor>`, a graph, a
+Load the saved object (a :class:`ConditionalFactor <pybnesian.factors.ConditionalFactor>`, a graph, a
 :class:`BayesianNetworkBase <pybnesian.models.BayesianNetworkBase>`, etc...) in ``filename``.
 
 :param filename: File name.

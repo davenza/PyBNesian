@@ -29,12 +29,12 @@ public:
         return ref;
     }
 
-    std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
-                                       const std::string&,
-                                       const std::vector<std::string>&) const override;
-    std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
-                                       const std::string&,
-                                       const std::vector<std::string>&) const override;
+    std::shared_ptr<ConditionalFactor> new_cfactor(const BayesianNetworkBase&,
+                                                   const std::string&,
+                                                   const std::vector<std::string>&) const override;
+    std::shared_ptr<ConditionalFactor> new_cfactor(const ConditionalBayesianNetworkBase&,
+                                                   const std::string&,
+                                                   const std::vector<std::string>&) const override;
 
     std::shared_ptr<FactorType> opposite_semiparametric() const override { return nullptr; }
 
@@ -132,13 +132,13 @@ struct DiscreteFactor_Params {
     VectorXi cardinality;
 };
 
-class DiscreteFactor : public Factor {
+class DiscreteFactor : public ConditionalFactor {
 public:
     using ParamsClass = DiscreteFactor_Params;
 
     DiscreteFactor() = default;
     DiscreteFactor(std::string variable, std::vector<std::string> evidence)
-        : Factor(variable, evidence),
+        : ConditionalFactor(variable, evidence),
           m_variable_values(),
           m_evidence_values(),
           m_logprob(),

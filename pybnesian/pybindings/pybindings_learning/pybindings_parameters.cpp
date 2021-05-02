@@ -29,7 +29,7 @@ DiscreteFactor::ParamsClass numpy_to_discrete_params(
 
 void pybindings_parameters(py::module& root) {
     auto parameters = root.def_submodule("parameters", R"doc(The pybnesian.learning.parameters implements
-learning parameter learning for :class:`Factor` from data.)doc");
+learning parameter learning for :class:`ConditionalFactor` from data.)doc");
 
     parameters.def("MLE",
                    &pybindings::learning::parameters::mle_python_wrapper,

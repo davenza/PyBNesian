@@ -9,7 +9,7 @@
 #include <util/virtual_clone.hpp>
 
 using dataset::DataFrame;
-using factors::Factor;
+using factors::ConditionalFactor;
 using graph::DagBase, graph::ConditionalDagBase, graph::Dag, graph::ConditionalDag;
 using util::ArcStringVector, util::FactorTypeVector;
 
@@ -71,9 +71,9 @@ public:
 
     virtual void force_whitelist(const ArcStringVector& arc_whitelist) = 0;
     virtual bool fitted() const = 0;
-    virtual std::shared_ptr<Factor> cpd(const std::string& node) = 0;
-    virtual const std::shared_ptr<Factor> cpd(const std::string& node) const = 0;
-    virtual void add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) = 0;
+    virtual std::shared_ptr<ConditionalFactor> cpd(const std::string& node) = 0;
+    virtual const std::shared_ptr<ConditionalFactor> cpd(const std::string& node) const = 0;
+    virtual void add_cpds(const std::vector<std::shared_ptr<ConditionalFactor>>& cpds) = 0;
     virtual void fit(const DataFrame& df) = 0;
     virtual VectorXd logl(const DataFrame& df) const = 0;
     virtual double slogl(const DataFrame& df) const = 0;
@@ -539,7 +539,7 @@ public:
 
     bool fitted() const override;
 
-    std::shared_ptr<Factor> cpd(const std::string& node) override {
+    std::shared_ptr<ConditionalFactor> cpd(const std::string& node) override {
         auto idx = check_index(node);
         if (!m_cpds.empty() && m_cpds[idx])
             return m_cpds[idx];
@@ -548,7 +548,7 @@ public:
                                   "\" not added. Call add_cpds() or fit() to add the CPD.");
     }
 
-    const std::shared_ptr<Factor> cpd(const std::string& node) const override {
+    const std::shared_ptr<ConditionalFactor> cpd(const std::string& node) const override {
         auto idx = check_index(node);
         if (!m_cpds.empty() && m_cpds[idx])
             return m_cpds[idx];
@@ -557,11 +557,11 @@ public:
                                   "\" not added. Call add_cpds() or fit() to add the CPD.");
     }
 
-    virtual void check_compatible_cpd(const Factor& cpd) const;
-    virtual bool must_construct_cpd(const Factor& cpd,
+    virtual void check_compatible_cpd(const ConditionalFactor& cpd) const;
+    virtual bool must_construct_cpd(const ConditionalFactor& cpd,
                                     const FactorType& model_node_type,
                                     const std::vector<std::string>& model_parents) const;
-    void add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) override;
+    void add_cpds(const std::vector<std::shared_ptr<ConditionalFactor>>& cpds) override;
     void fit(const DataFrame& df) override;
     VectorXd logl(const DataFrame& df) const override;
     double slogl(const DataFrame& df) const override;
@@ -675,7 +675,7 @@ protected:
     void check_fitted() const;
     DagType g;
     std::shared_ptr<BayesianNetworkType> m_type;
-    std::vector<std::shared_ptr<Factor>> m_cpds;
+    std::vector<std::shared_ptr<ConditionalFactor>> m_cpds;
     std::vector<std::shared_ptr<FactorType>> m_node_types;
     // This is necessary because __getstate__() do not admit parameters.
     mutable bool m_include_cpd;
@@ -722,7 +722,7 @@ void BNGeneric<DagType>::check_fitted() const {
 }
 
 template <typename DagType>
-void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
+void BNGeneric<DagType>::check_compatible_cpd(const ConditionalFactor& cpd) const {
     if (!contains_node(cpd.variable())) {
         throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
     }
@@ -772,7 +772,7 @@ void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
 
     auto cpd_type = cpd.type();
     if (*cpd_type != *node_type_) {
-        throw std::invalid_argument("Factor " + cpd.ToString() + " is of type " + cpd_type->ToString() +
+        throw std::invalid_argument("ConditionalFactor " + cpd.ToString() + " is of type " + cpd_type->ToString() +
                                     "."
                                     " Bayesian network expects type " +
                                     node_type_->ToString());
@@ -780,7 +780,7 @@ void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
 }
 
 template <typename DagType>
-void BNGeneric<DagType>::add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) {
+void BNGeneric<DagType>::add_cpds(const std::vector<std::shared_ptr<ConditionalFactor>>& cpds) {
     for (const auto& cpd : cpds) {
         check_compatible_cpd(*cpd);
     }
@@ -800,7 +800,7 @@ void BNGeneric<DagType>::add_cpds(const std::vector<std::shared_ptr<Factor>>& cp
 }
 
 template <typename DagType>
-bool BNGeneric<DagType>::must_construct_cpd(const Factor& cpd,
+bool BNGeneric<DagType>::must_construct_cpd(const ConditionalFactor& cpd,
                                             const FactorType& model_node_type,
                                             const std::vector<std::string>& model_parents) const {
     const auto& cpd_evidence = cpd.evidence();
@@ -831,7 +831,7 @@ void BNGeneric<DagType>::fit(const DataFrame& df) {
         auto node_type_ = node_type(nn);
 
         if (!m_cpds[i] || must_construct_cpd(*m_cpds[i], *node_type_, p)) {
-            m_cpds[i] = node_type_->new_factor(*this, nn, p);
+            m_cpds[i] = node_type_->new_cfactor(*this, nn, p);
             m_cpds[i]->fit(df);
         } else if (!m_cpds[i]->fitted()) {
             m_cpds[i]->fit(df);
@@ -919,7 +919,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> BNGeneric<DagType>::conditional_
     auto new_bn = std::make_shared<ConditionalBayesianNetwork>(m_type, std::move(new_dag));
 
     if (!m_cpds.empty()) {
-        std::vector<std::shared_ptr<Factor>> cpds;
+        std::vector<std::shared_ptr<ConditionalFactor>> cpds;
         cpds.reserve(nodes.size());
 
         for (const auto& name : new_bn->nodes()) {
@@ -954,7 +954,7 @@ std::shared_ptr<BayesianNetworkBase> BNGeneric<DagType>::unconditional_bn() cons
         auto new_bn = std::make_shared<BNGeneric<Dag>>(m_type, std::move(new_dag));
 
         if (!m_cpds.empty()) {
-            std::vector<std::shared_ptr<Factor>> cpds;
+            std::vector<std::shared_ptr<ConditionalFactor>> cpds;
             cpds.reserve(num_nodes());
 
             for (const auto& nn : nodes()) {
@@ -983,7 +983,7 @@ void BNGeneric<DagType>::save(std::string name, bool include_cpd) const {
 
 template <typename DagType>
 py::tuple BNGeneric<DagType>::__getstate__() const {
-    std::vector<std::shared_ptr<Factor>> cpds;
+    std::vector<std::shared_ptr<ConditionalFactor>> cpds;
 
     if (m_include_cpd && !m_cpds.empty()) {
         for (const auto& nn : nodes()) {
@@ -1041,7 +1041,7 @@ void __nonderived_bn_setstate__(py::object& self, py::tuple& t) {
     auto cpp_self = self.cast<std::shared_ptr<BNType>>();
 
     if (t[3].cast<bool>()) {
-        auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
+        auto cpds = t[4].cast<std::vector<std::shared_ptr<ConditionalFactor>>>();
 
         cpp_self->add_cpds(cpds);
     }
@@ -1071,7 +1071,7 @@ std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t) {
     }();
 
     if (t[3].cast<bool>()) {
-        auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
+        auto cpds = t[4].cast<std::vector<std::shared_ptr<ConditionalFactor>>>();
 
         bn->add_cpds(cpds);
     }
@@ -1104,7 +1104,7 @@ std::shared_ptr<DerivedBN> __generic_bn_setstate__(py::tuple& t) {
     }();
 
     if (t[3].cast<bool>()) {
-        auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
+        auto cpds = t[4].cast<std::vector<std::shared_ptr<ConditionalFactor>>>();
 
         bn->add_cpds(cpds);
     }

@@ -75,7 +75,19 @@ void save_factor(const F& factor, std::string name) {
     file.attr("close")();
 }
 
-class ConditionalFactor {
+class Factor {
+public:
+    Factor() = default;
+    Factor(const std::vector<std::string>& variables) : m_variables(variables) {}
+
+    const std::vector<std::string>& variables() const { return m_variables; }
+
+    // std::shared_ptr<Factor> product(const std::shared_ptr<Factor>& f) const = 0;
+private:
+    std::vector<std::string> m_variables;
+};
+
+class ConditionalFactor : public Factor {
 public:
     ConditionalFactor() = default;
     ConditionalFactor(const std::string& variable, const std::vector<std::string>& evidence)

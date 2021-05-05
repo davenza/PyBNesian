@@ -75,7 +75,8 @@ ext_modules = [
          'pybnesian/models/HomogeneousBN.cpp',
          'pybnesian/models/HeterogeneousBN.cpp',
          'pybnesian/models/DynamicBayesianNetwork.cpp',
-         'pybnesian/opencl/opencl_config.cpp'
+         'pybnesian/opencl/opencl_config.cpp',
+         'pybnesian/inference/VariableElimination.cpp'
          ],
         language='c++',
         define_macros=[("VERSION_INFO", __version__)]

@@ -17,7 +17,7 @@ double cor_pvalue(double cor, int df);
 template <typename EigenMat>
 double cor_0cond(const EigenMat& cov, int v1, int v2) {
     using CType = typename EigenMat::Scalar;
-    if (cov(v1, v1) < util::machine_tol || cov(v2, v2) < util::machine_tol) return 0;
+    if (cov(v1, v1) < util::machine_tol<CType> || cov(v2, v2) < util::machine_tol<CType>) return 0;
 
     auto cor = cov(v1, v2) / sqrt(cov(v1, v1) * cov(v2, v2));
 
@@ -26,6 +26,7 @@ double cor_0cond(const EigenMat& cov, int v1, int v2) {
 
 template <typename EigenValues, typename EigenVectors>
 double cor_svd(const EigenValues& d, const EigenVectors u) {
+    using CType = typename EigenValues::Scalar;
     double p11 = 0;
     double p12 = 0;
     double p22 = 0;
@@ -39,7 +40,7 @@ double cor_svd(const EigenValues& d, const EigenVectors u) {
         }
     }
 
-    if (p11 < util::machine_tol || p22 < util::machine_tol) return 0;
+    if (p11 < util::machine_tol<CType> || p22 < util::machine_tol<CType>) return 0;
 
     return std::clamp(-p12 / (sqrt(p11 * p22)), -1., 1.);
 }

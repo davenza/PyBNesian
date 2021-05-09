@@ -9,7 +9,7 @@ double BIC::bic_lineargaussian(const std::string& variable, const std::vector<st
 
     auto mle_params = mle.estimate(m_df, variable, parents);
 
-    if (mle_params.variance < util::machine_tol) {
+    if (mle_params.variance < util::machine_tol<double>) {
         return -std::numeric_limits<double>::infinity();
     }
 

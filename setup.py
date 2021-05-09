@@ -40,6 +40,7 @@ ext_modules = [
          'pybnesian/pybindings/pybindings_learning/pybindings_algorithms.cpp',
          'pybnesian/factors/continuous/LinearGaussianCPD.cpp',
          'pybnesian/factors/continuous/CKDE.cpp',
+         'pybnesian/factors/continuous/LSCDE.cpp',
          'pybnesian/factors/discrete/DiscreteFactor.cpp',
          'pybnesian/dataset/dataset.cpp',
          'pybnesian/dataset/dynamic_dataset.cpp',

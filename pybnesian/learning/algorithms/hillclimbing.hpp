@@ -73,7 +73,7 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
     while (iter < max_iters) {
         ++iter;
         auto best_op = op_set.find_max(*current_model);
-        if (!best_op || (best_op->delta() - epsilon) < util::machine_tol) {
+        if (!best_op || (best_op->delta() - epsilon) < util::machine_tol<double>) {
             break;
         }
 
@@ -156,7 +156,7 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
     while (iter < max_iters) {
         ++iter;
         auto best_op = op_set.find_max(*current_model, tabu_set);
-        if (!best_op || (best_op->delta() - epsilon) < util::machine_tol) {
+        if (!best_op || (best_op->delta() - epsilon) < util::machine_tol<double>) {
             break;
         }
 

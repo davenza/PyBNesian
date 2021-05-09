@@ -298,11 +298,11 @@ void MultivariateKDE::execute_conditional_means(const cl::Buffer& joint_training
 }
 
 template <typename ArrowType>
-std::pair<cl::Buffer, uint64_t> allocate_mat(int rows, int cols) {
+std::pair<cl::Buffer, uint64_t> allocate_mat(int rows, int cols, int max_cols) {
     using CType = typename ArrowType::c_type;
     auto& opencl = OpenCLConfig::get();
 
-    auto allocated_m = std::min(cols, 64);
+    auto allocated_m = std::min(cols, max_cols);
 
     return std::make_pair(opencl.new_buffer<CType>(rows * allocated_m), allocated_m);
 }
@@ -635,7 +635,7 @@ cl::Buffer KDE::_logl_impl(cl::Buffer& test_buffer, int m) const {
     auto& opencl = OpenCLConfig::get();
     auto res = opencl.new_buffer<CType>(m);
 
-    auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N, m);
+    auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N, m, 64);
     auto iterations = static_cast<int>(std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m)));
 
     cl::Buffer tmp_mat_buffer;
@@ -1101,7 +1101,7 @@ cl::Buffer CKDE::_sample_indices_from_weights(cl::Buffer& random_prob, cl::Buffe
     auto res = opencl.new_buffer<int>(n);
     opencl.fill_buffer<int>(res, N - 1, n);
 
-    auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N, n);
+    auto [mat_logls, allocated_m] = allocate_mat<ArrowType>(N, n, 64);
     auto iterations = static_cast<int>(std::ceil(static_cast<double>(n) / static_cast<double>(allocated_m)));
 
     cl::Buffer tmp_mat_buffer;
@@ -1238,7 +1238,7 @@ cl::Buffer CKDE::_cdf_univariate(cl::Buffer& test_buffer, int m) const {
     auto& opencl = OpenCLConfig::get();
     auto res = opencl.new_buffer<CType>(m);
 
-    auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m);
+    auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m, 64);
     auto iterations = std::ceil(static_cast<double>(m) / static_cast<double>(allocated_m));
 
     auto& k_cdf = opencl.kernel(OpenCL_kernel_traits<ArrowType>::univariate_normal_cdf);
@@ -1291,7 +1291,7 @@ cl::Buffer CKDE::_cdf_multivariate(cl::Buffer& variable_test_buffer, cl::Buffer&
 
     auto res = opencl.new_buffer<CType>(m);
 
-    auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m);
+    auto [mu, allocated_m] = allocate_mat<ArrowType>(N, m, 64);
     auto W = opencl.new_buffer<CType>(N * allocated_m);
     auto sum_W = opencl.new_buffer<CType>(allocated_m);
 

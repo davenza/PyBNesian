@@ -323,8 +323,19 @@ public:
         mutable std::pair<std::vector<int>, std::vector<int>> current_fold;
     };
 
-    cv_iterator_indices begin_indices() { return cv_iterator_indices(0, *this); }
+    class CrossValidationIndices {
+    public:
+        CrossValidationIndices(CrossValidation& cv) : m_cv(cv) {}
+        cv_iterator_indices begin() { return cv_iterator_indices(0, m_cv); }
+        cv_iterator_indices end() { return cv_iterator_indices(m_cv.prop->k, m_cv); }
 
+    private:
+        CrossValidation& m_cv;
+    };
+
+    CrossValidationIndices indices() { return CrossValidationIndices(*this); }
+
+    cv_iterator_indices begin_indices() { return cv_iterator_indices(0, *this); }
     cv_iterator_indices end_indices() { return cv_iterator_indices(prop->k, *this); }
 
 private:

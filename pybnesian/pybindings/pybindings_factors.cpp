@@ -6,6 +6,7 @@
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <factors/continuous/LSCDE.hpp>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <factors/factors.hpp>
 #include <models/BayesianNetwork.hpp>
@@ -13,9 +14,10 @@
 
 namespace py = pybind11;
 
-using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::KDE, factors::continuous::CKDE;
+using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::KDE, factors::continuous::CKDE,
+    factors::continuous::LSCDE;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
-    factors::discrete::DiscreteFactorType;
+    factors::continuous::LSCDEType, factors::discrete::DiscreteFactorType;
 using factors::discrete::DiscreteFactor;
 using util::random_seed_arg;
 
@@ -627,6 +629,21 @@ Returns the cumulative distribution function values of each instance in the Data
 )doc")
         .def(py::pickle([](const CKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return CKDE::__setstate__(t); }));
+
+    py::class_<LSCDEType, FactorType, std::shared_ptr<LSCDEType>>(continuous, "LSCDEType", R"doc(
+:class:`LSCDEType` is the corresponding CPD type of :class:`LSCDE`.
+)doc")
+        .def(py::init(&LSCDEType::get), R"doc(
+Instantiates a :class:`LSCDEType`.
+)doc")
+        .def(py::pickle([](const LSCDEType& self) { return self.__getstate__(); },
+                        [](py::tuple&) { return LSCDEType::get(); }));
+
+    py::class_<LSCDE, Factor, std::shared_ptr<LSCDE>>(continuous, "LSCDE")
+        .def(py::init<const std::string, const std::vector<std::string>, int>(),
+             py::arg("variable"),
+             py::arg("evidence"),
+             py::arg("b") = 100);
 
     auto discrete = factors.def_submodule("discrete");
 

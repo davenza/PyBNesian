@@ -1,6 +1,11 @@
 #ifndef PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
 #define PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
 
+#include <cmath>
+#include <Eigen/Dense>
+
+using Eigen::Dynamic, Eigen::Matrix, Eigen::VectorXd;
+
 namespace util {
 
 template <typename Vector>
@@ -116,6 +121,61 @@ Matrix<typename M::Scalar, Dynamic, Dynamic> cov(M& x, M& y) {
     auto tmp_x = x.rowwise() - means_x.transpose();
     auto tmp_y = y.rowwise() - means_y.transpose();
     return sse_mat(tmp_x, tmp_y) * inv_N;
+}
+
+template <typename CType>
+Matrix<CType, Dynamic, 1> logspace(CType start, CType end, int num) {
+    Matrix<CType, Dynamic, 1> res(num);
+
+    res(0) = std::pow(10., start);
+
+    if (num > 1) {
+        res(num - 1) = std::pow(10., end);
+
+        CType step = (end - start) / (num - 1);
+        CType cur = start + step;
+        for (int i = 1, end = num - 1; i < end; ++i, cur += step) {
+            res(i) = std::pow(10., cur);
+        }
+    }
+
+    return res;
+}
+
+// This method is needed until Eigen 3.4
+template <typename M>
+Matrix<typename M::Scalar, Dynamic, Dynamic> filter(const M& m,
+                                                    const std::vector<int>& row_indices,
+                                                    const std::vector<int>& col_indices) {
+    using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;
+
+    MatrixType out(row_indices.size(), col_indices.size());
+
+    for (size_t i = 0; i < row_indices.size(); ++i) {
+        for (size_t j = 0; j < col_indices.size(); ++j) {
+            out(i, j) = m(row_indices[i], col_indices[j]);
+        }
+    }
+
+    return out;
+}
+
+// This method is needed until Eigen 3.4
+template <typename M>
+Matrix<typename M::Scalar, Dynamic, Dynamic> filter_cols(const M& m, const std::vector<int>& indices) {
+    using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;
+
+    MatrixType out(m.rows(), indices.size());
+
+    auto rows = m.rows();
+    auto iptr = m.data();
+    auto optr = out.data();
+    for (auto i : indices) {
+        std::memcpy(optr, iptr + rows * i, rows * sizeof(typename M::Scalar));
+        optr += rows;
+    }
+
+    return out;
 }
 
 }  // namespace util

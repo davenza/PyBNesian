@@ -29,7 +29,6 @@ PYBIND11_MODULE(__init__, m) {}
 #endif
 
 PYBIND11_MODULE(pybnesian, m) {
-
     auto pa_version = py::module_::import("pyarrow").attr("__version__").cast<std::string>();
 
     std::string lib_pa_version{MACRO_STRINGIFY(PYARROW_VERSION_INFO)};

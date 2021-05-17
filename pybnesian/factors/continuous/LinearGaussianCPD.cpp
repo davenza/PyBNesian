@@ -6,6 +6,7 @@
 #include <arrow/api.h>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <factors/discrete/DiscreteFactor.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <dataset/dataset.hpp>
 #include <util/bit_util.hpp>
@@ -22,6 +23,7 @@ using Eigen::Matrix, Eigen::Dynamic, Eigen::Array;
 
 using boost::math::normal_distribution;
 using dataset::DataFrame;
+using factors::discrete::DiscreteFactorType;
 using learning::parameters::MLE;
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
 using util::pi, util::one_div_root_two;
@@ -30,15 +32,27 @@ typedef std::shared_ptr<arrow::Array> Array_ptr;
 
 namespace factors::continuous {
 
-std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const BayesianNetworkBase&,
+std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const BayesianNetworkBase& m,
                                                           const std::string& variable,
                                                           const std::vector<std::string>& evidence) const {
+    for (const auto& e : evidence) {
+        if (m.node_type(e) == DiscreteFactorType::get()) {
+            return std::make_shared<CLinearGaussianCPD>(variable, evidence);
+        }
+    }
+
     return std::make_shared<LinearGaussianCPD>(variable, evidence);
 }
 
-std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayesianNetworkBase&,
+std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayesianNetworkBase& m,
                                                           const std::string& variable,
                                                           const std::vector<std::string>& evidence) const {
+    for (const auto& e : evidence) {
+        if (m.node_type(e) == DiscreteFactorType::get()) {
+            return std::make_shared<CLinearGaussianCPD>(variable, evidence);
+        }
+    }
+
     return std::make_shared<LinearGaussianCPD>(variable, evidence);
 }
 

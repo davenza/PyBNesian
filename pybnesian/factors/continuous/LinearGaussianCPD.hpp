@@ -3,11 +3,13 @@
 
 #include <random>
 #include <factors/factors.hpp>
+#include <factors/discrete/DiscreteAdaptator.hpp>
 #include <dataset/dataset.hpp>
 
 using dataset::DataFrame;
 using Eigen::VectorXd;
 using factors::Factor;
+using factors::discrete::DiscreteAdaptator;
 
 namespace py = pybind11;
 
@@ -56,6 +58,7 @@ struct LinearGaussianCPD_Params {
 class LinearGaussianCPD : public Factor {
 public:
     using ParamsClass = LinearGaussianCPD_Params;
+    using FactorTypeClass = LinearGaussianCPDType;
 
     LinearGaussianCPD() = default;
     LinearGaussianCPD(std::string variable, std::vector<std::string> evidence);
@@ -113,6 +116,9 @@ private:
     VectorXd m_beta;
     double m_variance;
 };
+
+static const char clgname[] = "CLinearGaussianCPD";
+using CLinearGaussianCPD = DiscreteAdaptator<LinearGaussianCPD, clgname>;
 
 }  // namespace factors::continuous
 

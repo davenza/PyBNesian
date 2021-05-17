@@ -1,8 +1,10 @@
 #include <factors/continuous/CKDE.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
+#include <factors/discrete/DiscreteFactor.hpp>
 #include <models/BayesianNetwork.hpp>
 #include <opencl/opencl_config.hpp>
 
+using factors::discrete::DiscreteFactorType;
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
 using opencl::OpenCLConfig;
 
@@ -165,15 +167,27 @@ KDE KDE::__setstate__(py::tuple& t) {
     return kde;
 }
 
-std::shared_ptr<Factor> CKDEType::new_factor(const BayesianNetworkBase&,
+std::shared_ptr<Factor> CKDEType::new_factor(const BayesianNetworkBase& m,
                                              const std::string& variable,
                                              const std::vector<std::string>& evidence) const {
+    for (const auto& e : evidence) {
+        if (m.node_type(e) == DiscreteFactorType::get()) {
+            return std::make_shared<DCKDE>(variable, evidence);
+        }
+    }
+
     return std::make_shared<CKDE>(variable, evidence);
 }
 
-std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBase&,
+std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBase& m,
                                              const std::string& variable,
                                              const std::vector<std::string>& evidence) const {
+    for (const auto& e : evidence) {
+        if (m.node_type(e) == DiscreteFactorType::get()) {
+            return std::make_shared<DCKDE>(variable, evidence);
+        }
+    }
+
     return std::make_shared<CKDE>(variable, evidence);
 }
 

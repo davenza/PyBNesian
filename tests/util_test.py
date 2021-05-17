@@ -18,6 +18,7 @@ def generate_normal_data(size, seed=0):
                     'd': d_array
                     })
 
+
 def generate_normal_data_indep(size, seed=0):
     np.random.seed(seed)
 
@@ -33,7 +34,6 @@ def generate_normal_data_indep(size, seed=0):
                     'c': c_array,
                     'd': d_array
                     })
-
 
 
 def generate_discrete_data_uniform(size, seed=0):
@@ -94,3 +94,88 @@ def generate_discrete_data_dependent(size, seed=0):
                          'C': c_values,
                          'D': d_values
                         }, dtype='category')
+
+
+def generate_hybrid_data(size, seed=0):
+    #
+    #   Generate data from:
+    #
+    #   A   B   C
+    #    \  |  /
+    #     \ | /
+    #       v
+    #       D
+    np.random.seed(seed)
+
+    a_dict = np.asarray(['a1', 'a2'])
+    a_values = a_dict[np.random.choice(a_dict.size, size, p=[0.75, 0.25])]
+
+    b_dict = np.asarray(['b1', 'b2', 'b3'])
+    b_values = b_dict[np.random.choice(b_dict.size, size, p=[0.3, 0.4, 0.3])]
+
+    c_values = -4.2 + np.random.normal(0, 0.75, size=size)
+
+    a1b1_indices = np.logical_and(a_values == 'a1', b_values == 'b1')
+    a1b2_indices = np.logical_and(a_values == 'a1', b_values == 'b2')
+    a1b3_indices = np.logical_and(a_values == 'a1', b_values == 'b3')
+    a2b1_indices = np.logical_and(a_values == 'a2', b_values == 'b1')
+    a2b2_indices = np.logical_and(a_values == 'a2', b_values == 'b2')
+    a2b3_indices = np.logical_and(a_values == 'a2', b_values == 'b3')
+
+    d_values = np.empty_like(c_values)
+    d_values[a1b1_indices] = np.random.normal(1, 0.75, size=a1b1_indices.sum())
+    d_values[a1b2_indices] = -2 + c_values[a1b2_indices] + np.random.normal(0, 2, size=a1b2_indices.sum())
+    d_values[a1b3_indices] = -1 + 3*c_values[a1b3_indices] + np.random.normal(0, 0.25, size=a1b3_indices.sum())
+    d_values[a2b1_indices] = np.random.normal(2, 1, size=a2b1_indices.sum())
+    d_values[a2b2_indices] = 3.5 + -1.2*c_values[a2b2_indices] + np.random.normal(0, 1, size=a2b2_indices.sum())
+    d_values[a2b3_indices] = 4.8 + -2*c_values[a2b3_indices] + np.random.normal(0, 1.5, size=a2b3_indices.sum())
+
+    return pd.DataFrame({'A': pd.Series(a_values, dtype='category'),
+                         'B': pd.Series(b_values, dtype='category'),
+                         'C': c_values,
+                         'D': d_values
+                        })
+
+
+def generate_indep_hybrid_data(size, seed=0):
+    #
+    #   Generate data from:
+    #
+    #   A   B   C
+    #    \  |  /
+    #     \ | /
+    #       v
+    #       D
+    np.random.seed(seed)
+
+    a_dict = np.asarray(['a1', 'a2'])
+    a_values = a_dict[np.random.choice(a_dict.size, size, p=[0.75, 0.25])]
+
+    a1_indices = a_values == 'a1'
+
+    b_dict = np.asarray(['b1', 'b2', 'b3'])
+    b_values = np.empty_like(a_values)
+    b_values[a1_indices] = b_dict[np.random.choice(b_dict.size, np.sum(a1_indices), p=[0.3, 0.4, 0.3])]
+    b_values[~a1_indices] = b_dict[np.random.choice(b_dict.size, np.sum(~a1_indices), p=[0, 0.8, 0.2])]
+
+    c_values = -4.2 + np.random.normal(0, 0.75, size=size)
+
+    a1b1_indices = np.logical_and(a_values == 'a1', b_values == 'b1')
+    a1b2_indices = np.logical_and(a_values == 'a1', b_values == 'b2')
+    a1b3_indices = np.logical_and(a_values == 'a1', b_values == 'b3')
+    a2b2_indices = np.logical_and(a_values == 'a2', b_values == 'b2')
+    a2b3_indices = np.logical_and(a_values == 'a2', b_values == 'b3')
+
+
+    d_values = np.empty_like(c_values)
+    d_values[a1b1_indices] = np.random.normal(1, 0.75, size=a1b1_indices.sum())
+    d_values[a1b2_indices] = -2 + c_values[a1b2_indices] + np.random.normal(0, 2, size=a1b2_indices.sum())
+    d_values[a1b3_indices] = -1 + 3*c_values[a1b3_indices] + np.random.normal(0, 0.25, size=a1b3_indices.sum())
+    d_values[a2b2_indices] = 3.5 + -1.2*c_values[a2b2_indices] + np.random.normal(0, 1, size=a2b2_indices.sum())
+    d_values[a2b3_indices] = 4.8 + -2*c_values[a2b3_indices] + np.random.normal(0, 1.5, size=a2b3_indices.sum())
+
+    return pd.DataFrame({'A': pd.Series(a_values, dtype='category'),
+                         'B': pd.Series(b_values, dtype='category'),
+                         'C': c_values,
+                         'D': d_values
+                        })

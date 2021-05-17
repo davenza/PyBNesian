@@ -8,13 +8,14 @@
 #include <opencl/opencl_config.hpp>
 #include <dataset/dataset.hpp>
 #include <factors/factors.hpp>
+#include <factors/discrete/DiscreteAdaptator.hpp>
 #include <util/math_constants.hpp>
 
 namespace py = pybind11;
 namespace pyarrow = arrow::py;
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi, Eigen::LLT;
-using factors::FactorType;
+using factors::FactorType, factors::discrete::DiscreteAdaptator;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
@@ -741,6 +742,8 @@ private:
 
 class CKDE : public Factor {
 public:
+    using FactorTypeClass = CKDEType;
+
     CKDE() = default;
     CKDE(std::string variable, std::vector<std::string> evidence) : CKDE(variable, evidence, KDEBandwidth::SCOTT) {}
     CKDE(std::string variable, std::vector<std::string> evidence, KDEBandwidth b_selector)
@@ -1418,6 +1421,9 @@ py::tuple CKDE::__getstate__() const {
 
     return py::make_tuple(this->variable(), this->evidence(), m_fitted, joint_tuple);
 }
+
+static const char dckdename[] = "DCKDE";
+using DCKDE = DiscreteAdaptator<CKDE, dckdename>;
 
 }  // namespace factors::continuous
 

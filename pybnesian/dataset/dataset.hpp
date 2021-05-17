@@ -5,6 +5,7 @@
 #include <arrow/python/pyarrow.h>
 #include <arrow/python/platform.h>
 #include <arrow/api.h>
+#include <arrow/compute/api.h>
 #include <pybind11/pybind11.h>
 #include <util/parameter_traits.hpp>
 #include <util/bit_util.hpp>
@@ -2014,6 +2015,34 @@ public:
     std::vector<int> continuous_columns() const;
 
     DataFrame normalize() const;
+
+    DataFrame filter_null() const {
+        if (null_count() == 0) {
+            return *this;
+        } else {
+            auto bitmap = combined_bitmap();
+            auto bitmap_data = bitmap->data();
+
+            int total_rows = num_rows();
+            int valid_rows = util::bit_util::non_null_count(bitmap, total_rows);
+
+            arrow::AdaptiveIntBuilder builder;
+            RAISE_STATUS_ERROR(builder.Reserve(valid_rows));
+
+            for (auto i = 0; i < total_rows; ++i) {
+                if (arrow::BitUtil::GetBit(bitmap_data, i)) RAISE_STATUS_ERROR(builder.Append(i));
+            }
+
+            Array_ptr take_ind;
+            RAISE_STATUS_ERROR(builder.Finish(&take_ind));
+            return take(take_ind);
+        }
+    }
+
+    DataFrame take(const Array_ptr& indices) const {
+        auto rfiltered = arrow::compute::Take(m_batch, indices, arrow::compute::TakeOptions::NoBoundsCheck());
+        return DataFrame(std::move(rfiltered).ValueOrDie().record_batch());
+    }
 
     std::shared_ptr<RecordBatch> operator->() const { return m_batch; }
     friend std::pair<DataFrame, DataFrame> generate_cv_pair(const DataFrame& df,

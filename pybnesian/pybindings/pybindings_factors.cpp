@@ -6,6 +6,7 @@
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <factors/assignment.hpp>
 #include <factors/discrete/DiscreteFactor.hpp>
 #include <factors/factors.hpp>
 #include <models/BayesianNetwork.hpp>
@@ -13,10 +14,15 @@
 
 namespace py = pybind11;
 
-using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::KDE, factors::continuous::CKDE;
+using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::CLinearGaussianCPD,
+    factors::continuous::KDE, factors::continuous::DCKDE, factors::continuous::CKDE;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
+
 using factors::discrete::DiscreteFactor;
+
+using factors::Assignment, factors::AssignmentValue, factors::AssignmentHash;
+
 using util::random_seed_arg;
 
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
@@ -651,4 +657,39 @@ Initializes a new :class:`DiscreteFactor` with a given ``variable`` and ``eviden
 )doc")
         .def(py::pickle([](const DiscreteFactor& self) { return self.__getstate__(); },
                         [](py::tuple t) { return DiscreteFactor::__setstate__(t); }));
+
+    py::class_<AssignmentValue>(discrete, "AssignmentValue")
+        .def(py::init<const std::string&>())
+        .def(py::init<double>())
+        .def(py::pickle([](const AssignmentValue& self) { return self.__getstate__(); },
+                        [](py::object& o) { return AssignmentValue::__setstate__(o); }));
+
+    py::implicitly_convertible<std::string, AssignmentValue>();
+    py::implicitly_convertible<double, AssignmentValue>();
+
+    py::class_<Assignment>(discrete, "Assignment")
+        .def(py::init<std::unordered_map<std::string, AssignmentValue>>())
+        .def("__hash__", &Assignment::hash)
+        .def("__str__", &Assignment::ToString)
+        .def("__repr__", &Assignment::ToString)
+        .def(py::self == py::self)
+        .def(py::self != py::self)
+        .def(py::pickle([](const Assignment& self) { return self.__getstate__(); },
+                        [](py::object& o) { return Assignment::__setstate__(o); }));
+
+    py::class_<CLinearGaussianCPD, Factor, std::shared_ptr<CLinearGaussianCPD>>(continuous, "CLinearGaussianCPD")
+        .def(py::init<std::string, std::vector<std::string>>())
+        .def(py::init<std::string, std::vector<std::string>, VectorXd, double>())
+        .def(py::init<std::string,
+                      std::vector<std::string>,
+                      std::unordered_map<Assignment, std::tuple<VectorXd, double>, AssignmentHash>>())
+        .def("conditional_factor", &CLinearGaussianCPD::conditional_factor, py::return_value_policy::reference_internal)
+        .def(py::pickle([](const CLinearGaussianCPD& self) { return self.__getstate__(); },
+                        [](py::tuple t) { return CLinearGaussianCPD::__setstate__(t); }));
+
+    py::class_<DCKDE, Factor, std::shared_ptr<DCKDE>>(continuous, "DCKDE")
+        .def(py::init<std::string, std::vector<std::string>>())
+        .def("conditional_factor", &DCKDE::conditional_factor, py::return_value_policy::reference_internal)
+        .def(py::pickle([](const DCKDE& self) { return self.__getstate__(); },
+                        [](py::tuple t) { return DCKDE::__setstate__(t); }));
 }

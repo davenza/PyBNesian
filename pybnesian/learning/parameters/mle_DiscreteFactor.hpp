@@ -9,11 +9,6 @@ using factors::discrete::DiscreteFactor;
 
 namespace learning::parameters {
 
-VectorXd _joint_counts(const DataFrame& df,
-                       const std::string& variable,
-                       const std::vector<std::string>& evidence,
-                       VectorXi& cardinality,
-                       VectorXi& strides);
 typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
                                           const std::string& variable,
                                           const std::vector<std::string>& evidence);

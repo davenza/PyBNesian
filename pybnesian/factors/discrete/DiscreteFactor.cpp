@@ -27,57 +27,6 @@ std::shared_ptr<Factor> DiscreteFactorType::new_factor(const ConditionalBayesian
     return std::make_shared<DiscreteFactor>(variable, evidence);
 }
 
-void sum_to_discrete_indices_null(VectorXi& accum_indices,
-                                  Array_ptr& indices,
-                                  int stride,
-                                  Buffer_ptr& combined_bitmap) {
-    switch (indices->type_id()) {
-        case Type::INT8:
-            sum_to_discrete_indices_null<arrow::Int8Type>(accum_indices, indices, stride, combined_bitmap);
-            break;
-        case Type::INT16:
-            sum_to_discrete_indices_null<arrow::Int16Type>(accum_indices, indices, stride, combined_bitmap);
-            break;
-        case Type::INT32:
-            sum_to_discrete_indices_null<arrow::Int32Type>(accum_indices, indices, stride, combined_bitmap);
-            break;
-        case Type::INT64:
-            sum_to_discrete_indices_null<arrow::Int64Type>(accum_indices, indices, stride, combined_bitmap);
-            break;
-        default:
-            throw std::invalid_argument("Wrong indices array type of DictionaryArray.");
-    }
-}
-
-void sum_to_discrete_indices(VectorXi& accum_indices, Array_ptr& indices, int stride) {
-    switch (indices->type_id()) {
-        case Type::INT8:
-            sum_to_discrete_indices<arrow::Int8Type>(accum_indices, indices, stride);
-            break;
-        case Type::INT16:
-            sum_to_discrete_indices<arrow::Int16Type>(accum_indices, indices, stride);
-            break;
-        case Type::INT32:
-            sum_to_discrete_indices<arrow::Int32Type>(accum_indices, indices, stride);
-            break;
-        case Type::INT64:
-            sum_to_discrete_indices<arrow::Int64Type>(accum_indices, indices, stride);
-            break;
-        default:
-            throw std::invalid_argument("Wrong indices array type of DictionaryArray.");
-    }
-}
-
-VectorXi discrete_indices(const DataFrame& df,
-                          const std::string& variable,
-                          const std::vector<std::string>& evidence,
-                          const VectorXi& strides) {
-    if (df.null_count(variable, evidence) == 0)
-        return discrete_indices<false>(df, variable, evidence, strides);
-    else
-        return discrete_indices<true>(df, variable, evidence, strides);
-}
-
 void DiscreteFactor::fit(const DataFrame& df) {
     MLE<DiscreteFactor> mle;
 
@@ -116,26 +65,6 @@ void DiscreteFactor::fit(const DataFrame& df) {
     }
 
     m_fitted = true;
-}
-
-void check_domain_variable(const DataFrame& df,
-                           const std::string& variable,
-                           const std::vector<std::string>& variable_values) {
-    auto var_array = df.col(variable);
-    if (var_array->type_id() != arrow::Type::DICTIONARY)
-        throw std::invalid_argument("Variable " + variable + " is not categorical.");
-
-    auto var_dictionary = std::static_pointer_cast<arrow::DictionaryArray>(var_array)->dictionary();
-    auto var_names = std::static_pointer_cast<arrow::StringArray>(var_dictionary);
-
-    if (variable_values.size() != static_cast<size_t>(var_names->length()))
-        throw std::invalid_argument("Variable " + variable + " does not contain the same categories.");
-
-    for (auto j = 0; j < var_names->length(); ++j) {
-        if (variable_values[j] != var_names->GetString(j))
-            throw std::invalid_argument("Category at index " + std::to_string(j) + " is different for variable " +
-                                        variable);
-    }
 }
 
 void DiscreteFactor::check_equal_domain(const DataFrame& df) const {

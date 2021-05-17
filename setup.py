@@ -41,6 +41,7 @@ ext_modules = [
          'pybnesian/factors/continuous/LinearGaussianCPD.cpp',
          'pybnesian/factors/continuous/CKDE.cpp',
          'pybnesian/factors/discrete/DiscreteFactor.cpp',
+         'pybnesian/factors/discrete/discrete_indices.cpp',
          'pybnesian/dataset/dataset.cpp',
          'pybnesian/dataset/dynamic_dataset.cpp',
          'pybnesian/dataset/crossvalidation_adaptator.cpp',

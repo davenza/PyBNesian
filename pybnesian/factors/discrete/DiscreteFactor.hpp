@@ -4,6 +4,7 @@
 #include <random>
 #include <dataset/dataset.hpp>
 #include <factors/factors.hpp>
+#include <factors/discrete/discrete_indices.hpp>
 
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;
@@ -47,85 +48,6 @@ public:
 private:
     DiscreteFactorType() { m_hash = reinterpret_cast<std::uintptr_t>(this); }
 };
-
-template <typename ArrowType>
-void sum_to_discrete_indices_null(VectorXi& accum_indices,
-                                  Array_ptr& indices,
-                                  int stride,
-                                  Buffer_ptr& combined_bitmap) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    auto dwn_indices = std::static_pointer_cast<ArrayType>(indices);
-
-    auto raw_combined_bitmap = combined_bitmap->data();
-    for (auto i = 0, j = 0; i < indices->length(); ++i) {
-        if (arrow::BitUtil::GetBit(raw_combined_bitmap, i)) {
-            accum_indices(j++) += dwn_indices->Value(i) * stride;
-        }
-    }
-}
-
-void sum_to_discrete_indices_null(VectorXi& accum_indices, Array_ptr& indices, int stride, Buffer_ptr& combined_bitmap);
-
-template <typename ArrowType>
-void sum_to_discrete_indices(VectorXi& accum_indices, Array_ptr& indices, int stride) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    using EigenMap = Map<const Matrix<typename ArrowType::c_type, Dynamic, 1>>;
-    auto dwn_indices = std::static_pointer_cast<ArrayType>(indices);
-    auto* raw_values = dwn_indices->raw_values();
-    const EigenMap map_eigen(raw_values, indices->length());
-    accum_indices += (map_eigen * stride).template cast<int>();
-}
-
-void sum_to_discrete_indices(VectorXi& accum_indices, Array_ptr& indices, int stride);
-
-template <bool contains_null>
-VectorXi discrete_indices(const DataFrame& df,
-                          const std::string& variable,
-                          const std::vector<std::string>& evidence,
-                          const VectorXi& strides) {
-    if constexpr (contains_null) {
-        auto combined_bitmap = df.combined_bitmap(variable, evidence);
-
-        auto valid_rows = util::bit_util::non_null_count(combined_bitmap, df->num_rows());
-
-        VectorXi indices = VectorXi::Zero(valid_rows);
-
-        auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(variable));
-        auto variable_indices = dict_variable->indices();
-
-        sum_to_discrete_indices_null(indices, variable_indices, strides(0), combined_bitmap);
-
-        int i = 1;
-        for (auto it = evidence.begin(), end = evidence.end(); it != end; ++it, ++i) {
-            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
-            auto evidence_indices = dict_evidence->indices();
-            sum_to_discrete_indices_null(indices, evidence_indices, strides(i), combined_bitmap);
-        }
-
-        return indices;
-    } else {
-        VectorXi indices = VectorXi::Zero(df->num_rows());
-
-        auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(variable));
-        auto variable_indices = dict_variable->indices();
-
-        sum_to_discrete_indices(indices, variable_indices, strides(0));
-
-        int i = 1;
-        for (auto it = evidence.begin(), end = evidence.end(); it != end; ++it, ++i) {
-            auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
-            auto evidence_indices = dict_evidence->indices();
-            sum_to_discrete_indices(indices, evidence_indices, strides(i));
-        }
-
-        return indices;
-    }
-}
-
-VectorXi discrete_indices(const DataFrame& df,
-                          const std::string& variable,
-                          const std::vector<std::string>& evidence,
-                          const VectorXi& strides);
 
 struct DiscreteFactor_Params {
     VectorXd logprob;
@@ -242,16 +164,13 @@ Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values
     if (!evidence().empty()) {
         if (!evidence_values.has_columns(evidence()))
             throw std::domain_error("Evidence values not present for sampling.");
+        if (evidence_values->num_rows() != n)
+            throw std::domain_error("Evidence values do not have " + std::to_string(n) + " rows to sample.");
+        if (evidence_values.null_count(evidence()) > 0)
+            throw std::domain_error("Evidence values contain null rows in the evidence variables.");
 
-        VectorXi parent_offset = VectorXi::Zero(n);
-        for (size_t i = 0; i < evidence().size(); ++i) {
-            auto array = evidence_values->GetColumnByName(evidence()[i]);
-
-            auto dwn_array = std::static_pointer_cast<arrow::DictionaryArray>(array);
-            auto array_indices = dwn_array->indices();
-
-            sum_to_discrete_indices(parent_offset, array_indices, m_strides(i + 1));
-        }
+        auto parent_offset =
+            factors::discrete::discrete_indices(evidence_values, evidence(), m_strides.tail(evidence().size()));
 
         for (auto i = 0; i < n; ++i) {
             double random_number = uniform(rng);

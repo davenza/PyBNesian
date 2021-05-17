@@ -727,9 +727,9 @@ void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
         throw std::invalid_argument("CPD defined on variable which is not present in the model:\n" + cpd.ToString());
     }
 
-    auto& evidence = cpd.evidence();
+    const auto& evidence = cpd.evidence();
 
-    for (auto& ev : evidence) {
+    for (const auto& ev : evidence) {
         if constexpr (graph::is_unconditional_graph_v<DagType>) {
             if (!contains_node(ev)) {
                 throw std::invalid_argument("Evidence variable " + ev + " is not present in the model:\n" +
@@ -754,7 +754,7 @@ void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
     }
 
     std::unordered_set<std::string> evidence_set(evidence.begin(), evidence.end());
-    for (auto& parent : pa) {
+    for (const auto& parent : pa) {
         if (evidence_set.find(parent) == evidence_set.end()) {
             std::string err = "CPD do not have the model's parent set as evidence:\n" + cpd.ToString() +
                               "\nParents: " + g.parents_to_string(cpd.variable());
@@ -988,7 +988,7 @@ py::tuple BNGeneric<DagType>::__getstate__() const {
     if (m_include_cpd && !m_cpds.empty()) {
         for (const auto& nn : nodes()) {
             auto i = index(nn);
-            if (m_cpds[i] && m_cpds[i]->fitted()) {
+            if (m_cpds[i]) {
                 try {
                     check_compatible_cpd(*m_cpds[i]);
                     cpds.push_back(m_cpds[i]);

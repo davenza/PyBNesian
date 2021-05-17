@@ -2,10 +2,8 @@
 #define PYBNESIAN_LEARNING_SCORES_BIC_HPP
 
 #include <learning/scores/scores.hpp>
-#include <factors/continuous/LinearGaussianCPD.hpp>
 #include <learning/parameters/mle_LinearGaussianCPD.hpp>
 
-using factors::continuous::LinearGaussianCPDType, factors::continuous::LinearGaussianCPD;
 using learning::scores::Score;
 using namespace dataset;
 using learning::parameters::MLE;
@@ -32,20 +30,18 @@ public:
 
     bool has_variables(const std::vector<std::string>& cols) const override { return m_df.has_columns(cols); }
 
-    bool compatible_bn(const BayesianNetworkBase& model) const override {
-        const auto& model_type = model.type_ref();
-        return model_type.is_homogeneous() && *model_type.default_node_type() == LinearGaussianCPDType::get_ref() &&
-               m_df.has_columns(model.nodes());
-    }
+    bool compatible_bn(const BayesianNetworkBase& model) const override { return m_df.has_columns(model.nodes()); }
 
     bool compatible_bn(const ConditionalBayesianNetworkBase& model) const override {
-        const auto& model_type = model.type_ref();
-        return model_type.is_homogeneous() && *model_type.default_node_type() == LinearGaussianCPDType::get_ref() &&
-               m_df.has_columns(model.joint_nodes());
+        return m_df.has_columns(model.joint_nodes());
     }
 
 private:
     double bic_lineargaussian(const std::string& variable, const std::vector<std::string>& parents) const;
+    double bic_discrete(const std::string& variable, const std::vector<std::string>& parents) const;
+    double bic_clg(const std::string& variable,
+                   const std::vector<std::string>& discrete_parents,
+                   const std::vector<std::string>& continuous_parents) const;
 
     const DataFrame m_df;
 };

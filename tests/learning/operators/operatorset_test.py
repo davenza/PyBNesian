@@ -9,28 +9,16 @@ import util_test
 SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
 
-def test_create():
+def test_create_change_node():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
-    spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
-
-    bic = BIC(df)
     
     cv = CVLikelihood(df)
-    arc_op = ArcOperatorSet()
-
-    with pytest.raises(ValueError) as ex:
-        arc_op.cache_scores(spbn, bic)
-    assert "is not compatible with the score" in str(ex.value)
 
     node_op = ChangeNodeTypeSet()
 
     with pytest.raises(ValueError) as ex:
         node_op.cache_scores(gbn, cv)
     assert "can only be used with SemiparametricBN" in str(ex.value)
-
-    with pytest.raises(ValueError) as ex:
-        node_op.cache_scores(spbn, bic)
-    assert "is not compatible with the score" in str(ex.value)
 
 def test_lists():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])

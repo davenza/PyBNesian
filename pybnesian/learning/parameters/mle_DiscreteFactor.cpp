@@ -9,17 +9,19 @@ typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
 
     auto [cardinality, strides] = factors::discrete::create_cardinality_strides(df, variable, evidence);
 
-    auto logprob = factors::discrete::joint_counts(df, variable, evidence, cardinality, strides);
+    auto joint_counts = factors::discrete::joint_counts(df, variable, evidence, cardinality, strides);
 
     // Normalize the CPD.
     auto parent_configurations = cardinality.bottomRows(num_variables - 1).prod();
+
+    VectorXd logprob(joint_counts.rows());
 
     for (auto k = 0; k < parent_configurations; ++k) {
         auto offset = k * cardinality(0);
 
         int sum_configuration = 0;
         for (auto i = 0; i < cardinality(0); ++i) {
-            sum_configuration += logprob(offset + i);
+            sum_configuration += joint_counts(offset + i);
         }
 
         if (sum_configuration == 0) {
@@ -28,9 +30,9 @@ typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
                 logprob(offset + i) = loguniform;
             }
         } else {
-            double logsum_configuration = std::log(sum_configuration);
+            double logsum_configuration = std::log(static_cast<double>(sum_configuration));
             for (auto i = 0; i < cardinality(0); ++i) {
-                logprob(offset + i) = std::log(logprob(offset + i)) - logsum_configuration;
+                logprob(offset + i) = std::log(static_cast<double>(joint_counts(offset + i))) - logsum_configuration;
             }
         }
     }

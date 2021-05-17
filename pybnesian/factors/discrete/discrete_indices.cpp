@@ -123,14 +123,14 @@ std::pair<VectorXi, VectorXi> create_cardinality_strides(const DataFrame& df,
     return std::make_pair(cardinality, strides);
 }
 
-VectorXd joint_counts(const DataFrame& df,
+VectorXi joint_counts(const DataFrame& df,
                       const std::string& variable,
                       const std::vector<std::string>& evidence,
                       const VectorXi& cardinality,
                       const VectorXi& strides) {
     auto joint_values = cardinality.prod();
 
-    VectorXd counts = VectorXd::Zero(joint_values);
+    VectorXi counts = VectorXi::Zero(joint_values);
     VectorXi indices = discrete_indices(df, variable, evidence, strides);
 
     // Compute counts

@@ -130,7 +130,7 @@ std::pair<VectorXi, VectorXi> create_cardinality_strides(const DataFrame& df,
 std::pair<VectorXi, VectorXi> create_cardinality_strides(const DataFrame& df,
                                                          const std::vector<std::string>& variables);
 
-VectorXd joint_counts(const DataFrame& df,
+VectorXi joint_counts(const DataFrame& df,
                       const std::string& variable,
                       const std::vector<std::string>& evidence,
                       const VectorXi& cardinality,

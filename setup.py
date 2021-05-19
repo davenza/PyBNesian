@@ -65,6 +65,7 @@ ext_modules = [
          'pybnesian/learning/parameters/mle_DiscreteFactor.cpp',
          'pybnesian/learning/scores/bic.cpp',
          'pybnesian/learning/scores/bge.cpp',
+         'pybnesian/learning/scores/bde.cpp',
          'pybnesian/learning/scores/cv_likelihood.cpp',
          'pybnesian/learning/scores/holdout_likelihood.cpp',
          'pybnesian/graph/generic_graph.cpp',

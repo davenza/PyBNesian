@@ -3,6 +3,7 @@
 #include <learning/scores/scores.hpp>
 #include <learning/scores/bic.hpp>
 #include <learning/scores/bge.hpp>
+#include <learning/scores/bde.hpp>
 #include <learning/scores/cv_likelihood.hpp>
 #include <learning/scores/holdout_likelihood.hpp>
 #include <learning/scores/validated_likelihood.hpp>
@@ -11,10 +12,11 @@
 namespace py = pybind11;
 
 using learning::scores::Score, learning::scores::ValidatedScore, learning::scores::BIC, learning::scores::BGe,
-    learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood, learning::scores::ValidatedLikelihood;
+    learning::scores::BDe, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood,
+    learning::scores::ValidatedLikelihood;
 
 using learning::scores::DynamicScore, learning::scores::DynamicBIC, learning::scores::DynamicBGe,
-    learning::scores::DynamicCVLikelihood, learning::scores::DynamicHoldoutLikelihood,
+    learning::scores::DynamicBDe, learning::scores::DynamicCVLikelihood, learning::scores::DynamicHoldoutLikelihood,
     learning::scores::DynamicValidatedLikelihood;
 
 using util::random_seed_arg;
@@ -499,6 +501,22 @@ This class implements the Bayesian Gaussian equivalent (BGe).
 Initializes a :class:`BGe` with the given DataFrame ``df``.
 
 :param df: DataFrame to compute the BGe score.
+:param iss_mu: Imaginary sample size for the normal component of the normal-Wishart prior.
+:param iss_w: Imaginary sample size for the Wishart component of the normal-Wishart prior.
+:param nu: Mean vector of the normal-Wishart prior.
+)doc");
+
+    py::class_<BDe, Score, std::shared_ptr<BDe>>(scores, "BDe", R"doc(
+This class implements the Bayesian Dirichlet equivalent (BDe).
+)doc")
+        .def(py::init<const DataFrame&, double>(),
+             py::arg("df"),
+             py::arg("iss") = 1,
+             R"doc(
+Initializes a :class:`BDe` with the given DataFrame ``df``.
+
+:param df: DataFrame to compute the BDe score.
+:param iss: Imaginary sample size of the Dirichlet prior.
 )doc");
 
     py::class_<CVLikelihood, Score, std::shared_ptr<CVLikelihood>>(scores, "CVLikelihood", R"doc(
@@ -653,10 +671,30 @@ Initializes a :class:`DynamicBIC` with the given :class:`DynamicDataFrame` ``ddf
         scores, "DynamicBGe", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`BGe` score.
 )doc")
-        .def(py::init<DynamicDataFrame>(), py::keep_alive<1, 2>(), py::arg("ddf"), R"doc(
+        .def(py::init<DynamicDataFrame, double, std::optional<double>, std::optional<VectorXd>>(),
+             py::keep_alive<1, 2>(),
+             py::arg("ddf"),
+             py::arg("iss_mu") = 1,
+             py::arg("iss_w") = std::nullopt,
+             py::arg("nu") = std::nullopt,
+             R"doc(
 Initializes a :class:`DynamicBGe` with the given :class:`DynamicDataFrame` ``ddf``.
 
 :param ddf: :class:`DynamicDataFrame` to compute the :class:`DynamicBGe` score.
+:param iss_mu: Imaginary sample size for the normal component of the normal-Wishart prior.
+:param iss_w: Imaginary sample size for the Wishart component of the normal-Wishart prior.
+:param nu: Mean vector of the normal-Wishart prior.
+)doc");
+
+    py::class_<DynamicBDe, DynamicScore, std::shared_ptr<DynamicBDe>>(
+        scores, "DynamicBDe", py::multiple_inheritance(), R"doc(
+The dynamic adaptation of the :class:`BDe` score.
+)doc")
+        .def(py::init<DynamicDataFrame, double>(), py::keep_alive<1, 2>(), py::arg("ddf"), py::arg("iss") = 1, R"doc(
+Initializes a :class:`DynamicBDe` with the given :class:`DynamicDataFrame` ``ddf``.
+
+:param ddf: :class:`DynamicDataFrame` to compute the :class:`DynamicBDe` score.
+:param iss: Imaginary sample size of the Dirichlet prior.
 )doc");
 
     py::class_<DynamicCVLikelihood, DynamicScore, std::shared_ptr<DynamicCVLikelihood>>(

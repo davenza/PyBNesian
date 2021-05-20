@@ -136,6 +136,8 @@ VectorXi joint_counts(const DataFrame& df,
                       const VectorXi& cardinality,
                       const VectorXi& strides);
 
+VectorXi marginal_counts(const VectorXi& joint_counts, int index, const VectorXi& cardinality, const VectorXi& strides);
+
 std::vector<arrow::AdaptiveIntBuilder> discrete_slice_indices(const DataFrame& df,
                                                               const std::vector<std::string>& discrete_vars,
                                                               const VectorXi& indices,

@@ -5,15 +5,18 @@
 #include <learning/independences/continuous/linearcorrelation.hpp>
 #include <learning/independences/continuous/mutual_information.hpp>
 #include <learning/independences/continuous/RCoT.hpp>
+#include <learning/independences/discrete/chi_square.hpp>
 #include <util/util_types.hpp>
 
 namespace py = pybind11;
 
 using learning::independences::IndependenceTest, learning::independences::continuous::LinearCorrelation,
-    learning::independences::continuous::KMutualInformation, learning::independences::continuous::RCoT;
+    learning::independences::continuous::KMutualInformation, learning::independences::continuous::RCoT,
+    learning::independences::discrete::ChiSquare;
 
 using learning::independences::DynamicIndependenceTest, learning::independences::continuous::DynamicLinearCorrelation,
-    learning::independences::continuous::DynamicKMutualInformation, learning::independences::continuous::DynamicRCoT;
+    learning::independences::continuous::DynamicKMutualInformation, learning::independences::continuous::DynamicRCoT,
+    learning::independences::discrete::DynamicChiSquare;
 
 using util::random_seed_arg;
 
@@ -283,7 +286,7 @@ This method uses random fourier features and is designed to be a fast non-parame
              py::arg("random_fourier_xy") = 5,
              py::arg("random_fourier_z") = 100,
              R"doc(
-Initializes a :class:`RCoT` for data `df`. The number of random fourier features used for the ``x`` and ``y`` variables
+Initializes a :class:`RCoT` for data ``df``. The number of random fourier features used for the ``x`` and ``y`` variables
 in :class:`IndependenceTest.pvalue` is ``random_fourier_xy``. The number of random features used for ``z`` is equal
 to ``random_fourier_z``.
 
@@ -291,6 +294,15 @@ to ``random_fourier_z``.
 :param random_fourier_xy: Number of random fourier features for the variables of the independence test.
 :param randoum_fourier_z: Number of random fourier features for the conditioning variables of the independence test.
 )doc");
+
+    py::class_<ChiSquare, IndependenceTest, std::shared_ptr<ChiSquare>>(independence_tests, "ChiSquare", R"doc(
+Initializes a :class:`ChiSquare` for data ``df``. This independence test is only valid for categorical data.
+
+It implements the Pearson's X^2 test.
+
+:param df: DataFrame on which to calculate the independence tests.
+)doc")
+        .def(py::init<const DataFrame&>(), py::arg("df"));
 
     py::class_<DynamicIndependenceTest, std::shared_ptr<DynamicIndependenceTest>> dynamic_indep_test(
         independence_tests, "DynamicIndependenceTest", R"doc(
@@ -416,5 +428,17 @@ Initializes a :class:`DynamicRCoT` with the given :class:`DynamicDataFrame` ``df
 :param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicRCoT`.
 :param random_fourier_xy: Number of random fourier features for the variables of the independence test.
 :param randoum_fourier_z: Number of random fourier features for the conditioning variables of the independence test.
+)doc");
+
+    py::class_<DynamicChiSquare, DynamicIndependenceTest, std::shared_ptr<DynamicChiSquare>>(
+        independence_tests, "DynamicChiSquare", py::multiple_inheritance(), R"doc(
+The dynamic adaptation of the :class:`ChiSquare` independence test.
+)doc")
+        .def(py::init<const DynamicDataFrame&>(),
+             py::arg("ddf"),
+             R"doc(
+Initializes a :class:`DynamicChiSquare` with the given :class:`DynamicDataFrame` ``df``.
+
+:param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicChiSquare`.
 )doc");
 }

@@ -2012,6 +2012,7 @@ public:
 
     Array_vector columns() const { return m_batch->columns(); }
 
+    std::vector<int> discrete_columns() const;
     std::vector<int> continuous_columns() const;
 
     DataFrame normalize() const;

@@ -141,6 +141,23 @@ VectorXi joint_counts(const DataFrame& df,
     return counts;
 }
 
+VectorXi marginal_counts(const VectorXi& joint_counts,
+                         int index,
+                         const VectorXi& cardinality,
+                         const VectorXi& strides) {
+    auto result = VectorXi::Zero(cardinality(index)).eval();
+
+    auto stride = strides(index);
+    auto card = cardinality(index);
+
+    for (auto i = 0; i < joint_counts.rows(); ++i) {
+        auto vindex = (i / stride) % card;
+        result(vindex) += joint_counts(i);
+    }
+
+    return result;
+}
+
 std::vector<arrow::AdaptiveIntBuilder> discrete_slice_indices(const DataFrame& df,
                                                               const std::vector<std::string>& discrete_vars,
                                                               const VectorXi& strides,

@@ -212,6 +212,19 @@ std::shared_ptr<arrow::DataType> same_type(Array_iterator begin, Array_iterator 
     return dt;
 }
 
+std::vector<int> DataFrame::discrete_columns() const {
+    std::vector<int> res;
+
+    for (int i = 0; i < m_batch->num_columns(); ++i) {
+        auto column = m_batch->column(i);
+        if (column->type_id() == Type::DICTIONARY) {
+            res.push_back(i);
+        }
+    }
+
+    return res;
+}
+
 std::vector<int> DataFrame::continuous_columns() const {
     std::vector<int> res;
 

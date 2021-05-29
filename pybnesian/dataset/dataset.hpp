@@ -898,6 +898,27 @@ public:
         return dataset::same_type(v.begin(), v.end());
     }
 
+    ///////////////////////////// is_discrete/is_continuous /////////////////////////
+    template <typename Index, enable_if_index_t<Index, int> = 0>
+    bool is_discrete(const Index& index) const {
+        if (derived().col(index)->type_id() == Type::DICTIONARY) {
+            return true;
+        }
+
+        return false;
+    }
+
+    template <typename Index, enable_if_index_t<Index, int> = 0>
+    bool is_continuous(const Index& index) const {
+        switch (derived().col(index)->type_id()) {
+            case Type::DOUBLE:
+            case Type::FLOAT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     ///////////////////////////// names /////////////////////////
     std::vector<std::string> names() const { return derived().column_names(); }
     template <typename Index, enable_if_index_t<Index, int> = 0>

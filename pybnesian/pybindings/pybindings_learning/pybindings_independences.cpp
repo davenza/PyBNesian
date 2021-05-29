@@ -6,17 +6,18 @@
 #include <learning/independences/continuous/mutual_information.hpp>
 #include <learning/independences/continuous/RCoT.hpp>
 #include <learning/independences/discrete/chi_square.hpp>
+#include <learning/independences/hybrid/mutual_information.hpp>
 #include <util/util_types.hpp>
 
 namespace py = pybind11;
 
 using learning::independences::IndependenceTest, learning::independences::continuous::LinearCorrelation,
     learning::independences::continuous::KMutualInformation, learning::independences::continuous::RCoT,
-    learning::independences::discrete::ChiSquare;
+    learning::independences::discrete::ChiSquare, learning::independences::hybrid::MutualInformation;
 
 using learning::independences::DynamicIndependenceTest, learning::independences::continuous::DynamicLinearCorrelation,
     learning::independences::continuous::DynamicKMutualInformation, learning::independences::continuous::DynamicRCoT,
-    learning::independences::discrete::DynamicChiSquare;
+    learning::independences::discrete::DynamicChiSquare, learning::independences::hybrid::DynamicMutualInformation;
 
 using util::random_seed_arg;
 
@@ -200,6 +201,75 @@ Initializes a :class:`LinearCorrelation` for the continuous variables in the Dat
 :param df: DataFrame on which to calculate the independence tests.
 )doc");
 
+    py::class_<MutualInformation, IndependenceTest, std::shared_ptr<MutualInformation>>(independence_tests,
+                                                                                        "MutualInformation",
+                                                                                        R"doc(
+This class implements a hypothesis test based on mutual information. This independence is implemented for a mix of
+categorical and continuous data. The estimation of the mutual information assumes that the continuous data has a
+Gaussian probability distribution. To compute the p-value, we use the relation between the
+`Likelihood-ratio test <https://en.wikipedia.org/wiki/Likelihood-ratio_test>`_ and the mutual information, so it is known
+that the null distribution has a chi-square distribution.
+
+The theory behind this implementation is described with more detail in the following
+:download:`document <../../mutual_information_pdf/mutual_information.pdf>`.
+)doc")
+        .def(py::init<const DataFrame&, bool>(),
+             py::arg("df"),
+             py::arg("asymptotic_df") = true,
+             R"doc(
+Initializes a :class:`MutualInformation` for data ``df``. The degrees of freedom for the chi-square null distribution
+can be calculated with the with the asymptotic (if ``asymptotic_df`` is true) or empirical (if ``asymptotic_df`` is
+false) expressions.
+
+:param df: DataFrame on which to calculate the independence tests.
+:param asymptotic_df: Whether to calculate the degrees of freedom with the asympototic or empirical expression. See the
+:download:`theory document <../../mutual_information_pdf/mutual_information.pdf>`.
+)doc")
+        .def(
+            "mi",
+            [](MutualInformation& self, const std::string& x, const std::string& y) { return self.mi(x, y); },
+            py::arg("x"),
+            py::arg("y"),
+            R"doc(
+Estimates the unconditional mutual information :math:`\text{MI}(x, y)`.
+
+:param x: A variable name.
+:param y: A variable name.
+:returns: The unconditional mutual information :math:`\text{MI}(x, y)`.
+)doc")
+        .def(
+            "mi",
+            [](MutualInformation& self, const std::string& x, const std::string& y, const std::string& z) {
+                return self.mi(x, y, z);
+            },
+            py::arg("x"),
+            py::arg("y"),
+            py::arg("z"),
+            R"doc(
+Estimates the univariate conditional mutual information :math:`\text{MI}(x, y \mid z)`.
+
+:param x: A variable name.
+:param y: A variable name.
+:param z: A variable name.
+:returns: The univariate conditional mutual information :math:`\text{MI}(x, y \mid z)`.
+)doc")
+        .def(
+            "mi",
+            [](MutualInformation& self, const std::string& x, const std::string& y, const std::vector<std::string>& z) {
+                return self.mi(x, y, z);
+            },
+            py::arg("x"),
+            py::arg("y"),
+            py::arg("z"),
+            R"doc(
+Estimates the multivariate conditional mutual information :math:`\text{MI}(x, y \mid \mathbf{z})`.
+
+:param x: A variable name.
+:param y: A variable name.
+:param z: A list of variable names.
+:returns: The multivariate conditional mutual information :math:`\text{MI}(x, y \mid \mathbf{z})`.
+)doc");
+
     py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(
         independence_tests, "KMutualInformation", R"doc(
 This class implements a non-parametric independence test that is based on the estimation of the mutual information
@@ -381,6 +451,22 @@ The dynamic adaptation of the :class:`LinearCorrelation` independence test.
 Initializes a :class:`DynamicLinearCorrelation` with the given :class:`DynamicDataFrame` ``ddf``.
 
 :param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicLinearCorrelation`.
+)doc");
+
+    py::class_<DynamicMutualInformation, DynamicIndependenceTest, std::shared_ptr<DynamicMutualInformation>>(
+        independence_tests, "DynamicMutualInformation", py::multiple_inheritance(), R"doc(
+The dynamic adaptation of the :class:`MutualInformation` independence test.
+)doc")
+        .def(py::init<const DynamicDataFrame&, bool>(),
+             py::arg("ddf"),
+             py::arg("asymptotic_df") = true,
+             R"doc(
+Initializes a :class:`DynamicMutualInformation` with the given :class:`DynamicDataFrame` ``df``. The ``asymptotic_df``
+parameter is passed to the static and transition components of :class:`MutualInformation`.
+
+:param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicMutualInformation`.
+:param asymptotic_df: Whether to calculate the asymptotic or empirical degrees of freedom of the chi-square null
+distribution.
 )doc");
 
     py::class_<DynamicKMutualInformation, DynamicIndependenceTest, std::shared_ptr<DynamicKMutualInformation>>(

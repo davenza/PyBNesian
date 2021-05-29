@@ -24,6 +24,11 @@ Concrete classes
     :members:
     :special-members: __init__, __str__
 
+.. autoclass:: pybnesian.learning.independences.MutualInformation
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
 .. autoclass:: pybnesian.learning.independences.KMutualInformation
     :show-inheritance:
     :members:

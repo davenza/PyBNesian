@@ -12,7 +12,7 @@ double ChiSquare::pvalue(const std::string& v1, const std::string& v2) const {
     auto v1_marg = factors::discrete::marginal_counts(joint_counts, 0, cardinality, strides);
     auto v2_marg = factors::discrete::marginal_counts(joint_counts, 1, cardinality, strides);
 
-    auto inv_obs = 1. / m_df.valid_rows(v1, v2);
+    auto inv_obs = 1. / joint_counts.sum();
 
     double statistic = 0;
     for (int i = 0; i < cardinality(0); ++i) {
@@ -86,7 +86,7 @@ double ChiSquare::pvalue(const std::string& v1, const std::string& v2, const std
     auto joint_counts = factors::discrete::joint_counts(m_df, v1, dummy_vars, cardinality, strides);
 
     auto evidence_configurations = cardinality.tail(ev.size()).prod();
-    auto vars_configurations = strides(2);
+    auto vars_configurations = cardinality(0) * cardinality(1);
 
     double statistic = 0;
 

@@ -424,7 +424,7 @@ and alternative implementation of a :class:`GaussianNetwork <pybnesian.models.Ga
 
 The extended factor can also be used in an heterogeneous Bayesian network. For example, we can imitate the behaviour
 of a :class:`SemiparametricBN <pybnesian.models.SemiparametricBN>` using an
-:class:`HomogeneousBN <pybnesian.models.HomogeneousBN>`:
+:class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>`:
 
 .. testsetup::
 
@@ -464,6 +464,46 @@ of a :class:`SemiparametricBN <pybnesian.models.SemiparametricBN>` using an
     >>> assert np.all(np.isclose(het.logl(df_test), spbn.logl(df_test)))
     >>> assert np.isclose(het.slogl(df_test), spbn.slogl(df_test))
 
+The :class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>` can also be instantiated using a dict to specify
+different default factor types for different data types. For example, we can mix the :class:`MyLG` factor with
+:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` for discrete data:
+
+.. doctest::
+
+    >>> import pyarrow as pa
+    >>> import pandas as pd
+    >>> from pybnesian.models import HeterogeneousBN
+    >>> from pybnesian.factors.continuous import CKDEType
+    >>> from pybnesian.factors.discrete import DiscreteFactorType
+    >>> from pybnesian.models import SemiparametricBN
+
+    >>> def generate_hybrid_sample_data(size, seed=0):
+    ...     np.random.seed(seed)
+    ...     a_array = np.random.normal(3, 0.5, size=size)
+    ...     b_categories = np.asarray(['b1', 'b2'])
+    ...     b_array = b_categories[np.random.choice(b_categories.size, size, p=[0.5, 0.5])]
+    ...     c_array = -4.2 + 1.2 * a_array + np.random.normal(0, 0.75, size=size)
+    ...     d_array = 1.5 - 0.3 * c_array + np.random.normal(0, 0.5, size=size)
+    ...     return pd.DataFrame({'a': a_array,
+    ...                          'b': pd.Series(b_array, dtype='category'),
+    ...                          'c': c_array,
+    ...                          'd': d_array})
+
+    >>> df = generate_hybrid_sample_data(20)
+    >>> # Create an heterogeneous with "MyLG" factors as default for continuous data and
+    >>> # "DiscreteFactorType" for categorical data.
+    >>> het = HeterogeneousBN({pa.float64(): MyLGType(),
+    ...                        pa.float32(): MyLGType(),
+    ...                        pa.dictionary(pa.int8(), pa.utf8()): DiscreteFactorType()},
+    ...                        ["a", "b", "c", "d"],
+    ...                        [("a", "c")])
+    >>> het.set_node_type("a", CKDEType())
+    >>> het.fit(df)
+    >>> assert het.node_type('a') == CKDEType()
+    >>> assert het.node_type('b') == DiscreteFactorType()
+    >>> assert het.node_type('c') == MyLGType()
+    >>> assert het.node_type('d') == MyLGType()
+
 .. _model-extension:
 
 Model Extension
@@ -494,7 +534,10 @@ methods:
 
 - :func:`BayesianNetworkType.__str__() <pybnesian.models.BayesianNetworkType.__str__>`.
 - :func:`BayesianNetworkType.is_homogeneous() <pybnesian.models.BayesianNetworkType.is_homogeneous>`.
-- :func:`BayesianNetworkType.default_node_type() <pybnesian.models.BayesianNetworkType.default_node_type>`.
+- :func:`BayesianNetworkType.default_node_type() <pybnesian.models.BayesianNetworkType.default_node_type>`. This method
+  is optional. It is only needed for homogeneous Bayesian networks.
+- :func:`BayesianNetworkType.data_default_node_type() <pybnesian.models.BayesianNetworkType.data_default_node_type>`. 
+  This method is optional. It is only needed for non-homogeneous Bayesian networks.
 - :func:`BayesianNetworkType.compatible_node_type() <pybnesian.models.BayesianNetworkType.compatible_node_type>`. This
   method is optional. It is only needed for non-homogeneous Bayesian networks. If not implemented, it accepts any
   :class:`FactorType <pybnesian.factors.FactorType>` for each node.
@@ -526,6 +569,14 @@ To illustrate, we will create a Gaussian network that only admits arcs ``source`
         def default_node_type(self):
             return MyLGType()
 
+        # NOT NEEDED because it is homogeneous. If heterogeneous we would return
+        # the default node type for the data_type.
+        # def data_default_node_type(self, data_type):
+        #     if data_type.equals(pa.float64()) or data_type.equals(pa.float32()):
+        #         return MyLGType()
+        #     else:
+        #         raise ValueError("Wrong data type for MyRestrictedGaussianType")
+        #    
         # NOT NEEDED because it is homogeneous. If heterogeneous we would check
         # that the node type is correct.
         # def compatible_node_type(self, model, node):
@@ -1053,7 +1104,9 @@ An extended :class:`Score <pybnesian.learning.scores.Score>` class needs to impl
   overriden.
 - :func:`Score.local_score_node_type() <pybnesian.learning.scores.Score.local_score_node_type>`. This method is
   optional. This method is only needed if the score is used together with
-  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`
+  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`.
+- :func:`Score.data() <pybnesian.learning.scores.Score.data>`. This method is optional. It is needed to infer the
+  default node types in the :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>` algorithm.
 
 In addition, an extended :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>` class needs to implement the
 following methods to get the score in the validation dataset:
@@ -1076,7 +1129,8 @@ To illustrate, we will implement an oracle score that only returns positive scor
 
     class OracleScore(Score):
 
-        # An oracle class that returns positive scores for the arcs in the following Bayesian network:
+        # An oracle class that returns positive scores for the arcs in the 
+        # following Bayesian network:
         #
         #  "a"     "b"
         #    \     /
@@ -1111,6 +1165,11 @@ To illustrate, we will implement an oracle score that only returns positive scor
                 return 1
             else:
                 return -1
+
+        # NOT NEEDED because this score does not use data.
+        # In that case, this method can return None or you can avoid implementing this method.
+        def data(self):
+            return None
 
 We can use this new score, for example, with a
 :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.

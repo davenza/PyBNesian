@@ -31,6 +31,15 @@ public:
     bool is_homogeneous() const override { return true; }
 
     std::shared_ptr<FactorType> default_node_type() const override { return CKDEType::get(); }
+    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const override {
+        switch (dt->id()) {
+            case Type::DOUBLE:
+            case Type::FLOAT:
+                return CKDEType::get();
+            default:
+                throw std::invalid_argument("Data type [" + dt->ToString() + "] not compatible with KDENetworkType");
+        }
+    }
 
     std::string ToString() const override { return "KDENetworkType"; }
 

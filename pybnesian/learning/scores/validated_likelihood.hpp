@@ -65,6 +65,8 @@ public:
 
     const CVLikelihood& cv() const { return m_cv; }
 
+    DataFrame data() const override { return m_cv.data(); }
+
 private:
     HoldoutLikelihood m_holdout;
     CVLikelihood m_cv;

@@ -23,6 +23,7 @@ def test_find_max():
     node_type = ChangeNodeTypeSet()
     
     arcs.cache_scores(spbn, cv)
+    spbn.set_unknown_node_types(df)
     node_type.cache_scores(spbn, cv)
     
     arcs_max = arcs.find_max(spbn)

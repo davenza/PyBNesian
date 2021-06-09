@@ -2,6 +2,16 @@
 
 namespace models {
 
+MapDataToFactor keep_MapDataToFactor_alive(MapDataToFactor& m) {
+    MapDataToFactor alive;
+
+    for (auto& item : m) {
+        alive.insert({item.first, FactorType::keep_python_alive(item.second)});
+    }
+
+    return alive;
+}
+
 std::shared_ptr<BayesianNetworkBase> HeterogeneousBNType::new_bn(const std::vector<std::string>& nodes) const {
     return std::make_shared<HeterogeneousBN>(m_default_ftype, nodes);
 }

@@ -1,4 +1,5 @@
 import pytest
+from pybnesian.factors import UnknownFactorType
 from pybnesian.factors.continuous import LinearGaussianCPDType, CKDEType
 from pybnesian.models import GaussianNetwork, SemiparametricBN
 from pybnesian.learning.operators import AddArc, RemoveArc, FlipArc, ChangeNodeType
@@ -55,7 +56,7 @@ def test_apply():
     assert spbn.num_arcs() == 0
 
     o = ChangeNodeType("a", CKDEType(), 1)
-    assert(spbn.node_type('a') == LinearGaussianCPDType())
+    assert(spbn.node_type('a') == UnknownFactorType())
     o.apply(spbn)
     assert(spbn.node_type('a') == CKDEType())
 

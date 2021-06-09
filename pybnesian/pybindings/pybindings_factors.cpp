@@ -410,6 +410,16 @@ Saves the :class:`Factor` in a pickle file with the given name.
 
     auto continuous = factors.def_submodule("continuous");
 
+    py::class_<UnknownFactorType, FactorType, std::shared_ptr<UnknownFactorType>>(factors, "UnknownFactorType", R"doc(
+:class:`UnknownFactorType` is the representation of an unknown :class:`FactorType`. This factor type is assigned by
+default to each node in an heterogeneous Bayesian network.
+)doc")
+        .def(py::init(&UnknownFactorType::get), R"doc(
+Instantiates an :class:`UnknownFactorType`.
+)doc")
+        .def(py::pickle([](const UnknownFactorType& self) { return self.__getstate__(); },
+                        [](py::tuple&) { return UnknownFactorType::get(); }));
+
     py::class_<LinearGaussianCPDType, FactorType, std::shared_ptr<LinearGaussianCPDType>>(
         continuous, "LinearGaussianCPDType", R"doc(
 :class:`LinearGaussianCPDType` is the corresponding CPD type of :class:`LinearGaussianCPD`.

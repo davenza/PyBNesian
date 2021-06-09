@@ -1,4 +1,6 @@
 import pytest
+import pyarrow as pa
+from pybnesian.factors import *
 from pybnesian.factors.continuous import *
 from pybnesian.factors.discrete import *
 from pybnesian.models import *
@@ -71,8 +73,11 @@ class NonHomogeneousType(BayesianNetworkType):
     def is_homogeneous(self):
         return False
 
-    def default_node_type(self):
-        return LinearGaussianCPDType()
+    def data_default_node_type(self, dt):
+        if dt.equals(pa.float64()) or dt.equals(pa.float32()):
+            return LinearGaussianCPDType()
+        else:
+            raise ValueError("Data type not compatible with NonHomogeneousType")
 
     def new_bn(self, nodes):
         return OtherBN(nodes)
@@ -122,10 +127,10 @@ def test_serialization_bn_model(gaussian_bytes, spbn_bytes, kde_bytes, discrete_
     assert set(loaded_s.nodes()) == set(["a", "b", "c", "d"])
     assert loaded_s.arcs() == [("a", "b")]
     assert loaded_s.type() == SemiparametricBNType()
-    assert loaded_s.node_types() == {'a': LinearGaussianCPDType(),
+    assert loaded_s.node_types() == {'a': UnknownFactorType(),
                                      'b': CKDEType(),
-                                     'c': LinearGaussianCPDType(),
-                                     'd': LinearGaussianCPDType()}
+                                     'c': UnknownFactorType(),
+                                     'd': UnknownFactorType()}
 
     loaded_k = pickle.loads(kde_bytes)
     assert set(loaded_k.nodes()) == set(["a", "b", "c", "d"])
@@ -151,7 +156,7 @@ def test_serialization_bn_model(gaussian_bytes, spbn_bytes, kde_bytes, discrete_
     assert set(loaded_g.nodes()) == set(["a", "b", "c", "d"])
     assert loaded_o.arcs() == [("a", "b")]
     assert loaded_o.type() == NonHomogeneousType()
-    assert loaded_o.node_types() == {'a': LinearGaussianCPDType(),
+    assert loaded_o.node_types() == {'a': UnknownFactorType(),
                                      'b': LinearGaussianCPDType(),
                                      'c': CKDEType(),
                                      'd': DiscreteFactorType()}
@@ -384,7 +389,7 @@ def test_serialization_conditional_bn_model(cond_gaussian_bytes, cond_spbn_bytes
     assert loaded_s.arcs() == [("a", "c")]
     assert loaded_s.type() == SemiparametricBNType()
     assert loaded_s.node_types() == {'c': CKDEType(),
-                                     'd': LinearGaussianCPDType()}
+                                     'd': UnknownFactorType()}
 
     loaded_k = pickle.loads(cond_kde_bytes)
     assert set(loaded_k.nodes()) == set(["c", "d"])
@@ -626,7 +631,7 @@ def test_serialization_dbn_model(dyn_gaussian_bytes, dyn_spbn_bytes, dyn_kde_byt
     assert loaded_s.static_bn().arcs() == [("a_t_2", "d_t_1")]
     assert loaded_s.transition_bn().arcs() == [("c_t_2", "b_t_0")]
     assert loaded_s.type() == SemiparametricBNType()
-    node_types = {v + "_t_0": LinearGaussianCPDType() for v in loaded_s.variables()}
+    node_types = {v + "_t_0": UnknownFactorType() for v in loaded_s.variables()}
     node_types["b_t_0"] = CKDEType()
     assert loaded_s.transition_bn().node_types() == node_types
 

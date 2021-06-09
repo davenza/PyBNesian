@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from pybnesian.factors import UnknownFactorType
 from pybnesian.factors.continuous import LinearGaussianCPD, LinearGaussianCPDType, CKDE, CKDEType
 from pybnesian.models import SemiparametricBN
 import util_test
@@ -13,7 +14,7 @@ def test_create_spbn():
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
-        assert spbn.node_type(n) == LinearGaussianCPDType()
+        assert spbn.node_type(n) == UnknownFactorType()
 
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', 'c')])
     assert spbn.num_nodes() == 4
@@ -21,7 +22,7 @@ def test_create_spbn():
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
-        assert spbn.node_type(n) == LinearGaussianCPDType()
+        assert spbn.node_type(n) == UnknownFactorType()
 
     spbn = SemiparametricBN([('a', 'c'), ('b', 'd'), ('c', 'd')])
     assert spbn.num_nodes() == 4
@@ -29,7 +30,7 @@ def test_create_spbn():
     assert spbn.nodes() == ['a', 'c', 'b', 'd']
 
     for n in spbn.nodes():
-        assert spbn.node_type(n) == LinearGaussianCPDType()
+        assert spbn.node_type(n) == UnknownFactorType()
 
     with pytest.raises(TypeError) as ex:
         spbn = SemiparametricBN(['a', 'b', 'c'], [('a', 'c', 'b')])
@@ -49,9 +50,9 @@ def test_create_spbn():
 
 
     expected_node_type = {'a': CKDEType(),
-                          'b': LinearGaussianCPDType(),
+                          'b': UnknownFactorType(),
                           'c': CKDEType(),
-                          'd': LinearGaussianCPDType()}
+                          'd': UnknownFactorType()}
 
     spbn = SemiparametricBN(['a', 'b', 'c', 'd'], [('a', CKDEType()), ('c', CKDEType())])
     assert spbn.num_nodes() == 4
@@ -103,7 +104,7 @@ def test_node_type():
     assert spbn.nodes() == ['a', 'b', 'c', 'd']
 
     for n in spbn.nodes():
-        assert spbn.node_type(n) == LinearGaussianCPDType()
+        assert spbn.node_type(n) == UnknownFactorType()
     
     spbn.set_node_type('b', CKDEType())
     assert spbn.node_type('b') == CKDEType()
@@ -143,8 +144,9 @@ def test_fit():
 
     spbn.set_node_type('c', CKDEType())
 
-    cpd_c = spbn.cpd('c')
-    assert cpd_c.type() != spbn.node_type('c')
+    with pytest.raises(ValueError) as ex:
+        cpd_c = spbn.cpd('c')
+    assert "not added" in str(ex.value)
 
     spbn.fit(df)
     cpd_c = spbn.cpd('c')
@@ -173,9 +175,9 @@ def test_cpd():
 def test_add_cpds():
     spbn = SemiparametricBN([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')], [('d', CKDEType())])
 
-    with pytest.raises(ValueError) as ex:
-        spbn.add_cpds([CKDE('a', [])])
-    assert "Bayesian network expects type" in str(ex.value)
+    assert spbn.node_type('a') == UnknownFactorType()
+    spbn.add_cpds([CKDE('a', [])])
+    assert spbn.node_type('a') == CKDEType()
 
     with pytest.raises(ValueError) as ex:
         spbn.add_cpds([LinearGaussianCPD('d', ['a', 'b', 'c'])])
@@ -188,6 +190,7 @@ def test_add_cpds():
 
     spbn.add_cpds([lg, ckde])
 
+    spbn.set_node_type('a', UnknownFactorType())
     with pytest.raises(ValueError) as ex:
         not spbn.cpd('a').fitted()
     assert "CPD of variable \"a\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)

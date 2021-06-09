@@ -121,6 +121,11 @@ distribution of ``"a"`` is a :class:`LinearGaussianCPD <pybnesian.factors.contin
 :param evidence: A list of parent names.
 :returns: Local score value of ``node`` in the ``model`` with ``evidence`` as parents and ``variable_type`` as
           conditional distribution.
+)doc")
+        .def("data", &Score::data, R"doc(
+Returns the DataFrame used to calculate the score and local scores.
+
+:returns: DataFrame used to calculate the score. If the score do not use data, it returns None.
 )doc");
 
     {
@@ -355,6 +360,23 @@ public:
                                compatible_bn, /* Name of function in C++ (must match Python name) */
                                &model         /* Argument(s) */
         );
+    }
+
+    DataFrame data() const override {
+        pybind11::gil_scoped_acquire gil;
+        pybind11::function override = pybind11::get_override(static_cast<const ScoreBase*>(this), "data");
+
+        if (override) {
+            auto o = override();
+
+            if (o.is(py::none())) {
+                return DataFrame();
+            }
+
+            return o.cast<DataFrame>();
+        } else {
+            return DataFrame();
+        }
     }
 };
 

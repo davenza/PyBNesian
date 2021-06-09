@@ -59,6 +59,19 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
     current_model->check_blacklist(arc_blacklist);
     current_model->force_whitelist(arc_whitelist);
 
+    if (current_model->has_unknown_node_types()) {
+        auto score_data = score.data();
+
+        if (score_data->num_columns() == 0) {
+            throw std::invalid_argument(
+                "The score does not have data to detect the node types. Set the node types for"
+                " all the nodes in the Bayesian network or use an score that uses data (it implements Score::data).");
+        }
+
+        score_data.raise_has_columns(current_model->nodes());
+        current_model->set_unknown_node_types(score_data);
+    }
+
     op_set.set_arc_blacklist(arc_blacklist);
     op_set.set_arc_whitelist(arc_whitelist);
     op_set.set_max_indegree(max_indegree);
@@ -131,6 +144,19 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
     current_model->check_blacklist(arc_blacklist);
     current_model->force_whitelist(arc_whitelist);
     current_model->force_type_whitelist(type_whitelist);
+
+    if (current_model->has_unknown_node_types()) {
+        auto score_data = score.data();
+
+        if (score_data->num_columns() == 0) {
+            throw std::invalid_argument(
+                "The score does not have data to detect the node types. Set the node types for"
+                " all the nodes in the Bayesian network or use an score that uses data (it implements Score::data).");
+        }
+
+        score_data.raise_has_columns(current_model->nodes());
+        current_model->set_unknown_node_types(score_data);
+    }
 
     op_set.set_arc_blacklist(arc_blacklist);
     op_set.set_arc_whitelist(arc_whitelist);

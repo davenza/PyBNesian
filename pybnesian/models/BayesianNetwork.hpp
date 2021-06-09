@@ -4,12 +4,14 @@
 #include <random>
 #include <dataset/dataset.hpp>
 #include <factors/factors.hpp>
+#include <factors/unknown_factor.hpp>
 #include <graph/generic_graph.hpp>
 #include <util/parameter_traits.hpp>
 #include <util/virtual_clone.hpp>
 
+using arrow::DataType;
 using dataset::DataFrame;
-using factors::Factor;
+using factors::Factor, factors::UnknownFactorType;
 using graph::DagBase, graph::ConditionalDagBase, graph::Dag, graph::ConditionalDag;
 using util::ArcStringVector, util::FactorTypeVector;
 
@@ -91,7 +93,10 @@ public:
 
     virtual std::shared_ptr<FactorType> node_type(const std::string& node) const = 0;
     virtual std::unordered_map<std::string, std::shared_ptr<FactorType>> node_types() const = 0;
+    virtual std::shared_ptr<FactorType> underlying_node_type(const DataFrame&, const std::string& node) const = 0;
+    virtual bool has_unknown_node_types() const = 0;
     virtual void set_node_type(const std::string& node, const std::shared_ptr<FactorType>& new_type) = 0;
+    virtual void set_unknown_node_types(const DataFrame& df) = 0;
     virtual void force_type_whitelist(const FactorTypeVector& type_whitelist) = 0;
     virtual std::string ToString() const = 0;
 
@@ -214,22 +219,19 @@ public:
     virtual bool is_homogeneous() const = 0;
 
     virtual std::shared_ptr<FactorType> default_node_type() const = 0;
-    virtual bool compatible_node_type(const BayesianNetworkBase&, const std::string&) const { return true; }
+    virtual std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const = 0;
 
+    virtual bool compatible_node_type(const BayesianNetworkBase&, const std::string&) const { return true; }
     virtual bool compatible_node_type(const ConditionalBayesianNetworkBase&, const std::string&) const { return true; }
 
     virtual bool can_have_arc(const BayesianNetworkBase&, const std::string&, const std::string&) const { return true; }
-
     virtual bool can_have_arc(const ConditionalBayesianNetworkBase&, const std::string&, const std::string&) const {
         return true;
     }
 
     virtual bool operator==(const BayesianNetworkType& other) const { return this->hash() == other.hash(); }
-
     virtual bool operator!=(const BayesianNetworkType& o) const { return !(*this == o); }
-
     virtual bool operator==(BayesianNetworkType&& other) const { return this->hash() == other.hash(); }
-
     virtual bool operator!=(BayesianNetworkType&& o) const { return !(*this == o); }
 
     virtual std::string ToString() const = 0;
@@ -263,7 +265,7 @@ private:
 
         if (!m_type->is_homogeneous()) {
             m_node_types.resize(g.num_raw_nodes());
-            std::fill(m_node_types.begin(), m_node_types.end(), m_type->default_node_type());
+            std::fill(m_node_types.begin(), m_node_types.end(), UnknownFactorType::get());
         }
     }
 
@@ -280,7 +282,7 @@ private:
             }
         } else {
             m_node_types.resize(g.num_raw_nodes());
-            std::fill(m_node_types.begin(), m_node_types.end(), m_type->default_node_type());
+            std::fill(m_node_types.begin(), m_node_types.end(), UnknownFactorType::get());
 
             for (const auto& p : node_types) {
                 auto index = check_index(p.first);
@@ -449,7 +451,7 @@ public:
             if (!m_cpds.empty()) m_cpds.resize(idx + 1);
             if (!m_type->is_homogeneous()) {
                 m_node_types.resize(idx + 1);
-                m_node_types[idx] = m_type->default_node_type();
+                m_node_types[idx] = UnknownFactorType::get();
             }
         }
 
@@ -457,10 +459,15 @@ public:
     }
 
     void remove_node(const std::string& node) override {
-        g.remove_node(node);
         if (!m_cpds.empty()) {
             m_cpds[g.index(node)] = nullptr;
         }
+
+        if (!m_type->is_homogeneous()) {
+            m_node_types[g.index(node)] = UnknownFactorType::get();
+        }
+
+        g.remove_node(node);
     }
 
     const std::string& name(int node_index) const override { return g.name(node_index); }
@@ -593,6 +600,20 @@ public:
         }
     }
 
+    std::shared_ptr<FactorType> underlying_node_type(const DataFrame& df, const std::string& node) const override {
+        if (m_type->is_homogeneous()) {
+            return m_type->default_node_type();
+        } else {
+            auto node_index = check_index(node);
+
+            if (*m_node_types[node_index] != UnknownFactorType::get_ref()) {
+                return m_node_types[node_index];
+            } else {
+                return m_type->data_default_node_type(df.col(node)->type());
+            }
+        }
+    }
+
     std::unordered_map<std::string, std::shared_ptr<FactorType>> node_types() const override {
         std::unordered_map<std::string, std::shared_ptr<FactorType>> res;
 
@@ -621,12 +642,38 @@ public:
             auto old_node_type = m_node_types[node_index];
             m_node_types[node_index] = new_type;
 
-            if (!m_type->compatible_node_type(*this, node)) {
+            if (*new_type != UnknownFactorType::get_ref() && !m_type->compatible_node_type(*this, node)) {
                 m_node_types[node_index] = old_node_type;
                 throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node \"" + node +
                                             "\" in Bayesian network type \"" + m_type->ToString() + "\".");
             }
+
+            if (!m_cpds.empty() && m_cpds[node_index] && *m_node_types[node_index] != m_cpds[node_index]->type_ref())
+                m_cpds[node_index] = nullptr;
         }
+    }
+
+    void set_unknown_node_types(const DataFrame& df) override {
+        if (m_type->is_homogeneous()) return;
+
+        for (const auto& nn : nodes()) {
+            auto node_index = index(nn);
+
+            if (*m_node_types[node_index] == UnknownFactorType::get_ref()) {
+                m_node_types[node_index] = m_type->data_default_node_type(df.col(nn)->type());
+            }
+        }
+    }
+
+    bool has_unknown_node_types() const override {
+        if (m_type->is_homogeneous()) return false;
+
+        for (const auto& nn : nodes()) {
+            auto node_index = check_index(nn);
+            if (*m_node_types[node_index] == UnknownFactorType::get_ref()) return true;
+        }
+
+        return false;
     }
 
     void force_type_whitelist(const FactorTypeVector& type_whitelist) override {
@@ -648,7 +695,7 @@ public:
 
             for (const auto& p : type_whitelist) {
                 // Check also null
-                if (!m_type->compatible_node_type(*this, p.first)) {
+                if (*p.second != UnknownFactorType::get_ref() && !m_type->compatible_node_type(*this, p.first)) {
                     for (const auto& old : old_data) {
                         m_node_types[index(old.first)] = old.second;
                     }
@@ -657,6 +704,15 @@ public:
                                                 " not compatible with"
                                                 " Bayesian network " +
                                                 m_type->ToString());
+                }
+            }
+
+            if (!m_cpds.empty()) {
+                for (const auto& p : type_whitelist) {
+                    auto node_index = index(p.first);
+                    if (m_cpds[node_index] && *m_node_types[node_index] != m_cpds[node_index]->type_ref()) {
+                        m_cpds[node_index] = nullptr;
+                    }
                 }
             }
         }
@@ -763,15 +819,8 @@ void BNGeneric<DagType>::check_compatible_cpd(const Factor& cpd) const {
     }
 
     auto node_type_ = node_type(cpd.variable());
-    if (!m_type->is_homogeneous() && !m_type->compatible_node_type(*this, cpd.variable())) {
-        throw std::invalid_argument("Node type " + node_type_->ToString() +
-                                    " not compatible with"
-                                    " Bayesian network " +
-                                    m_type->ToString());
-    }
-
     auto cpd_type = cpd.type();
-    if (*cpd_type != *node_type_) {
+    if (*node_type_ != UnknownFactorType::get_ref() && *cpd_type != *node_type_) {
         throw std::invalid_argument("Factor " + cpd.ToString() + " is of type " + cpd_type->ToString() +
                                     "."
                                     " Bayesian network expects type " +
@@ -784,6 +833,15 @@ void BNGeneric<DagType>::add_cpds(const std::vector<std::shared_ptr<Factor>>& cp
     for (const auto& cpd : cpds) {
         check_compatible_cpd(*cpd);
     }
+
+    FactorTypeVector new_factor_types;
+    for (const auto& cpd : cpds) {
+        if (*node_type(cpd->variable()) == UnknownFactorType::get_ref()) {
+            new_factor_types.push_back({cpd->variable(), cpd->type()});
+        }
+    }
+
+    force_type_whitelist(new_factor_types);
 
     if (m_cpds.empty()) {
         m_cpds.resize(num_raw_nodes());
@@ -829,6 +887,11 @@ void BNGeneric<DagType>::fit(const DataFrame& df) {
         df.raise_has_columns(nn, p);
 
         auto node_type_ = node_type(nn);
+
+        if (!m_type->is_homogeneous() && *node_type_ == UnknownFactorType::get_ref()) {
+            m_node_types[i] = m_type->data_default_node_type(df.col(nn)->type());
+            node_type_ = m_node_types[i];
+        }
 
         if (!m_cpds[i] || must_construct_cpd(*m_cpds[i], *node_type_, p)) {
             m_cpds[i] = node_type_->new_factor(*this, nn, p);
@@ -1004,7 +1067,8 @@ py::tuple BNGeneric<DagType>::__getstate__() const {
 
         for (const auto& nn : nodes()) {
             auto i = index(nn);
-            node_types.push_back(std::make_pair(nn, m_node_types[i]));
+            if (*m_node_types[i] != UnknownFactorType::get_ref())
+                node_types.push_back(std::make_pair(nn, m_node_types[i]));
         }
     }
 
@@ -1064,39 +1128,6 @@ std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t) {
 
             if constexpr (std::is_constructible_v<DerivedBN, DagType&&, FactorTypeVector>) {
                 return std::make_shared<DerivedBN>(std::move(dag), node_types);
-            } else {
-                throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
-            }
-        }
-    }();
-
-    if (t[3].cast<bool>()) {
-        auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
-
-        bn->add_cpds(cpds);
-    }
-
-    return bn;
-}
-
-template <typename DerivedBN>
-std::shared_ptr<DerivedBN> __generic_bn_setstate__(py::tuple& t) {
-    using DagType = typename DerivedBN::DagClass;
-    if (t.size() != 5) throw std::runtime_error("Not valid BayesianNetwork.");
-
-    auto dag = t[0].cast<DagType>();
-    auto type = t[1].cast<std::shared_ptr<BayesianNetworkType>>();
-
-    std::shared_ptr<DerivedBN> bn = [&t, &type, &dag]() {
-        if (type->is_homogeneous()) {
-            return std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag));
-        } else {
-            auto node_types = t[2].cast<FactorTypeVector>();
-            if (node_types.empty()) return std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag));
-
-            if constexpr (std::
-                              is_constructible_v<DerivedBN, std::shared_ptr<FactorType>, DagType&&, FactorTypeVector>) {
-                return std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag), node_types);
             } else {
                 throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
             }

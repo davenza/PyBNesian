@@ -16,6 +16,8 @@ using models::BayesianNetworkType, models::GaussianNetworkType, models::Semipara
     models::BNGeneric, models::BayesianNetwork, models::GaussianNetwork, models::SemiparametricBN, models::KDENetwork,
     models::DiscreteBN, models::HomogeneousBN, models::HeterogeneousBN;
 
+using models::MapDataToFactor;
+
 using models::ConditionalBayesianNetworkBase, models::ConditionalBayesianNetwork, models::ConditionalGaussianNetwork,
     models::ConditionalSemiparametricBN, models::ConditionalKDENetwork, models::ConditionalDiscreteBN,
     models::ConditionalHomogeneousBN, models::ConditionalHeterogeneousBN;
@@ -88,6 +90,25 @@ public:
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"BayesianNetworkType::default_node_type\"");
+    }
+
+    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const override {
+        py::gil_scoped_acquire gil;
+
+        py::function override =
+            py::get_override(static_cast<const BayesianNetworkType*>(this), "data_default_node_type");
+        if (override) {
+            auto o = override(dt);
+
+            if (o.is(py::none())) {
+                throw std::invalid_argument("BayesianNetworkType::data_default_node_type can not return None.");
+            }
+
+            auto f = o.cast<std::shared_ptr<FactorType>>();
+            return FactorType::keep_python_alive(f);
+        }
+
+        py::pybind11_fail("Tried to call pure virtual function \"BayesianNetworkType::data_default_node_type\"");
     }
 
     bool compatible_node_type(const BayesianNetworkBase& m, const std::string& variable) const override {
@@ -1251,6 +1272,18 @@ Gets the :class:`FactorType <pybnesian.factors.FactorType>` for all the nodes.
 
 :returns: The corresponding :class:`FactorType <pybnesian.factors.FactorType>` for each node.
 )doc")
+        .def("has_unknown_node_types", &CppClass::has_unknown_node_types, R"doc(
+Checks whether there are nodes with an unknown node type (i.e.
+:class:`UnknownFactorType <pybnesian.factor.UnknownFactorType>`).
+
+:returns: True if there are nodes with an unkown node type, False otherwise.
+)doc")
+        .def("set_unknown_node_types", &CppClass::set_unknown_node_types, py::arg("df"), R"doc(
+Changes the unknown node types (i.e. the nodes with :class:`UnknownFactorType <pybnesian.factor.UnknownFactorType>`) to
+the default node type specified by the :class:`BayesianNetworkType`.
+
+:param df: DataFrame to get the default node type for each unknown node type.
+)doc")
         .def("set_node_type", &CppClass::set_node_type, py::arg("node"), py::arg("new_type"), R"doc(
 Sets the ``new_type`` :class:`FactorType <pybnesian.factors.FactorType>` for ``node``.
 
@@ -1739,15 +1772,23 @@ to be the same: for example, a Gaussian network is homogeneous because the
 :returns: True if the Bayesian network is homogeneous, False otherwise.
 )doc")
         .def("default_node_type", &BayesianNetworkType::default_node_type, R"doc(
-Returns the default :class:`FactorType <pybnesian.factors.FactorType>` of each node in this Bayesian network type.
-
-- If the :class:`BayesianNetworkType` is homogeneous, this method must return the unique possible
-  :class:`FactorType <pybnesian.factors.FactorType>`.
-- If the :class:`BayesianNetworkType` is not homogeneous, this method defines the default
-  :class:`FactorType <pybnesian.factors.FactorType>`.
+Returns the default :class:`FactorType <pybnesian.factors.FactorType>` of each node in this Bayesian network type. 
+This method is only needed for homogeneous Bayesian networks and returns the unique possible
+:class:`FactorType <pybnesian.factors.FactorType>`.
 
 :returns: default :class:`FactorType <pybnesian.factors.FactorType>` for the nodes.
 )doc")
+        .def("data_default_node_type",
+             &BayesianNetworkType::data_default_node_type,
+             R"doc(
+Returns the default :class:`FactorType <pybnesian.factors.FactorType>` of the nodes of this Bayesian network type with
+data type ``datatype``. This method is only needed for non-homogeneous Bayesian networks and defines the default
+:class:`FactorType <pybnesian.factors.FactorType>` for the given ``datatype``.
+
+:param datatype: :class:`pyarrow.DataType` defining the type of data for a node.
+:returns: default :class:`FactorType <pybnesian.factors.FactorType>` for a node given the ``datatype``.
+)doc",
+             py::arg("datatype"))
         .def("new_bn", &BayesianNetworkType::new_bn, py::arg("nodes"), R"doc(
 Returns an empty unconditional Bayesian network of this type with the given ``nodes``.
 
@@ -1868,13 +1909,38 @@ This :class:`BayesianNetworkType` represents a discrete Bayesian network: homoge
                         [](py::tuple&) { return DiscreteBNType::get(); }));
 
     py::class_<HomogeneousBNType, BayesianNetworkType, std::shared_ptr<HomogeneousBNType>>(models, "HomogeneousBNType")
-        .def(py::init<std::shared_ptr<FactorType>>())
+        .def(py::init<std::shared_ptr<FactorType>>(), py::arg("default_factor_type"), R"doc(
+Initializes an :class:`HomogeneousBNType` with a default node type.
+
+:param default_factor_type: Default factor type for all the nodes in the Bayesian network.
+)doc")
         .def(py::pickle([](const HomogeneousBNType& self) { return self.__getstate__(); },
                         [](py::tuple& t) { return HomogeneousBNType::__setstate__(t); }));
 
     py::class_<HeterogeneousBNType, BayesianNetworkType, std::shared_ptr<HeterogeneousBNType>>(models,
                                                                                                "HeterogeneousBNType")
-        .def(py::init<std::shared_ptr<FactorType>>())
+        .def(py::init<std::shared_ptr<FactorType>>(), py::arg("default_factor_type"), R"doc(
+Initializes an :class:`HeterogeneousBNType` with a default node type for all the data types.
+
+:param default_factor_type: Default factor type for all the nodes in the Bayesian network.
+)doc")
+        .def(py::init<const models::MapDataToFactor&>(), py::arg("default_factor_types"), R"doc(
+Initializes an :class:`HeterogeneousBNType` with a default node type for a set of data types.
+
+:param default_factor_type: Default factor type depending on the factor type.
+)doc")
+        .def("single_default", &HeterogeneousBNType::single_default, R"doc(
+Checks whether the :class:`HeterogeneousBNType` defines only a default
+:class:`FactorType <pybnesian.factors.FactorType>` for all the data types.
+
+:returns: True if it defines a single :class:`FactorType <pybnesian.factors.FactorType>` for all the data types.
+    False if different default :class:`FactorType <pybnesian.factors.FactorType>` is defined for different data types.
+)doc")
+        .def("default_node_types", &HeterogeneousBNType::default_node_types, R"doc(
+Returns the dict of default :class:`FactorType <pybnesian.factors.FactorType>` for each data type.
+
+:returns: dict of default :class:`FactorType <pybnesian.factors.FactorType>` for each data type.
+)doc")
         .def(py::pickle([](const HeterogeneousBNType& self) { return self.__getstate__(); },
                         [](py::tuple& t) { return HeterogeneousBNType::__setstate__(t); }));
 
@@ -2395,7 +2461,7 @@ This class implements an homogeneous Bayesian network. This Bayesian network can
              R"doc(
 Initializes the :class:`HomogeneousBN` of ``factor_type`` with the given ``nodes``.
 
-:param factor_type: :class:`FactorType` for all the nodes.
+:param factor_type: :class:`FactorType <pybnesian.factors.FactorType>` for all the nodes.
 :param nodes: List of node names.
 )doc")
         .def(py::init([](std::shared_ptr<FactorType> ft, const ArcStringVector& arcs) {
@@ -2407,7 +2473,7 @@ Initializes the :class:`HomogeneousBN` of ``factor_type`` with the given ``nodes
 Initializes the :class:`HomogeneousBN` of ``factor_type`` with the given ``arcs`` (the nodes are extracted from the
 arcs).
 
-:param factor_type: :class:`FactorType` for all the nodes.
+:param factor_type: :class:`FactorType <pybnesian.factors.FactorType>` for all the nodes.
 :param arcs: Arcs of the :class:`HomogeneousBN`.
 )doc")
         .def(
@@ -2421,7 +2487,7 @@ arcs).
             R"doc(
 Initializes the :class:`HomogeneousBN` of ``factor_type`` with the given ``nodes`` and ``arcs``.
 
-:param factor_type: :class:`FactorType` for all the nodes.
+:param factor_type: :class:`FactorType <pybnesian.factors.FactorType>` for all the nodes.
 :param nodes: List of node names.
 :param arcs: Arcs of the :class:`HomogeneousBN`.
 )doc")
@@ -2433,11 +2499,11 @@ Initializes the :class:`HomogeneousBN` of ``factor_type`` with the given ``nodes
              R"doc(
 Initializes the :class:`HomogeneousBN` of ``factor_type`` with the given ``graph``.
 
-:param factor_type: :class:`FactorType` for all the nodes.
+:param factor_type: :class:`FactorType <pybnesian.factors.FactorType>` for all the nodes.
 :param graph: :class:`Dag <pybnesian.graph.Dag>` of the Bayesian network.
 )doc")
         .def(py::pickle([](const HomogeneousBN& self) { return self.__getstate__(); },
-                        [](py::tuple& t) { return models::__generic_bn_setstate__<HomogeneousBN>(t); }));
+                        [](py::tuple& t) { return models::__homogeneous_setstate__<HomogeneousBN>(t); }));
 
     py::class_<HeterogeneousBN, BayesianNetwork, std::shared_ptr<HeterogeneousBN>>(models, "HeterogeneousBN", R"doc(
 This class implements an heterogeneous Bayesian network. This Bayesian network accepts a different
@@ -2452,7 +2518,7 @@ constructor.
              R"doc(
 Initializes the :class:`HeterogeneousBN` of default ``factor_type`` with the given ``nodes``.
 
-:param factor_type: Default :class:`FactorType` for the Bayesian network.
+:param factor_type: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network.
 :param nodes: List of node names.
 )doc")
         .def(py::init([](std::shared_ptr<FactorType> ft, const ArcStringVector& arcs) {
@@ -2464,7 +2530,7 @@ Initializes the :class:`HeterogeneousBN` of default ``factor_type`` with the giv
 Initializes the :class:`HeterogeneousBN` of default ``factor_type`` with the given ``arcs`` (the nodes are extracted
 from the arcs).
 
-:param factor_type: Default :class:`FactorType` for the Bayesian network.
+:param factor_type: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network.
 :param arcs: Arcs of the :class:`HeterogeneousBN`.
 )doc")
         .def(
@@ -2478,7 +2544,7 @@ from the arcs).
             R"doc(
 Initializes the :class:`HeterogeneousBN` of default ``factor_type`` with the given ``nodes`` and ``arcs``.
 
-:param factor_type: Default :class:`FactorType` for the Bayesian network.
+:param factor_type: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network.
 :param nodes: List of node names.
 :param arcs: Arcs of the :class:`HeterogeneousBN`.
 )doc")
@@ -2490,11 +2556,62 @@ Initializes the :class:`HeterogeneousBN` of default ``factor_type`` with the giv
              R"doc(
 Initializes the :class:`HeterogeneousBN` of default ``factor_type`` with the given ``graph``.
 
-:param factor_type: Default :class:`FactorType` for the Bayesian network.
+:param factor_type: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network.
+:param graph: :class:`Dag <pybnesian.graph.Dag>` of the Bayesian network.
+)doc")
+        .def(py::init([](MapDataToFactor fts, const std::vector<std::string>& nodes) {
+                 return HeterogeneousBN(models::keep_MapDataToFactor_alive(fts), nodes);
+             }),
+             py::arg("factor_types"),
+             py::arg("nodes"),
+             R"doc(
+Initializes the :class:`HeterogeneousBN` of different default ``factor_types``, with the given ``nodes``.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
+:param nodes: List of node names.
+)doc")
+        .def(py::init([](MapDataToFactor fts, const ArcStringVector& arcs) {
+                 return HeterogeneousBN(models::keep_MapDataToFactor_alive(fts), arcs);
+             }),
+             py::arg("factor_types"),
+             py::arg("arcs"),
+             R"doc(
+Initializes the :class:`HeterogeneousBN` of different default ``factor_types`` with the given ``arcs`` (the nodes are
+extracted from the arcs).
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
+:param arcs: Arcs of the :class:`HeterogeneousBN`.
+)doc")
+        .def(py::init([](MapDataToFactor fts, const std::vector<std::string>& nodes, const ArcStringVector& arcs) {
+                 return HeterogeneousBN(models::keep_MapDataToFactor_alive(fts), nodes, arcs);
+             }),
+             py::arg("factor_types"),
+             py::arg("nodes"),
+             py::arg("arcs"),
+             R"doc(
+Initializes the :class:`HeterogeneousBN` of different default ``factor_types`` with the given ``nodes`` and ``arcs``.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
+:param nodes: List of node names.
+:param arcs: Arcs of the :class:`HeterogeneousBN`.
+)doc")
+        .def(py::init([](MapDataToFactor fts, const Dag& graph) {
+                 return HeterogeneousBN(models::keep_MapDataToFactor_alive(fts), graph);
+             }),
+             py::arg("factor_types"),
+             py::arg("graph"),
+             R"doc(
+Initializes the :class:`HeterogeneousBN` of different default ``factor_types`` with the given ``graph``.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
 :param graph: :class:`Dag <pybnesian.graph.Dag>` of the Bayesian network.
 )doc")
         .def(py::pickle([](const HeterogeneousBN& self) { return self.__getstate__(); },
-                        [](py::tuple& t) { return models::__generic_bn_setstate__<HeterogeneousBN>(t); }));
+                        [](py::tuple& t) { return models::__heterogeneous_setstate__<HeterogeneousBN>(t); }));
 
     register_DerivedConditionalBayesianNetwork<ConditionalGaussianNetwork>(models, "ConditionalGaussianNetwork", R"doc(
 This class implements a :class:`ConditionalBayesianNetwork` with the type :class:`GaussianNetworkType`.
@@ -2600,7 +2717,7 @@ Initializes the :class:`ConditionalHomogeneousBN` of ``factor_type`` with the gi
 :param factor_type: :class:`FactorType` for all the nodes.
 :param graph: :class:`ConditionalDag <pybnesian.graph.ConditionalDag>` of the conditional Bayesian network.)doc")
         .def(py::pickle([](const ConditionalHomogeneousBN& self) { return self.__getstate__(); },
-                        [](py::tuple& t) { return models::__generic_bn_setstate__<ConditionalHomogeneousBN>(t); }));
+                        [](py::tuple& t) { return models::__homogeneous_setstate__<ConditionalHomogeneousBN>(t); }));
 
     py::class_<ConditionalHeterogeneousBN, ConditionalBayesianNetwork, std::shared_ptr<ConditionalHeterogeneousBN>>(
         models, "ConditionalHeterogeneousBN", R"doc(
@@ -2651,9 +2768,61 @@ Initializes the :class:`ConditionalHeterogeneousBN` of default ``factor_type`` w
 Initializes the :class:`ConditionalHeterogeneousBN` of default ``factor_type`` with the given ``graph``.
 
 :param factor_type: Default :class:`FactorType` for the conditional Bayesian network.
-:param graph: :class:`ConditionalDag <pybnesian.graph.ConditionalDag>` of the conditional Bayesian network.)doc")
-        .def(py::pickle([](const ConditionalHeterogeneousBN& self) { return self.__getstate__(); },
-                        [](py::tuple& t) { return models::__generic_bn_setstate__<ConditionalHeterogeneousBN>(t); }));
+:param graph: :class:`ConditionalDag <pybnesian.graph.ConditionalDag>` of the conditional Bayesian network.
+)doc")
+        .def(py::init([](MapDataToFactor fts,
+                         const std::vector<std::string>& nodes,
+                         const std::vector<std::string>& interface_nodes) {
+                 return ConditionalHeterogeneousBN(models::keep_MapDataToFactor_alive(fts), nodes, interface_nodes);
+             }),
+             py::arg("factor_types"),
+             py::arg("nodes"),
+             py::arg("interface_nodes"),
+             R"doc(
+Initializes the :class:`ConditionalHeterogeneousBN` of different default ``factor_types`` with the given ``nodes`` and
+``interface_nodes``.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
+:param nodes: List of node names.
+:param interface_nodes: List of interface node names.
+)doc")
+        .def(py::init([](MapDataToFactor fts,
+                         const std::vector<std::string>& nodes,
+                         const std::vector<std::string>& interface_nodes,
+                         const ArcStringVector& arcs) {
+                 return ConditionalHeterogeneousBN(
+                     models::keep_MapDataToFactor_alive(fts), nodes, interface_nodes, arcs);
+             }),
+             py::arg("factor_types"),
+             py::arg("nodes"),
+             py::arg("interface_nodes"),
+             py::arg("arcs"),
+             R"doc(
+Initializes the :class:`ConditionalHeterogeneousBN` of different default ``factor_types`` with the given ``nodes``,
+``interface_nodes`` and ``arcs``.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
+:param nodes: List of node names.
+:param interface_nodes: List of interface node names.
+:param arcs: Arcs of the :class:`ConditionalHeterogeneousBN`.
+)doc")
+        .def(py::init([](MapDataToFactor fts, const ConditionalDag& graph) {
+                 return ConditionalHeterogeneousBN(models::keep_MapDataToFactor_alive(fts), graph);
+             }),
+             py::arg("factor_types"),
+             py::arg("graph"),
+             R"doc(
+Initializes the :class:`ConditionalHeterogeneousBN` of different default ``factor_types`` with the given ``graph``.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
+:param graph: :class:`ConditionalDag <pybnesian.graph.ConditionalDag>` of the conditional Bayesian network.
+)doc")
+        .def(
+            py::pickle([](const ConditionalHeterogeneousBN& self) { return self.__getstate__(); },
+                       [](py::tuple& t) { return models::__heterogeneous_setstate__<ConditionalHeterogeneousBN>(t); }));
 
     register_DerivedDynamicBayesianNetwork<DynamicGaussianNetwork>(models, "DynamicGaussianNetwork", R"doc(
 This class implements a :class:`DynamicBayesianNetwork` with the type :class:`GaussianNetworkType`.
@@ -2737,6 +2906,21 @@ Initializes the :class:`DynamicHeterogeneousBN` of default ``factor_type`` with 
 ``markovian_order``. It creates empty static and transition Bayesian networks.
 
 :param factor_type: Default :class:`FactorType` for the dynamic Bayesian network.
+:param variables: List of variable names.
+:param markovian_order: Markovian order of the dynamic Bayesian network.
+)doc")
+        .def(py::init([](MapDataToFactor fts, const std::vector<std::string>& variables, int markovian_order) {
+                 return DynamicHeterogeneousBN(models::keep_MapDataToFactor_alive(fts), variables, markovian_order);
+             }),
+             py::arg("factor_types"),
+             py::arg("variables"),
+             py::arg("markovian_order"),
+             R"doc(
+Initializes the :class:`DynamicHeterogeneousBN` of different default ``factor_types`` with the given ``variables`` and
+``markovian_order``. It creates empty static and transition Bayesian networks.
+
+:param factor_types: Default :class:`FactorType <pybnesian.factors.FactorType>` for the Bayesian network for each
+    different data type.
 :param variables: List of variable names.
 :param markovian_order: Markovian order of the dynamic Bayesian network.
 )doc")

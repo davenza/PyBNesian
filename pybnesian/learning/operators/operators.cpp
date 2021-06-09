@@ -20,47 +20,43 @@ void ArcOperatorSet::update_valid_ops(const BayesianNetworkBase& model) {
         valid_op = MatrixXb(num_nodes, num_nodes);
     }
 
-    if (changed_size || required_arclist_update) {
-        auto val_ptr = valid_op.data();
-        std::fill(val_ptr, val_ptr + num_nodes * num_nodes, true);
+    auto val_ptr = valid_op.data();
+    std::fill(val_ptr, val_ptr + num_nodes * num_nodes, true);
 
-        auto valid_ops = (num_nodes * num_nodes) - 2 * m_whitelist.size() - m_blacklist.size() - num_nodes;
+    auto valid_ops = (num_nodes * num_nodes) - 2 * m_whitelist.size() - m_blacklist.size() - num_nodes;
 
-        for (const auto& whitelist_arc : m_whitelist) {
-            int source_index = model.collapsed_index(whitelist_arc.first);
-            int target_index = model.collapsed_index(whitelist_arc.second);
+    for (const auto& whitelist_arc : m_whitelist) {
+        int source_index = model.collapsed_index(whitelist_arc.first);
+        int target_index = model.collapsed_index(whitelist_arc.second);
 
-            valid_op(source_index, target_index) = false;
-            valid_op(target_index, source_index) = false;
-            delta(source_index, target_index) = std::numeric_limits<double>::lowest();
-            delta(target_index, source_index) = std::numeric_limits<double>::lowest();
-        }
+        valid_op(source_index, target_index) = false;
+        valid_op(target_index, source_index) = false;
+        delta(source_index, target_index) = std::numeric_limits<double>::lowest();
+        delta(target_index, source_index) = std::numeric_limits<double>::lowest();
+    }
 
-        for (const auto& blacklist_arc : m_blacklist) {
-            int source_index = model.collapsed_index(blacklist_arc.first);
-            int target_index = model.collapsed_index(blacklist_arc.second);
+    for (const auto& blacklist_arc : m_blacklist) {
+        int source_index = model.collapsed_index(blacklist_arc.first);
+        int target_index = model.collapsed_index(blacklist_arc.second);
 
-            valid_op(source_index, target_index) = false;
-            delta(source_index, target_index) = std::numeric_limits<double>::lowest();
-        }
+        valid_op(source_index, target_index) = false;
+        delta(source_index, target_index) = std::numeric_limits<double>::lowest();
+    }
 
-        for (int i = 0; i < num_nodes; ++i) {
-            valid_op(i, i) = false;
-            delta(i, i) = std::numeric_limits<double>::lowest();
-        }
+    for (int i = 0; i < num_nodes; ++i) {
+        valid_op(i, i) = false;
+        delta(i, i) = std::numeric_limits<double>::lowest();
+    }
 
-        sorted_idx.clear();
-        sorted_idx.reserve(valid_ops);
+    sorted_idx.clear();
+    sorted_idx.reserve(valid_ops);
 
-        for (int i = 0; i < num_nodes; ++i) {
-            for (int j = 0; j < num_nodes; ++j) {
-                if (valid_op(i, j)) {
-                    sorted_idx.push_back(i + j * num_nodes);
-                }
+    for (int i = 0; i < num_nodes; ++i) {
+        for (int j = 0; j < num_nodes; ++j) {
+            if (valid_op(i, j)) {
+                sorted_idx.push_back(i + j * num_nodes);
             }
         }
-
-        required_arclist_update = false;
     }
 }
 
@@ -154,55 +150,51 @@ void ArcOperatorSet::update_valid_ops(const ConditionalBayesianNetworkBase& mode
         valid_op = MatrixXb(total_nodes, num_nodes);
     }
 
-    if (changed_size || required_arclist_update) {
-        auto val_ptr = valid_op.data();
-        std::fill(val_ptr, val_ptr + total_nodes * num_nodes, true);
+    auto val_ptr = valid_op.data();
+    std::fill(val_ptr, val_ptr + total_nodes * num_nodes, true);
 
-        auto valid_ops = total_nodes * num_nodes - num_nodes;
+    auto valid_ops = total_nodes * num_nodes - num_nodes;
 
-        for (const auto& whitelist_arc : m_whitelist) {
-            int source_joint_collapsed = model.joint_collapsed_index(whitelist_arc.first);
-            int target_collapsed = model.collapsed_index(whitelist_arc.second);
+    for (const auto& whitelist_arc : m_whitelist) {
+        int source_joint_collapsed = model.joint_collapsed_index(whitelist_arc.first);
+        int target_collapsed = model.collapsed_index(whitelist_arc.second);
 
-            valid_op(source_joint_collapsed, target_collapsed) = false;
-            delta(source_joint_collapsed, target_collapsed) = std::numeric_limits<double>::lowest();
-            --valid_ops;
-            if (!model.is_interface(whitelist_arc.first)) {
-                int target_joint_collapsed = model.joint_collapsed_index(whitelist_arc.second);
-                int source_collapsed = model.collapsed_index(whitelist_arc.first);
-                valid_op(target_joint_collapsed, source_collapsed) = false;
-                delta(target_joint_collapsed, source_collapsed) = std::numeric_limits<double>::lowest();
-                --valid_ops;
-            }
-        }
-
-        for (const auto& blacklist_arc : m_blacklist) {
-            int source_joint_collapsed = model.joint_collapsed_index(blacklist_arc.first);
-            int target_collapsed = model.collapsed_index(blacklist_arc.second);
-
-            valid_op(source_joint_collapsed, target_collapsed) = false;
-            delta(source_joint_collapsed, target_collapsed) = std::numeric_limits<double>::lowest();
+        valid_op(source_joint_collapsed, target_collapsed) = false;
+        delta(source_joint_collapsed, target_collapsed) = std::numeric_limits<double>::lowest();
+        --valid_ops;
+        if (!model.is_interface(whitelist_arc.first)) {
+            int target_joint_collapsed = model.joint_collapsed_index(whitelist_arc.second);
+            int source_collapsed = model.collapsed_index(whitelist_arc.first);
+            valid_op(target_joint_collapsed, source_collapsed) = false;
+            delta(target_joint_collapsed, source_collapsed) = std::numeric_limits<double>::lowest();
             --valid_ops;
         }
+    }
 
-        for (int i = 0; i < num_nodes; ++i) {
-            auto joint_collapsed = model.joint_collapsed_from_index(model.index_from_collapsed(i));
-            valid_op(joint_collapsed, i) = false;
-            delta(joint_collapsed, i) = std::numeric_limits<double>::lowest();
-        }
+    for (const auto& blacklist_arc : m_blacklist) {
+        int source_joint_collapsed = model.joint_collapsed_index(blacklist_arc.first);
+        int target_collapsed = model.collapsed_index(blacklist_arc.second);
 
-        sorted_idx.clear();
-        sorted_idx.reserve(valid_ops);
+        valid_op(source_joint_collapsed, target_collapsed) = false;
+        delta(source_joint_collapsed, target_collapsed) = std::numeric_limits<double>::lowest();
+        --valid_ops;
+    }
 
-        for (int i = 0; i < total_nodes; ++i) {
-            for (int j = 0; j < num_nodes; ++j) {
-                if (valid_op(i, j)) {
-                    sorted_idx.push_back(i + j * total_nodes);
-                }
+    for (int i = 0; i < num_nodes; ++i) {
+        auto joint_collapsed = model.joint_collapsed_from_index(model.index_from_collapsed(i));
+        valid_op(joint_collapsed, i) = false;
+        delta(joint_collapsed, i) = std::numeric_limits<double>::lowest();
+    }
+
+    sorted_idx.clear();
+    sorted_idx.reserve(valid_ops);
+
+    for (int i = 0; i < total_nodes; ++i) {
+        for (int j = 0; j < num_nodes; ++j) {
+            if (valid_op(i, j)) {
+                sorted_idx.push_back(i + j * total_nodes);
             }
         }
-
-        required_arclist_update = false;
     }
 }
 
@@ -449,8 +441,21 @@ void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Sco
         auto type = model.node_type(collapsed_name);
         auto parents = model.parents(collapsed_name);
 
-        delta(i) = score.local_score(model, *type->opposite_semiparametric(), collapsed_name, parents) -
-                   this->m_local_cache->local_score(model, collapsed_name);
+        if (*type == UnknownFactorType::get_ref()) {
+            throw std::invalid_argument("Cannot calculate ChangeNodeType delta score for " + type->ToString() +
+                                        ". Set appropiate node types for the model");
+        }
+
+        auto opposite = type->opposite_semiparametric();
+
+        if (opposite == nullptr) {
+            delta(i) = std::numeric_limits<double>::lowest();
+            valid_op(i) = false;
+            util::swap_remove_v(sorted_idx, i);
+        } else {
+            delta(i) = score.local_score(model, *opposite, collapsed_name, parents) -
+                       this->m_local_cache->local_score(model, collapsed_name);
+        }
     }
 }
 
@@ -500,11 +505,14 @@ void ChangeNodeTypeSet::update_scores(const BayesianNetworkBase& model,
     }
 
     for (const auto& n : variables) {
-        auto type = model.node_type(n);
-        auto parents = model.parents(n);
+        auto collapsed_index = model.collapsed_index(n);
+        if (valid_op(collapsed_index)) {
+            auto type = model.node_type(n);
+            auto parents = model.parents(n);
 
-        delta(model.collapsed_index(n)) = score.local_score(model, *type->opposite_semiparametric(), n, parents) -
-                                          this->m_local_cache->local_score(model, n);
+            delta(collapsed_index) = score.local_score(model, *type->opposite_semiparametric(), n, parents) -
+                                     this->m_local_cache->local_score(model, n);
+        }
     }
 }
 

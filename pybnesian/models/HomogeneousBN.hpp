@@ -24,6 +24,9 @@ public:
     bool is_homogeneous() const override { return true; }
 
     std::shared_ptr<FactorType> default_node_type() const override { return m_ftype; }
+    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>&) const override {
+        return m_ftype;
+    }
 
     std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const override;
     std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
@@ -106,6 +109,24 @@ public:
 
     std::string ToString() const override { return "DynamicHomogeneousBN"; }
 };
+
+template <typename DerivedBN>
+std::shared_ptr<DerivedBN> __homogeneous_setstate__(py::tuple& t) {
+    using DagType = typename DerivedBN::DagClass;
+    if (t.size() != 5) throw std::runtime_error("Not valid BayesianNetwork.");
+
+    auto dag = t[0].cast<DagType>();
+    auto type = t[1].cast<std::shared_ptr<BayesianNetworkType>>();
+    auto bn = std::make_shared<DerivedBN>(type->default_node_type(), std::move(dag));
+
+    if (t[3].cast<bool>()) {
+        auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
+
+        bn->add_cpds(cpds);
+    }
+
+    return bn;
+}
 
 }  // namespace models
 

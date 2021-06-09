@@ -8,7 +8,7 @@ namespace learning::scores {
 double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,
                                       const std::string& variable,
                                       const std::vector<std::string>& evidence) const {
-    return local_score(model, *model.node_type(variable), variable, evidence);
+    return local_score(model, *model.underlying_node_type(m_holdout.training_data(), variable), variable, evidence);
 }
 
 double HoldoutLikelihood::local_score(const BayesianNetworkBase& model,

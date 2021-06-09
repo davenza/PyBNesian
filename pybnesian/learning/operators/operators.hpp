@@ -366,13 +366,7 @@ public:
     ArcOperatorSet(ArcStringVector blacklist = ArcStringVector(),
                    ArcStringVector whitelist = ArcStringVector(),
                    int indegree = 0)
-        : delta(),
-          valid_op(),
-          sorted_idx(),
-          m_blacklist(blacklist),
-          m_whitelist(whitelist),
-          required_arclist_update(true),
-          max_indegree(indegree) {}
+        : delta(), valid_op(), sorted_idx(), m_blacklist(blacklist), m_whitelist(whitelist), max_indegree(indegree) {}
 
     void cache_scores(const BayesianNetworkBase& model, const Score& score) override;
     std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model) const override;
@@ -406,15 +400,9 @@ public:
     void update_valid_ops(const BayesianNetworkBase& bn);
     void update_valid_ops(const ConditionalBayesianNetworkBase& bn);
 
-    void set_arc_blacklist(const ArcStringVector& blacklist) override {
-        m_blacklist = blacklist;
-        required_arclist_update = true;
-    }
+    void set_arc_blacklist(const ArcStringVector& blacklist) override { m_blacklist = blacklist; }
 
-    void set_arc_whitelist(const ArcStringVector& whitelist) override {
-        m_whitelist = whitelist;
-        required_arclist_update = true;
-    }
+    void set_arc_whitelist(const ArcStringVector& whitelist) override { m_whitelist = whitelist; }
 
     void set_max_indegree(int indegree) override { max_indegree = indegree; }
 
@@ -424,7 +412,6 @@ private:
     mutable std::vector<int> sorted_idx;
     ArcStringVector m_blacklist;
     ArcStringVector m_whitelist;
-    bool required_arclist_update;
     int max_indegree;
 };
 
@@ -631,7 +618,7 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
 class ChangeNodeTypeSet : public OperatorSet {
 public:
     ChangeNodeTypeSet(FactorTypeVector fv = FactorTypeVector())
-        : delta(), valid_op(), sorted_idx(), m_type_whitelist(fv), required_whitelist_update(true) {}
+        : delta(), valid_op(), sorted_idx(), m_type_whitelist(fv) {}
 
     void cache_scores(const BayesianNetworkBase& model, const Score& score) override;
     std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model) const override;
@@ -658,43 +645,36 @@ public:
     }
 
     void update_whitelisted(const BayesianNetworkBase& model) {
-        if (required_whitelist_update) {
-            auto num_nodes = model.num_nodes();
-            if (delta.rows() != num_nodes) {
-                delta = VectorXd(num_nodes);
-                valid_op = VectorXb(num_nodes);
-            }
+        auto num_nodes = model.num_nodes();
+        if (delta.rows() != num_nodes) {
+            delta = VectorXd(num_nodes);
+            valid_op = VectorXb(num_nodes);
+        }
 
-            auto val_ptr = valid_op.data();
-            std::fill(val_ptr, val_ptr + model.num_nodes(), true);
+        auto val_ptr = valid_op.data();
+        std::fill(val_ptr, val_ptr + model.num_nodes(), true);
 
-            for (auto& node : m_type_whitelist) {
-                auto index = model.collapsed_index(node.first);
-                delta(index) = std::numeric_limits<double>::lowest();
-                valid_op(index) = false;
-            }
+        for (const auto& node : m_type_whitelist) {
+            auto index = model.collapsed_index(node.first);
+            delta(index) = std::numeric_limits<double>::lowest();
+            valid_op(index) = false;
+        }
 
-            auto valid_ops = model.num_nodes() - m_type_whitelist.size();
-            sorted_idx.clear();
-            sorted_idx.reserve(valid_ops);
-            for (auto i = 0; i < model.num_nodes(); ++i) {
-                if (valid_op(i)) sorted_idx.push_back(i);
-            }
-            required_whitelist_update = false;
+        auto valid_ops = model.num_nodes() - m_type_whitelist.size();
+        sorted_idx.clear();
+        sorted_idx.reserve(valid_ops);
+        for (auto i = 0; i < model.num_nodes(); ++i) {
+            if (valid_op(i)) sorted_idx.push_back(i);
         }
     }
 
-    void set_type_whitelist(const FactorTypeVector& type_whitelist) override {
-        m_type_whitelist = type_whitelist;
-        required_whitelist_update = true;
-    }
+    void set_type_whitelist(const FactorTypeVector& type_whitelist) override { m_type_whitelist = type_whitelist; }
 
 private:
     VectorXd delta;
     VectorXb valid_op;
     mutable std::vector<int> sorted_idx;
     FactorTypeVector m_type_whitelist;
-    bool required_whitelist_update;
 };
 
 class OperatorPool : public OperatorSet {

@@ -40,6 +40,8 @@ public:
         return m_cv.data().has_columns(model.joint_nodes());
     }
 
+    DataFrame data() const override { return m_cv.data(); }
+
 private:
     template <typename FactorType>
     double factor_score(const std::string& variable, const std::vector<std::string>& evidence) const;

@@ -99,6 +99,8 @@ public:
                m_df.has_columns(model.joint_nodes());
     }
 
+    DataFrame data() const override { return m_df; }
+
 private:
     int cached_index(int v) const {
         auto it = m_cached_indices.find(m_df->column_name(v));

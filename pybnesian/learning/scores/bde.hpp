@@ -39,6 +39,8 @@ public:
                m_df.has_columns(model.joint_nodes());
     }
 
+    DataFrame data() const override { return m_df; }
+
 private:
     double bde_impl_noparents(const std::string& variable) const;
     double bde_impl_parents(const std::string& variable, const std::vector<std::string>& parents) const;

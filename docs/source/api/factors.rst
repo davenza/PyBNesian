@@ -61,6 +61,10 @@ Other Types
 ===========
 This types are not factors, but are auxiliary types for other factors.
 
+.. autoclass:: pybnesian.factors.UnknownFactorType
+    :members:
+    :special-members: __init__
+
 .. autoclass:: pybnesian.factors.continuous.KDE
     :members:
     :special-members: __init__

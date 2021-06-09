@@ -223,7 +223,7 @@ false) expressions.
 
 :param df: DataFrame on which to calculate the independence tests.
 :param asymptotic_df: Whether to calculate the degrees of freedom with the asympototic or empirical expression. See the
-:download:`theory document <../../mutual_information_pdf/mutual_information.pdf>`.
+    :download:`theory document <../../mutual_information_pdf/mutual_information.pdf>`.
 )doc")
         .def(
             "mi",

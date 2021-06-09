@@ -36,6 +36,8 @@ public:
         return m_df.has_columns(model.joint_nodes());
     }
 
+    DataFrame data() const override { return m_df; }
+
 private:
     double bic_lineargaussian(const std::string& variable, const std::vector<std::string>& parents) const;
     double bic_discrete(const std::string& variable, const std::vector<std::string>& parents) const;

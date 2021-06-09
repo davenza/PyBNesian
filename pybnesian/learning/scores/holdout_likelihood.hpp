@@ -47,6 +47,8 @@ public:
         return m_holdout.training_data().has_columns(model.joint_nodes());
     }
 
+    DataFrame data() const override { return training_data(); }
+
 private:
     template <typename FactorType>
     double factor_score(const std::string& variable, const std::vector<std::string>& evidence) const;

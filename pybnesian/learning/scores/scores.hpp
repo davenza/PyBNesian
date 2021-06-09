@@ -41,6 +41,7 @@ public:
     virtual bool has_variables(const std::vector<std::string>& cols) const = 0;
     virtual bool compatible_bn(const BayesianNetworkBase& model) const = 0;
     virtual bool compatible_bn(const ConditionalBayesianNetworkBase& model) const = 0;
+    virtual DataFrame data() const = 0;
 };
 
 class ValidatedScore : public Score {

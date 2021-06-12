@@ -45,6 +45,8 @@ private:
                    const std::vector<std::string>& discrete_parents,
                    const std::vector<std::string>& continuous_parents) const;
 
+    bool are_all_discrete(const BayesianNetworkBase& model, const std::vector<std::string>& vars) const;
+
     const DataFrame m_df;
 };
 

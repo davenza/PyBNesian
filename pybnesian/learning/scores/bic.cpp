@@ -95,16 +95,26 @@ double BIC::bic_discrete(const std::string& variable, const std::vector<std::str
     return ll - std::log(sum_count) * 0.5 * (cardinality(0) - 1) * parent_configurations;
 }
 
+bool BIC::are_all_discrete(const BayesianNetworkBase& model, const std::vector<std::string>& vars) const {
+    for (const auto& v : vars) {
+        if (*model.underlying_node_type(m_df, v) != DiscreteFactorType::get_ref()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 double BIC::local_score(const BayesianNetworkBase& model,
                         const std::string& variable,
                         const std::vector<std::string>& parents) const {
-    const auto& node_type = *model.node_type(variable);
+    const auto& node_type = *model.underlying_node_type(m_df, variable);
     if (node_type == LinearGaussianCPDType::get_ref()) {
         std::vector<std::string> discrete_parents;
         std::vector<std::string> continuous_parents;
 
         for (const auto& p : parents) {
-            if (*model.node_type(p) == DiscreteFactorType::get_ref()) {
+            if (*model.underlying_node_type(m_df, p) == DiscreteFactorType::get_ref()) {
                 discrete_parents.push_back(p);
             } else {
                 continuous_parents.push_back(p);
@@ -118,6 +128,11 @@ double BIC::local_score(const BayesianNetworkBase& model,
     }
 
     if (node_type == DiscreteFactorType::get_ref()) {
+        if (!are_all_discrete(model, parents)) {
+            throw std::invalid_argument("Local score for discrete variable " + variable + " cannot be calculated"
+            " because the parents/evidence contains non-discrete variables.");
+        }
+
         return bic_discrete(variable, parents);
     }
 
@@ -125,7 +140,7 @@ double BIC::local_score(const BayesianNetworkBase& model,
                                 "\" not valid for score BIC");
 }
 
-double BIC::local_score(const BayesianNetworkBase&,
+double BIC::local_score(const BayesianNetworkBase& model,
                         const FactorType& node_type,
                         const std::string& variable,
                         const std::vector<std::string>& parents) const {
@@ -134,6 +149,11 @@ double BIC::local_score(const BayesianNetworkBase&,
     }
 
     if (node_type == DiscreteFactorType::get_ref()) {
+        if (!are_all_discrete(model, parents)) {
+            throw std::invalid_argument("Local score for discrete variable " + variable + " cannot be calculated"
+            " because the parents/evidence contains non-discrete variables.");
+        }
+
         return bic_discrete(variable, parents);
     }
 

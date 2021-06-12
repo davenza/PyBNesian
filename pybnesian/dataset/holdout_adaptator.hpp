@@ -12,79 +12,9 @@ using arrow::NumericBuilder;
 
 namespace dataset {
 
-template <typename ArrowType>
-Array_ptr split(Array_ptr col, const_vecit<int> begin, const_vecit<int> end) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    int rows = std::distance(begin, end);
-
-    NumericBuilder<ArrowType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(rows));
-
-    auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-    auto raw_values = dwn_col->raw_values();
-    for (auto it = begin; it != end; ++it) {
-        builder.UnsafeAppend(raw_values[*it]);
-    }
-
-    std::shared_ptr<arrow::Array> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
-
-    return out;
-}
-
-template <typename ArrowType>
-Array_ptr split_null(Array_ptr col, const_vecit<int> begin, const_vecit<int> end) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    int rows = std::distance(begin, end);
-
-    NumericBuilder<ArrowType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(rows));
-
-    auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-    auto raw_values = dwn_col->raw_values();
-    auto bitmap = col->null_bitmap();
-    auto bitmap_data = bitmap->data();
-    for (auto it = begin; it != end; ++it) {
-        if (arrow::BitUtil::GetBit(bitmap_data, *it))
-            builder.UnsafeAppend(raw_values[*it]);
-        else
-            builder.UnsafeAppendNull();
-    }
-
-    std::shared_ptr<arrow::Array> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
-
-    return out;
-}
-
-template <typename ArrowType>
-std::pair<Array_ptr, Array_ptr> split_array_train_test(Array_ptr col,
-                                                       bool include_null,
-                                                       const_vecit<int> train_begin,
-                                                       const_vecit<int> train_end,
-                                                       const_vecit<int> test_end) {
-    if (include_null && col->null_count() > 0) {
-        auto df_train = split_null<ArrowType>(col, train_begin, train_end);
-        auto df_test = split_null<ArrowType>(col, train_end, test_end);
-        return std::make_pair(df_train, df_test);
-    } else {
-        auto df_train = split<ArrowType>(col, train_begin, train_end);
-        auto df_test = split<ArrowType>(col, train_end, test_end);
-        return std::make_pair(df_train, df_test);
-    }
-}
-
-std::pair<Array_ptr, Array_ptr> generate_holdout_column(Array_ptr col,
-                                                        bool include_null,
-                                                        const_vecit<int> train_begin,
-                                                        const_vecit<int> train_end,
-                                                        const_vecit<int> test_end);
-
 std::pair<DataFrame, DataFrame> generate_holdout(const DataFrame& df,
-                                                 bool include_null,
-                                                 const_vecit<int> train_begin,
-                                                 const_vecit<int> train_end,
-                                                 const_vecit<int> test_end);
+                                                 const std::vector<int>& indices,
+                                                 int num_train);
 
 class HoldOut {
 public:
@@ -129,10 +59,7 @@ public:
                                         std::to_string(test_rows));
         }
 
-        auto split_point = indices.begin();
-        std::advance(split_point, train_rows);
-        std::tie(m_train_df, m_test_df) =
-            generate_holdout(df, include_null, indices.begin(), split_point, indices.end());
+        std::tie(m_train_df, m_test_df) = generate_holdout(df, indices, train_rows);
     }
 
     const DataFrame& training_data() const { return m_train_df; }

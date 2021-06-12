@@ -12,144 +12,10 @@ using const_vecit = typename std::vector<T>::const_iterator;
 
 namespace dataset {
 
-template <typename ArrowType>
-Array_ptr split_train(Array_ptr col,
-                      const_vecit<int> begin,
-                      const_vecit<int> end,
-                      const_vecit<int> test_begin,
-                      const_vecit<int> test_end) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    int rows_train = std::distance(begin, test_begin) + std::distance(test_end, end);
-
-    NumericBuilder<ArrowType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(rows_train));
-
-    auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-    auto raw_values = dwn_col->raw_values();
-    for (auto it = begin; it != test_begin; ++it) {
-        builder.UnsafeAppend(raw_values[*it]);
-    }
-
-    for (auto it = test_end; it != end; ++it) {
-        builder.UnsafeAppend(raw_values[*it]);
-    }
-
-    std::shared_ptr<arrow::Array> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
-
-    return out;
-}
-
-template <typename ArrowType>
-Array_ptr split_train_null(Array_ptr col,
-                           const_vecit<int> begin,
-                           const_vecit<int> end,
-                           const_vecit<int> test_begin,
-                           const_vecit<int> test_end) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    int rows_train = std::distance(begin, test_begin) + std::distance(test_end, end);
-
-    NumericBuilder<ArrowType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(rows_train));
-
-    auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-    auto raw_values = dwn_col->raw_values();
-    auto bitmap = col->null_bitmap();
-    auto bitmap_data = bitmap->data();
-    for (auto it = begin; it != test_begin; ++it) {
-        if (arrow::BitUtil::GetBit(bitmap_data, *it))
-            builder.UnsafeAppend(raw_values[*it]);
-        else
-            builder.UnsafeAppendNull();
-    }
-
-    for (auto it = test_end; it != end; ++it) {
-        if (arrow::BitUtil::GetBit(bitmap_data, *it))
-            builder.UnsafeAppend(raw_values[*it]);
-        else
-            builder.UnsafeAppendNull();
-    }
-
-    std::shared_ptr<arrow::Array> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
-
-    return out;
-}
-
-template <typename ArrowType>
-Array_ptr split_test(Array_ptr col, const_vecit<int> test_begin, const_vecit<int> test_end) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    int rows_test = std::distance(test_begin, test_end);
-
-    NumericBuilder<ArrowType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(rows_test));
-
-    auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-    auto raw_values = dwn_col->raw_values();
-    for (auto it = test_begin; it != test_end; ++it) {
-        builder.UnsafeAppend(raw_values[*it]);
-    }
-
-    std::shared_ptr<arrow::Array> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
-
-    return out;
-}
-
-template <typename ArrowType>
-Array_ptr split_test_null(Array_ptr col, const_vecit<int> test_begin, const_vecit<int> test_end) {
-    using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
-    int rows_test = std::distance(test_begin, test_end);
-
-    NumericBuilder<ArrowType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(rows_test));
-
-    auto dwn_col = std::static_pointer_cast<ArrayType>(col);
-    auto raw_values = dwn_col->raw_values();
-    auto bitmap = col->null_bitmap();
-    auto bitmap_data = bitmap->data();
-    for (auto it = test_begin; it != test_end; ++it) {
-        if (arrow::BitUtil::GetBit(bitmap_data, *it))
-            builder.UnsafeAppend(raw_values[*it]);
-        else
-            builder.UnsafeAppendNull();
-    }
-
-    std::shared_ptr<arrow::Array> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
-
-    return out;
-}
-
-template <typename ArrowType>
-std::pair<Array_ptr, Array_ptr> split_array_train_test(Array_ptr col,
-                                                       bool include_null,
-                                                       const_vecit<int> begin,
-                                                       const_vecit<int> end,
-                                                       const_vecit<int> test_begin,
-                                                       const_vecit<int> test_end) {
-    if (include_null && col->null_count() > 0) {
-        auto df_train = split_train_null<ArrowType>(col, begin, end, test_begin, test_end);
-        auto df_test = split_test_null<ArrowType>(col, test_begin, test_end);
-        return std::make_pair(df_train, df_test);
-    } else {
-        auto df_train = split_train<ArrowType>(col, begin, end, test_begin, test_end);
-        auto df_test = split_test<ArrowType>(col, test_begin, test_end);
-        return std::make_pair(df_train, df_test);
-    }
-}
-
-std::pair<Array_ptr, Array_ptr> generate_cv_pair_column(Array_ptr col,
-                                                        bool include_null,
-                                                        const_vecit<int> begin,
-                                                        const_vecit<int> end,
-                                                        const_vecit<int> test_begin,
-                                                        const_vecit<int> test_end);
-
 class CrossValidationProperties {
 public:
     CrossValidationProperties(const DataFrame& df, int k, unsigned int seed, bool include_null)
-        : k(k), m_seed(seed), indices(), limits(), include_null(include_null) {
+        : k(k), m_seed(seed), indices(), limits() {
         if (k > df->num_rows()) {
             throw std::invalid_argument("Cannot split " + std::to_string(df->num_rows()) + " instances into " +
                                         std::to_string(k) + " folds.");
@@ -177,9 +43,9 @@ public:
         int folds_extra = indices.size() % k;
 
         limits.reserve(k + 1);
-        limits.push_back(indices.begin());
+        limits.push_back(0);
 
-        auto curr_iter = indices.cbegin();
+        auto curr_iter = 0;
         for (int i = 0; i < folds_extra; ++i) {
             curr_iter += fold_size + 1;
             limits.push_back(curr_iter);
@@ -197,8 +63,7 @@ private:
     int k;
     unsigned int m_seed;
     std::vector<int> indices;
-    std::vector<const_vecit<int>> limits;
-    bool include_null;
+    std::vector<int> limits;
 };
 
 class CrossValidation {

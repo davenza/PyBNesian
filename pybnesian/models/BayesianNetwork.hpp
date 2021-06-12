@@ -700,10 +700,9 @@ public:
                         m_node_types[index(old.first)] = old.second;
                     }
 
-                    throw std::invalid_argument("Node type " + p.second->ToString() +
-                                                " not compatible with"
-                                                " Bayesian network " +
-                                                m_type->ToString());
+                    throw std::invalid_argument("Wrong factor type \"" + p.second->ToString() + "\" for node \"" +
+                                                p.first + "\" in Bayesian network type \"" + m_type->ToString() +
+                                                "\".");
                 }
             }
 
@@ -880,6 +879,19 @@ void BNGeneric<DagType>::fit(const DataFrame& df) {
         m_cpds.resize(num_raw_nodes());
     }
 
+    FactorTypeVector new_factor_types;
+    if (!m_type->is_homogeneous()) {
+        for (const auto& nn : nodes()) {
+            auto node_type_ = node_type(nn);
+
+            if (*node_type_ == UnknownFactorType::get_ref()) {
+                new_factor_types.push_back({nn, m_type->data_default_node_type(df.col(nn)->type())});
+            }
+        }
+    }
+
+    force_type_whitelist(new_factor_types);
+
     for (const auto& nn : nodes()) {
         auto i = check_index(nn);
 
@@ -887,11 +899,6 @@ void BNGeneric<DagType>::fit(const DataFrame& df) {
         df.raise_has_columns(nn, p);
 
         auto node_type_ = node_type(nn);
-
-        if (!m_type->is_homogeneous() && *node_type_ == UnknownFactorType::get_ref()) {
-            m_node_types[i] = m_type->data_default_node_type(df.col(nn)->type());
-            node_type_ = m_node_types[i];
-        }
 
         if (!m_cpds[i] || must_construct_cpd(*m_cpds[i], *node_type_, p)) {
             m_cpds[i] = node_type_->new_factor(*this, nn, p);

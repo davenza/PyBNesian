@@ -9,22 +9,24 @@
 #include <models/DiscreteBN.hpp>
 #include <models/HomogeneousBN.hpp>
 #include <models/HeterogeneousBN.hpp>
+#include <models/CLGNetwork.hpp>
 #include <util/util_types.hpp>
 
 using models::BayesianNetworkType, models::GaussianNetworkType, models::SemiparametricBNType, models::KDENetworkType,
-    models::DiscreteBNType, models::HomogeneousBNType, models::HeterogeneousBNType, models::BayesianNetworkBase,
-    models::BNGeneric, models::BayesianNetwork, models::GaussianNetwork, models::SemiparametricBN, models::KDENetwork,
-    models::DiscreteBN, models::HomogeneousBN, models::HeterogeneousBN;
+    models::DiscreteBNType, models::HomogeneousBNType, models::HeterogeneousBNType, models::CLGNetworkType,
+    models::BayesianNetworkBase, models::BNGeneric, models::BayesianNetwork, models::GaussianNetwork,
+    models::SemiparametricBN, models::KDENetwork, models::DiscreteBN, models::HomogeneousBN, models::HeterogeneousBN,
+    models::CLGNetwork;
 
 using models::MapDataToFactor;
 
 using models::ConditionalBayesianNetworkBase, models::ConditionalBayesianNetwork, models::ConditionalGaussianNetwork,
     models::ConditionalSemiparametricBN, models::ConditionalKDENetwork, models::ConditionalDiscreteBN,
-    models::ConditionalHomogeneousBN, models::ConditionalHeterogeneousBN;
+    models::ConditionalHomogeneousBN, models::ConditionalHeterogeneousBN, models::ConditionalCLGNetwork;
 
 using models::DynamicBayesianNetworkBase, models::DynamicBayesianNetwork, models::DynamicGaussianNetwork,
     models::DynamicSemiparametricBN, models::DynamicKDENetwork, models::DynamicDiscreteBN, models::DynamicHomogeneousBN,
-    models::DynamicHeterogeneousBN;
+    models::DynamicHeterogeneousBN, models::DynamicCLGNetwork;
 
 using util::random_seed_arg;
 
@@ -1944,8 +1946,19 @@ Returns the dict of default :class:`FactorType <pybnesian.factors.FactorType>` f
         .def(py::pickle([](const HeterogeneousBNType& self) { return self.__getstate__(); },
                         [](py::tuple& t) { return HeterogeneousBNType::__setstate__(t); }));
 
-    register_BayesianNetwork_methods<BayesianNetworkBase>(bn_base);
+    py::class_<CLGNetworkType, BayesianNetworkType, std::shared_ptr<CLGNetworkType>>(models, "CLGNetworkType", R"doc(
+This :class:`BayesianNetworkType` represents a conditional linear Gaussian (CLG) network: heterogeneous with
+:class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>` factors for the continuous data and
+:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` for the categorical data.
 
+In a CLG network, the discrete nodes can only have discrete parents, while the continuous nodes can have discrete and
+continuous parents.
+)doc")
+        .def(py::init(&CLGNetworkType::get))
+        .def(py::pickle([](const CLGNetworkType& self) { return self.__getstate__(); },
+                        [](py::tuple&) { return CLGNetworkType::get(); }));
+
+    register_BayesianNetwork_methods<BayesianNetworkBase>(bn_base);
     register_ConditionalBayesianNetwork_methods<ConditionalBayesianNetworkBase>(cbn_base);
 
     py::class_<DynamicBayesianNetworkBase, PyDynamicBayesianNetworkBase<>, std::shared_ptr<DynamicBayesianNetworkBase>>
@@ -2613,6 +2626,10 @@ Initializes the :class:`HeterogeneousBN` of different default ``factor_types`` w
         .def(py::pickle([](const HeterogeneousBN& self) { return self.__getstate__(); },
                         [](py::tuple& t) { return models::__heterogeneous_setstate__<HeterogeneousBN>(t); }));
 
+    register_DerivedBayesianNetwork<CLGNetwork>(models, "CLGNetwork", R"doc(
+This class implements a :class:`BayesianNetwork` with the type :class:`CLGNetworkType`.
+)doc");
+
     register_DerivedConditionalBayesianNetwork<ConditionalGaussianNetwork>(models, "ConditionalGaussianNetwork", R"doc(
 This class implements a :class:`ConditionalBayesianNetwork` with the type :class:`GaussianNetworkType`.
 )doc");
@@ -2824,6 +2841,10 @@ Initializes the :class:`ConditionalHeterogeneousBN` of different default ``facto
             py::pickle([](const ConditionalHeterogeneousBN& self) { return self.__getstate__(); },
                        [](py::tuple& t) { return models::__heterogeneous_setstate__<ConditionalHeterogeneousBN>(t); }));
 
+    register_DerivedConditionalBayesianNetwork<ConditionalCLGNetwork>(models, "ConditionalCLGNetwork", R"doc(
+This class implements a :class:`ConditionalBayesianNetwork` with the type :class:`CLGNetworkType`.
+)doc");
+
     register_DerivedDynamicBayesianNetwork<DynamicGaussianNetwork>(models, "DynamicGaussianNetwork", R"doc(
 This class implements a :class:`DynamicBayesianNetwork` with the type :class:`GaussianNetworkType`.
 )doc");
@@ -2954,4 +2975,9 @@ The type of ``static_bn`` and ``transition_bn`` must be :class:`HeterogeneousBNT
 )doc")
         .def(py::pickle([](const DynamicHeterogeneousBN& self) { return self.__getstate__(); },
                         [](py::tuple& t) { return models::__derived_dbn_setstate__<DynamicHeterogeneousBN>(t); }));
+
+    register_DerivedDynamicBayesianNetwork<DynamicCLGNetwork>(models, "DynamicCLGNetwork", R"doc(
+This class implements a :class:`DynamicBayesianNetwork` with the type :class:`CLGNetworkType`.
+)doc");
+
 }

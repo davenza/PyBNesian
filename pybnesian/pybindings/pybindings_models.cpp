@@ -113,28 +113,32 @@ public:
         py::pybind11_fail("Tried to call pure virtual function \"BayesianNetworkType::data_default_node_type\"");
     }
 
-    bool compatible_node_type(const BayesianNetworkBase& m, const std::string& variable) const override {
+    bool compatible_node_type(const BayesianNetworkBase& m,
+                              const std::string& variable,
+                              const std::shared_ptr<FactorType>& nt) const override {
         pybind11::gil_scoped_acquire gil;
         pybind11::function override =
             pybind11::get_override(static_cast<const BayesianNetworkType*>(this), "compatible_node_type");
         if (override) {
-            auto o = override(m.shared_from_this(), variable);
+            auto o = override(m.shared_from_this(), variable, nt);
             return o.cast<bool>();
         }
 
-        return BayesianNetworkType::compatible_node_type(m, variable);
+        return BayesianNetworkType::compatible_node_type(m, variable, nt);
     }
 
-    bool compatible_node_type(const ConditionalBayesianNetworkBase& m, const std::string& variable) const override {
+    bool compatible_node_type(const ConditionalBayesianNetworkBase& m,
+                              const std::string& variable,
+                              const std::shared_ptr<FactorType>& nt) const override {
         pybind11::gil_scoped_acquire gil;
         pybind11::function override =
             pybind11::get_override(static_cast<const BayesianNetworkType*>(this), "compatible_node_type");
         if (override) {
-            auto o = override(m.shared_from_this(), variable);
+            auto o = override(m.shared_from_this(), variable, nt);
             return o.cast<bool>();
         }
 
-        return BayesianNetworkType::compatible_node_type(m, variable);
+        return BayesianNetworkType::compatible_node_type(m, variable, nt);
     }
 
     bool can_have_arc(const BayesianNetworkBase& m,
@@ -1830,24 +1834,28 @@ Returns an empty conditional Bayesian network of this type with the given ``node
 
         bn_type
             .def("compatible_node_type",
-                 py::overload_cast<const ConditionalBayesianNetworkBase&, const std::string&>(
-                     &BayesianNetworkType::compatible_node_type, py::const_),
+                 py::overload_cast<const ConditionalBayesianNetworkBase&,
+                                   const std::string&,
+                                   const std::shared_ptr<FactorType>&>(&BayesianNetworkType::compatible_node_type,
+                                                                       py::const_),
                  py::arg("model"),
-                 py::arg("node"))
+                 py::arg("node"),
+                 py::arg("node_type"))
             .def("compatible_node_type",
-                 py::overload_cast<const BayesianNetworkBase&, const std::string&>(
+                 py::overload_cast<const BayesianNetworkBase&, const std::string&, const std::shared_ptr<FactorType>&>(
                      &BayesianNetworkType::compatible_node_type, py::const_),
                  py::arg("model"),
                  py::arg("node"),
+                 py::arg("node_type"),
                  R"doc(
-compatible_node_type(model: BayesianNetworkBase or ConditionalBayesianNetworkBase, node: str) -> bool
+compatible_node_type(model: BayesianNetworkBase or ConditionalBayesianNetworkBase, node: str, node_type: pybnesian.factors.FactorType) -> bool
 
-Checks whether the :class:`FactorType <pybnesian.factors.FactorType>` currently specified for ``node`` is allowed by
-this :class:`BayesianNetworkType`. The :class:`FactorType <pybnesian.factors.FactorType>` can be accessed using
-:func:`BayesianNetworkBase.node_type`
+Checks whether the :class:`FactorType <pybnesian.factors.FactorType>` ``node_type`` is allowed for ``node`` by
+this :class:`BayesianNetworkType`.
 
 :param model: BayesianNetwork model.
 :param node: Name of the node to check.
+:param node_type: :class:`FactorType <pybnesian.factors.FactorType>` for ``node``.
 :returns: True if the current :class:`FactorType <pybnesian.factors.FactorType>` is allowed, False otherwise.
 )doc")
             .def("can_have_arc",
@@ -2979,5 +2987,4 @@ The type of ``static_bn`` and ``transition_bn`` must be :class:`HeterogeneousBNT
     register_DerivedDynamicBayesianNetwork<DynamicCLGNetwork>(models, "DynamicCLGNetwork", R"doc(
 This class implements a :class:`DynamicBayesianNetwork` with the type :class:`CLGNetworkType`.
 )doc");
-
 }

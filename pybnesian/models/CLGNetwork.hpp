@@ -42,28 +42,22 @@ public:
             case Type::DICTIONARY:
                 return DiscreteFactorType::get();
             default:
-                throw std::invalid_argument("Data type [" + dt->ToString() +
-                                            "] not compatible with CLGNetworkType");
+                throw std::invalid_argument("Data type [" + dt->ToString() + "] not compatible with CLGNetworkType");
         }
     }
 
-    bool compatible_node_type(const BayesianNetworkBase& m, const std::string& variable) const override {
-        auto nt = m.node_type(variable);
+    bool compatible_node_type(const BayesianNetworkBase&,
+                              const std::string&,
+                              const std::shared_ptr<FactorType>& nt) const override {
         if (*nt != LinearGaussianCPDType::get_ref() && *nt != DiscreteFactorType::get_ref()) return false;
-
-        if (*nt == DiscreteFactorType::get_ref()) {
-            for (const auto& pa : m.parents(variable)) {
-                if (*m.node_type(pa) != DiscreteFactorType::get_ref()) {
-                    return false;
-                }
-            }
-        }
 
         return true;
     }
 
-    bool compatible_node_type(const ConditionalBayesianNetworkBase& m, const std::string& variable) const override {
-        return compatible_node_type(static_cast<const BayesianNetworkBase&>(m), variable);
+    bool compatible_node_type(const ConditionalBayesianNetworkBase& m,
+                              const std::string& variable,
+                              const std::shared_ptr<FactorType>& nt) const override {
+        return compatible_node_type(static_cast<const BayesianNetworkBase&>(m), variable, nt);
     }
 
     bool can_have_arc(const BayesianNetworkBase& m,

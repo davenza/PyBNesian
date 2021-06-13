@@ -221,8 +221,16 @@ public:
     virtual std::shared_ptr<FactorType> default_node_type() const = 0;
     virtual std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const = 0;
 
-    virtual bool compatible_node_type(const BayesianNetworkBase&, const std::string&) const { return true; }
-    virtual bool compatible_node_type(const ConditionalBayesianNetworkBase&, const std::string&) const { return true; }
+    virtual bool compatible_node_type(const BayesianNetworkBase&,
+                                      const std::string&,
+                                      const std::shared_ptr<FactorType>&) const {
+        return true;
+    }
+    virtual bool compatible_node_type(const ConditionalBayesianNetworkBase&,
+                                      const std::string&,
+                                      const std::shared_ptr<FactorType>&) const {
+        return true;
+    }
 
     virtual bool can_have_arc(const BayesianNetworkBase&, const std::string&, const std::string&) const { return true; }
     virtual bool can_have_arc(const ConditionalBayesianNetworkBase&, const std::string&, const std::string&) const {
@@ -290,7 +298,7 @@ private:
             }
 
             for (const auto& p : node_types) {
-                if (!m_type->compatible_node_type(*this, p.first)) {
+                if (!m_type->compatible_node_type(*this, p.first, p.second)) {
                     throw std::invalid_argument("Node type " + p.second->ToString() +
                                                 " not compatible with"
                                                 " Bayesian network " +
@@ -638,15 +646,13 @@ public:
                 throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node \"" + node +
                                             "\" in Bayesian network type \"" + m_type->ToString() + "\".");
         } else {
-            auto node_index = check_index(node);
-            auto old_node_type = m_node_types[node_index];
-            m_node_types[node_index] = new_type;
-
-            if (*new_type != UnknownFactorType::get_ref() && !m_type->compatible_node_type(*this, node)) {
-                m_node_types[node_index] = old_node_type;
+            if (*new_type != UnknownFactorType::get_ref() && !m_type->compatible_node_type(*this, node, new_type)) {
                 throw std::invalid_argument("Wrong factor type \"" + new_type->ToString() + "\" for node \"" + node +
                                             "\" in Bayesian network type \"" + m_type->ToString() + "\".");
             }
+
+            auto node_index = check_index(node);
+            m_node_types[node_index] = new_type;
 
             if (!m_cpds.empty() && m_cpds[node_index] && *m_node_types[node_index] != m_cpds[node_index]->type_ref())
                 m_cpds[node_index] = nullptr;
@@ -695,7 +701,8 @@ public:
 
             for (const auto& p : type_whitelist) {
                 // Check also null
-                if (*p.second != UnknownFactorType::get_ref() && !m_type->compatible_node_type(*this, p.first)) {
+                if (*p.second != UnknownFactorType::get_ref() &&
+                    !m_type->compatible_node_type(*this, p.first, p.second)) {
                     for (const auto& old : old_data) {
                         m_node_types[index(old.first)] = old.second;
                     }

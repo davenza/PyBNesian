@@ -47,11 +47,18 @@ public:
         }
     }
 
-    bool compatible_node_type(const BayesianNetworkBase& m, const std::string& variable) const override {
-        auto nt = m.node_type(variable);
+    bool compatible_node_type(const BayesianNetworkBase&,
+                              const std::string&,
+                              const std::shared_ptr<FactorType>& nt) const override {
         if (*nt != LinearGaussianCPDType::get_ref() && *nt != CKDEType::get_ref()) return false;
 
         return true;
+    }
+
+    bool compatible_node_type(const ConditionalBayesianNetworkBase& m,
+                              const std::string& variable,
+                              const std::shared_ptr<FactorType>& nt) const override {
+        return compatible_node_type(static_cast<const BayesianNetworkBase&>(m), variable, nt);
     }
 
     std::string ToString() const override { return "SemiparametricNetworkType"; }

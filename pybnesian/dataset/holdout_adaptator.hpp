@@ -12,9 +12,7 @@ using arrow::NumericBuilder;
 
 namespace dataset {
 
-std::pair<DataFrame, DataFrame> generate_holdout(const DataFrame& df,
-                                                 const std::vector<int>& indices,
-                                                 int num_train);
+std::pair<DataFrame, DataFrame> generate_holdout(const DataFrame& df, const std::vector<int>& indices, int num_train);
 
 class HoldOut {
 public:

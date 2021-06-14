@@ -4,7 +4,7 @@ namespace dataset {
 
 std::pair<DataFrame, DataFrame> generate_holdout(const DataFrame& df, const std::vector<int>& indices, int num_train) {
     arrow::NumericBuilder<arrow::Int32Type> builder;
-    
+
     RAISE_STATUS_ERROR(builder.Reserve(num_train));
     RAISE_STATUS_ERROR(builder.AppendValues(indices.data(), num_train));
     Array_ptr arrow_indices;

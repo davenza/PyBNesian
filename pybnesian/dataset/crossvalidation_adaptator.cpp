@@ -3,12 +3,11 @@
 namespace dataset {
 
 std::pair<DataFrame, DataFrame> CrossValidation::generate_cv_pair(int fold) const {
-
     arrow::NumericBuilder<arrow::Int32Type> builder;
 
     auto test_fold_start = prop->limits[fold];
     auto test_fold_end = prop->limits[fold + 1];
-    auto test_fold_size = test_fold_end  - test_fold_start;
+    auto test_fold_size = test_fold_end - test_fold_start;
 
     auto right_train_size = prop->limits.back() - test_fold_end;
 
@@ -17,11 +16,9 @@ std::pair<DataFrame, DataFrame> CrossValidation::generate_cv_pair(int fold) cons
         RAISE_STATUS_ERROR(builder.AppendValues(prop->indices.data(), test_fold_start));
     }
 
-
     if (right_train_size > 0) {
         RAISE_STATUS_ERROR(builder.AppendValues(prop->indices.data() + test_fold_end, right_train_size));
     }
-    
 
     Array_ptr arrow_indices;
     RAISE_STATUS_ERROR(builder.Finish(&arrow_indices));

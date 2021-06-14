@@ -129,8 +129,9 @@ double BIC::local_score(const BayesianNetworkBase& model,
 
     if (node_type == DiscreteFactorType::get_ref()) {
         if (!are_all_discrete(model, parents)) {
-            throw std::invalid_argument("Local score for discrete variable " + variable + " cannot be calculated"
-            " because the parents/evidence contains non-discrete variables.");
+            throw std::invalid_argument("Local score for discrete variable " + variable +
+                                        " cannot be calculated"
+                                        " because the parents/evidence contains non-discrete variables.");
         }
 
         return bic_discrete(variable, parents);
@@ -150,8 +151,9 @@ double BIC::local_score(const BayesianNetworkBase& model,
 
     if (node_type == DiscreteFactorType::get_ref()) {
         if (!are_all_discrete(model, parents)) {
-            throw std::invalid_argument("Local score for discrete variable " + variable + " cannot be calculated"
-            " because the parents/evidence contains non-discrete variables.");
+            throw std::invalid_argument("Local score for discrete variable " + variable +
+                                        " cannot be calculated"
+                                        " because the parents/evidence contains non-discrete variables.");
         }
 
         return bic_discrete(variable, parents);

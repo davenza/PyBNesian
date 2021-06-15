@@ -34,6 +34,11 @@ Concrete classes
     :members:
     :special-members: __init__, __str__
 
+.. autoclass:: pybnesian.learning.scores.BDe
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
 .. autoclass:: pybnesian.learning.scores.CVLikelihood
     :show-inheritance:
     :members:
@@ -55,6 +60,11 @@ Concrete classes
     :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.learning.scores.DynamicBGe
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
+.. autoclass:: pybnesian.learning.scores.DynamicBDe
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

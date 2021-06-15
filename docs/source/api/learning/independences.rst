@@ -39,7 +39,17 @@ Concrete classes
     :members:
     :special-members: __init__, __str__
 
+.. autoclass:: pybnesian.learning.independences.ChiSquare
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
 .. autoclass:: pybnesian.learning.independences.DynamicLinearCorrelation
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
+.. autoclass:: pybnesian.learning.independences.DynamicMutualInformation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -50,6 +60,11 @@ Concrete classes
     :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.learning.independences.DynamicRCoT
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
+.. autoclass:: pybnesian.learning.independences.DynamicChiSquare
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

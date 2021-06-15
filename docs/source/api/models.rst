@@ -63,6 +63,11 @@ Bayesian Network Types
     :members:
     :special-members: __init__, __str__
 
+.. autoclass:: pybnesian.models.CLGNetworkType
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
 
 Bayesian Networks
 ^^^^^^^^^^^^^^^^^
@@ -103,6 +108,11 @@ do not have the ``type`` parameter.
     :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.models.HeterogeneousBN
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
+.. autoclass:: pybnesian.models.CLGNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -151,6 +161,11 @@ Thus, the constructors do not have the ``type`` parameter.
     :members:
     :special-members: __init__, __str__
 
+.. autoclass:: pybnesian.models.ConditionalCLGNetwork
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
 Dynamic Bayesian Networks
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: pybnesian.models.DynamicBayesianNetwork
@@ -190,6 +205,11 @@ constructors do not have the ``type`` parameter.
     :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.models.DynamicHeterogeneousBN
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
+.. autoclass:: pybnesian.models.DynamicCLGNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

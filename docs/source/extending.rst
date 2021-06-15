@@ -86,9 +86,6 @@ A new :class:`FactorType <pybnesian.factors.FactorType>` need to implement the f
 
 - :func:`FactorType.__str__() <pybnesian.factors.FactorType.__str__>`.
 - :func:`FactorType.new_factor() <pybnesian.factors.FactorType.new_factor>`.
-- :func:`FactorType.opposite_semiparametric() <pybnesian.factors.FactorType.opposite_semiparametric>`. This method is
-  optional. This method is needed to learn a Bayesian network structure with
-  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`.
 
 A new :class:`Factor <pybnesian.factors.Factor>` need to implement the following methods:
 
@@ -142,10 +139,6 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
         # Create the factor instance defined below.
         def new_factor(self, model, variable, evidence):
             return MyLG(variable, evidence)
-        
-        # This method is optional, it must be added to use pybnesian.learning.operators.ChangeNodeTypeSet.
-        #def opposite_semiparametric(self):
-        #    return CKDEType()
         
     class MyLG(Factor):
         def __init__(self, variable, evidence):
@@ -295,10 +288,6 @@ If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raise
         # Create the factor instance defined below.
         def new_factor(self, model, variable, evidence):
             return MyLG(variable, evidence)
-        
-        # This method is optional, it must be added to use pybnesian.learning.operators.ChangeNodeTypeSet.
-        #def opposite_semiparametric(self):
-        #    return CKDEType()
         
     class MyLG(Factor):
         def __init__(self, variable, evidence):
@@ -545,6 +534,10 @@ methods:
   method is optional. If not implemented, it accepts any arc.
 - :func:`BayesianNetworkType.new_bn() <pybnesian.models.BayesianNetworkType.new_bn>`.
 - :func:`BayesianNetworkType.new_cbn() <pybnesian.models.BayesianNetworkType.new_cbn>`.
+- :func:`BayesianNetworkType.alternative_node_type() <pybnesian.models.BayesianNetworkType.alternative_node_type>`.
+  This method is optional. This method is needed to learn a Bayesian network structure with
+  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`. This method is only needed for
+  non-homogeneous Bayesian networks.
 
 To illustrate, we will create a Gaussian network that only admits arcs ``source`` -> ``target`` where
 ``source`` contains the letter "a". To make the example more interesting we will also use our custom implementation 
@@ -591,6 +584,10 @@ To illustrate, we will create a Gaussian network that only admits arcs ``source`
 
         def new_cbn(self, nodes, interface_nodes):
             return ConditionalBayesianNetwork(MyRestrictedGaussianType(), nodes, interface_nodes)
+
+        # NOT NEEDED because it is homogeneous. Also, it is not needed if you do not want to change the node type.
+        # def alternative_node_type(self, node):
+        #    pass
         
 The arc restrictions defined by
 :func:`BayesianNetworkType.can_have_arc() <pybnesian.models.BayesianNetworkType.can_have_arc>` can be an alternative to
@@ -629,6 +626,10 @@ the blacklist lists in some learning algorithms. However, this arc restrictions 
 
         def new_cbn(self, nodes, interface_nodes):
             return ConditionalBayesianNetwork(MyRestrictedGaussianType(), nodes, interface_nodes)
+
+        # NOT NEEDED because it is homogeneous. Also, it is not needed if you do not want to change the node type.
+        # def alternative_node_type(self, node):
+        #    pass
 
 .. doctest::
 
@@ -1322,6 +1323,8 @@ to implement the following methods:
   optional. Implement it only if you need to check that an arc is whitelisted.
 - :func:`OperatorSet.set_max_indegree() <pybnesian.learning.operators.OperatorSet.set_max_indegree>`. This method is
   optional. Implement it only if you need to check the maximum indegree of the graph.
+- :func:`OperatorSet.set_type_blacklist() <pybnesian.learning.operators.OperatorSet.set_type_blacklist>`. This method is
+  optional. Implement it only if you need to check that a node type is blacklisted.
 - :func:`OperatorSet.set_type_whitelist() <pybnesian.learning.operators.OperatorSet.set_type_whitelist>`. This method is
   optional. Implement it only if you need to check that a node type is whitelisted.
 - :func:`OperatorSet.update_scores() <pybnesian.learning.operators.OperatorSet.update_scores>`.

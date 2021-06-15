@@ -466,7 +466,7 @@ parameter is passed to the static and transition components of :class:`MutualInf
 
 :param ddf: :class:`DynamicDataFrame` to create the :class:`DynamicMutualInformation`.
 :param asymptotic_df: Whether to calculate the asymptotic or empirical degrees of freedom of the chi-square null
-distribution.
+    distribution.
 )doc");
 
     py::class_<DynamicKMutualInformation, DynamicIndependenceTest, std::shared_ptr<DynamicKMutualInformation>>(

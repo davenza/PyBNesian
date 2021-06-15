@@ -13,6 +13,7 @@ Welcome to PyBNesian's documentation!
    pybnesian
    extending
    api
+   changelog
 
 
 Indices and tables

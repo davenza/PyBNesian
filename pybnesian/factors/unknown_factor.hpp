@@ -36,12 +36,6 @@ public:
             "UnknownFactorType cannot create a new Factor (UnknownFactorType::new_factor was called).");
     }
 
-    std::shared_ptr<FactorType> opposite_semiparametric() const override {
-        throw py::type_error(
-            "UnknownFactorType do not have an opposite semiparametric FactorType "
-            "(UnknownFactorType::opposite_semiparametric was called).");
-    }
-
     std::string ToString() const override { return "UnknownFactorType"; }
 
     py::tuple __getstate__() const override { return py::make_tuple(); }

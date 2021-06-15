@@ -728,8 +728,6 @@ public:
                                        const std::string&,
                                        const std::vector<std::string>&) const override;
 
-    std::shared_ptr<FactorType> opposite_semiparametric() const override;
-
     std::string ToString() const override { return "CKDEFactor"; }
 
     py::tuple __getstate__() const override { return py::make_tuple(); }

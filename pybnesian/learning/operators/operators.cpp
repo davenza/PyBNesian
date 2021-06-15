@@ -7,8 +7,12 @@ using models::BayesianNetworkType, models::SemiparametricBNType;
 
 namespace learning::operators {
 
-std::shared_ptr<Operator> AddArc::opposite() const {
+std::shared_ptr<Operator> AddArc::opposite(const BayesianNetworkBase&) const {
     return std::make_shared<RemoveArc>(this->source(), this->target(), -this->delta());
+}
+
+std::shared_ptr<Operator> AddArc::opposite(const ConditionalBayesianNetworkBase& m) const {
+    return opposite(static_cast<const BayesianNetworkBase&>(m));
 }
 
 void ArcOperatorSet::update_valid_ops(const BayesianNetworkBase& model) {
@@ -110,7 +114,6 @@ void ArcOperatorSet::cache_scores(const BayesianNetworkBase& model, const Score&
             int source_collapsed = model.collapsed_index(source_node);
             if (valid_op(source_collapsed, target_collapsed) &&
                 bn_type->can_have_arc(model, source_node, target_node)) {
-
                 delta(source_collapsed, target_collapsed) =
                     cache_score_operation(model,
                                           score,
@@ -428,8 +431,8 @@ void ArcOperatorSet::update_scores(const ConditionalBayesianNetworkBase& model,
 }
 
 void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Score& score) {
-    if (model.type_ref() != SemiparametricBNType::get_ref()) {
-        throw std::invalid_argument("ChangeNodeTypeSet can only be used with SemiparametricBN");
+    if (model.type_ref().is_homogeneous()) {
+        throw std::invalid_argument("ChangeNodeTypeSet can only be used with non-homogeneous Bayesian networks.");
     }
 
     if (!score.compatible_bn(model)) {
@@ -442,28 +445,41 @@ void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Sco
         this->m_local_cache->cache_local_scores(model, score);
     }
 
+    delta.clear();
     update_whitelisted(model);
 
+    auto bn_type = model.type();
     for (int i = 0; i < model.num_nodes(); ++i) {
+        if (m_is_whitelisted(i)) continue;
+
         const auto& collapsed_name = model.collapsed_name(i);
 
         auto type = model.node_type(collapsed_name);
-        auto parents = model.parents(collapsed_name);
-
         if (*type == UnknownFactorType::get_ref()) {
             throw std::invalid_argument("Cannot calculate ChangeNodeType delta score for " + type->ToString() +
                                         ". Set appropiate node types for the model");
         }
 
-        auto opposite = type->opposite_semiparametric();
+        auto alt_node_types = bn_type->alternative_node_type(model, collapsed_name);
 
-        if (opposite == nullptr) {
-            delta(i) = std::numeric_limits<double>::lowest();
-            valid_op(i) = false;
-            util::swap_remove_v(sorted_idx, i);
+        if (alt_node_types.empty()) {
+            delta.emplace_back();
         } else {
-            delta(i) = score.local_score(model, *opposite, collapsed_name, parents) -
-                       this->m_local_cache->local_score(model, collapsed_name);
+            delta.emplace_back(alt_node_types.size());
+
+            double current_score = this->m_local_cache->local_score(model, collapsed_name);
+            for (auto k = 0, k_end = static_cast<int>(alt_node_types.size()); k < k_end; ++k) {
+                bool not_blacklisted =
+                    m_type_blacklist.find(std::make_pair(collapsed_name, alt_node_types[k])) == m_type_blacklist.end();
+
+                if (bn_type->compatible_node_type(model, collapsed_name, alt_node_types[k]) && not_blacklisted) {
+                    auto parents = model.parents(collapsed_name);
+                    delta.back()(k) =
+                        score.local_score(model, *alt_node_types[k], collapsed_name, parents) - current_score;
+                } else {
+                    delta.back()(k) = std::numeric_limits<double>::lowest();
+                }
+            }
         }
     }
 }
@@ -471,35 +487,65 @@ void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Sco
 std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(const BayesianNetworkBase& model) const {
     raise_uninitialized();
 
-    auto delta_ptr = delta.data();
-    // TODO: Not checking sorted_idx empty
-    auto it_max = std::max_element(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] < delta_ptr[i2]; });
+    double max_score = std::numeric_limits<double>::lowest();
+    int max_node = -1;
+    int max_type = -1;
+    for (auto i = 0, i_end = static_cast<int>(delta.size()); i < i_end; ++i) {
+        if (!m_is_whitelisted(i)) {
+            int local_max;
+            delta[i].maxCoeff(&local_max);
 
-    const auto& node = model.collapsed_name(*it_max);
-    auto node_type = model.node_type(node);
-    return std::make_shared<ChangeNodeType>(node, node_type->opposite_semiparametric(), delta(*it_max));
+            if (delta[i](local_max) > max_score) {
+                max_score = delta[i](local_max);
+                max_node = i;
+                max_type = local_max;
+            }
+        }
+    }
+
+    if (max_score > std::numeric_limits<double>::lowest()) {
+        const auto& node_name = model.collapsed_name(max_node);
+        auto alt_node_types = model.type()->alternative_node_type(model, node_name);
+
+        return std::make_shared<ChangeNodeType>(node_name, alt_node_types[max_type], delta[max_node](max_type));
+    } else {
+        return nullptr;
+    }
 }
 
 std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(const BayesianNetworkBase& model,
                                                       const OperatorTabuSet& tabu_set) const {
     raise_uninitialized();
 
-    auto delta_ptr = delta.data();
-    // TODO: Not checking sorted_idx empty
-    std::sort(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] > delta_ptr[i2]; });
+    double max_score = std::numeric_limits<double>::lowest();
+    int max_node = -1;
+    int max_type = -1;
 
-    for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
-        int idx_max = *it;
-        const auto& node = model.collapsed_name(idx_max);
-        auto node_type = model.node_type(node);
-        std::shared_ptr<Operator> op =
-            std::make_shared<ChangeNodeType>(node, node_type->opposite_semiparametric(), delta(idx_max));
-        if (!tabu_set.contains(op)) return op;
+    for (auto i = 0, i_end = static_cast<int>(delta.size()); i < i_end; ++i) {
+        if (!m_is_whitelisted(i)) {
+            const auto& collapsed_name = model.collapsed_name(i);
+            auto alt_node_types = model.type()->alternative_node_type(model, collapsed_name);
+            for (auto k = 0; k < delta[i].rows(); ++k) {
+                if (delta[i](k) > max_score) {
+                    auto op = std::make_shared<ChangeNodeType>(collapsed_name, alt_node_types[k], delta[i](k));
+                    if (!tabu_set.contains(op)) {
+                        max_score = delta[i](k);
+                        max_node = i;
+                        max_type = k;
+                    }
+                }
+            }
+        }
     }
 
-    return nullptr;
+    if (max_score > std::numeric_limits<double>::lowest()) {
+        const auto& node_name = model.collapsed_name(max_node);
+        auto alt_node_types = model.type()->alternative_node_type(model, node_name);
+
+        return std::make_shared<ChangeNodeType>(node_name, alt_node_types[max_type], delta[max_node](max_type));
+    } else {
+        return nullptr;
+    }
 }
 
 void ChangeNodeTypeSet::update_scores(const BayesianNetworkBase& model,
@@ -513,14 +559,35 @@ void ChangeNodeTypeSet::update_scores(const BayesianNetworkBase& model,
         }
     }
 
+    auto bn_type = model.type();
     for (const auto& n : variables) {
         auto collapsed_index = model.collapsed_index(n);
-        if (valid_op(collapsed_index)) {
-            auto type = model.node_type(n);
-            auto parents = model.parents(n);
 
-            delta(collapsed_index) = score.local_score(model, *type->opposite_semiparametric(), n, parents) -
-                                     this->m_local_cache->local_score(model, n);
+        if (m_is_whitelisted(collapsed_index)) continue;
+
+        double current_score = this->m_local_cache->local_score(model, n);
+        auto alt_node_types = model.type()->alternative_node_type(model, n);
+
+        if (static_cast<size_t>(delta[collapsed_index].rows()) < alt_node_types.size()) {
+            delta[collapsed_index] = VectorXd(alt_node_types.size());
+        }
+
+        if (static_cast<size_t>(delta[collapsed_index].rows()) > alt_node_types.size()) {
+            std::fill(delta[collapsed_index].data() + alt_node_types.size(),
+                      delta[collapsed_index].data() + delta[collapsed_index].rows(),
+                      std::numeric_limits<double>::lowest());
+        }
+
+        for (auto k = 0, k_end = static_cast<int>(alt_node_types.size()); k < k_end; ++k) {
+            bool not_blacklisted =
+                m_type_blacklist.find(std::make_pair(n, alt_node_types[k])) == m_type_blacklist.end();
+
+            if (bn_type->compatible_node_type(model, n, alt_node_types[k]) && not_blacklisted) {
+                auto parents = model.parents(n);
+                delta[collapsed_index](k) = score.local_score(model, *alt_node_types[k], n, parents) - current_score;
+            } else {
+                delta[collapsed_index](k) = std::numeric_limits<double>::lowest();
+            }
         }
     }
 }

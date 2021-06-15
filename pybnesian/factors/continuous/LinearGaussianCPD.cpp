@@ -56,8 +56,6 @@ std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayes
     return std::make_shared<LinearGaussianCPD>(variable, evidence);
 }
 
-std::shared_ptr<FactorType> LinearGaussianCPDType::opposite_semiparametric() const { return CKDEType::get(); }
-
 LinearGaussianCPD::LinearGaussianCPD(std::string variable, std::vector<std::string> evidence)
     : Factor(variable, evidence), m_fitted(false), m_beta(), m_variance(-1){};
 

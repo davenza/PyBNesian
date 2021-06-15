@@ -191,8 +191,6 @@ std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBas
     return std::make_shared<CKDE>(variable, evidence);
 }
 
-std::shared_ptr<FactorType> CKDEType::opposite_semiparametric() const { return LinearGaussianCPDType::get(); }
-
 void CKDE::fit(const DataFrame& df) {
     auto type = df.same_type(m_variables);
 

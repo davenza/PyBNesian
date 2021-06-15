@@ -237,6 +237,16 @@ public:
         return true;
     }
 
+    virtual std::vector<std::shared_ptr<FactorType>> alternative_node_type(const BayesianNetworkBase&,
+                                                                           const std::string&) const {
+        return std::vector<std::shared_ptr<FactorType>>();
+    }
+
+    virtual std::vector<std::shared_ptr<FactorType>> alternative_node_type(const ConditionalBayesianNetworkBase&,
+                                                                           const std::string&) const {
+        return std::vector<std::shared_ptr<FactorType>>();
+    }
+
     virtual bool operator==(const BayesianNetworkType& other) const { return this->hash() == other.hash(); }
     virtual bool operator!=(const BayesianNetworkType& o) const { return !(*this == o); }
     virtual bool operator==(BayesianNetworkType&& other) const { return this->hash() == other.hash(); }

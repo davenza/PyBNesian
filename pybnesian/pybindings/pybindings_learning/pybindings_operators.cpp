@@ -128,7 +128,7 @@ public:
 
         py::pybind11_fail("Tried to call pure virtual function \"Operator::nodes_changed\"");
     }
-    std::shared_ptr<Operator> opposite() const override {
+    std::shared_ptr<Operator> opposite(const BayesianNetworkBase& m) const override {
         // PYBIND11_OVERRIDE_PURE(
         //     std::shared_ptr<Operator>, /* Return type */
         //     OperatorBase,      /* Parent class */
@@ -145,7 +145,38 @@ public:
             // Try to look up the overridden method on the Python side.
             py::function override = pybind11::get_override(static_cast<const OperatorBase*>(this), "opposite");
             if (override) {
-                auto o = override();
+                auto o = override(m.shared_from_this());
+
+                if (o.is(py::none())) {
+                    throw std::invalid_argument("Operator::opposite can not return None.");
+                }
+
+                auto op = o.cast<std::shared_ptr<Operator>>();
+                return Operator::keep_python_alive(op);
+            }
+        }
+
+        py::pybind11_fail("Tried to call pure virtual function \"Operator::opposite\"");
+    }
+
+    std::shared_ptr<Operator> opposite(const ConditionalBayesianNetworkBase& m) const override {
+        // PYBIND11_OVERRIDE_PURE(
+        //     std::shared_ptr<Operator>, /* Return type */
+        //     OperatorBase,      /* Parent class */
+        //     opposite,          /* Name of function in C++ (must match Python name) */
+        //                 /* Argument(s) */
+        // );
+
+        // This is needed to keep the Python instance alive.
+        // See the working issue: https://github.com/pybind/pybind11/issues/1333
+        // The solution provided here is adapted from:
+        // https://github.com/pybind/pybind11/issues/1049#issuecomment-326688270
+        {
+            py::gil_scoped_acquire gil;  // Acquire the GIL while in this scope.
+            // Try to look up the overridden method on the Python side.
+            py::function override = pybind11::get_override(static_cast<const OperatorBase*>(this), "opposite");
+            if (override) {
+                auto o = override(m.shared_from_this());
 
                 if (o.is(py::none())) {
                     throw std::invalid_argument("Operator::opposite can not return None.");
@@ -426,6 +457,14 @@ public:
         );
     }
 
+    void set_type_blacklist(const FactorTypeVector& type_blacklist) override {
+        PYBIND11_OVERRIDE(void,               /* Return type */
+                          OperatorSet,        /* Parent class */
+                          set_type_blacklist, /* Name of function in C++ (must match Python name) */
+                          type_blacklist      /* Argument(s) */
+        );
+    }
+
     void set_type_whitelist(const FactorTypeVector& type_whitelist) override {
         PYBIND11_OVERRIDE(void,               /* Return type */
                           OperatorSet,        /* Parent class */
@@ -474,17 +513,6 @@ Apply the operator to the ``model``.
 
 :param model: Bayesian network model.
 )doc")
-        .def("opposite", &Operator::opposite, py::return_value_policy::take_ownership, R"doc(
-Returns an operator that reverses this :class:`Operator`. For example:
-
-.. doctest::
-
-    >>> from pybnesian.learning.operators import AddArc, RemoveArc
-    >>> add = AddArc("a", "b", 1)
-    >>> assert add.opposite() == RemoveArc("a", "b", -1)
-
-:returns: The opposite operator of ``self``.
-)doc")
         .def("__str__", &Operator::ToString)
         .def(
             "__eq__",
@@ -506,9 +534,33 @@ the same hash value.**
         py::options options;
         options.disable_function_signatures();
 
-        op.def("nodes_changed",
-               py::overload_cast<const BayesianNetworkBase&>(&Operator::nodes_changed, py::const_),
-               py::arg("model"))
+        op.def("opposite",
+               py::overload_cast<const ConditionalBayesianNetworkBase&>(&Operator::opposite, py::const_),
+               py::arg("model"),
+               py::return_value_policy::take_ownership)
+            .def("opposite",
+                 py::overload_cast<const BayesianNetworkBase&>(&Operator::opposite, py::const_),
+                 py::arg("model"),
+                 py::return_value_policy::take_ownership,
+                 R"doc(
+opposite(self: pybnesian.learning.operators.Operator, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> Operator
+
+Returns an operator that reverses this :class:`Operator` given the ``model``. For example:
+
+.. doctest::
+
+    >>> from pybnesian.learning.operators import AddArc, RemoveArc
+    >>> from pybnesian.models import GaussianNetwork
+    >>> gbn = GaussianNetwork(["a", "b"])
+    >>> add = AddArc("a", "b", 1)
+    >>> assert add.opposite(gbn) == RemoveArc("a", "b", -1)
+
+:param model: The model where the ``self`` operator would be applied.
+:returns: The opposite operator of ``self``.
+)doc")
+            .def("nodes_changed",
+                 py::overload_cast<const BayesianNetworkBase&>(&Operator::nodes_changed, py::const_),
+                 py::arg("model"))
             .def("nodes_changed",
                  py::overload_cast<const ConditionalBayesianNetworkBase&>(&Operator::nodes_changed, py::const_),
                  py::arg("model"),
@@ -718,7 +770,7 @@ Updates the delta score values of the operators in the set after applying an ope
              py::overload_cast<const ArcStringVector&>(&OperatorSet::set_arc_blacklist),
              py::arg("arc_blacklist"),
              R"doc(
-Sets the arc blacklist (a list of arcs that can not be added). This may change the set of valid operators.
+Sets the arc blacklist (a list of arcs that can not be added).
 
 :param arc_blacklist: The list of blacklisted arcs.
 )doc")
@@ -726,7 +778,7 @@ Sets the arc blacklist (a list of arcs that can not be added). This may change t
              py::overload_cast<const ArcStringVector&>(&OperatorSet::set_arc_whitelist),
              py::arg("arc_whitelist"),
              R"doc(
-Sets the arc whitelist (a list of arcs that are forced). This may change the set of valid operators.
+Sets the arc whitelist (a list of arcs that are forced).
 
 :param arc_whitelist: The list of whitelisted arcs.
 )doc")
@@ -735,8 +787,13 @@ Sets the max indegree allowed. This may change the set of valid operators.
 
 :param max_indegree: Max indegree allowed.
 )doc")
+        .def("set_type_blacklist", &OperatorSet::set_type_blacklist, py::arg("type_blacklist"), R"doc(
+Sets the type blacklist (a list of :class:`FactorType` that are not allowed).
+
+:param type_blacklist: The list of blacklisted :class:`FactorType`.
+)doc")
         .def("set_type_whitelist", &OperatorSet::set_type_whitelist, py::arg("type_whitelist"), R"doc(
-Sets the type whitelist (a list of :class:`FactorType` that are forced). This may change the set of valid operators.
+Sets the type whitelist (a list of :class:`FactorType` that are forced).
 
 :param type_whitelist: The list of whitelisted :class:`FactorType`.
 )doc")
@@ -765,9 +822,13 @@ Initializes an :class:`ArcOperatorSet` with optional sets of arc blacklists/whit
         operators, "ChangeNodeTypeSet", R"doc(
 This set of operators contains all the possible operators of type :class:`ChangeNodeType`.
 )doc")
-        .def(py::init<FactorTypeVector>(), py::arg("type_whitelist") = FactorTypeVector(), R"doc(
-Initializes a :class:`ChangeNodeTypeSet` with an optional list of :class:`FactorType` whitelist.
+        .def(py::init<FactorTypeVector, FactorTypeVector>(),
+             py::arg("type_blacklist") = FactorTypeVector(),
+             py::arg("type_whitelist") = FactorTypeVector(),
+             R"doc(
+Initializes a :class:`ChangeNodeTypeSet` with blacklisted and whitelisted :class:`FactorType`.
 
+:param type_blacklist: The list of blacklisted :class:`FactorType`.
 :param type_whitelist: The list of whitelisted :class:`FactorType`.
 )doc");
 

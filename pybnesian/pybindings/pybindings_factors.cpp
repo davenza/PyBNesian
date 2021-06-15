@@ -77,25 +77,6 @@ public:
         py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_factor\"");
     }
 
-    std::shared_ptr<FactorType> opposite_semiparametric() const override {
-        pybind11::gil_scoped_acquire gil;
-        pybind11::function override =
-            pybind11::get_override(static_cast<const FactorType*>(this), "opposite_semiparametric");
-
-        if (override) {
-            auto o = override();
-
-            if (o.is(py::none())) {
-                throw std::invalid_argument("FactorType::opposite_semiparametric can not return None.");
-            }
-
-            auto f = o.cast<std::shared_ptr<FactorType>>();
-            return FactorType::keep_python_alive(f);
-        }
-
-        py::pybind11_fail("Tried to call pure virtual function \"FactorType::opposite_semiparametric\"");
-    }
-
     std::string ToString() const override {
         PYBIND11_OVERRIDE_PURE_NAME(std::string, FactorType, "__str__", ToString, );
     }
@@ -250,17 +231,8 @@ A representation of a :class:`Factor` type.
 
     py::class_<Factor, PyFactor, std::shared_ptr<Factor>> factor(factors, "Factor");
 
-    factor_type.def(py::init<>(), R"doc(Initializes a new :class:`FactorType`)doc")
-        .def("opposite_semiparametric", &FactorType::opposite_semiparametric, R"doc(
-Returns the opposite :class:`FactorType` when learning semiparametric Bayesian networks.
-
-For  :class:`LinearGaussianCPDType` this function returns a :class:`CKDEType`. For a :class:`CKDEType`, it returns
-a :class:`LinearGaussianCPDType`.
-
-If the :class:`FactorType` is not designed for semiparametric Bayesian networks, it can return just a ``None``.
-
-:returns: The opposite semiparametric :class:`FactorType`.
-)doc")
+    factor_type
+        .def(py::init<>(), R"doc(Initializes a new :class:`FactorType`)doc")
         // The equality operator do not compile in GCC, so it is implemented with lambdas:
         // https://github.com/pybind/pybind11/issues/1487
         .def(

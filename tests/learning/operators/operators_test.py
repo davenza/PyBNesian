@@ -78,29 +78,31 @@ def test_apply():
     assert not spbn.has_arc('b', 'a')
 
 def test_opposite():
+    bn = SemiparametricBN(["a", "b"])
     o = AddArc("a", "b", 1)
-    oppo = o.opposite()
+    oppo = o.opposite(bn)
     assert oppo.source() == 'a'
     assert oppo.target() == 'b'
     assert oppo.delta() == -1
     assert type(oppo) == RemoveArc
 
     o = RemoveArc("a", "b", 1)
-    oppo = o.opposite()
+    oppo = o.opposite(bn)
     assert oppo.source() == 'a'
     assert oppo.target() == 'b'
     assert oppo.delta() == -1
     assert type(oppo) == AddArc
 
     o = FlipArc("a", "b", 1)
-    oppo = o.opposite()
+    oppo = o.opposite(bn)
     assert oppo.source() == 'b'
     assert oppo.target() == 'a'
     assert oppo.delta() == -1
     assert type(oppo) == FlipArc
 
+    bn.set_node_type("a", LinearGaussianCPDType())
     o = ChangeNodeType("a", CKDEType(), 1)
-    oppo = o.opposite()
+    oppo = o.opposite(bn)
     assert oppo.node() == 'a'
     assert oppo.node_type() == LinearGaussianCPDType()
     assert oppo.delta() == -1

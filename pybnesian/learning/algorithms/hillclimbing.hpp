@@ -199,7 +199,7 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
         } else {
             if (++p >= patience) break;
             validation_offset += validation_delta;
-            tabu_set.insert(best_op->opposite());
+            tabu_set.insert(best_op->opposite(*current_model));
         }
 
         if (callback) callback->call(*current_model, best_op.get(), score, iter);

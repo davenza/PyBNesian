@@ -61,6 +61,25 @@ public:
         return compatible_node_type(static_cast<const BayesianNetworkBase&>(m), variable, nt);
     }
 
+    std::vector<std::shared_ptr<FactorType>> alternative_node_type(const BayesianNetworkBase& model,
+                                                                   const std::string& variable) const override {
+        auto v = std::vector<std::shared_ptr<FactorType>>();
+        v.reserve(1);
+
+        if (*model.node_type(variable) == LinearGaussianCPDType::get_ref()) {
+            v.push_back(CKDEType::get());
+        } else if (*model.node_type(variable) == CKDEType::get_ref()) {
+            v.push_back(LinearGaussianCPDType::get());
+        }
+
+        return v;
+    }
+
+    std::vector<std::shared_ptr<FactorType>> alternative_node_type(const ConditionalBayesianNetworkBase& model,
+                                                                   const std::string& variable) const override {
+        return alternative_node_type(static_cast<const BayesianNetworkBase&>(model), variable);
+    }
+
     std::string ToString() const override { return "SemiparametricNetworkType"; }
 
     py::tuple __getstate__() const override { return py::make_tuple(); }

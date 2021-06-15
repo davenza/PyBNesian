@@ -18,7 +18,7 @@ def test_create_change_node():
 
     with pytest.raises(ValueError) as ex:
         node_op.cache_scores(gbn, cv)
-    assert "can only be used with SemiparametricBN" in str(ex.value)
+    assert "can only be used with non-homogeneous" in str(ex.value)
 
 def test_lists():
     gbn = GaussianNetwork(['a', 'b', 'c', 'd'])

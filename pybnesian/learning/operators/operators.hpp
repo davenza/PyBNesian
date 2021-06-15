@@ -28,7 +28,8 @@ public:
     virtual void apply(BayesianNetworkBase& m) const = 0;
     virtual std::vector<std::string> nodes_changed(const BayesianNetworkBase&) const = 0;
     virtual std::vector<std::string> nodes_changed(const ConditionalBayesianNetworkBase&) const = 0;
-    virtual std::shared_ptr<Operator> opposite() const = 0;
+    virtual std::shared_ptr<Operator> opposite(const BayesianNetworkBase&) const = 0;
+    virtual std::shared_ptr<Operator> opposite(const ConditionalBayesianNetworkBase&) const = 0;
     double delta() const { return m_delta; }
 
     virtual std::string ToString() const = 0;
@@ -86,7 +87,9 @@ public:
         return {this->target()};
     }
 
-    std::shared_ptr<Operator> opposite() const override;
+    std::shared_ptr<Operator> opposite(const BayesianNetworkBase&) const override;
+    std::shared_ptr<Operator> opposite(const ConditionalBayesianNetworkBase&) const override;
+
     std::string ToString() const override {
         return "AddArc(" + this->source() + " -> " + this->target() + "; Delta: " + std::to_string(this->delta()) + ")";
     }
@@ -117,8 +120,12 @@ public:
         return {this->target()};
     }
 
-    std::shared_ptr<Operator> opposite() const override {
+    std::shared_ptr<Operator> opposite(const BayesianNetworkBase&) const override {
         return std::make_shared<AddArc>(this->source(), this->target(), -this->delta());
+    }
+
+    std::shared_ptr<Operator> opposite(const ConditionalBayesianNetworkBase& m) const override {
+        return opposite(static_cast<const BayesianNetworkBase&>(m));
     }
 
     std::string ToString() const override {
@@ -154,8 +161,12 @@ public:
         return {this->source(), this->target()};
     }
 
-    std::shared_ptr<Operator> opposite() const override {
+    std::shared_ptr<Operator> opposite(const BayesianNetworkBase&) const override {
         return std::make_shared<FlipArc>(this->target(), this->source(), -this->delta());
+    }
+
+    std::shared_ptr<Operator> opposite(const ConditionalBayesianNetworkBase& m) const override {
+        return opposite(static_cast<const BayesianNetworkBase&>(m));
     }
 
     std::string ToString() const override {
@@ -190,8 +201,12 @@ public:
 
     std::vector<std::string> nodes_changed(const ConditionalBayesianNetworkBase&) const override { return {m_node}; }
 
-    std::shared_ptr<Operator> opposite() const override {
-        return std::make_shared<ChangeNodeType>(m_node, m_new_node_type->opposite_semiparametric(), -this->delta());
+    std::shared_ptr<Operator> opposite(const BayesianNetworkBase& m) const override {
+        return std::make_shared<ChangeNodeType>(m_node, m.node_type(m_node), -this->delta());
+    }
+
+    std::shared_ptr<Operator> opposite(const ConditionalBayesianNetworkBase& m) const override {
+        return opposite(static_cast<const BayesianNetworkBase&>(m));
     }
 
     std::string ToString() const override {
@@ -337,6 +352,7 @@ public:
     virtual void set_arc_blacklist(const ArcStringVector&){};
     virtual void set_arc_whitelist(const ArcStringVector&){};
     virtual void set_max_indegree(int){};
+    virtual void set_type_blacklist(const FactorTypeVector&){};
     virtual void set_type_whitelist(const FactorTypeVector&){};
     virtual void finished() { m_local_cache = nullptr; }
 
@@ -617,8 +633,12 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
 
 class ChangeNodeTypeSet : public OperatorSet {
 public:
-    ChangeNodeTypeSet(FactorTypeVector fv = FactorTypeVector())
-        : delta(), valid_op(), sorted_idx(), m_type_whitelist(fv) {}
+    ChangeNodeTypeSet(FactorTypeVector blacklist = FactorTypeVector(), FactorTypeVector whitelist = FactorTypeVector())
+        : delta(), m_is_whitelisted(), m_type_blacklist(), m_type_whitelist(whitelist) {
+        for (const auto& bl : blacklist) {
+            m_type_blacklist.insert(bl);
+        }
+    }
 
     void cache_scores(const BayesianNetworkBase& model, const Score& score) override;
     std::shared_ptr<Operator> find_max(const BayesianNetworkBase& model) const override;
@@ -645,35 +665,47 @@ public:
     }
 
     void update_whitelisted(const BayesianNetworkBase& model) {
-        auto num_nodes = model.num_nodes();
-        if (delta.rows() != num_nodes) {
-            delta = VectorXd(num_nodes);
-            valid_op = VectorXb(num_nodes);
+        if (m_is_whitelisted.rows() != model.num_nodes()) {
+            m_is_whitelisted = VectorXb(model.num_nodes());
         }
 
-        auto val_ptr = valid_op.data();
-        std::fill(val_ptr, val_ptr + model.num_nodes(), true);
+        std::fill(m_is_whitelisted.data(), m_is_whitelisted.data() + model.num_nodes(), false);
 
-        for (const auto& node : m_type_whitelist) {
-            auto index = model.collapsed_index(node.first);
-            delta(index) = std::numeric_limits<double>::lowest();
-            valid_op(index) = false;
-        }
-
-        auto valid_ops = model.num_nodes() - m_type_whitelist.size();
-        sorted_idx.clear();
-        sorted_idx.reserve(valid_ops);
-        for (auto i = 0; i < model.num_nodes(); ++i) {
-            if (valid_op(i)) sorted_idx.push_back(i);
+        for (const auto& wl : m_type_whitelist) {
+            auto index = model.collapsed_index(wl.first);
+            m_is_whitelisted(index) = true;
         }
     }
 
-    void set_type_whitelist(const FactorTypeVector& type_whitelist) override { m_type_whitelist = type_whitelist; }
+    void set_type_blacklist(const FactorTypeVector& blacklist) override {
+        m_type_blacklist.clear();
+        for (const auto& bl : blacklist) {
+            m_type_blacklist.insert(bl);
+        }
+    }
+
+    void set_type_whitelist(const FactorTypeVector& whitelist) override { m_type_whitelist = whitelist; }
 
 private:
-    VectorXd delta;
-    VectorXb valid_op;
-    mutable std::vector<int> sorted_idx;
+    struct PairHash {
+        size_t operator()(const std::pair<std::string, std::shared_ptr<FactorType>>& p) const {
+            std::hash<std::string> str_hash;
+            size_t hh = str_hash(p.first);
+            util::hash_combine(hh, p.second->hash());
+            return hh;
+        }
+    };
+
+    struct PairEqual {
+        bool operator()(const std::pair<std::string, std::shared_ptr<FactorType>>& p1,
+                        const std::pair<std::string, std::shared_ptr<FactorType>>& p2) const {
+            return p1.first == p2.first && *p1.second == *p2.second;
+        }
+    };
+
+    std::vector<VectorXd> delta;
+    VectorXb m_is_whitelisted;
+    std::unordered_set<std::pair<std::string, std::shared_ptr<FactorType>>, PairHash, PairEqual> m_type_blacklist;
     FactorTypeVector m_type_whitelist;
 };
 

@@ -169,6 +169,66 @@ public:
         return BayesianNetworkType::can_have_arc(m, source, target);
     }
 
+    std::vector<std::shared_ptr<FactorType>> alternative_node_type(const BayesianNetworkBase& model,
+                                                                   const std::string& variable) const override {
+        py::gil_scoped_acquire gil;
+
+        py::function override =
+            py::get_override(static_cast<const BayesianNetworkType*>(this), "alternative_node_type");
+        if (override) {
+            auto o = override(model.shared_from_this(), variable);
+
+            if (o.is(py::none())) {
+                return std::vector<std::shared_ptr<FactorType>>();
+            }
+
+            auto v = o.cast<std::vector<std::shared_ptr<FactorType>>>();
+
+            for (auto& f : v) {
+                if (f == nullptr) {
+                    throw std::invalid_argument(
+                        "BayesianNetworkType::alternative_node_type can not return a list that contains None.");
+                }
+
+                f = FactorType::keep_python_alive(f);
+            }
+
+            return v;
+        }
+
+        return BayesianNetworkType::alternative_node_type(model, variable);
+    }
+
+    std::vector<std::shared_ptr<FactorType>> alternative_node_type(const ConditionalBayesianNetworkBase& model,
+                                                                   const std::string& variable) const override {
+        py::gil_scoped_acquire gil;
+
+        py::function override =
+            py::get_override(static_cast<const BayesianNetworkType*>(this), "alternative_node_type");
+        if (override) {
+            auto o = override(model.shared_from_this(), variable);
+
+            if (o.is(py::none())) {
+                return std::vector<std::shared_ptr<FactorType>>();
+            }
+
+            auto v = o.cast<std::vector<std::shared_ptr<FactorType>>>();
+
+            for (auto& f : v) {
+                if (f == nullptr) {
+                    throw std::invalid_argument(
+                        "BayesianNetworkType::alternative_node_type can not return a list that contains None.");
+                }
+
+                f = FactorType::keep_python_alive(f);
+            }
+
+            return v;
+        }
+
+        return BayesianNetworkType::alternative_node_type(model, variable);
+    }
+
     std::string ToString() const override {
         PYBIND11_OVERRIDE_PURE_NAME(std::string, BayesianNetworkType, "__str__", ToString, );
     }
@@ -1879,6 +1939,26 @@ Checks whether the :class:`BayesianNetworkType` allows an arc ``source`` -> ``ta
 :param source: Name of the source node.
 :param target: Name of the target node.
 :returns: True if the arc ``source`` -> ``target`` is allowed in ``model``, False otherwise.
+)doc")
+            .def("alternative_node_type",
+                 py::overload_cast<const ConditionalBayesianNetworkBase&, const std::string&>(
+                     &BayesianNetworkType::alternative_node_type, py::const_),
+                 py::arg("model"),
+                 py::arg("node"))
+            .def("alternative_node_type",
+                 py::overload_cast<const BayesianNetworkBase&, const std::string&>(
+                     &BayesianNetworkType::alternative_node_type, py::const_),
+                 py::arg("model"),
+                 py::arg("node"),
+                 R"doc(
+alternative_node_type(model: BayesianNetworkBase or ConditionalBayesianNetworkBase, source: str) -> List[pybnesian.factors.FactorType]
+
+Returns all feasible alternative :class:`FactorType <pybnesian.factors.FactorType>` for ``node``.
+
+:param model: BayesianNetwork model.
+:param node: Name of the node.
+:returns: A list of alternative :class:`FactorType <pybnesian.factors.FactorType>`. If you implement this method in a
+    Python-derived class, you can return an empty list or None to specify that no changes are possible.
 )doc");
     }
 

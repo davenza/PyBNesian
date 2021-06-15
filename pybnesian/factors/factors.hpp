@@ -52,7 +52,6 @@ public:
     virtual std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
                                                const std::string&,
                                                const std::vector<std::string>&) const = 0;
-    virtual std::shared_ptr<FactorType> opposite_semiparametric() const = 0;
     virtual std::string ToString() const = 0;
 
     virtual std::size_t hash() const { return m_hash; }

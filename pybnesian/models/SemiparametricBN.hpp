@@ -5,9 +5,10 @@
 #include <models/DynamicBayesianNetwork.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
+#include <factors/discrete/DiscreteFactor.hpp>
 #include <util/virtual_clone.hpp>
 
-using factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType;
+using factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType, factors::discrete::DiscreteFactorType;
 using util::clone_inherit;
 using util::FactorTypeVector;
 
@@ -41,34 +42,72 @@ public:
             case Type::DOUBLE:
             case Type::FLOAT:
                 return LinearGaussianCPDType::get();
+            case Type::DICTIONARY:
+                return DiscreteFactorType::get();
             default:
                 throw std::invalid_argument("Data type [" + dt->ToString() +
                                             "] not compatible with SemiparametricBNType");
         }
     }
 
-    bool compatible_node_type(const BayesianNetworkBase&,
-                              const std::string&,
+    bool compatible_node_type(const BayesianNetworkBase& m,
+                              const std::string& var,
                               const std::shared_ptr<FactorType>& nt) const override {
-        if (*nt != LinearGaussianCPDType::get_ref() && *nt != CKDEType::get_ref()) return false;
+        if (*nt != LinearGaussianCPDType::get_ref() && *nt != CKDEType::get_ref() &&
+            *nt != DiscreteFactorType::get_ref())
+            return false;
+
+        if (*nt == DiscreteFactorType::get_ref()) {
+            auto parents = m.parents(var);
+
+            for (const auto& p : parents) {
+                if (*m.node_type(p) != DiscreteFactorType::get_ref()) return false;
+            }
+        }
 
         return true;
     }
 
     bool compatible_node_type(const ConditionalBayesianNetworkBase& m,
-                              const std::string& variable,
+                              const std::string& var,
                               const std::shared_ptr<FactorType>& nt) const override {
-        return compatible_node_type(static_cast<const BayesianNetworkBase&>(m), variable, nt);
+        if (*nt != LinearGaussianCPDType::get_ref() && *nt != CKDEType::get_ref() &&
+            *nt != DiscreteFactorType::get_ref())
+            return false;
+
+        if (*nt == DiscreteFactorType::get_ref()) {
+            auto parents = m.parents(var);
+
+            for (const auto& p : parents) {
+                if (!m.is_interface(p) && *m.node_type(p) != DiscreteFactorType::get_ref()) return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool can_have_arc(const BayesianNetworkBase& m,
+                      const std::string& source,
+                      const std::string& target) const override {
+        return *m.node_type(target) != DiscreteFactorType::get_ref() ||
+               *m.node_type(source) == DiscreteFactorType::get_ref();
+    }
+
+    bool can_have_arc(const ConditionalBayesianNetworkBase& m,
+                      const std::string& source,
+                      const std::string& target) const override {
+        return can_have_arc(static_cast<const BayesianNetworkBase&>(m), source, target);
     }
 
     std::vector<std::shared_ptr<FactorType>> alternative_node_type(const BayesianNetworkBase& model,
                                                                    const std::string& variable) const override {
         auto v = std::vector<std::shared_ptr<FactorType>>();
-        v.reserve(1);
 
         if (*model.node_type(variable) == LinearGaussianCPDType::get_ref()) {
+            v.reserve(1);
             v.push_back(CKDEType::get());
         } else if (*model.node_type(variable) == CKDEType::get_ref()) {
+            v.reserve(1);
             v.push_back(LinearGaussianCPDType::get());
         }
 

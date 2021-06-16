@@ -46,18 +46,36 @@ public:
         }
     }
 
-    bool compatible_node_type(const BayesianNetworkBase&,
-                              const std::string&,
+    bool compatible_node_type(const BayesianNetworkBase& m,
+                              const std::string& var,
                               const std::shared_ptr<FactorType>& nt) const override {
         if (*nt != LinearGaussianCPDType::get_ref() && *nt != DiscreteFactorType::get_ref()) return false;
+
+        if (*nt == DiscreteFactorType::get_ref()) {
+            auto parents = m.parents(var);
+
+            for (const auto& p : parents) {
+                if (*m.node_type(p) != DiscreteFactorType::get_ref()) return false;
+            }
+        }
 
         return true;
     }
 
     bool compatible_node_type(const ConditionalBayesianNetworkBase& m,
-                              const std::string& variable,
+                              const std::string& var,
                               const std::shared_ptr<FactorType>& nt) const override {
-        return compatible_node_type(static_cast<const BayesianNetworkBase&>(m), variable, nt);
+        if (*nt != LinearGaussianCPDType::get_ref() && *nt != DiscreteFactorType::get_ref()) return false;
+
+        if (*nt == DiscreteFactorType::get_ref()) {
+            auto parents = m.parents(var);
+
+            for (const auto& p : parents) {
+                if (!m.is_interface(p) && *m.node_type(p) != DiscreteFactorType::get_ref()) return false;
+            }
+        }
+
+        return true;
     }
 
     bool can_have_arc(const BayesianNetworkBase& m,

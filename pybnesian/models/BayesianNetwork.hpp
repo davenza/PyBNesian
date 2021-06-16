@@ -672,13 +672,12 @@ public:
     void set_unknown_node_types(const DataFrame& df) override {
         if (m_type->is_homogeneous()) return;
 
+        FactorTypeVector new_types;
         for (const auto& nn : nodes()) {
-            auto node_index = index(nn);
-
-            if (*m_node_types[node_index] == UnknownFactorType::get_ref()) {
-                m_node_types[node_index] = m_type->data_default_node_type(df.col(nn)->type());
-            }
+            new_types.emplace_back(nn, m_type->data_default_node_type(df.col(nn)->type()));
         }
+
+        force_type_whitelist(new_types);
     }
 
     bool has_unknown_node_types() const override {

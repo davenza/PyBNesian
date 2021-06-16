@@ -491,7 +491,7 @@ std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(const BayesianNetworkBase&
     int max_node = -1;
     int max_type = -1;
     for (auto i = 0, i_end = static_cast<int>(delta.size()); i < i_end; ++i) {
-        if (!m_is_whitelisted(i)) {
+        if (!m_is_whitelisted(i) && delta[i].rows() > 0) {
             int local_max;
             delta[i].maxCoeff(&local_max);
 
@@ -522,7 +522,7 @@ std::shared_ptr<Operator> ChangeNodeTypeSet::find_max(const BayesianNetworkBase&
     int max_type = -1;
 
     for (auto i = 0, i_end = static_cast<int>(delta.size()); i < i_end; ++i) {
-        if (!m_is_whitelisted(i)) {
+        if (!m_is_whitelisted(i) && delta[i].rows() > 0) {
             const auto& collapsed_name = model.collapsed_name(i);
             auto alt_node_types = model.type()->alternative_node_type(model, collapsed_name);
             for (auto k = 0; k < delta[i].rows(); ++k) {

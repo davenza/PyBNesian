@@ -2719,7 +2719,7 @@ std::vector<std::string> DagImpl<Derived, BaseClass>::topological_sort() const {
 
 template <typename Derived, typename BaseClass>
 bool DagImpl<Derived, BaseClass>::can_add_arc_unsafe(int source, int target) const {
-    if (can_exist_arc(*this, source, target) &&
+    if (source != target && can_exist_arc(*this, source, target) &&
         (this->num_parents_unsafe(source) == 0 || this->num_children_unsafe(target) == 0 ||
          !this->has_path_unsafe(target, source))) {
         return true;
@@ -2729,7 +2729,7 @@ bool DagImpl<Derived, BaseClass>::can_add_arc_unsafe(int source, int target) con
 
 template <typename Derived, typename BaseClass>
 bool DagImpl<Derived, BaseClass>::can_flip_arc_unsafe(int source, int target) const {
-    if (!can_exist_arc(*this, target, source)) return false;
+    if (source == target || !can_exist_arc(*this, target, source)) return false;
 
     if (this->has_arc_unsafe(source, target)) {
         if (this->num_parents_unsafe(target) == 1 || this->num_children_unsafe(source) == 1) return true;

@@ -18,6 +18,7 @@ v0.2.0
   :class:`DynamicBDe <pybnesian.learning.scores.DynamicBDe>`).
 - Added :class:`UnknownFactorType <pybnesian.factors.UnknownFactorType>` as default
   :class:`FactorType <pybnesian.factors.FactorType>` for Bayesian networks when the node type could not be deduced.
+- Added :class:`Assignment <pybnesian.factors.Assignment>` class to represent the assignment of values to variables.
 
 API changes:
 

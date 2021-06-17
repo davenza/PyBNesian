@@ -11,6 +11,7 @@ namespace factors {
 
 class AssignmentValue {
 public:
+    AssignmentValue() = default;
     AssignmentValue(const std::string& v) : m_value(v) {}
     AssignmentValue(double v) : m_value(v) {}
     AssignmentValue(const AssignmentValue&) = default;
@@ -100,6 +101,8 @@ public:
             m_value);
     }
 
+    const std::variant<std::string, double>& value() const { return m_value; }
+
     py::object __getstate__() const { return py::cast(m_value); }
 
     static AssignmentValue __setstate__(py::object& o) {
@@ -159,7 +162,7 @@ public:
             if (m_assignment.find(*it) == m_assignment.end()) return false;
         }
 
-        return false;
+        return true;
     }
 
     size_t index(const std::vector<std::string>& variables,
@@ -203,6 +206,10 @@ public:
 
     std::pair<iterator, bool> insert(value_type&& value) {
         return m_assignment.insert(std::forward<value_type>(value));
+    }
+
+    void erase(const std::string& value) {
+        m_assignment.erase(value);
     }
 
     const_iterator begin() const noexcept { return m_assignment.begin(); }
@@ -250,5 +257,55 @@ struct AssignmentHash {
 };
 
 }  // namespace factors
+
+namespace pybind11::detail {
+
+template <>
+struct type_caster<factors::AssignmentValue> {
+public:
+    /**
+     * This macro establishes the name 'inty' in
+     * function signatures and declares a local variable
+     * 'value' of type inty
+     */
+    PYBIND11_TYPE_CASTER(factors::AssignmentValue, _("AssignmentValue"));
+
+    /**
+     * Conversion part 1 (Python->C++): convert a PyObject into a inty
+     * instance or return false upon failure. The second argument
+     * indicates whether implicit conversions should be applied.
+     */
+    bool load(handle src, bool) {
+        PyObject* py_ptr = src.ptr();
+
+        if (PyUnicode_Check(py_ptr)) {
+            value = factors::AssignmentValue(src.cast<std::string>());
+            return true;
+        } else if (PyFloat_Check(py_ptr)) {
+            value = factors::AssignmentValue(src.cast<double>());
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Conversion part 2 (C++ -> Python): convert an inty instance into
+     * a Python object. The second and third arguments are used to
+     * indicate the return value policy and parent object (for
+     * ``return_value_policy::reference_internal``) and are generally
+     * ignored by implicit casters.
+     */
+    static handle cast(const factors::AssignmentValue& src, return_value_policy /* policy */, handle /* parent */) {
+        if (const auto* v = std::get_if<double>(&src.value())) {
+            return PyFloat_FromDouble(*v);
+        } else {
+            const auto& str = std::get<std::string>(src.value());
+            return py::cast(str).release();
+        }
+    }
+};
+
+}  // namespace pybind11::detail
 
 #endif  // PYBNESIAN_FACTORS_ASSIGNMENT_HPP

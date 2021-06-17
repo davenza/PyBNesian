@@ -69,6 +69,10 @@ This types are not factors, but are auxiliary types for other factors.
     :members:
     :special-members: __init__
 
+.. autoclass:: pybnesian.factors.Assignment
+    :members:
+    :special-members: __init__
+
 Bibliography
 ============
 .. [Scott] Scott, D. W. (2015). Multivariate Density Estimation: Theory, Practice and Visualization. 2nd Edition.

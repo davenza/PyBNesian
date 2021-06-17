@@ -640,17 +640,55 @@ Initializes a new :class:`DiscreteFactor` with a given ``variable`` and ``eviden
         .def(py::pickle([](const DiscreteFactor& self) { return self.__getstate__(); },
                         [](py::tuple t) { return DiscreteFactor::__setstate__(t); }));
 
-    py::class_<AssignmentValue>(discrete, "AssignmentValue")
-        .def(py::init<const std::string&>())
-        .def(py::init<double>())
-        .def(py::pickle([](const AssignmentValue& self) { return self.__getstate__(); },
-                        [](py::object& o) { return AssignmentValue::__setstate__(o); }));
+    py::class_<Assignment>(factors, "Assignment", R"doc(
+:class:`Assignment <pybnesian.factors.Assignment>` represents the assignment of values to a set of variables.
+)doc")
+        .def(py::init<std::unordered_map<std::string, AssignmentValue>>(), py::arg("assignments"), R"doc(
+Initializes an :class:`Assignment <pybnesian.factors.Assignment>` from a dict that contains the value for each variable.
+The key of the dict is the name of the variable, and the value of the dict can be an ``str`` or a ``float`` value.
 
-    py::implicitly_convertible<std::string, AssignmentValue>();
-    py::implicitly_convertible<double, AssignmentValue>();
+:param assignments: Value assignments for each variable.
+)doc")
+        .def("value", &Assignment::value, py::arg("variable"), R"doc(
+Returns the assignment value for a given ``variable``.
 
-    py::class_<Assignment>(discrete, "Assignment")
-        .def(py::init<std::unordered_map<std::string, AssignmentValue>>())
+:param variable: Variable name.
+:returns: Value assignment of the variable.
+)doc")
+        .def("has_variables",
+             [](const Assignment& self, const std::vector<std::string> vars) {
+                 return self.has_variables(vars.begin(), vars.end());
+             }, py::arg("variables"), R"doc(
+Checks whether the :class:`Assignment <pybnesian.factors.Assignment>` contains assignments for all the ``variables``.
+
+:param variables: Variable names.
+:returns: True if the :class:`Assignment <pybnesian.factors.Assignment>` contains values for all the given variables,
+    False otherwise.
+)doc")
+        .def("empty", &Assignment::empty, R"doc(
+Checks whether the :class:`Assignment <pybnesian.factors.Assignment>` does not have assignments.
+
+:returns: True if the :class:`Assignment <pybnesian.factors.Assignment>` does not have assignments, False otherwise.
+)doc")
+        .def("size", &Assignment::size, R"doc(
+Gets the number of assignments in the :class:`Assignment <pybnesian.factors.Assignment>`.
+
+:returns: The number of assignments.
+)doc")
+        .def("insert", [](Assignment& self, const std::string& key, const AssignmentValue value) {
+            self.insert({key, value});
+        }, py::arg("variable"), py::arg("value"), R"doc(
+Inserts a new assignment for a ``variable`` with a ``value``.
+
+:param variable: Variable name.
+:param value: Value (``str`` or ``float``) for the variable.
+)doc")
+        .def("remove", &Assignment::erase, py::arg("variable"), R"doc(
+Removes the assignment for the ``variable``.
+
+:param variable: Variable name.
+)doc")
+        .def("__iter__", [](Assignment& self) { return py::make_iterator(self.begin(), self.end()); })
         .def("__hash__", &Assignment::hash)
         .def("__str__", &Assignment::ToString)
         .def("__repr__", &Assignment::ToString)

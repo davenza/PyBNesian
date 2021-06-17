@@ -7,6 +7,7 @@
 - Implemented `MutualInformation` (and `DynamicMutualInformation`) indepencence test. This is valid for hybrid data.
 - Implemented `BDe` (Bayesian Dirichlet equivalent) score (and `DynamicBDe`).
 - Added `UnknownFactorType` as default `FactorType` for Bayesian networks when the node type could not be deduced.
+- Added `Assignment` class to represent the assignment of values to variables.
 
 API changes:
 

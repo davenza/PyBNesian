@@ -18,47 +18,51 @@ public:
     AssignmentValue(std::variant<std::string, double> v) : m_value(v) {}
 
     bool operator==(const std::string& other) const {
-        return std::visit(
-            [&other](auto&& v) {
-                using T = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<std::string, T>)
-                    return v == other;
-                else
-                    return false;
-            },
-            m_value);
+        if (const auto* v = std::get_if<std::string>(&m_value)) {
+            return *v == other;
+        } else {
+            return false;
+        }
+
+        // The std::visit would require MacOS 10.14
+        // ----------------------------------------
+        // return std::visit(
+        //     [&other](auto&& v) {
+        //         using T = std::decay_t<decltype(v)>;
+        //         if constexpr (std::is_same_v<std::string, T>)
+        //             return v == other;
+        //         else
+        //             return false;
+        //     },
+        //     m_value);
     }
 
     bool operator!=(const std::string& other) const { return !(*this == other); }
 
     bool operator==(double other) const {
-        return std::visit(
-            [other](auto&& v) {
-                using T = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<double, T>)
-                    return v == other;
-                else
-                    return false;
-            },
-            m_value);
+        if (const auto* v = std::get_if<double>(&m_value)) {
+            return *v == other;
+        } else {
+            return false;
+        }
+
+        // The std::visit would require MacOS 10.14
+        // ----------------------------------------
+        // return std::visit(
+        //     [other](auto&& v) {
+        //         using T = std::decay_t<decltype(v)>;
+        //         if constexpr (std::is_same_v<double, T>)
+        //             return v == other;
+        //         else
+        //             return false;
+        //     },
+        //     m_value);
     }
 
     bool operator!=(double other) const { return !(*this == other); }
 
     bool operator==(const AssignmentValue& other) const {
-        return std::visit(
-            [](auto&& v, auto&& o) {
-                using T = std::decay_t<decltype(v)>;
-                using T2 = std::decay_t<decltype(o)>;
-
-                if constexpr (std::is_same_v<T, T2>) {
-                    return v == o;
-                } else {
-                    return false;
-                }
-            },
-            m_value,
-            other.m_value);
+        return m_value == other.m_value;
     }
 
     bool operator!=(const AssignmentValue& other) const { return !(*this == other); }
@@ -88,17 +92,25 @@ public:
     }
 
     std::string ToString() const {
-        return std::visit(
-            [](auto&& v) {
-                using T = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<std::string, T>)
-                    return v;
-                else if constexpr (std::is_same_v<double, T>)
-                    return std::to_string(v);
-                else
-                    static_assert(util::always_false<T>, "Not supported type.");
-            },
-            m_value);
+        if (const auto* v = std::get_if<double>(&m_value)) {
+            return std::to_string(*v);
+        } else {
+            return std::get<std::string>(m_value);
+        }
+
+        // The std::visit would require MacOS 10.14
+        // ----------------------------------------
+        // return std::visit(
+        //     [](auto&& v) {
+        //         using T = std::decay_t<decltype(v)>;
+        //         if constexpr (std::is_same_v<std::string, T>)
+        //             return v;
+        //         else if constexpr (std::is_same_v<double, T>)
+        //             return std::to_string(v);
+        //         else
+        //             static_assert(util::always_false<T>, "Not supported type.");
+        //     },
+        //     m_value);
     }
 
     const std::variant<std::string, double>& value() const { return m_value; }

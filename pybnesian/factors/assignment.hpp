@@ -68,7 +68,17 @@ public:
     bool operator!=(const AssignmentValue& other) const { return !(*this == other); }
 
     size_t hash() const {
-        return std::visit([](auto&& v) { return std::hash<std::decay_t<decltype(v)>>{}(v); }, m_value);
+        if (const auto* v = std::get_if<double>(&m_value)) {
+            std::hash<double> h;
+            return h(*v);
+        } else {
+            std::hash<std::string> h;
+            return h(*std::get_if<std::string>(&m_value));
+        }
+
+        // The std::visit would require MacOS 10.14
+        // ----------------------------------------
+        // return std::visit([](auto&& v) { return std::hash<std::decay_t<decltype(v)>>{}(v); }, m_value);
     }
 
     operator std::string() const {
@@ -95,7 +105,7 @@ public:
         if (const auto* v = std::get_if<double>(&m_value)) {
             return std::to_string(*v);
         } else {
-            return std::get<std::string>(m_value);
+            return *std::get_if<std::string>(&m_value);
         }
 
         // The std::visit would require MacOS 10.14
@@ -312,8 +322,8 @@ public:
         if (const auto* v = std::get_if<double>(&src.value())) {
             return PyFloat_FromDouble(*v);
         } else {
-            const auto& str = std::get<std::string>(src.value());
-            return py::cast(str).release();
+            const auto* pstr = std::get_if<std::string>(&src.value());
+            return py::cast(*pstr).release();
         }
     }
 };

@@ -1975,8 +1975,11 @@ This :class:`BayesianNetworkType` represents a Gaussian network: homogeneous wit
         models, "SemiparametricBNType", R"doc(
 This :class:`BayesianNetworkType` represents a semiparametric Bayesian network: non-homogeneous with
 :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>` and
-:class:`CKDE <pybnesian.factors.continuous.CKDE>` factors. The default is
-:class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
+:class:`CKDE <pybnesian.factors.continuous.CKDE>` factors for continuous data. The default is
+:class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`. It also supports discrete data using
+:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>`.
+
+In a SemiparametricBN network, the discrete nodes can only have discrete parents.
 )doc")
         .def(py::init(&SemiparametricBNType::get))
         .def(py::pickle([](const SemiparametricBNType& self) { return self.__getstate__(); },

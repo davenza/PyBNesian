@@ -61,9 +61,7 @@ public:
 
     bool operator!=(double other) const { return !(*this == other); }
 
-    bool operator==(const AssignmentValue& other) const {
-        return m_value == other.m_value;
-    }
+    bool operator==(const AssignmentValue& other) const { return m_value == other.m_value; }
 
     bool operator!=(const AssignmentValue& other) const { return !(*this == other); }
 
@@ -125,10 +123,26 @@ public:
 
     const std::variant<std::string, double>& value() const { return m_value; }
 
-    py::object __getstate__() const { return py::cast(m_value); }
+    py::object __getstate__() const {
+        if (const auto* v = std::get_if<double>(&m_value)) {
+            return py::cast(*v);
+        } else {
+            return py::cast(*std::get_if<std::string>(&m_value));
+        }
+
+        // The std::visit would require MacOS 10.14
+        // ----------------------------------------
+        // return py::cast(m_value);
+    }
 
     static AssignmentValue __setstate__(py::object& o) {
-        return AssignmentValue(o.cast<std::variant<std::string, double>>());
+        PyObject* py_ptr = o.ptr();
+
+        if (PyFloat_Check(py_ptr)) {
+            return AssignmentValue(o.cast<double>());
+        } else {
+            return AssignmentValue(o.cast<std::string>());
+        }
     }
 
 private:
@@ -230,9 +244,7 @@ public:
         return m_assignment.insert(std::forward<value_type>(value));
     }
 
-    void erase(const std::string& value) {
-        m_assignment.erase(value);
-    }
+    void erase(const std::string& value) { m_assignment.erase(value); }
 
     const_iterator begin() const noexcept { return m_assignment.begin(); }
 

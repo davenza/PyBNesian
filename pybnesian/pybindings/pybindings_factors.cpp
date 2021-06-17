@@ -655,10 +655,13 @@ Returns the assignment value for a given ``variable``.
 :param variable: Variable name.
 :returns: Value assignment of the variable.
 )doc")
-        .def("has_variables",
-             [](const Assignment& self, const std::vector<std::string> vars) {
-                 return self.has_variables(vars.begin(), vars.end());
-             }, py::arg("variables"), R"doc(
+        .def(
+            "has_variables",
+            [](const Assignment& self, const std::vector<std::string> vars) {
+                return self.has_variables(vars.begin(), vars.end());
+            },
+            py::arg("variables"),
+            R"doc(
 Checks whether the :class:`Assignment <pybnesian.factors.Assignment>` contains assignments for all the ``variables``.
 
 :param variables: Variable names.
@@ -675,9 +678,14 @@ Gets the number of assignments in the :class:`Assignment <pybnesian.factors.Assi
 
 :returns: The number of assignments.
 )doc")
-        .def("insert", [](Assignment& self, const std::string& key, const AssignmentValue value) {
-            self.insert({key, value});
-        }, py::arg("variable"), py::arg("value"), R"doc(
+        .def(
+            "insert",
+            [](Assignment& self, const std::string& key, const AssignmentValue value) {
+                self.insert({key, value});
+            },
+            py::arg("variable"),
+            py::arg("value"),
+            R"doc(
 Inserts a new assignment for a ``variable`` with a ``value``.
 
 :param variable: Variable name.

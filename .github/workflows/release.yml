@@ -86,7 +86,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: ubuntu-latest_${{ env.PYVERSION }}_wheel
-        path: dist/*-manylinux2010*.whl
+        path: dist/*manylinux2010*.whl
         
   sdist:
     name: Create source release

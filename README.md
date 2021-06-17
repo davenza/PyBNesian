@@ -1,4 +1,6 @@
+![build](https://img.shields.io/github/workflow/status/davenza/pybnesian/Create%20release)
 [![Documentation Status](https://readthedocs.org/projects/pybnesian/badge/?version=latest)](https://pybnesian.readthedocs.io/en/latest/?badge=latest)
+![PyPI](https://img.shields.io/pypi/v/pybnesian?color=blue)
 
 # PyBNesian
 
@@ -39,7 +41,7 @@ with this combinations of CPDs, we implement the following types of networks (wh
 
 - [x] Semiparametric networks.
 
-- [ ] Hybrid networks (not implemented yet).
+- [x] Hybrid networks (conditional linear Gaussian networks and semiparametric networks).
 
 Graphs
 -----------------
@@ -75,7 +77,7 @@ The score and search algorithms can be used with the following scores:
 
 - [x] BGe.
 
-- [ ] BDe (not implemented yet).
+- [x] BDe.
 
 - [x] Cross-validation likelihood.
 
@@ -91,9 +93,11 @@ and the following the following learning operators:
 
 The following independence tests are implemented for the constraint-based algorithms:
 
-- [ ] Chi-square test (not implemented yet).
+- [x] Chi-square test.
 
 - [x] partial correlation test t-test.
+
+- [x] A likelihood-ratio test based on mutual information assuming a Gaussian distribution for the continuous data.
 
 - [x] CMIknn [2].
 
@@ -146,7 +150,7 @@ gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'c'), ('b', 'c'), ('c', 'd')]
 # Return the nodes of the network.
 print("Nodes: " + str(gbn.nodes()))
 # Return the arcs of the network.
-print("Arcs: " + str(gbn.nodes()))
+print("Arcs: " + str(gbn.arcs()))
 # Return the parents of c.
 print("Parents of c " + str(gbn.parents('c')))
 # Return the children of c.

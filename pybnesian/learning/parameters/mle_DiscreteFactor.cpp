@@ -30,9 +30,9 @@ typename DiscreteFactor::ParamsClass _fit(const DataFrame& df,
                 logprob(offset + i) = loguniform;
             }
         } else {
-            double logsum_configuration = std::log(static_cast<double>(sum_configuration));
+            double logsum_configuration = std::log(static_cast<double>(sum_configuration + cardinality(0)));
             for (auto i = 0; i < cardinality(0); ++i) {
-                logprob(offset + i) = std::log(static_cast<double>(joint_counts(offset + i))) - logsum_configuration;
+                logprob(offset + i) = std::log(static_cast<double>(joint_counts(offset + i) + 1)) - logsum_configuration;
             }
         }
     }

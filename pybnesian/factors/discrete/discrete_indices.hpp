@@ -37,7 +37,7 @@ void sum_to_discrete_indices(VectorXi& accum_indices, Array_ptr& indices, int st
     auto dwn_indices = std::static_pointer_cast<ArrayType>(indices);
     auto* raw_values = dwn_indices->raw_values();
     const EigenMap map_eigen(raw_values, indices->length());
-    accum_indices += (map_eigen * stride).template cast<int>();
+    accum_indices += map_eigen.template cast<int>() * stride;
 }
 
 void sum_to_discrete_indices(VectorXi& accum_indices, Array_ptr& indices, int stride);

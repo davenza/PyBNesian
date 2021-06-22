@@ -12,6 +12,10 @@ class BDe : public Score {
 public:
     BDe(const DataFrame& df, double iss = 1) : m_df(df), m_iss(iss) {}
 
+    bool is_decomposable() const override {
+        return true;
+    }
+
     double local_score(const BayesianNetworkBase& model,
                        const std::string& variable,
                        const std::vector<std::string>& parents) const override;

@@ -15,6 +15,10 @@ class CVLikelihood : public Score {
 public:
     CVLikelihood(const DataFrame& df, int k = 10, unsigned int seed = std::random_device{}()) : m_cv(df, k, seed) {}
 
+    bool is_decomposable() const override {
+        return true;
+    }
+
     double local_score(const BayesianNetworkBase& model,
                        const std::string& variable,
                        const std::vector<std::string>& evidence) const override;

@@ -7,13 +7,14 @@
 #include <learning/scores/cv_likelihood.hpp>
 #include <learning/scores/holdout_likelihood.hpp>
 #include <learning/scores/validated_likelihood.hpp>
+#include <learning/scores/conditional_likelihood.hpp>
 #include <util/util_types.hpp>
 
 namespace py = pybind11;
 
 using learning::scores::Score, learning::scores::ValidatedScore, learning::scores::BIC, learning::scores::BGe,
     learning::scores::BDe, learning::scores::CVLikelihood, learning::scores::HoldoutLikelihood,
-    learning::scores::ValidatedLikelihood;
+    learning::scores::ValidatedLikelihood, learning::scores::ConditionalLikelihood;
 
 using learning::scores::DynamicScore, learning::scores::DynamicBIC, learning::scores::DynamicBGe,
     learning::scores::DynamicBDe, learning::scores::DynamicCVLikelihood, learning::scores::DynamicHoldoutLikelihood,
@@ -283,6 +284,13 @@ class PyScore : public ScoreBase {
 public:
     using ScoreBase::local_score;
     using ScoreBase::ScoreBase;
+
+    bool is_decomposable() const override {
+        PYBIND11_OVERRIDE_PURE(bool,      /* Return type */
+                               ScoreBase,   /* Parent class */
+                               is_decomposable, /* Name of function in C++ (must match Python name) */
+        );
+    }
 
     double score(const BayesianNetworkBase& model) const override {
         {
@@ -631,6 +639,31 @@ The underlying training data of the :class:`HoldOut <pybnesian.dataset.HoldOut>`
              py::return_value_policy::reference_internal,
              R"doc(
 The underlying holdout data of the :class:`HoldOut <pybnesian.dataset.HoldOut>`.
+)doc");
+
+    py::class_<ConditionalLikelihood, ValidatedScore, std::shared_ptr<ConditionalLikelihood>>(scores,
+                                                                                              "ConditionalLikelihood")
+        .def(py::init([](const DataFrame& df,
+                         const std::string& class_name,
+                         double test_ratio,
+                         int k,
+                         std::optional<unsigned int> seed) {
+                 return ConditionalLikelihood(df, class_name, test_ratio, k, random_seed_arg(seed));
+             }),
+             py::arg("df"),
+             py::arg("class_name"),
+             py::arg("test_ratio") = 0.2,
+             py::arg("k") = 10,
+             py::arg("seed") = std::nullopt)
+        .def("predict", &ConditionalLikelihood::predict)
+        .def("training_data", &ConditionalLikelihood::training_data, py::return_value_policy::reference_internal, R"doc(
+The underlying training data of the :class:`HoldOut <pybnesian.dataset.HoldOut>`.
+)doc")
+        .def("validation_data",
+             &ConditionalLikelihood::validation_data,
+             py::return_value_policy::reference_internal,
+             R"doc(
+The underlying validation holdout data of the :class:`HoldOut <pybnesian.dataset.HoldOut>`.
 )doc");
 
     py::class_<DynamicScore, PyDynamicScore<>, std::shared_ptr<DynamicScore>> dynamic_score(

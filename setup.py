@@ -70,6 +70,7 @@ ext_modules = [
          'pybnesian/learning/scores/bde.cpp',
          'pybnesian/learning/scores/cv_likelihood.cpp',
          'pybnesian/learning/scores/holdout_likelihood.cpp',
+         'pybnesian/learning/scores/conditional_likelihood.cpp',
          'pybnesian/graph/generic_graph.cpp',
          'pybnesian/models/BayesianNetwork.cpp',
          'pybnesian/models/GaussianNetwork.cpp',

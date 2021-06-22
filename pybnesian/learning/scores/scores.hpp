@@ -14,6 +14,9 @@ namespace learning::scores {
 class Score {
 public:
     virtual ~Score() {}
+
+    virtual bool is_decomposable() const = 0;
+
     virtual double score(const BayesianNetworkBase& model) const {
         double s = 0;
         for (const auto& node : model.nodes()) {

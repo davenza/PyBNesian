@@ -17,6 +17,10 @@ public:
     HoldoutLikelihood(const DataFrame& df, double test_ratio = 0.2, unsigned int seed = std::random_device{}())
         : m_holdout(df, test_ratio, seed) {}
 
+    bool is_decomposable() const override {
+        return true;
+    }
+
     double local_score(const BayesianNetworkBase& model,
                        const std::string& variable,
                        const std::vector<std::string>& evidence) const override;

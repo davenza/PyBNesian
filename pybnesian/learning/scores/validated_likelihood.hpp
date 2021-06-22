@@ -17,6 +17,10 @@ public:
                         unsigned int seed = std::random_device{}())
         : m_holdout(df, test_ratio, seed), m_cv(m_holdout.training_data(), k, seed) {}
 
+    bool is_decomposable() const override {
+        return true;
+    }
+
     using ValidatedScore::local_score;
 
     double local_score(const BayesianNetworkBase& model,

@@ -15,6 +15,10 @@ class BIC : public Score {
 public:
     BIC(const DataFrame& df) : m_df(df) {}
 
+    bool is_decomposable() const override {
+        return true;
+    }
+
     double local_score(const BayesianNetworkBase& model,
                        const std::string& variable,
                        const std::vector<std::string>& parents) const override;

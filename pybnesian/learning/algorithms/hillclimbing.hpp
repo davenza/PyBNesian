@@ -92,8 +92,12 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
 
         best_op->apply(*current_model);
 
-        auto nodes_changed = best_op->nodes_changed(*current_model);
-        op_set.update_scores(*current_model, score, nodes_changed);
+        if (score.is_decomposable()) {
+            auto nodes_changed = best_op->nodes_changed(*current_model);
+            op_set.update_scores(*current_model, score, nodes_changed);
+        } else {
+            op_set.cache_scores(*current_model, score);
+        }
 
         if (callback) callback->call(*current_model, best_op.get(), score, iter);
 
@@ -167,8 +171,14 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
 
     spinner->update_status("Caching scores...");
 
-    LocalScoreCache local_validation(*current_model);
-    local_validation.cache_vlocal_scores(*current_model, score);
+    LocalScoreCache local_validation;
+    double validation_score;
+    if (score.is_decomposable()) {
+        local_validation = LocalScoreCache(*current_model);
+        local_validation.cache_vlocal_scores(*current_model, score);
+    } else {
+        validation_score = score.vscore(*current_model);
+    }
 
     op_set.cache_scores(*current_model, score);
     int p = 0;
@@ -188,8 +198,15 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
 
         best_op->apply(*current_model);
 
-        auto nodes_changed = best_op->nodes_changed(*current_model);
-        double validation_delta = validation_delta_score(*current_model, score, nodes_changed, local_validation);
+        double validation_delta;
+        if (score.is_decomposable()) {
+            auto nodes_changed = best_op->nodes_changed(*current_model);
+            validation_delta = validation_delta_score(*current_model, score, nodes_changed, local_validation);
+        } else {
+            auto new_vscore = score.vscore(*current_model);
+            validation_delta = new_vscore - validation_score;
+            validation_score = new_vscore;
+        }
 
         if ((validation_delta + validation_offset) > 0) {
             p = 0;
@@ -204,7 +221,12 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
 
         if (callback) callback->call(*current_model, best_op.get(), score, iter);
 
-        op_set.update_scores(*current_model, score, nodes_changed);
+        if (score.is_decomposable()) {
+            auto nodes_changed = best_op->nodes_changed(*current_model);
+            op_set.update_scores(*current_model, score, nodes_changed);
+        } else {
+            op_set.cache_scores(*current_model, score);
+        }
 
         spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
         ++iter;

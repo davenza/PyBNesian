@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.2.1
+======
+- An error related to the processing of categorical data with too many categories has been corrected.
+- Removed ``-march=native`` flag in the build script to avoid the use of instruction sets not available on some CPUs.
+
 v0.2.0
 ======
 

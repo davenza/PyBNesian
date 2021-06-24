@@ -1,6 +1,6 @@
 name: Create release wheels / Do not publish!
 
-on: workflow-dispatch
+on: workflow_dispatch
 
 jobs:
   build_win_macos:

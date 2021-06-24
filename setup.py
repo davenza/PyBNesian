@@ -248,11 +248,20 @@ namespace opencl {
             "directory": "{0}",
             "file": "{1}",
             "output": "{2}",
-            "arguments": ["/usr/lib/llvm-11/bin/clang", "-xc++", "{1}", "-Wno-unused-result", "-Wsign-compare", "-D", "NDEBUG", "-g", "-fwrapv", "-O2", "-Wall", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-g", "-fwrapv", "-O2", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-Wdate-time", "-D", "_FORTIFY_SOURCE=2", "-fPIC", "-D", "VERSION_INFO=0.1.0dev", "-I", "/home/david/cpp/PyBNesian/venv/include", "-I", "/usr/include/python3.8", "-I", "pybnesian/", "-I", "lib/libfort", "-I", "/home/david/cpp/PyBNesian/venv/lib/python3.8/site-packages/pybind11/include", "-c", "-o", "{2}", "-std=c++17", "-isystem", "/home/david/cpp/PyBNesian/venv/lib/python3.8/site-packages/pyarrow/include", "-isystem", "/home/david/cpp/PyBNesian/venv/lib/python3.8/site-packages/numpy/core/include", "-isystem", "lib/eigen-3.3.7", "-isystem", "lib/OpenCL", "-isystem", "lib/boost", "-isystem", "lib/indicators", "-D", "_GLIBCXX_USE_CXX11_ABI=0", "-march=native", "-fdiagnostics-color=always", "-Wall", "-Wextra", "-fvisibility=hidden", "--target=x86_64-pc-linux-gnu"]
+            "arguments": ["/usr/lib/llvm-11/bin/clang", "-xc++", "{1}", "-Wno-unused-result", "-Wsign-compare", "-D", "NDEBUG", "-g", "-fwrapv", "-O2", "-Wall", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-g", "-fwrapv", "-O2", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-Wdate-time", "-D", "_FORTIFY_SOURCE=2", "-fPIC", "-D", "VERSION_INFO={3}", "-I", "{4}", "-I", "pybnesian/", "-I", "lib/libfort", "-I", "{5}", "-c", "-o", "{6}", "-std=c++17", "-isystem", "{6}", "-isystem", "{7}", "-isystem", "lib/eigen-3.3.7", "-isystem", "lib/OpenCL", "-isystem", "lib/boost", "-isystem", "lib/indicators", "-D", "_GLIBCXX_USE_CXX11_ABI=0", "-march=native", "-fdiagnostics-color=always", "-Wall", "-Wextra", "-fvisibility=hidden", "--target=x86_64-pc-linux-gnu"]
         }}"""
         conf_files = []
 
         import pathlib
+        import sysconfig
+        import pybind11
+        import pyarrow as pa
+        import numpy as np
+
+        py_include = sysconfig.get_path('include')
+        pybind_include = pybind11.get_include()
+        pyarrow_include = pa.get_include()
+        numpy_include = np.get_include()
 
         for ext in extensions:
             for s in ext.sources:
@@ -263,7 +272,8 @@ namespace opencl {
 
                 output = pathlib.Path(path_to_build_folder(), relative_path, new_file)
                 conf_files.append(
-                    template.format(os.getcwd(), s, str(output))
+                    template.format(os.getcwd(), s, str(output), __version__, py_include, pybind_include,
+                                    pyarrow_include, numpy_include)
                 )
 
         json = db.format(','.join(conf_files))
@@ -277,7 +287,7 @@ namespace opencl {
         self.create_symlinks()
         self.expand_sources()
         self.copy_opencl_code()
-        self.create_clang_tidy_compilation_db(self.extensions)
+        # self.create_clang_tidy_compilation_db(self.extensions)
 
         ct = self.compiler.compiler_type
 

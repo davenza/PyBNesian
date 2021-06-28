@@ -15,7 +15,7 @@
 namespace py = pybind11;
 
 using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::CLinearGaussianCPD,
-    factors::continuous::KDE, factors::continuous::DCKDE, factors::continuous::CKDE;
+    factors::continuous::KDE, factors::continuous::ProductKDE, factors::continuous::DCKDE, factors::continuous::CKDE;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 
@@ -695,18 +695,109 @@ Returns the log-likelihood of each instance in the DataFrame ``df``.
 )doc")
         .def("slogl", &KDE::slogl, py::arg("df"), R"doc(
 Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. That is, the sum of the result of
-:func:`KDE.slogl`.
+:func:`KDE.logl`.
 
 :param df: DataFrame to compute the sum of the log-likelihood.
 :returns: The sum of log-likelihood for DataFrame ``df``.
 )doc")
         .def("save", &KDE::save, py::arg("filename"), R"doc(
-Saves the :class:`Factor` in a pickle file with the given name.
+Saves the :class:`KDE` in a pickle file with the given name.
 
 :param filename: File name of the saved graph.
 )doc")
         .def(py::pickle([](const KDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return KDE::__setstate__(t); }));
+
+    py::class_<ProductKDE>(continuous, "ProductKDE", R"doc(
+This class implements a product Kernel Density Estimation (KDE) for a set of variables:
+
+.. math::
+
+    \hat{f}(x_{1}, \ldots, x_{d}) = \frac{1}{N\cdot h_{1}\cdot\ldots\cdot h_{d}} \sum_{i=1}^{N}
+    \prod_{j=1}^{d} K\left(\frac{(x_{j} - t_{ji})}{h_{j}}\right)
+
+where :math:`N` is the number of training instances, :math:`d` is the dimensionality of the product KDE, :math:`K()` is
+the multivariate Gaussian kernel function, :math:`t_{ji}` is the value of the :math:`j`-th variable in the
+:math:`i`-th training instance, and :math:`h_{j}` is the bandwidth parameter for the :math:`j`-th variable.
+)doc")
+        .def(py::init<std::vector<std::string>>(), py::arg("variables"), R"doc(
+Initializes a ProductKDE with the given ``variables``.
+
+:param variables: List of variable names.
+)doc")
+        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
+                 return ProductKDE(variables, BandwidthEstimator::keep_python_alive(bandwidth_selector));
+             }),
+             py::arg("variables"),
+             py::arg("bandwidth_selector"),
+             R"doc(
+Initializes a ProductKDE with the given ``variables`` and ``bandwidth_selector`` procedure to fit the bandwidth.
+
+:param variables: List of variable names.
+:param bandwidth_selector: Procedure to fit the bandwidth.
+)doc")
+        .def("variables", &ProductKDE::variables, R"doc(
+Gets the variable names:
+
+:returns: List of variable names.
+)doc")
+        .def("num_instances", &ProductKDE::num_instances, R"doc(
+Gets the number of training instances (:math:`N`).
+
+:returns: Number of training instances.
+)doc")
+        .def("num_variables", &ProductKDE::num_variables, R"doc(
+Gets the number of variables.
+
+:returns: Number of variables.
+)doc")
+        .def_property("bandwidth", &ProductKDE::bandwidth, &ProductKDE::setBandwidth, R"doc(
+Vector of bandwidth values (:math:`h_{j}`).
+)doc")
+        .def("dataset", &ProductKDE::training_data, R"doc(
+Gets the training dataset for this ProductKDE (the :math:`\mathbf{t}_{i}` instances).
+
+:returns: Training instance.
+)doc")
+        .def("fitted", &ProductKDE::fitted, R"doc(
+Checks whether the model is fitted.
+
+:returns: True if the model is fitted, False otherwise.
+)doc")
+        .def("data_type", &ProductKDE::data_type, R"doc(
+Returns the :class:`pyarrow.DataType` that represents the type of data handled by the :class:`ProductKDE`.
+
+It can return :func:`pyarrow.float64` or :func:`pyarrow.float32`.
+
+:returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`ProductKDE`.
+)doc")
+        .def("fit", (void (ProductKDE::*)(const DataFrame&)) & ProductKDE::fit, py::arg("df"), R"doc(
+Fits the :class:`ProductKDE` with the data in ``df``. It estimates the bandwidth vector :math:`h_{j}` automatically
+using the provided bandwidth selector.
+
+:param df: DataFrame to fit the :class:`ProductKDE`.
+)doc")
+        .def("logl", &ProductKDE::logl, py::return_value_policy::take_ownership, py::arg("df"), R"doc(
+Returns the log-likelihood of each instance in the DataFrame ``df``.
+
+:param df: DataFrame to compute the log-likelihood.
+:returns: A :class:`numpy.ndarray` vector with dtype :class:`numpy.float64`, where the i-th value is the log-likelihod
+          of the i-th instance of ``df``.
+)doc")
+        .def("slogl", &ProductKDE::slogl, py::arg("df"), R"doc(
+Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. That is, the sum of the result of
+:func:`ProductKDE.logl`.
+
+:param df: DataFrame to compute the sum of the log-likelihood.
+:returns: The sum of log-likelihood for DataFrame ``df``.
+)doc")
+        .def("save", &ProductKDE::save, py::arg("filename"), R"doc(
+Saves the :class:`ProductKDE` in a pickle file with the given name.
+
+:param filename: File name of the saved graph.
+)doc")
+        .def(py::pickle([](const ProductKDE& self) { return self.__getstate__(); },
+                        [](py::tuple t) { return ProductKDE::__setstate__(t); }));
 
     py::class_<CKDEType, FactorType, std::shared_ptr<CKDEType>>(continuous, "CKDEType", R"doc(
 :class:`CKDEType` is the corresponding CPD type of :class:`CKDE`.

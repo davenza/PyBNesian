@@ -43,6 +43,7 @@ struct OpenCL_kernel_traits<arrow::DoubleType> {
     inline constexpr static const char* solve = "solve_double";
     inline constexpr static const char* square = "square_double";
     inline constexpr static const char* logl_values_1d_mat = "logl_values_1d_mat_double";
+    inline constexpr static const char* add_logl_values_1d_mat = "add_logl_values_1d_mat_double";
     inline constexpr static const char* substract = "substract_double";
     inline constexpr static const char* logl_values_mat_column = "logl_values_mat_column_double";
     inline constexpr static const char* logl_values_mat_row = "logl_values_mat_row_double";
@@ -72,6 +73,7 @@ struct OpenCL_kernel_traits<arrow::FloatType> {
     inline constexpr static const char* solve = "solve_float";
     inline constexpr static const char* square = "square_float";
     inline constexpr static const char* logl_values_1d_mat = "logl_values_1d_mat_float";
+    inline constexpr static const char* add_logl_values_1d_mat = "add_logl_values_1d_mat_float";
     inline constexpr static const char* substract = "substract_float";
     inline constexpr static const char* logl_values_mat_column = "logl_values_mat_column_float";
     inline constexpr static const char* logl_values_mat_row = "logl_values_mat_row_float";

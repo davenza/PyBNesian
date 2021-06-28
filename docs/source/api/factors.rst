@@ -82,6 +82,10 @@ Kernel Density Estimation
     :members:
     :special-members: __init__
 
+.. autoclass:: pybnesian.factors.continuous.ProductKDE
+    :members:
+    :special-members: __init__
+
 Other
 -----
 

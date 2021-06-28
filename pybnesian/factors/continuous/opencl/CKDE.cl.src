@@ -162,6 +162,22 @@ __kernel void logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
     result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
+__kernel void add_logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
+                                           __private uint train_rows,
+                                           __constant @dt@ *test_vector,
+                                           __private uint test_offset,
+                                           __constant @dt@ *standard_deviation,
+                                           __global @dt@ *result)
+{
+    int i = get_global_id(0);
+    int train_idx = ROW(i, train_rows);
+    int test_idx = COL(i, train_rows);
+    @dt@ d = (train_vector[train_idx] - test_vector[test_offset + test_idx]) / standard_deviation[0];
+
+    result[i] += -0.5*d*d;
+}
+
+
 __kernel void substract_@dt@(__constant @dt@ *training_matrix,
                                      __private uint training_physical_rows,
                                      __private uint training_offset,

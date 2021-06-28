@@ -61,11 +61,31 @@ Other Types
 ===========
 This types are not factors, but are auxiliary types for other factors.
 
-.. autoclass:: pybnesian.factors.UnknownFactorType
+Kernel Density Estimation
+-------------------------
+
+.. autoclass:: pybnesian.factors.continuous.BandwidthEstimator
+    :members:
+    :special-members: __init__
+
+.. autoclass:: pybnesian.factors.continuous.ScottsBandwidth
+    :show-inheritance:
+    :members:
+    :special-members: __init__
+
+.. autoclass:: pybnesian.factors.continuous.NormalReferenceRule
+    :show-inheritance:
     :members:
     :special-members: __init__
 
 .. autoclass:: pybnesian.factors.continuous.KDE
+    :members:
+    :special-members: __init__
+
+Other
+-----
+
+.. autoclass:: pybnesian.factors.UnknownFactorType
     :members:
     :special-members: __init__
 

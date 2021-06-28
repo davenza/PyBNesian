@@ -19,6 +19,9 @@ using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuo
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 
+using factors::continuous::BandwidthEstimator, factors::continuous::ScottsBandwidth,
+    factors::continuous::NormalReferenceRule;
+
 using factors::discrete::DiscreteFactor;
 
 using factors::Assignment, factors::AssignmentValue, factors::AssignmentHash;
@@ -26,6 +29,67 @@ using factors::Assignment, factors::AssignmentValue, factors::AssignmentHash;
 using util::random_seed_arg;
 
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
+
+class PyBandwidthEstimator : public BandwidthEstimator {
+public:
+    bool is_python_derived() const override { return true; }
+
+    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const override {
+        PYBIND11_OVERRIDE_PURE(double, BandwidthEstimator, estimate_bandwidth, df, variable);
+    }
+
+    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        // PYBIND11_OVERRIDE_PURE(MatrixXd, BandwidthEstimator, estimate_bandwidth, df, variables);
+        pybind11::gil_scoped_acquire gil;
+        pybind11::function override =
+            pybind11::get_override(static_cast<const BandwidthEstimator*>(this), "estimate_bandwidth");
+
+        if (override) {
+            auto o = override(df, variables);
+
+            auto m = o.cast<MatrixXd>();
+
+            if (m.rows() != m.cols() || static_cast<size_t>(m.rows()) != variables.size())
+                throw std::invalid_argument(
+                    "BandwidthEstimator::estimate_bandwidth matrix must return an square matrix with shape "
+                    "(" +
+                    std::to_string(variables.size()) + ", " + std::to_string(variables.size()) + ")");
+
+            return m;
+        }
+
+        py::pybind11_fail("Tried to call pure virtual function \"BandwidthEstimator::estimate_bandwidth\"");
+    }
+
+    py::tuple __getstate__() const override {
+        py::gil_scoped_acquire gil;
+        py::function override = py::get_override(static_cast<const BandwidthEstimator*>(this), "__getstate_extra__");
+        if (override) {
+            return py::make_tuple(true, override());
+        } else {
+            return py::make_tuple(false, py::make_tuple());
+        }
+    }
+
+    static void __setstate__(py::object& self, py::tuple& t) {
+        // Call trampoline constructor
+        py::gil_scoped_acquire gil;
+        auto pyBandwidthEstimator = py::type::of<BandwidthEstimator>();
+        pyBandwidthEstimator.attr("__init__")(self);
+
+        auto ptr = self.cast<const BandwidthEstimator*>();
+
+        auto extra_info = t[0].cast<bool>();
+        if (extra_info) {
+            py::function override = py::get_override(ptr, "__setstate_extra__");
+            if (override) {
+                override(t[1]);
+            } else {
+                py::pybind11_fail("Tried to call function \"BandwidthEstimator::__setstate_extra__\"");
+            }
+        }
+    }
+};
 
 class PyFactorType : public FactorType {
 public:
@@ -483,6 +547,75 @@ Returns the cumulative distribution function values of each instance in the Data
         .def(py::pickle([](const LinearGaussianCPD& self) { return self.__getstate__(); },
                         [](py::tuple t) { return LinearGaussianCPD::__setstate__(t); }));
 
+    py::class_<BandwidthEstimator, PyBandwidthEstimator, std::shared_ptr<BandwidthEstimator>> band_est(
+        continuous, "BandwidthEstimator", R"doc(
+A :class:`BandwidthEstimator` estimates the bandwidth of a kernel density estimation (KDE) model.
+)doc");
+    band_est.def(py::init<>(), R"doc(
+Initializes a :class:`BandwidthEstimator`.
+)doc");
+    {
+        py::options options;
+        options.disable_function_signatures();
+        band_est
+            .def("estimate_bandwidth",
+                 py::overload_cast<const DataFrame&, const std::string&>(&BandwidthEstimator::estimate_bandwidth,
+                                                                         py::const_),
+                 py::arg("df"),
+                 py::arg("variable"))
+            .def("estimate_bandwidth",
+                 py::overload_cast<const DataFrame&, const std::vector<std::string>&>(
+                     &BandwidthEstimator::estimate_bandwidth, py::const_),
+                 py::arg("df"),
+                 py::arg("variable"),
+                 R"doc(
+estimate_bandwidth(self: pybnesian.factors.continuous.BandwidthEstimator, df: DataFrame, variables: str or List[str]) -> double or numpy.ndarray[numpy.float64[d, d]]
+
+Estimates the bandwidth of a variable (or set of variables) for a KDE with a given data ``df``.
+
+:param df: DataFrame to estimate the bandwidth.
+:param variables: A variable name or list of variables.
+:returns: A float or numpy matrix of floats. If ``variables`` is an str, it returns a float with the bandwidth value. If
+    ``variables`` is a list of variables, it returns a bandwidth matrix.
+)doc");
+    }
+
+    band_est
+        .def("__getstate__", [](const BandwidthEstimator& self) { return self.__getstate__(); })
+        // Setstate for pyderived type
+        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthEstimator::__setstate__(self, t); });
+
+    py::class_<ScottsBandwidth, BandwidthEstimator, std::shared_ptr<ScottsBandwidth>>(
+        continuous, "ScottsBandwidth", R"doc(
+Estimates the bandwidth using the Scott's rule [Scott]_:
+
+.. math::
+
+    \hat{h}_{i} = \hat{\sigma}_{i}\cdot N^{-1 / (d + 4)}.
+
+This is a simplification of the normal reference rule.
+)doc")
+        .def(py::init<>(), R"doc(
+Initializes a :class:`ScottsBandwidth`.
+)doc")
+        .def(py::pickle([](const ScottsBandwidth& self) { return self.__getstate__(); },
+                        [](py::tuple&) { return std::make_shared<ScottsBandwidth>(); }));
+
+    py::class_<NormalReferenceRule, BandwidthEstimator, std::shared_ptr<NormalReferenceRule>>(
+        continuous, "NormalReferenceRule", R"doc(
+Estimates the bandwidth using the normal reference rule:
+
+.. math::
+
+    \hat{h}_{i} = \left(\frac{4}{d + 2}\right)^{1 / (d + 4)}\hat{\sigma}_{i}\cdot N^{-1 / (d + 4)}.
+
+)doc")
+        .def(py::init<>(), R"doc(
+Initializes a :class:`NormalReferenceRule`.
+)doc")
+        .def(py::pickle([](const NormalReferenceRule& self) { return self.__getstate__(); },
+                        [](py::tuple&) { return std::make_shared<NormalReferenceRule>(); }));
+
     py::class_<KDE>(continuous, "KDE", R"doc(
 This class implements Kernel Density Estimation (KDE) for a set of variables:
 
@@ -495,9 +628,21 @@ where :math:`N` is the number of training instances, :math:`K()` is the multivar
 :math:`\mathbf{t}_{i}` is the :math:`i`-th training instance, and :math:`\mathbf{H}` is the bandwidth matrix.
 )doc")
         .def(py::init<std::vector<std::string>>(), py::arg("variables"), R"doc(
-Initializes a KDE with the given ``variables``.
+Initializes a KDE with the given ``variables``. It uses the :class:`NormalReferenceRule` as the default bandwidth
+selector.
 
 :param variables: List of variable names.
+)doc")
+        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
+                 return KDE(variables, BandwidthEstimator::keep_python_alive(bandwidth_selector));
+             }),
+             py::arg("variables"),
+             py::arg("bandwidth_selector"),
+             R"doc(
+Initializes a KDE with the given ``variables`` and ``bandwidth_selector`` procedure to fit the bandwidth.
+
+:param variables: List of variable names.
+:param bandwidth_selector: Procedure to fit the bandwidth.
 )doc")
         .def("variables", &KDE::variables, R"doc(
 Gets the variable names:
@@ -537,7 +682,7 @@ It can return :func:`pyarrow.float64` or :func:`pyarrow.float32`.
 )doc")
         .def("fit", (void (KDE::*)(const DataFrame&)) & KDE::fit, py::arg("df"), R"doc(
 Fits the :class:`KDE` with the data in ``df``. It estimates the bandwidth :math:`\mathbf{H}` automatically using the
-Scott's rule [Scott]_.
+provided bandwidth selector.
 
 :param df: DataFrame to fit the :class:`KDE`.
 )doc")
@@ -582,7 +727,7 @@ A conditional kernel density estimator (CKDE) is the ratio of two KDE models:
 
 where \hat{f}_{K} is a :class:`KDE` estimation.
 )doc")
-        .def(py::init<const std::string, const std::vector<std::string>>(),
+        .def(py::init<std::string, std::vector<std::string>>(),
              py::arg("variable"),
              py::arg("evidence"),
              R"doc(
@@ -590,6 +735,21 @@ Initializes a new :class:`CKDE` with a given ``variable`` and ``evidence``.
 
 :param variable: Variable name.
 :param evidence: List of evidence variable names.
+)doc")
+        .def(py::init<>([](std::string variable,
+                           std::vector<std::string> evidence,
+                           std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
+                 return CKDE(variable, evidence, BandwidthEstimator::keep_python_alive(bandwidth_selector));
+             }),
+             py::arg("variable"),
+             py::arg("evidence"),
+             py::arg("bandwidth_selector"),
+             R"doc(
+Initializes a new :class:`CKDE` with a given ``variable`` and ``evidence``.
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+:param bandwidth_selector: Procedure to fit the bandwidth.
 )doc")
         .def("num_instances", &CKDE::num_instances, R"doc(
 Gets the number of training instances (:math:`N`).

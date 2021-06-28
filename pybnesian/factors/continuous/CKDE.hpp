@@ -20,7 +20,145 @@ using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
 
-enum class KDEBandwidth { SCOTT, MANUAL };
+class BandwidthEstimator {
+public:
+    virtual ~BandwidthEstimator() {}
+    virtual double estimate_bandwidth(const DataFrame& df, const std::string& variable) const = 0;
+    virtual MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const = 0;
+
+    virtual bool is_python_derived() const { return false; }
+
+    static std::shared_ptr<BandwidthEstimator> keep_python_alive(std::shared_ptr<BandwidthEstimator>& b) {
+        if (b && b->is_python_derived()) {
+            auto o = py::cast(b);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<BandwidthEstimator*>();
+            return std::shared_ptr<BandwidthEstimator>(keep_python_state_alive, ptr);
+        }
+
+        return b;
+    }
+
+    virtual py::tuple __getstate__() const = 0;
+};
+
+class ScottsBandwidth : public BandwidthEstimator {
+public:
+    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const override {
+        switch (df.same_type(variable)->id()) {
+            case Type::DOUBLE:
+                return estimate_bandwidth<arrow::DoubleType>(df, variable);
+            case Type::FLOAT:
+                return estimate_bandwidth<arrow::FloatType>(df, variable);
+            default:
+                throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
+        }
+    }
+
+    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        switch (df.same_type(variables)->id()) {
+            case Type::DOUBLE:
+                return estimate_bandwidth<arrow::DoubleType>(df, variables);
+            case Type::FLOAT:
+                return estimate_bandwidth<arrow::FloatType>(df, variables);
+            default:
+                throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
+        }
+    }
+
+    py::tuple __getstate__() const override { return py::make_tuple(); }
+
+    static std::shared_ptr<ScottsBandwidth> __setstate__(py::tuple&) { return std::make_shared<ScottsBandwidth>(); }
+
+private:
+    template <typename ArrowType>
+    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const {
+        using CType = typename ArrowType::c_type;
+
+        auto var = df.cov<ArrowType>(variable);
+        auto N = static_cast<CType>(df.valid_rows(variable));
+
+        auto k = std::pow(N, -2. / 5.);
+        return k * var;
+    }
+
+    template <typename ArrowType>
+    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
+        using CType = typename ArrowType::c_type;
+
+        auto cov = df.cov<ArrowType>(variables);
+        auto N = static_cast<CType>(df.valid_rows(variables));
+        auto d = static_cast<CType>(variables.size());
+
+        auto k = std::pow(N, -2. / (d + 4));
+
+        if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
+            return k * (*cov);
+        } else {
+            return k * cov->template cast<double>();
+        }
+    }
+};
+
+class NormalReferenceRule : public BandwidthEstimator {
+public:
+    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const override {
+        switch (df.same_type(variable)->id()) {
+            case Type::DOUBLE:
+                return estimate_bandwidth<arrow::DoubleType>(df, variable);
+            case Type::FLOAT:
+                return estimate_bandwidth<arrow::FloatType>(df, variable);
+            default:
+                throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
+        }
+    }
+
+    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        switch (df.same_type(variables)->id()) {
+            case Type::DOUBLE:
+                return estimate_bandwidth<arrow::DoubleType>(df, variables);
+            case Type::FLOAT:
+                return estimate_bandwidth<arrow::FloatType>(df, variables);
+            default:
+                throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
+        }
+    }
+
+    py::tuple __getstate__() const override { return py::make_tuple(); }
+
+    static std::shared_ptr<NormalReferenceRule> __setstate__(py::tuple&) {
+        return std::make_shared<NormalReferenceRule>();
+    }
+
+private:
+    template <typename ArrowType>
+    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const {
+        using CType = typename ArrowType::c_type;
+
+        auto var = df.cov<ArrowType>(variable);
+        auto N = static_cast<CType>(df.valid_rows(variable));
+
+        auto k = std::pow((4. / 3.) / N, 2. / 5.);
+        return k * var;
+    }
+
+    template <typename ArrowType>
+    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
+        using CType = typename ArrowType::c_type;
+
+        auto cov = df.cov<ArrowType>(variables);
+        auto N = static_cast<CType>(df.valid_rows(variables));
+        auto d = static_cast<CType>(variables.size());
+
+        auto k = std::pow((4. / (d + 2.)) / N, 2. / (d + 4));
+
+        if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
+            return k * (*cov);
+        } else {
+            return k * cov->template cast<double>();
+        }
+    }
+};
 
 struct UnivariateKDE {
     template <typename ArrowType>
@@ -313,7 +451,7 @@ public:
     KDE()
         : m_variables(),
           m_fitted(false),
-          m_bselector(KDEBandwidth::SCOTT),
+          m_bselector(std::make_shared<NormalReferenceRule>()),
           m_bandwidth(),
           m_H_cholesky(),
           m_training(),
@@ -321,13 +459,9 @@ public:
           N(0),
           m_training_type(arrow::float64()) {}
 
-    KDE(std::vector<std::string> variables) : KDE(variables, KDEBandwidth::SCOTT) {
-        if (m_variables.empty()) {
-            throw std::invalid_argument("Cannot create a KDE model with 0 variables");
-        }
-    }
+    KDE(std::vector<std::string> variables) : KDE(variables, std::make_shared<NormalReferenceRule>()) {}
 
-    KDE(std::vector<std::string> variables, KDEBandwidth b_selector)
+    KDE(std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> b_selector)
         : m_variables(variables),
           m_fitted(false),
           m_bselector(b_selector),
@@ -337,6 +471,8 @@ public:
           m_lognorm_const(0),
           N(0),
           m_training_type(arrow::float64()) {
+        if (b_selector == nullptr) throw std::runtime_error("Bandwidth selector procedure must be non-null.");
+
         if (m_variables.empty()) {
             throw std::invalid_argument("Cannot create a KDE model with 0 variables");
         }
@@ -362,7 +498,6 @@ public:
 
         m_bandwidth = new_bandwidth;
         if (m_bandwidth.rows() > 0) copy_bandwidth_opencl();
-        m_bselector = KDEBandwidth::MANUAL;
     }
 
     cl::Buffer& training_buffer() { return m_training; }
@@ -386,7 +521,8 @@ public:
         check_fitted();
         return m_training_type;
     }
-    KDEBandwidth bandwidth_type() const { return m_bselector; }
+
+    std::shared_ptr<BandwidthEstimator> bandwidth_type() const { return m_bselector; }
 
     VectorXd logl(const DataFrame& df) const;
 
@@ -421,9 +557,6 @@ private:
     template <typename ArrowType, typename KDEType>
     cl::Buffer _logl_impl(cl::Buffer& test_buffer, int m) const;
 
-    template <typename ArrowType, bool contains_null>
-    void compute_bandwidth(const DataFrame& df, std::vector<std::string>& variables);
-
     void copy_bandwidth_opencl();
 
     template <typename ArrowType>
@@ -431,7 +564,7 @@ private:
 
     std::vector<std::string> m_variables;
     bool m_fitted;
-    KDEBandwidth m_bselector;
+    std::shared_ptr<BandwidthEstimator> m_bselector;
     MatrixXd m_bandwidth;
     cl::Buffer m_H_cholesky;
     cl::Buffer m_training;
@@ -439,22 +572,6 @@ private:
     size_t N;
     std::shared_ptr<arrow::DataType> m_training_type;
 };
-
-template <typename ArrowType, bool contains_null>
-void KDE::compute_bandwidth(const DataFrame& df, std::vector<std::string>& variables) {
-    using CType = typename ArrowType::c_type;
-    auto cov = df.cov<ArrowType, contains_null>(variables);
-
-    if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
-        m_bandwidth =
-            std::pow(static_cast<CType>(df.valid_rows(variables)), -2 / static_cast<CType>(variables.size() + 4)) *
-            (*cov);
-    } else {
-        m_bandwidth =
-            std::pow(static_cast<CType>(df.valid_rows(variables)), -2 / static_cast<CType>(variables.size() + 4)) *
-            (cov->template cast<double>());
-    }
-}
 
 template <typename ArrowType>
 DataFrame KDE::_training_data() const {
@@ -494,7 +611,7 @@ void KDE::_fit(const DataFrame& df) {
 
     auto d = m_variables.size();
 
-    compute_bandwidth<ArrowType, contains_null>(df, m_variables);
+    m_bandwidth = m_bselector->estimate_bandwidth(df, m_variables);
 
     auto llt_cov = m_bandwidth.llt();
     auto llt_matrix = llt_cov.matrixLLT();
@@ -684,7 +801,6 @@ py::tuple KDE::__getstate__() const {
     using CType = typename ArrowType::c_type;
     using VectorType = Matrix<CType, Dynamic, 1>;
 
-    int bandwidth_selector = static_cast<int>(m_bselector);
     MatrixXd bw;
     VectorType training_data;
     double lognorm_const = -1;
@@ -703,7 +819,7 @@ py::tuple KDE::__getstate__() const {
     }
 
     return py::make_tuple(
-        m_variables, m_fitted, bandwidth_selector, bw, training_data, lognorm_const, N_export, training_type);
+        m_variables, m_fitted, m_bselector, bw, training_data, lognorm_const, N_export, training_type);
 }
 
 class CKDEType : public FactorType {
@@ -743,8 +859,9 @@ public:
     using FactorTypeClass = CKDEType;
 
     CKDE() = default;
-    CKDE(std::string variable, std::vector<std::string> evidence) : CKDE(variable, evidence, KDEBandwidth::SCOTT) {}
-    CKDE(std::string variable, std::vector<std::string> evidence, KDEBandwidth b_selector)
+    CKDE(std::string variable, std::vector<std::string> evidence)
+        : CKDE(variable, evidence, std::make_shared<NormalReferenceRule>()) {}
+    CKDE(std::string variable, std::vector<std::string> evidence, std::shared_ptr<BandwidthEstimator> b_selector)
         : Factor(variable, evidence),
           m_variables(),
           m_fitted(false),
@@ -752,6 +869,8 @@ public:
           m_training_type(arrow::float64()),
           m_joint(),
           m_marg() {
+        if (b_selector == nullptr) throw std::runtime_error("Bandwidth selector procedure must be non-null.");
+
         m_variables.reserve(evidence.size() + 1);
         m_variables.push_back(variable);
         for (auto it = evidence.begin(); it != evidence.end(); ++it) {
@@ -789,7 +908,7 @@ public:
 
     bool fitted() const override { return m_fitted; }
 
-    KDEBandwidth bandwidth_type() const { return m_bselector; }
+    std::shared_ptr<BandwidthEstimator> bandwidth_type() const { return m_bselector; }
 
     void fit(const DataFrame& df) override;
     VectorXd logl(const DataFrame& df) const override;
@@ -848,7 +967,7 @@ private:
 
     std::vector<std::string> m_variables;
     bool m_fitted;
-    KDEBandwidth m_bselector;
+    std::shared_ptr<BandwidthEstimator> m_bselector;
     std::shared_ptr<arrow::DataType> m_training_type;
     size_t N;
     KDE m_joint;

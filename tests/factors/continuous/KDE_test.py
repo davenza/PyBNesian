@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import pyarrow as pa
-from pybnesian.factors.continuous import KDE
+from pybnesian.factors.continuous import KDE, BandwidthEstimator, ScottsBandwidth
 from scipy.stats import gaussian_kde
 
 import util_test
@@ -37,14 +37,26 @@ def test_kde_bandwidth():
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         for instances in [50, 1000, 10000]:
             npdata = df.loc[:, variables].to_numpy()
-            scipy_kde = gaussian_kde(npdata[:instances, :].T)
+            # Test normal reference rule
+            scipy_kde = gaussian_kde(npdata[:instances, :].T,
+                            bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
             cpd = KDE(variables)
+            cpd.fit(df.iloc[:instances])
+            assert np.all(np.isclose(cpd.bandwidth, scipy_kde.covariance)), "Wrong bandwidth computed with normal reference rule."
+
+            cpd.fit(df_float.iloc[:instances])
+            assert np.all(np.isclose(cpd.bandwidth, scipy_kde.covariance)), "Wrong bandwidth computed with normal reference rule."
+
+            scipy_kde = gaussian_kde(npdata[:instances, :].T)
+
+            cpd = KDE(variables, ScottsBandwidth())
             cpd.fit(df.iloc[:instances])
             assert np.all(np.isclose(cpd.bandwidth, scipy_kde.covariance)), "Wrong bandwidth computed with Scott's rule."
 
             cpd.fit(df_float.iloc[:instances])
             assert np.all(np.isclose(cpd.bandwidth, scipy_kde.covariance)), "Wrong bandwidth computed with Scott's rule."
+
 
     cpd = KDE(['a'])
     cpd.fit(df)
@@ -54,6 +66,31 @@ def test_kde_bandwidth():
     cpd.fit(df_float)
     cpd.bandwidth = [[1]]
     assert cpd.bandwidth == np.asarray([[1]]), "Could not change bandwidth."
+
+class UnitaryBandwidth(BandwidthEstimator):
+    def __init__(self):
+        BandwidthEstimator.__init__(self)
+
+    def estimate_bandwidth(self, df, variables):
+        if isinstance(variables, str):
+            return 1
+        if isinstance(variables, list):
+            return np.eye(len(variables))
+
+def test_kde_new_bandwidth():
+    kde = KDE(["a"], UnitaryBandwidth())
+    kde.fit(df)
+    assert kde.bandwidth == np.eye(1)
+
+    kde.fit(df_float)
+    assert kde.bandwidth == np.eye(1)
+
+    kde = KDE(["a", "b", "c", "d"], UnitaryBandwidth())
+    kde.fit(df)
+    assert np.all(kde.bandwidth == np.eye(4))
+
+    kde.fit(df_float)
+    assert np.all(kde.bandwidth == np.eye(4))
 
 def test_kde_data_type():
     k = KDE(["a"])
@@ -76,13 +113,14 @@ def test_kde_fit():
         assert cpd.fitted()
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kde = gaussian_kde(npdata[:instances, :].T)
+        scipy_kde = gaussian_kde(npdata[:instances, :].T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         assert scipy_kde.n == cpd.num_instances(), "Wrong number of training instances."
         assert scipy_kde.d == cpd.num_variables(), "Wrong number of training variables."
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
-        for instances in [50, 1000, 10000]:
+        for instances in [50, 150, 500]:
             _test_kde_fit_iter(variables, df, instances)
             _test_kde_fit_iter(variables, df_float, instances)
 
@@ -98,7 +136,8 @@ def test_kde_fit_null():
 
         nan_rows = np.any(np.isnan(npdata_instances), axis=1)
         npdata_no_null = npdata_instances[~nan_rows,:]
-        scipy_kde = gaussian_kde(npdata_no_null.T)
+        scipy_kde = gaussian_kde(npdata_no_null.T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         assert scipy_kde.n == cpd.num_instances(), "Wrong number of training instances with null values."
         assert scipy_kde.d == cpd.num_variables(), "Wrong number of training variables with null values."
@@ -123,7 +162,7 @@ def test_kde_fit_null():
     df_null_float.loc[df_null_float.index[d_null], 'd'] = np.nan
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
-        for instances in [50, 1000, 10000]:
+        for instances in [50, 150, 500]:
             _test_kde_fit_null_iter(variables, df_null, instances)
             _test_kde_fit_null_iter(variables, df_null_float, instances)
 
@@ -133,7 +172,8 @@ def test_kde_logl():
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kde = gaussian_kde(npdata.T)
+        scipy_kde = gaussian_kde(npdata.T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
 
@@ -170,7 +210,8 @@ def test_kde_logl_null():
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kde = gaussian_kde(npdata.T)
+        scipy_kde = gaussian_kde(npdata.T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
 
@@ -228,7 +269,8 @@ def test_kde_slogl():
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kde = gaussian_kde(npdata.T)
+        scipy_kde = gaussian_kde(npdata.T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
         assert np.all(np.isclose(cpd.slogl(_test_df), scipy_kde.logpdf(test_npdata.T).sum()))
@@ -260,7 +302,8 @@ def test_kde_slogl_null():
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kde = gaussian_kde(npdata.T)
+        scipy_kde = gaussian_kde(npdata.T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
 

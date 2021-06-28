@@ -388,20 +388,20 @@ EigenMatrix<ArrowType> cov(Array_iterator begin, Array_iterator end) {
 }
 
 template <typename ArrowType>
-EigenMatrix<ArrowType> cov(Buffer_ptr bitmap, Array_ptr col) {
+typename ArrowType::c_type cov(Buffer_ptr bitmap, Array_ptr col) {
     using EigenVector = Matrix<typename ArrowType::c_type, Dynamic, 1>;
     std::vector<EigenVector> columns;
     columns.reserve(1);
 
-    auto c = to_eigen<false, ArrowType>(col, bitmap);
+    auto c = to_eigen<false, ArrowType>(bitmap, col);
     auto m = c->mean();
     columns.push_back(c->array() - m);
 
-    return compute_cov<ArrowType>(columns);
+    return *compute_cov<ArrowType>(columns)->data();
 }
 
 template <typename ArrowType, bool contains_null>
-EigenMatrix<ArrowType> cov(Array_ptr col) {
+typename ArrowType::c_type cov(Array_ptr col) {
     if constexpr (contains_null) {
         auto bitmap = col->null_bitmap();
         return cov<ArrowType>(bitmap, col);
@@ -414,7 +414,7 @@ EigenMatrix<ArrowType> cov(Array_ptr col) {
         auto m = c->mean();
         columns.push_back(c->array() - m);
 
-        return compute_cov<ArrowType>(columns);
+        return *compute_cov<ArrowType>(columns)->data();
     }
 }
 
@@ -478,7 +478,7 @@ EigenMatrix<ArrowType> sse(Buffer_ptr bitmap, Array_ptr col) {
     std::vector<EigenVector> columns;
     columns.reserve(1);
 
-    auto c = to_eigen<false, ArrowType>(col, bitmap);
+    auto c = to_eigen<false, ArrowType>(bitmap, col);
     auto m = c->mean();
     columns.push_back(c->array() - m);
 
@@ -1510,11 +1510,11 @@ public:
     }
 
     template <typename ArrowType, bool contains_null, typename Index, enable_if_index_t<Index, int> = 0>
-    EigenMatrix<ArrowType> cov(const Index& index) const {
+    typename ArrowType::c_type cov(const Index& index) const {
         return dataset::cov<ArrowType, contains_null>(derived().col(index));
     }
     template <typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
-    EigenMatrix<ArrowType> cov(const Index& index) const {
+    typename ArrowType::c_type cov(const Index& index) const {
         if (null_count(index) == 0) {
             return cov<ArrowType, false>(index);
         } else {
@@ -1522,7 +1522,7 @@ public:
         }
     }
     template <typename ArrowType, typename Index, enable_if_index_t<Index, int> = 0>
-    EigenMatrix<ArrowType> cov(const Buffer_ptr& bitmap, const Index& index) const {
+    typename ArrowType::c_type cov(const Buffer_ptr& bitmap, const Index& index) const {
         return dataset::cov<ArrowType>(bitmap, derived().col(index));
     }
 

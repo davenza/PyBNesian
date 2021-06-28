@@ -41,7 +41,8 @@ def numpy_local_score(node_type, data, variable, evidence):
             means = beta[0] + np.sum(beta[1:]*test_evidence_data, axis=1)
             loglik += norm.logpdf(test_variable_data, means, np.sqrt(var)).sum()
         elif node_type == CKDEType():
-            k_joint = gaussian_kde(node_data.to_numpy().T)
+            k_joint = gaussian_kde(node_data.to_numpy().T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
             if evidence:
                 k_marg = gaussian_kde(evidence_data.to_numpy().T, bw_method=k_joint.covariance_factor())
                 loglik += np.sum(k_joint.logpdf(test_node_data.to_numpy().T) - k_marg.logpdf(test_evidence_data.to_numpy().T))

@@ -73,7 +73,8 @@ def test_ckde_kde_marg():
 def test_ckde_fit():
     def _test_ckde_fit(variables, _df, instances):
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kde = gaussian_kde(npdata[:instances, :].T)
+        scipy_kde = gaussian_kde(npdata[:instances, :].T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         cpd = CKDE(variable, evidence)
         assert not cpd.fitted()
@@ -106,7 +107,8 @@ def test_ckde_fit_null():
         npdata_instances = npdata[:instances,:]
         nan_rows = np.any(np.isnan(npdata_instances), axis=1)
         npdata_no_null = npdata_instances[~nan_rows,:]
-        scipy_kde = gaussian_kde(npdata_no_null.T)
+        scipy_kde = gaussian_kde(npdata_no_null.T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
         kde_joint = cpd.kde_joint
         assert np.all(np.isclose(kde_joint().bandwidth, scipy_kde.covariance))
@@ -148,7 +150,8 @@ def train_scipy_ckde(data, variable, evidence):
 
     nan_rows = np.any(np.isnan(npdata_joint), axis=1)
 
-    scipy_kde_joint = gaussian_kde(npdata_joint[~nan_rows,:].T)
+    scipy_kde_joint = gaussian_kde(npdata_joint[~nan_rows,:].T,
+                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
     if evidence:
         scipy_kde_marg = gaussian_kde(npdata_marg[~nan_rows,:].T, bw_method=scipy_kde_joint.covariance_factor())
     else:

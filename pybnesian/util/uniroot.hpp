@@ -1,3 +1,6 @@
+#ifndef PYBNESIAN_UTIL_UNIROOT_HPP
+#define PYBNESIAN_UTIL_UNIROOT_HPP
+
 // Extracted from https://www.netlib.org/c/brent.shar
 
 // A variant is also available in R source:
@@ -167,3 +170,5 @@ T uniroot(F function,  /* Function under investigation	*/
 }
 
 }  // namespace util
+
+#endif  // PYBNESIAN_UTIL_UNIROOT_HPP

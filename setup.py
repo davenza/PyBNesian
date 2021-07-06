@@ -51,6 +51,7 @@ ext_modules = [
          'pybnesian/util/validate_whitelists.cpp',
          'pybnesian/util/temporal.cpp',
          'pybnesian/util/rpoly.cpp',
+         'pybnesian/util/vech_ops.cpp',
          'pybnesian/kdtree/kdtree.cpp',
          'pybnesian/learning/operators/operators.cpp',
          'pybnesian/learning/algorithms/hillclimbing.cpp',
@@ -127,6 +128,7 @@ class BuildExt(build_ext):
                     "/external:Ilib\\OpenCL",
                     "/external:Ilib\\boost",
                     "/external:Ilib\\indicators",
+                    "/external:Ilib\\nlopt"
                     "-DNOGDI"],
             'unix': ["-std=c++17",
                     "-isystem" + pa.get_include(),
@@ -134,7 +136,8 @@ class BuildExt(build_ext):
                     "-isystemlib/eigen-3.3.7",
                     "-isystemlib/OpenCL",
                     "-isystemlib/boost",
-                    "-isystemlib/indicators"]
+                    "-isystemlib/indicators",
+                    "-isystemlib/nlopt/include"]
         }
 
         l_opts = {
@@ -168,10 +171,12 @@ class BuildExt(build_ext):
         if sys.platform != 'darwin':
             self.libraries.append("OpenCL")
         self.libraries.extend(pa.get_libraries())
+        self.libraries.append("nlopt")
         
         if not hasattr(self, 'library_dirs'):
             self.library_dirs = []
         self.library_dirs.extend(pa.get_library_dirs())
+        self.library_dirs.append('lib/nlopt/lib/')
 
         if sys.platform == "win32":
             if "CL_LIBRARY_PATH" in os.environ:
@@ -193,6 +198,8 @@ class BuildExt(build_ext):
 
             # Use absolute path so auditwheel and develop builds can find pyarrow.
             self.rpath.extend(pa.get_library_dirs())
+
+            self.rpath.append('/home/david/cpp/PyBNesian/lib/nlopt/lib/')
 
     def create_symlinks(self):
         import pyarrow as pa

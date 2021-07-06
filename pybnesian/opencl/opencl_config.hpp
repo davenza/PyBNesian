@@ -61,6 +61,12 @@ struct OpenCL_kernel_traits<arrow::DoubleType> {
     inline constexpr static const char* normal_cdf = "normal_cdf_double";
     inline constexpr static const char* product_elementwise = "product_elementwise_double";
     inline constexpr static const char* division_elementwise = "division_elementwise_double";
+    inline constexpr static const char* sum_ucv_1d = "sum_ucv_1d_double";
+    inline constexpr static const char* triangular_substract_mat = "triangular_substract_mat_double";
+    inline constexpr static const char* sum_ucv_mat = "sum_ucv_mat_double";
+    inline constexpr static const char* ucv_diag = "ucv_diag_double";
+    inline constexpr static const char* sum_ucv_diag = "sum_ucv_diag_double";
+    inline constexpr static const char* copy_ucv_diag = "copy_ucv_diag_double";
 };
 
 template <>
@@ -91,6 +97,12 @@ struct OpenCL_kernel_traits<arrow::FloatType> {
     inline constexpr static const char* normal_cdf = "normal_cdf_float";
     inline constexpr static const char* product_elementwise = "product_elementwise_float";
     inline constexpr static const char* division_elementwise = "division_elementwise_float";
+    inline constexpr static const char* sum_ucv_1d = "sum_ucv_1d_float";
+    inline constexpr static const char* triangular_substract_mat = "triangular_substract_mat_float";
+    inline constexpr static const char* sum_ucv_mat = "sum_ucv_mat_float";
+    inline constexpr static const char* ucv_diag = "ucv_diag_float";
+    inline constexpr static const char* sum_ucv_diag = "sum_ucv_diag_float";
+    inline constexpr static const char* copy_ucv_diag = "copy_ucv_diag_float";
 };
 
 template <typename ArrowType>

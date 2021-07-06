@@ -20,7 +20,7 @@ using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::
     factors::discrete::DiscreteFactorType;
 
 using factors::continuous::BandwidthEstimator, factors::continuous::ScottsBandwidth,
-    factors::continuous::NormalReferenceRule;
+    factors::continuous::NormalReferenceRule, factors::continuous::UCV, factors::continuous::UCVScorer;
 
 using factors::discrete::DiscreteFactor;
 
@@ -34,8 +34,27 @@ class PyBandwidthEstimator : public BandwidthEstimator {
 public:
     bool is_python_derived() const override { return true; }
 
-    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const override {
-        PYBIND11_OVERRIDE_PURE(double, BandwidthEstimator, estimate_bandwidth, df, variable);
+    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        // PYBIND11_OVERRIDE_PURE(VectorXd, BandwidthEstimator, estimate_diag_bandwidth, df, variables);
+        pybind11::gil_scoped_acquire gil;
+        pybind11::function override =
+            pybind11::get_override(static_cast<const BandwidthEstimator*>(this), "estimate_diag_bandwidth");
+
+        if (override) {
+            auto o = override(df, variables);
+
+            auto m = o.cast<VectorXd>();
+
+            if (static_cast<size_t>(m.rows()) != variables.size())
+                throw std::invalid_argument(
+                    "BandwidthEstimator::estimate_diag_bandwidth matrix must return a vector with shape "
+                    "(" +
+                    std::to_string(variables.size()) + ")");
+
+            return m;
+        }
+
+        py::pybind11_fail("Tried to call pure virtual function \"BandwidthEstimator::estimate_diag_bandwidth\"");
     }
 
     MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
@@ -547,40 +566,35 @@ Returns the cumulative distribution function values of each instance in the Data
         .def(py::pickle([](const LinearGaussianCPD& self) { return self.__getstate__(); },
                         [](py::tuple t) { return LinearGaussianCPD::__setstate__(t); }));
 
-    py::class_<BandwidthEstimator, PyBandwidthEstimator, std::shared_ptr<BandwidthEstimator>> band_est(
+    py::class_<BandwidthEstimator, PyBandwidthEstimator, std::shared_ptr<BandwidthEstimator>>(
         continuous, "BandwidthEstimator", R"doc(
 A :class:`BandwidthEstimator` estimates the bandwidth of a kernel density estimation (KDE) model.
-)doc");
-    band_est.def(py::init<>(), R"doc(
+)doc")
+        .def(py::init<>(), R"doc(
 Initializes a :class:`BandwidthEstimator`.
-)doc");
-    {
-        py::options options;
-        options.disable_function_signatures();
-        band_est
-            .def("estimate_bandwidth",
-                 py::overload_cast<const DataFrame&, const std::string&>(&BandwidthEstimator::estimate_bandwidth,
-                                                                         py::const_),
-                 py::arg("df"),
-                 py::arg("variable"))
-            .def("estimate_bandwidth",
-                 py::overload_cast<const DataFrame&, const std::vector<std::string>&>(
-                     &BandwidthEstimator::estimate_bandwidth, py::const_),
-                 py::arg("df"),
-                 py::arg("variable"),
-                 R"doc(
-estimate_bandwidth(self: pybnesian.factors.continuous.BandwidthEstimator, df: DataFrame, variables: str or List[str]) -> double or numpy.ndarray[numpy.float64[d, d]]
-
-Estimates the bandwidth of a variable (or set of variables) for a KDE with a given data ``df``.
+)doc")
+        .def("estimate_diag_bandwidth",
+             &BandwidthEstimator::estimate_diag_bandwidth,
+             py::arg("df"),
+             py::arg("variables"),
+             R"doc(
+Estimates the bandwidth vector of a set of variables for a :class:`ProductKDE` with a given data ``df``.
 
 :param df: DataFrame to estimate the bandwidth.
-:param variables: A variable name or list of variables.
-:returns: A float or numpy matrix of floats. If ``variables`` is an str, it returns a float with the bandwidth value. If
-    ``variables`` is a list of variables, it returns a bandwidth matrix.
-)doc");
-    }
+:param variables: A list of variables.
+:returns: A numpy vector of floats. The i-th entry is the bandwidth :math:`h_{i}^{2}` for the ``variables[i]``.
+)doc")
+        .def("estimate_bandwidth",
+             &BandwidthEstimator::estimate_bandwidth,
+             py::arg("df"),
+             py::arg("variables"),
+             R"doc(
+Estimates the bandwidth of a set of variables for a :class:`KDE` with a given data ``df``.
 
-    band_est
+:param df: DataFrame to estimate the bandwidth.
+:param variables: A list of variables.
+:returns: A float or numpy matrix of floats representing the bandwidth matrix.
+)doc")
         .def("__getstate__", [](const BandwidthEstimator& self) { return self.__getstate__(); })
         // Setstate for pyderived type
         .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthEstimator::__setstate__(self, t); });
@@ -601,8 +615,9 @@ Initializes a :class:`ScottsBandwidth`.
         .def(py::pickle([](const ScottsBandwidth& self) { return self.__getstate__(); },
                         [](py::tuple&) { return std::make_shared<ScottsBandwidth>(); }));
 
-    py::class_<NormalReferenceRule, BandwidthEstimator, std::shared_ptr<NormalReferenceRule>>(
-        continuous, "NormalReferenceRule", R"doc(
+    py::class_<NormalReferenceRule, BandwidthEstimator, std::shared_ptr<NormalReferenceRule>>(continuous,
+                                                                                              "NormalReferenceRule",
+                                                                                              R"doc(
 Estimates the bandwidth using the normal reference rule:
 
 .. math::
@@ -615,6 +630,18 @@ Initializes a :class:`NormalReferenceRule`.
 )doc")
         .def(py::pickle([](const NormalReferenceRule& self) { return self.__getstate__(); },
                         [](py::tuple&) { return std::make_shared<NormalReferenceRule>(); }));
+
+    py::class_<UCVScorer>(continuous, "UCVScorer")
+        .def(py::init<const DataFrame&, const std::vector<std::string>&>())
+        .def("score_diagonal", &UCVScorer::score_diagonal)
+        .def("score_unconstrained", &UCVScorer::score_unconstrained);
+
+    py::class_<UCV, BandwidthEstimator, std::shared_ptr<UCV>>(continuous, "UCV")
+        .def(py::init<>(), R"doc(
+Initializes a :class:`UCV`.
+)doc")
+        .def(py::pickle([](const UCV& self) { return self.__getstate__(); },
+                        [](py::tuple&) { return std::make_shared<UCV>(); }));
 
     py::class_<KDE>(continuous, "KDE", R"doc(
 This class implements Kernel Density Estimation (KDE) for a set of variables:
@@ -752,7 +779,7 @@ Gets the number of variables.
 :returns: Number of variables.
 )doc")
         .def_property("bandwidth", &ProductKDE::bandwidth, &ProductKDE::setBandwidth, R"doc(
-Vector of bandwidth values (:math:`h_{j}`).
+Vector of bandwidth values (:math:`h_{j}^{2}`).
 )doc")
         .def("dataset", &ProductKDE::training_data, R"doc(
 Gets the training dataset for this ProductKDE (the :math:`\mathbf{t}_{i}` instances).

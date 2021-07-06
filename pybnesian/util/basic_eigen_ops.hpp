@@ -118,6 +118,17 @@ Matrix<typename M::Scalar, Dynamic, Dynamic> cov(M& x, M& y) {
     return sse_mat(tmp_x, tmp_y) * inv_N;
 }
 
+template <typename M>
+Matrix<typename M::Scalar, Dynamic, Dynamic> sqrt_matrix(const M& m) {
+    using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;
+    if (m.rows() == 1 && m.cols() == 1) {
+        return MatrixType::Constant(1, 1, std::sqrt(m(0,0)));
+    }
+
+    Eigen::SelfAdjointEigenSolver<M> svd_solver(m);
+    return svd_solver.operatorSqrt();
+}
+
 }  // namespace util
 
 #endif  // PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP

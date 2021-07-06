@@ -34,32 +34,40 @@ def test_productkde_variables():
         cpd = ProductKDE(variables)
         assert cpd.variables() == variables
 
-def test_productkde_bandwidth():
-    for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
-        for instances in [50, 1000, 10000]:
-            npdata = df.loc[:, variables].to_numpy()
-            # Test normal reference rule
-            scipy_kdes = [gaussian_kde(npdata[:instances, i].T,
-                            bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                            for i in range(len(variables))]
-            scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
+def py_nr_bandwidth(df, variables):
+    cov = df[variables].cov().to_numpy()
+    delta = np.linalg.inv(np.diag(np.diag(cov))).dot(cov)
+    delta_inv = np.linalg.inv(delta)
+    N = df.shape[0]
+    d = len(variables)
 
+    k = 4*d*np.sqrt(np.linalg.det(delta))/ (2*(delta_inv.dot(delta_inv)).trace() + delta_inv.trace()**2)
+    return np.power(k / N, 2 / (d + 4)) * np.diag(cov)
+
+def py_scott_bandwidth(df, variables):
+    var = df[variables].var().to_numpy()
+    N = df.shape[0]
+    d = len(variables)
+
+    return np.power(N, -2 / (d + 4)) * var
+
+def test_productkde_bandwidth():
+    # for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
+    for variables in [['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
+        for instances in [50, 150, 500]:
             cpd = ProductKDE(variables)
             cpd.fit(df.iloc[:instances])
-            assert np.all(np.isclose(cpd.bandwidth, np.sqrt(scipy_bandwidth))), "Wrong bandwidth computed with normal reference rule."
+            assert np.all(np.isclose(cpd.bandwidth, py_nr_bandwidth(df[:instances], variables))), "Wrong bandwidth computed with normal reference rule."
 
             cpd.fit(df_float.iloc[:instances])
-            assert np.all(np.isclose(cpd.bandwidth, np.sqrt(scipy_bandwidth))), "Wrong bandwidth computed with normal reference rule."
-
-            scipy_kdes = [gaussian_kde(npdata[:instances, i].T) for i in range(len(variables))]
-            scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
+            assert np.all(np.isclose(cpd.bandwidth, py_nr_bandwidth(df[:instances], variables), atol=0.0005)), "Wrong bandwidth computed with normal reference rule."
 
             cpd = ProductKDE(variables, ScottsBandwidth())
             cpd.fit(df.iloc[:instances])
-            assert np.all(np.isclose(cpd.bandwidth, np.sqrt(scipy_bandwidth))), "Wrong bandwidth computed with Scott's rule."
+            assert np.all(np.isclose(cpd.bandwidth, py_scott_bandwidth(df[:instances], variables))), "Wrong bandwidth computed with Scott's rule."
 
             cpd.fit(df_float.iloc[:instances])
-            assert np.all(np.isclose(cpd.bandwidth, np.sqrt(scipy_bandwidth))), "Wrong bandwidth computed with Scott's rule."
+            assert np.all(np.isclose(cpd.bandwidth, py_scott_bandwidth(df[:instances], variables), atol=0.0005)), "Wrong bandwidth computed with Scott's rule."
 
 
     cpd = ProductKDE(['a'])
@@ -74,6 +82,9 @@ def test_productkde_bandwidth():
 class UnitaryBandwidth(BandwidthEstimator):
     def __init__(self):
         BandwidthEstimator.__init__(self)
+
+    def estimate_diag_bandwidth(self, df, variables):
+        return np.ones((len(variables),))
 
     def estimate_bandwidth(self, df, variables):
         if isinstance(variables, str):
@@ -115,16 +126,12 @@ def test_productkde_fit():
         cpd.fit(_df.iloc[:instances,:])
         assert cpd.fitted()
 
-        npdata = _df.loc[:, variables].to_numpy()
-
-        scipy_kdes = [gaussian_kde(npdata[:instances, i].T,
-                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                        for i in range(len(variables))]
-        scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
-
         assert instances == cpd.num_instances(), "Wrong number of training instances."
         assert len(variables) == cpd.num_variables(), "Wrong number of training variables."
-        assert np.all(np.isclose(np.sqrt(scipy_bandwidth), cpd.bandwidth)), "Wrong bandwidth."
+        if np.all(_df.dtypes == 'float32'):
+            assert np.all(np.isclose(cpd.bandwidth, py_nr_bandwidth(_df.iloc[:instances], variables), atol=0.0005)), "Wrong bandwidth."
+        else:
+            assert np.all(np.isclose(cpd.bandwidth, py_nr_bandwidth(_df.iloc[:instances], variables))), "Wrong bandwidth."
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
         for instances in [50, 150, 500]:
@@ -142,15 +149,14 @@ def test_productkde_fit_null():
         npdata_instances = npdata[:instances,:]
 
         nan_rows = np.any(np.isnan(npdata_instances), axis=1)
-
-        scipy_kdes = [gaussian_kde(npdata_instances[~np.isnan(npdata_instances[:,i]), i].T,
-                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                        for i in range(len(variables))]
-        scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
+        nonnan_indices = np.where(~nan_rows)[0]
 
         assert (~nan_rows).sum() == cpd.num_instances(), "Wrong number of training instances with null values."
         assert len(variables) == cpd.num_variables(), "Wrong number of training variables with null values."
-        assert np.all(np.isclose(np.sqrt(scipy_bandwidth), cpd.bandwidth)), "Wrong bandwidth with null values."
+        if np.all(_df.dtypes == 'float32'):
+            assert np.all(np.isclose(cpd.bandwidth, py_nr_bandwidth(_df.iloc[nonnan_indices,:], variables), atol=0.0005)), "Wrong bandwidth with null values."
+        else:
+            assert np.all(np.isclose(cpd.bandwidth, py_nr_bandwidth(_df.iloc[nonnan_indices,:], variables))), "Wrong bandwidth with null values."
 
     np.random.seed(0)
     a_null = np.random.randint(0, SIZE, size=100)
@@ -180,21 +186,15 @@ def test_productkde_logl():
         cpd = ProductKDE(variables)
         cpd.fit(_df)
 
-        npdata = _df.loc[:, variables].to_numpy()
-
-        scipy_kdes = [gaussian_kde(npdata[:, i].T,
-                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                        for i in range(len(variables))]
-        scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
-
-        test_npdata = _test_df.loc[:, variables].to_numpy()
-
         logl = cpd.logl(_test_df)
 
+        npdata = _df.loc[:, variables].to_numpy()
         final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(scipy_bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / scipy_bandwidth)
-        final_scipy_kde.log_det = scipy_bandwidth.shape[0] * np.log(2*np.pi) + np.log(scipy_bandwidth).sum()
+        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
+        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
+        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
+
+        test_npdata = _test_df.loc[:, variables].to_numpy()
         scipy = final_scipy_kde.logpdf(test_npdata.T)
 
         if np.all(_df.dtypes == 'float32'):
@@ -219,27 +219,22 @@ def test_productkde_logl():
     cpd.fit(df_float)
     cpd2 = ProductKDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df_float)
-    assert np.all(np.isclose(cpd.logl(test_df_float), cpd2.logl(test_df_float))), "Order of evidence changes logl() result."
+    assert np.all(np.isclose(cpd.logl(test_df_float), cpd2.logl(test_df_float), atol=0.0005)), "Order of evidence changes logl() result."
 
-def test_kde_logl_null():
-    def _test_kde_logl_null_iter(variables, _df, _test_df):
+def test_productkde_logl_null():
+    def _test_productkde_logl_null_iter(variables, _df, _test_df):
         cpd = ProductKDE(variables)
         cpd.fit(_df)
 
-        npdata = _df.loc[:, variables].to_numpy()
-        scipy_kdes = [gaussian_kde(npdata[:, i].T,
-                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                        for i in range(len(variables))]
-        scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
-
-        test_npdata = _test_df.loc[:, variables].to_numpy()
-
         logl = cpd.logl(_test_df)
 
+        npdata = _df.loc[:, variables].to_numpy()
         final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(scipy_bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / scipy_bandwidth)
-        final_scipy_kde.log_det = scipy_bandwidth.shape[0] * np.log(2*np.pi) + np.log(scipy_bandwidth).sum()
+        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
+        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
+        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
+
+        test_npdata = _test_df.loc[:, variables].to_numpy()
         scipy = final_scipy_kde.logpdf(test_npdata.T)
 
         if npdata.dtype == "float32":
@@ -271,9 +266,8 @@ def test_kde_logl_null():
     df_null_float.loc[df_null_float.index[d_null], 'd'] = np.nan
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
-        _test_kde_logl_null_iter(variables, df, df_null)
-        _test_kde_logl_null_iter(variables, df_float, df_null_float)
-
+        _test_productkde_logl_null_iter(variables, df, df_null)
+        _test_productkde_logl_null_iter(variables, df_float, df_null_float)
 
     cpd = ProductKDE(['d', 'a', 'b', 'c'])
     cpd.fit(df)
@@ -287,21 +281,16 @@ def test_kde_logl_null():
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.logl(df_null_float), cpd2.logl(df_null_float), atol=0.0005, equal_nan=True)), "Order of evidence changes logl() result."
 
-def test_kde_slogl():
-    def _test_kde_slogl_iter(variables, _df, _test_df):
+def test_productkde_slogl():
+    def _test_productkde_slogl_iter(variables, _df, _test_df):
         cpd = ProductKDE(variables)
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kdes = [gaussian_kde(npdata[:, i].T,
-                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                        for i in range(len(variables))]
-        scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
-
         final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(scipy_bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / scipy_bandwidth)
-        final_scipy_kde.log_det = scipy_bandwidth.shape[0] * np.log(2*np.pi) + np.log(scipy_bandwidth).sum()
+        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
+        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
+        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
         assert np.all(np.isclose(cpd.slogl(_test_df), final_scipy_kde.logpdf(test_npdata.T).sum()))
@@ -310,8 +299,8 @@ def test_kde_slogl():
     test_df_float = test_df.astype('float32')
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
-        _test_kde_slogl_iter(variables, df, test_df)
-        _test_kde_slogl_iter(variables, df_float, test_df_float)
+        _test_productkde_slogl_iter(variables, df, test_df)
+        _test_productkde_slogl_iter(variables, df_float, test_df_float)
 
     cpd = ProductKDE(['d', 'a', 'b', 'c'])
     cpd.fit(df)
@@ -323,27 +312,21 @@ def test_kde_slogl():
     cpd.fit(df_float)
     cpd2 = ProductKDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df_float)
-    assert np.all(np.isclose(cpd.slogl(test_df_float), cpd2.slogl(test_df_float))), "Order of evidence changes slogl() result."
+    assert np.all(np.isclose(cpd.slogl(test_df_float), cpd2.slogl(test_df_float), atol=0.0005)), "Order of evidence changes slogl() result."
 
 
-def test_kde_slogl_null():
-    def _test_kde_slogl_null_iter(variables, _df, _test_df):
+def test_productkde_slogl_null():
+    def _test_productkde_slogl_null_iter(variables, _df, _test_df):
         cpd = ProductKDE(variables)
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        scipy_kdes = [gaussian_kde(npdata[:, i].T,
-                        bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor()) 
-                        for i in range(len(variables))]
-        scipy_bandwidth = np.asarray([g.covariance[0,0] for g in scipy_kdes])
-
         final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(scipy_bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / scipy_bandwidth)
-        final_scipy_kde.log_det = scipy_bandwidth.shape[0] * np.log(2*np.pi) + np.log(scipy_bandwidth).sum()
+        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
+        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
+        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
-
         assert np.all(np.isclose(cpd.slogl(_test_df), np.nansum(final_scipy_kde.logpdf(test_npdata.T))))
 
     TEST_SIZE = 50
@@ -370,8 +353,8 @@ def test_kde_slogl_null():
     df_null_float.loc[df_null_float.index[d_null], 'd'] = np.nan
 
     for variables in [['a'], ['b', 'a'], ['c', 'a', 'b'], ['d', 'a', 'b', 'c']]:
-        _test_kde_slogl_null_iter(variables, df, df_null)
-        _test_kde_slogl_null_iter(variables, df_float, df_null_float)
+        _test_productkde_slogl_null_iter(variables, df, df_null)
+        _test_productkde_slogl_null_iter(variables, df_float, df_null_float)
 
 
     cpd = ProductKDE(['d', 'a', 'b', 'c'])
@@ -384,4 +367,4 @@ def test_kde_slogl_null():
     cpd.fit(df_float)
     cpd2 = ProductKDE(['a', 'c', 'd', 'b'])
     cpd2.fit(df_float)
-    assert np.all(np.isclose(cpd.slogl(df_null_float), cpd2.slogl(df_null_float))), "Order of evidence changes slogl() result."
+    assert np.all(np.isclose(cpd.slogl(df_null_float), cpd2.slogl(df_null_float), atol=0.0005)), "Order of evidence changes slogl() result."

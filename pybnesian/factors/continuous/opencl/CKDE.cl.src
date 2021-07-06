@@ -145,7 +145,6 @@ __kernel void square_@dt@(__global @dt@ *m) {
     m[idx] = d * d;
 }
 
-
 __kernel void logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
                                            __private uint train_rows,
                                            __constant @dt@ *test_vector,
@@ -488,6 +487,110 @@ __kernel void division_elementwise_@dt@(__global @dt@ *mat1, __private uint mat1
     mat1[mat1_offset + i] /= mat2[i];
 }
 
+// https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
+__kernel void sum_ucv_1d_@dt@(__constant @dt@ *data,
+                              __private uint index_offset,
+                              __constant @dt@ *h,
+                              __private @dt@ lognorm_2h,
+                              __private @dt@ lognorm_h,
+                              __global @dt@ *sum2h,
+                              __global @dt@ *sumh) {
+    unsigned int i = get_global_id(0) + index_offset;
+    double ii = get_global_id(0) + 1;
 
+    unsigned int i1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
+    unsigned int i2 = (unsigned int) (ii - (i1-1) * i1 * 0.5 - 1);
+
+    @dt@ d = (data[i1] - data[i2]) / h[0];
+    d = d*d;
+
+    sum2h[i] += exp(-0.25*d + lognorm_2h);
+    sumh[i] += exp(-0.5*d + lognorm_h);
+}
+
+// https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
+__kernel void triangular_substract_mat_@dt@(__constant @dt@ *data,
+                                            __private uint data_physical_rows,
+                                            __private uint data_cols,
+                                            __private uint index_offset,
+                                            __private uint res_num_rows,
+                                            __global @dt@ *res) {
+
+    uint i = get_global_id(0);
+
+    double ii = ROW(i, res_num_rows) + index_offset + 1;
+    uint c = COL(i, res_num_rows);
+
+    unsigned int r1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
+    unsigned int r2 = (unsigned int) (ii - (r1-1) * r1 * 0.5 - 1);
+
+    res[i] = data[IDX(r1, c, data_physical_rows)] - data[IDX(r2, c, data_physical_rows)];
+}
+
+__kernel void sum_ucv_mat_@dt@(__constant @dt@ *square_mat,
+                               __private uint square_cols,
+                               __private @dt@ lognorm_2H,
+                               __private @dt@ lognorm_H,
+                               __global @dt@ *sum2H,
+                               __global @dt@ *sumH) {
+    uint r = get_global_id(0);
+    uint square_rows = get_global_size(0);
+
+    @dt@ summation = square_mat[IDX(r, 0, square_rows)];
+    for (uint i = 1; i < square_cols; i++) {
+        summation += square_mat[IDX(r, i, square_rows)];
+    }
+
+    sum2H[r] += exp(-0.25*summation + lognorm_2H);
+    sumH[r] += exp(-0.5*summation + lognorm_H);
+}
+
+// https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
+__kernel void ucv_diag_@dt@(__constant @dt@ *data,
+                                __private uint index_offset,
+                                __constant @dt@ *h,
+                                __global @dt@ *tmph) {
+    unsigned int i = get_global_id(0) + index_offset;
+    double ii = get_global_id(0) + 1;
+
+    unsigned int i1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
+    unsigned int i2 = (unsigned int) (ii - (i1-1) * i1 * 0.5 - 1);
+
+    @dt@ d = (data[i1] - data[i2]) / h[0];
+    d = d*d;
+
+    tmph[i] = d;
+}
+
+// https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
+__kernel void sum_ucv_diag_@dt@(__constant @dt@ *data,
+                                __private uint data_physical_rows,
+                                __private uint index_offset,
+                                __constant @dt@ *h,
+                                __private uint h_index,
+                                __global @dt@ *tmph) {
+    unsigned int i = get_global_id(0) + index_offset;
+    double ii = get_global_id(0) + 1;
+
+    unsigned int i1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
+    unsigned int i2 = (unsigned int) (ii - (i1-1) * i1 * 0.5 - 1);
+
+    @dt@ d = (data[IDX(i1, h_index, data_physical_rows)] - data[IDX(i2, h_index, data_physical_rows)]) / h[h_index];
+    d = d*d;
+
+    tmph[i] += d;
+}
+
+// https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
+__kernel void copy_ucv_diag_@dt@(__constant @dt@ *tmph,
+                                 __private @dt@ lognorm_2H,
+                                 __private @dt@ lognorm_H,
+                                 __global @dt@ *sum2H,
+                                 __global @dt@ *sumH) {
+    unsigned int i = get_global_id(0);
+
+    sum2H[i] += exp(-0.25*tmph[i] + lognorm_2H);
+    sumH[i] += exp(-0.5*tmph[i] + lognorm_H);
+}
 
 /**end repeat**/

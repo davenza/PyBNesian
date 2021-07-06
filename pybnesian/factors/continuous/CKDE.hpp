@@ -23,7 +23,7 @@ namespace factors::continuous {
 class BandwidthEstimator {
 public:
     virtual ~BandwidthEstimator() {}
-    virtual double estimate_bandwidth(const DataFrame& df, const std::string& variable) const = 0;
+    virtual VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const = 0;
     virtual MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const = 0;
 
     virtual bool is_python_derived() const { return false; }
@@ -44,12 +44,12 @@ public:
 
 class ScottsBandwidth : public BandwidthEstimator {
 public:
-    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const override {
-        switch (df.same_type(variable)->id()) {
+    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
-                return estimate_bandwidth<arrow::DoubleType>(df, variable);
+                return estimate_diag_bandwidth<arrow::DoubleType>(df, variables);
             case Type::FLOAT:
-                return estimate_bandwidth<arrow::FloatType>(df, variable);
+                return estimate_diag_bandwidth<arrow::FloatType>(df, variables);
             default:
                 throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
         }
@@ -72,14 +72,28 @@ public:
 
 private:
     template <typename ArrowType>
-    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const {
+    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
         using CType = typename ArrowType::c_type;
 
-        auto var = df.cov<ArrowType>(variable);
-        auto N = static_cast<CType>(df.valid_rows(variable));
+        auto N = static_cast<CType>(df.valid_rows(variables));
+        auto d = static_cast<CType>(variables.size());
 
-        auto k = std::pow(N, -2. / 5.);
-        return k * var;
+        auto k = std::pow(N, -2. / (d + 4.));
+        VectorXd bandwidth(variables.size());
+
+        if (df.null_count(variables) > 0) {
+            auto combined_bitmap = df.combined_bitmap(variables);
+
+            for (size_t i = 0; i < variables.size(); ++i) {
+                bandwidth(i) = k * df.cov<ArrowType>(combined_bitmap, variables[i]);
+            }
+        } else {
+            for (size_t i = 0; i < variables.size(); ++i) {
+                bandwidth(i) = k * df.cov<ArrowType, false>(variables[i]);
+            }
+        }
+
+        return bandwidth;
     }
 
     template <typename ArrowType>
@@ -102,12 +116,12 @@ private:
 
 class NormalReferenceRule : public BandwidthEstimator {
 public:
-    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const override {
-        switch (df.same_type(variable)->id()) {
+    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
-                return estimate_bandwidth<arrow::DoubleType>(df, variable);
+                return estimate_diag_bandwidth<arrow::DoubleType>(df, variables);
             case Type::FLOAT:
-                return estimate_bandwidth<arrow::FloatType>(df, variable);
+                return estimate_diag_bandwidth<arrow::FloatType>(df, variables);
             default:
                 throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
         }
@@ -132,14 +146,29 @@ public:
 
 private:
     template <typename ArrowType>
-    double estimate_bandwidth(const DataFrame& df, const std::string& variable) const {
+    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
         using CType = typename ArrowType::c_type;
 
-        auto var = df.cov<ArrowType>(variable);
-        auto N = static_cast<CType>(df.valid_rows(variable));
+        auto cov_ptr = df.cov<ArrowType>(variables);
+        auto& cov = *cov_ptr;
+        auto diag = cov.diagonal();
+        auto delta = (cov.array().colwise() * diag.cwiseInverse().array()).matrix();
+        auto delta_inv = delta.inverse();
 
-        auto k = std::pow((4. / 3.) / N, 2. / 5.);
-        return k * var;
+        auto N = static_cast<CType>(df.valid_rows(variables));
+        auto d = static_cast<CType>(variables.size());
+
+        auto delta_inv_trace = delta_inv.trace();
+
+        // Estimate bandwidth using Equation (3.4) of Chacon and Duong (2018)
+        auto k = 4 * d * std::sqrt(delta.determinant()) /
+                 (2 * (delta_inv * delta_inv).trace() + delta_inv_trace * delta_inv_trace);
+
+        if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
+            return std::pow(k / N, 2. / (d + 4.)) * diag;
+        } else {
+            return (std::pow(k / N, 2. / (d + 4.)) * diag).template cast<double>();
+        }
     }
 
     template <typename ArrowType>
@@ -150,7 +179,7 @@ private:
         auto N = static_cast<CType>(df.valid_rows(variables));
         auto d = static_cast<CType>(variables.size());
 
-        auto k = std::pow((4. / (d + 2.)) / N, 2. / (d + 4));
+        auto k = std::pow(4. / (N * (d + 2.)), 2. / (d + 4));
 
         if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
             return k * (*cov);
@@ -158,6 +187,50 @@ private:
             return k * cov->template cast<double>();
         }
     }
+};
+
+class UCVScorer {
+public:
+    UCVScorer(const DataFrame& df, const std::vector<std::string>& variables)
+        : m_training_type(df.same_type(variables)),
+          m_training(_copy_training_data(df, variables)),
+          N(df.valid_rows(variables)),
+          d(variables.size()) {}
+
+    double score_diagonal(const VectorXd& diagonal_bandwidth) const;
+    double score_unconstrained(const MatrixXd& bandwidth) const;
+
+private:
+    template <typename ArrowType>
+    double score_diagonal_impl(const Matrix<typename ArrowType::c_type, Dynamic, 1>& diagonal_sqrt_bandwidth) const;
+    template <typename ArrowType, typename KDEType>
+    double score_unconstrained_impl(const Matrix<typename ArrowType::c_type, Dynamic, Dynamic>& bandwidth) const;
+
+    template <typename ArrowType>
+    std::pair<cl::Buffer, typename ArrowType::c_type> copy_diagonal_bandwidth(
+        const Matrix<typename ArrowType::c_type, Dynamic, 1>& diagonal_bandwidth) const;
+
+    template <typename ArrowType>
+    std::pair<cl::Buffer, typename ArrowType::c_type> copy_unconstrained_bandwidth(
+        const Matrix<typename ArrowType::c_type, Dynamic, Dynamic>& bandwidth) const;
+
+    template <typename ArrowType, bool contains_null>
+    cl::Buffer _copy_training_data(const DataFrame& df, const std::vector<std::string>& variables) const;
+    cl::Buffer _copy_training_data(const DataFrame& df, const std::vector<std::string>& variables) const;
+
+    std::shared_ptr<arrow::DataType> m_training_type;
+    cl::Buffer m_training;
+    size_t N;
+    size_t d;
+};
+
+class UCV : public BandwidthEstimator {
+public:
+    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
+    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
+
+    py::tuple __getstate__() const override { return py::make_tuple(); }
+    static std::shared_ptr<UCV> __setstate__(py::tuple&) { return std::make_shared<UCV>(); }
 };
 
 struct UnivariateKDE {
@@ -972,35 +1045,32 @@ void ProductKDE::_fit(const DataFrame& df) {
     Buffer_ptr combined_bitmap;
     if constexpr (contains_null) combined_bitmap = df.combined_bitmap(m_variables);
 
-    auto valid_rows = df.valid_rows(m_variables);
+    N = df.valid_rows(m_variables);
 
     auto& opencl = OpenCLConfig::get();
 
-    for (size_t i = 0; i < m_variables.size(); ++i) {
-        m_bandwidth(i) = std::sqrt(m_bselector->estimate_bandwidth(df, m_variables[i]));
+    m_bandwidth = m_bselector->estimate_diag_bandwidth(df, m_variables);
 
+    for (size_t i = 0; i < m_variables.size(); ++i) {
         if constexpr (std::is_same_v<CType, double>) {
-            m_cl_bandwidth.push_back(opencl.copy_to_buffer(&m_bandwidth(i), 1));
+            auto sqrt = std::sqrt(m_bandwidth(i));
+            m_cl_bandwidth.push_back(opencl.copy_to_buffer(&sqrt, 1));
         } else {
-            auto casted = static_cast<CType>(m_bandwidth(i));
+            auto casted = std::sqrt(static_cast<CType>(m_bandwidth(i)));
             m_cl_bandwidth.push_back(opencl.copy_to_buffer(&casted, 1));
         }
 
         if constexpr (contains_null) {
             auto column = df.to_eigen<false, ArrowType>(combined_bitmap, m_variables[i]);
-            m_training.push_back(opencl.copy_to_buffer(column->data(), valid_rows));
+            m_training.push_back(opencl.copy_to_buffer(column->data(), N));
         } else {
             auto column = df.to_eigen<false, ArrowType, false>(m_variables[i]);
-            m_training.push_back(opencl.copy_to_buffer(column->data(), valid_rows));
+            m_training.push_back(opencl.copy_to_buffer(column->data(), N));
         }
     }
 
-    N = df.valid_rows(m_variables);
-
-    m_lognorm_const = -0.5 * static_cast<double>(m_variables.size()) * std::log(2 * util::pi<double>) - std::log(N);
-    for (size_t i = 0; i < m_variables.size(); ++i) {
-        m_lognorm_const -= std::log(m_bandwidth(i));
-    }
+    m_lognorm_const = -0.5 * static_cast<double>(m_variables.size()) * std::log(2 * util::pi<double>) -
+                      0.5 * m_bandwidth.array().log().sum() - std::log(N);
 }
 
 template <typename ArrowType>
@@ -1078,7 +1148,7 @@ void ProductKDE::product_logl_mat(cl::Buffer& test_buffer,
 
     for (size_t i = 1; i < m_variables.size(); ++i) {
         k_add_logl_values_1d_mat.setArg(0, m_training[i]);
-        k_add_logl_values_1d_mat.setArg(3, static_cast<unsigned int>(i*test_length) + test_offset);
+        k_add_logl_values_1d_mat.setArg(3, static_cast<unsigned int>(i * test_length) + test_offset);
         k_add_logl_values_1d_mat.setArg(4, m_cl_bandwidth[i]);
         RAISE_ENQUEUEKERNEL_ERROR(queue.enqueueNDRangeKernel(
             k_add_logl_values_1d_mat, cl::NullRange, cl::NDRange(N * test_length), cl::NullRange));

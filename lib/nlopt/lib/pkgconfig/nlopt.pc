@@ -1,0 +1,11 @@
+prefix=/home/david/cpp/PyBNesian/lib/nlopt
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: NLopt
+Description: nonlinear optimization libary
+Version: 2.7.0
+Libs: -L${libdir} -lnlopt
+Libs.private: -lm
+Cflags: -I${includedir}

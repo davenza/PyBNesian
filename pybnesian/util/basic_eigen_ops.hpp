@@ -122,7 +122,7 @@ template <typename M>
 Matrix<typename M::Scalar, Dynamic, Dynamic> sqrt_matrix(const M& m) {
     using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;
     if (m.rows() == 1 && m.cols() == 1) {
-        return MatrixType::Constant(1, 1, std::sqrt(m(0,0)));
+        return MatrixType::Constant(1, 1, std::sqrt(m(0, 0)));
     }
 
     Eigen::SelfAdjointEigenSolver<M> svd_solver(m);

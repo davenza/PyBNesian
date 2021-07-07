@@ -1,5 +1,8 @@
+from distutils import log
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from setuptools.command.build_clib import build_clib
+import subprocess
 import sys
 import setuptools
 import os
@@ -8,9 +11,74 @@ import find_opencl
 __version__ = '0.2.1'
 
 if sys.platform == 'darwin':
-    darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+    darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.14']
 else:
     darwin_opts = []
+
+class CMakeExternalLibrary:
+    def __init__(self, cmake_folder, cmake_flags = []):
+        self.cmake_folder = cmake_folder
+
+        if not isinstance(cmake_flags, list):
+            raise ValueError("cmake_flags must be list of flags.")
+
+        self.cmake_flags = cmake_flags
+
+class Build_CMakeExternalLibrary(build_clib):
+
+    def build_libraries(self, libraries):
+        ordinary_libs = []
+        cmake_libs = []
+        for lib in libraries:
+            name, build_info = lib
+            cmake_config = build_info.get('cmake_config')
+            if cmake_config is None:
+                ordinary_libs.append(lib)
+            else:
+                cmake_libs.append(lib)
+
+        if ordinary_libs:
+            super().build_libraries(ordinary_libs)
+
+        for lib in cmake_libs:
+            name = lib[0]
+            cmake_config = lib[1].get('cmake_config')
+
+            build_directory = os.path.join(self.build_temp, 'build', name)
+            install_directory = os.path.join(self.build_temp, name)
+
+            if not os.path.exists(build_directory):
+                os.makedirs(build_directory)
+
+            if not os.path.exists(install_directory):
+                os.makedirs(install_directory)
+
+            log.info("building CMake '%s' library", name)
+
+            # Run CMake
+            subprocess.check_call(
+                ["cmake", "-B" + build_directory, "-DCMAKE_INSTALL_PREFIX=" + install_directory] +
+                cmake_config.cmake_flags + [cmake_config.cmake_folder]
+            )
+
+            # Run make && make install (this command should be multi-platform (Unix, Windows).
+            subprocess.check_call(
+                ["cmake", "--build", build_directory, "--target", "install", "--config", "Release"]
+            )
+
+            # Copy the libraries to self.build_clib
+            for name in os.listdir(install_directory):
+                # The lib folder can be "lib" or "lib64"
+                if "lib" in name:
+                    lib_folder = os.path.join(install_directory, name)
+                    break
+
+            libraries = [f for f in os.listdir(lib_folder) if os.path.isfile(os.path.join(lib_folder, f))]
+
+            import shutil
+            for lf in libraries:
+                # Copy all the files to self.build_clib
+                shutil.copy(os.path.join(lib_folder, lf), os.path.join(self.build_clib, lf))
 
 # https://stackoverflow.com/questions/49266003/setuptools-build-shared-libary-from-c-code-then-build-cython-wrapper-linked
 ext_lib_path = 'lib/libfort'
@@ -19,7 +87,12 @@ ext_libraries = [('fort', {
                'sources': [os.path.join(ext_lib_path, src) for src in sources],
                'include_dirs': [ext_lib_path],
                'cflags': ['-D_GLIBCXX_USE_CXX11_ABI=0'] + darwin_opts
-               })
+               }),
+               ('nlopt', {
+                   'sources': [],
+                #    Static linking using -DBUILD_SHARED_LIBS=OFF
+                   'cmake_config': CMakeExternalLibrary(os.path.join('lib', 'nlopt-2.7.0'), ["-DBUILD_SHARED_LIBS=OFF"])
+                })
 ]
 
 ext_modules = [
@@ -128,7 +201,8 @@ class BuildExt(build_ext):
                     "/external:Ilib\\OpenCL",
                     "/external:Ilib\\boost",
                     "/external:Ilib\\indicators",
-                    "/external:Ilib\\nlopt"
+                    # Windows creates a build_temp/Release/pybnesian folder structure, so apply a dirname
+                    "/external:I" + os.path.join(os.path.dirname(self.build_temp), 'nlopt', 'include'),
                     "-DNOGDI"],
             'unix': ["-std=c++17",
                     "-isystem" + pa.get_include(),
@@ -137,7 +211,9 @@ class BuildExt(build_ext):
                     "-isystemlib/OpenCL",
                     "-isystemlib/boost",
                     "-isystemlib/indicators",
-                    "-isystemlib/nlopt/include"]
+                    # Unix creates a build_temp/pybnesian folder structure.
+                    "-isystem" + os.path.join(self.build_temp, 'nlopt', 'include')
+                    ]
         }
 
         l_opts = {
@@ -176,7 +252,6 @@ class BuildExt(build_ext):
         if not hasattr(self, 'library_dirs'):
             self.library_dirs = []
         self.library_dirs.extend(pa.get_library_dirs())
-        self.library_dirs.append('lib/nlopt/lib/')
 
         if sys.platform == "win32":
             if "CL_LIBRARY_PATH" in os.environ:
@@ -198,8 +273,6 @@ class BuildExt(build_ext):
 
             # Use absolute path so auditwheel and develop builds can find pyarrow.
             self.rpath.extend(pa.get_library_dirs())
-
-            self.rpath.append('/home/david/cpp/PyBNesian/lib/nlopt/lib/')
 
     def create_symlinks(self):
         import pyarrow as pa
@@ -396,7 +469,7 @@ setup(
     libraries=ext_libraries,
     setup_requires=['pybind11>=2.6', 'pyarrow>=3.0', "numpy"],
     install_requires=['pybind11>=2.6', 'pyarrow>=3.0', "numpy"],
-    cmdclass={'build_ext': BuildExt},
+    cmdclass={'build_clib': Build_CMakeExternalLibrary, 'build_ext': BuildExt},
     license="MIT",
     zip_safe=False,
 )

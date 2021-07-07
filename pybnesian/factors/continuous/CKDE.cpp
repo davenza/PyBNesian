@@ -248,7 +248,7 @@ double UCVScorer::score_diagonal_impl(
 
     auto n_distances = N * (N - 1) / 2;
 
-    auto instances_per_iteration = std::min(1000000UL, n_distances);
+    auto instances_per_iteration = std::min(static_cast<size_t>(1000000), n_distances);
     auto iterations =
         static_cast<int>(std::ceil(static_cast<double>(n_distances) / static_cast<double>(instances_per_iteration)));
 
@@ -309,7 +309,7 @@ double UCVScorer::score_unconstrained_impl(
 
     auto n_distances = N * (N - 1) / 2;
 
-    auto instances_per_iteration = std::min(1000000UL, n_distances);
+    auto instances_per_iteration = std::min(static_cast<size_t>(1000000), n_distances);
     auto iterations =
         static_cast<int>(std::ceil(static_cast<double>(n_distances) / static_cast<double>(instances_per_iteration)));
 

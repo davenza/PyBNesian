@@ -111,6 +111,9 @@ ext_modules = [
          'pybnesian/pybindings/pybindings_learning/pybindings_mle.cpp',
          'pybnesian/pybindings/pybindings_learning/pybindings_operators.cpp',
          'pybnesian/pybindings/pybindings_learning/pybindings_algorithms.cpp',
+         'pybnesian/kde/KDE.cpp',
+         'pybnesian/kde/ProductKDE.cpp',
+         'pybnesian/kde/UCV.cpp',
          'pybnesian/factors/continuous/LinearGaussianCPD.cpp',
          'pybnesian/factors/continuous/CKDE.cpp',
          'pybnesian/factors/discrete/DiscreteFactor.cpp',
@@ -125,6 +128,7 @@ ext_modules = [
          'pybnesian/util/temporal.cpp',
          'pybnesian/util/rpoly.cpp',
          'pybnesian/util/vech_ops.cpp',
+         'pybnesian/util/pickle.cpp',
          'pybnesian/kdtree/kdtree.cpp',
          'pybnesian/learning/operators/operators.cpp',
          'pybnesian/learning/algorithms/hillclimbing.cpp',
@@ -281,7 +285,7 @@ class BuildExt(build_ext):
     def expand_sources(self):
         import conv_template
 
-        sources = ['pybnesian/factors/continuous/opencl/CKDE.cl.src']
+        sources = ['pybnesian/kde/opencl_kernels/KDE.cl.src']
         
         for source in sources:
             (base, _) = os.path.splitext(source)
@@ -290,7 +294,7 @@ class BuildExt(build_ext):
                 fid.write(outstr)
 
     def copy_opencl_code(self):
-        sources = ['pybnesian/factors/continuous/opencl/CKDE.cl']
+        sources = ['pybnesian/kde/opencl_kernels/KDE.cl']
 
         # Split the CPP code because the MSVC only allow strings of a max size.
         # Error C2026: https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2026?view=msvc-160

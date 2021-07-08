@@ -54,7 +54,7 @@ struct OpenCL_kernel_traits<arrow::DoubleType> {
     inline constexpr static const char* add_accum_sum_mat_cols = "add_accum_sum_mat_cols_double";
     inline constexpr static const char* normalize_accum_sum_mat_cols = "normalize_accum_sum_mat_cols_double";
     inline constexpr static const char* find_random_indices = "find_random_indices_double";
-    inline constexpr static const char* conditional_means_1d = "conditional_means_1d_mat_double";
+    inline constexpr static const char* conditional_means_1d = "conditional_means_1d_double";
     inline constexpr static const char* conditional_means_column = "conditional_means_column_double";
     inline constexpr static const char* conditional_means_row = "conditional_means_row_double";
     inline constexpr static const char* univariate_normal_cdf = "univariate_normal_cdf_double";
@@ -90,7 +90,7 @@ struct OpenCL_kernel_traits<arrow::FloatType> {
     inline constexpr static const char* add_accum_sum_mat_cols = "add_accum_sum_mat_cols_float";
     inline constexpr static const char* normalize_accum_sum_mat_cols = "normalize_accum_sum_mat_cols_float";
     inline constexpr static const char* find_random_indices = "find_random_indices_float";
-    inline constexpr static const char* conditional_means_1d = "conditional_means_1d_mat_float";
+    inline constexpr static const char* conditional_means_1d = "conditional_means_1d_float";
     inline constexpr static const char* conditional_means_column = "conditional_means_column_float";
     inline constexpr static const char* conditional_means_row = "conditional_means_row_float";
     inline constexpr static const char* univariate_normal_cdf = "univariate_normal_cdf_float";
@@ -145,6 +145,13 @@ public:
 
     template <typename T>
     void fill_buffer(cl::Buffer& b, const T value, unsigned int length);
+
+    template <typename ArrowType>
+    std::pair<cl::Buffer, uint64_t> allocate_temp_mat(size_t rows, size_t cols, size_t max_cols = 64) {
+        using CType = typename ArrowType::c_type;
+        auto allocated_m = std::min(cols, max_cols);
+        return std::make_pair(new_buffer<CType>(rows * allocated_m), allocated_m);
+    }
 
     cl::Kernel& kernel(const char* name);
     cl::CommandQueue& queue() { return m_queue; }

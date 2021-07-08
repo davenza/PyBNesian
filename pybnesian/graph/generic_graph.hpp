@@ -8,6 +8,7 @@
 #include <util/bidirectionalmap_index.hpp>
 #include <util/vector.hpp>
 #include <util/parameter_traits.hpp>
+#include <util/pickle.hpp>
 
 namespace py = pybind11;
 
@@ -384,17 +385,6 @@ G __setstate__(py::tuple& t) {
 template <typename G, enable_if_conditional_graph_t<G, int> = 0>
 G __setstate__(py::tuple&& t) {
     return graph::__setstate__<G>(t);
-}
-
-template <typename G>
-void save_graph(const G& graph, std::string name) {
-    auto open = py::module_::import("io").attr("open");
-
-    if (name.size() < 7 || name.substr(name.size() - 7) != ".pickle") name += ".pickle";
-
-    auto file = open(name, "wb");
-    py::module_::import("pickle").attr("dump")(py::cast(&graph), file, 2);
-    file.attr("close")();
 }
 
 template <typename Derived, template <typename> typename BaseClass>
@@ -1605,7 +1595,7 @@ public:
 
     static Derived __setstate__(py::tuple&& t) { return graph::__setstate__<Derived>(t); }
 
-    void save(const std::string& name) const { save_graph(static_cast<const Derived&>(*this), name); }
+    void save(const std::string& name) const { util::save_object(static_cast<const Derived&>(*this), name); }
 
     ConditionalGraph<PartiallyDirected> conditional_graph(const std::vector<std::string>& nodes,
                                                           const std::vector<std::string>& interface_nodes) const;
@@ -1714,7 +1704,7 @@ public:
 
     static Derived __setstate__(py::tuple&& t) { return graph::__setstate__<Derived>(t); }
 
-    void save(const std::string& name) const { save_graph(static_cast<const Derived&>(*this), name); }
+    void save(const std::string& name) const { util::save_object(static_cast<const Derived&>(*this), name); }
 
     ConditionalGraph<Undirected> conditional_graph(const std::vector<std::string>& nodes,
                                                    const std::vector<std::string>& interface_nodes) const;
@@ -1821,7 +1811,7 @@ public:
 
     static Derived __setstate__(py::tuple&& t) { return graph::__setstate__<Derived>(t); }
 
-    void save(const std::string& name) const { save_graph(static_cast<const Derived&>(*this), name); }
+    void save(const std::string& name) const { util::save_object(static_cast<const Derived&>(*this), name); }
 
     ConditionalGraph<Directed> conditional_graph(const std::vector<std::string>& nodes,
                                                  const std::vector<std::string>& interface_nodes) const;
@@ -1945,7 +1935,7 @@ public:
 
     static Derived __setstate__(py::tuple&& t) { return graph::__setstate__<Derived>(t); }
 
-    void save(const std::string& name) const { save_graph(static_cast<const Derived&>(*this), name); }
+    void save(const std::string& name) const { util::save_object(static_cast<const Derived&>(*this), name); }
 
     ConditionalGraph<DirectedAcyclic> conditional_graph(const std::vector<std::string>& nodes,
                                                         const std::vector<std::string>& interface_nodes) const;

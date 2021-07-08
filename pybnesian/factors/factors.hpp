@@ -8,6 +8,7 @@
 #include <random>
 #include <pybind11/pybind11.h>
 #include <dataset/dataset.hpp>
+#include <util/pickle.hpp>
 
 using dataset::DataFrame;
 
@@ -63,17 +64,6 @@ protected:
     mutable std::uintptr_t m_hash;
 };
 
-template <typename F>
-void save_factor(const F& factor, std::string name) {
-    auto open = py::module_::import("io").attr("open");
-
-    if (name.size() < 7 || name.substr(name.size() - 7) != ".pickle") name += ".pickle";
-
-    auto file = open(name, "wb");
-    py::module_::import("pickle").attr("dump")(py::cast(&factor), file, 2);
-    file.attr("close")();
-}
-
 class Factor {
 public:
     Factor() = default;
@@ -116,7 +106,7 @@ public:
                              const DataFrame& evidence_values,
                              unsigned int seed = std::random_device{}()) const = 0;
 
-    void save(const std::string& name) const { save_factor(*this, name); }
+    void save(const std::string& name) const { util::save_object(*this, name); }
 
     virtual py::tuple __getstate__() const = 0;
 

@@ -114,8 +114,6 @@ __kernel void @operation@_mat_cols_@dt@(__constant @dt@ *mat,
 
 /**end repeat1**/
 
-
-
 __kernel void logsumexp_coeffs_@dt@(__global @dt@ *input,
                                         __private uint input_rows,
                                         __constant @dt@ *max) {
@@ -123,7 +121,6 @@ __kernel void logsumexp_coeffs_@dt@(__global @dt@ *input,
     uint col = COL(idx, input_rows);
     input[idx] = exp(input[idx] - max[col]);
 }
-
 
 __kernel void solve_@dt@(__global @dt@ *diff_matrix, 
                         __private uint diff_matrix_rows, 
@@ -383,18 +380,7 @@ __kernel void find_random_indices_@dt@(__global @dt@ *mat,
         indices[mat_offset + col_id] = row_id;
 }
 
-__kernel void divide_mat_vec_@dt@(__global @dt@ *mat,
-                                      __private uint mat_rows,
-                                      __global @dt@ *vec) {
-    
-    int row_id = get_global_id(0);
-    int col_id = get_global_id(1);
-
-    mat[IDX(row_id, col_id, mat_rows)] /= vec[col_id];
-}
-
-
-__kernel void conditional_means_1d_mat_@dt@(__constant @dt@ *train_mat,
+__kernel void conditional_means_1d_@dt@(__constant @dt@ *train_mat,
                                            __private uint train_physical_rows,
                                            __constant @dt@ *test_vector,
                                            __private uint test_physical_rows,

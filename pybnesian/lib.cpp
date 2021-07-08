@@ -2,6 +2,7 @@
 #include <arrow/python/pyarrow.h>
 #include <arrow/python/platform.h>
 #include <arrow/api.h>
+#include <util/pickle.hpp>
 
 #define STRINGIFY(x)       #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -15,13 +16,6 @@ void pybindings_graph(py::module& root);
 void pybindings_models(py::module& root);
 void pybindings_learning(py::module& root);
 
-py::object load(const std::string& name) {
-    auto open = py::module::import("io").attr("open");
-    auto file = open(name, "rb");
-    auto bn = py::module::import("pickle").attr("load")(file);
-    file.attr("close")();
-    return bn;
-}
 
 /*This module is needed to trick the MSVC linker, so a PyInit___init__() method exists.*/
 #ifdef _MSC_VER
@@ -64,7 +58,7 @@ PYBIND11_MODULE(pybnesian, m) {
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
 #endif
 
-    m.def("load", &load, py::arg("filename"), R"doc(
+    m.def("load", &util::load, py::arg("filename"), R"doc(
 Load the saved object (a :class:`Factor <pybnesian.factors.Factor>`, a graph, a
 :class:`BayesianNetworkBase <pybnesian.models.BayesianNetworkBase>`, etc...) in ``filename``.
 

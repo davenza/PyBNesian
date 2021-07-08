@@ -3,6 +3,12 @@
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
+#include <kde/KDE.hpp>
+#include <kde/ProductKDE.hpp>
+#include <kde/BandwidthEstimator.hpp>
+#include <kde/ScottsBandwidth.hpp>
+#include <kde/NormalReferenceRule.hpp>
+#include <kde/UCV.hpp>
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
@@ -15,12 +21,12 @@
 namespace py = pybind11;
 
 using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::CLinearGaussianCPD,
-    factors::continuous::KDE, factors::continuous::ProductKDE, factors::continuous::DCKDE, factors::continuous::CKDE;
+    factors::continuous::DCKDE, factors::continuous::CKDE;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 
-using factors::continuous::BandwidthEstimator, factors::continuous::ScottsBandwidth,
-    factors::continuous::NormalReferenceRule, factors::continuous::UCV, factors::continuous::UCVScorer;
+using kde::KDE, kde::ProductKDE, kde::BandwidthEstimator, kde::ScottsBandwidth, kde::NormalReferenceRule, kde::UCV,
+    kde::UCVScorer;
 
 using factors::discrete::DiscreteFactor;
 

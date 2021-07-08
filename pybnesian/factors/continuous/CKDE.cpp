@@ -403,12 +403,27 @@ double UCVScorer::score_unconstrained(const MatrixXd& bandwidth) const {
     }
 }
 
+struct UCVOptimInfo {
+    UCVScorer ucv_scorer;
+    double start_score;
+    double start_determinant;
+};
+
 double wrap_ucv_diag_optim(unsigned n, const double* x, double*, void* my_func_data) {
     using MapType = Eigen::Map<const VectorXd>;
     MapType xm(x, n);
 
-    UCVScorer& ucv_scorer = *reinterpret_cast<UCVScorer*>(my_func_data);
-    auto score = ucv_scorer.score_diagonal(xm.array().square().matrix());
+    UCVOptimInfo& optim_info = *reinterpret_cast<UCVOptimInfo*>(my_func_data);
+
+    auto det_sqrt = xm.prod();
+    auto det = det_sqrt * det_sqrt;
+
+    if (det <= 0 || det < 1e-3 * optim_info.start_determinant || det > 1e3 * optim_info.start_determinant)
+        return optim_info.start_score + 10e-8;
+
+    auto score = optim_info.ucv_scorer.score_diagonal(xm.array().square().matrix());
+
+    if (std::abs(score) > 1e3 * std::abs(optim_info.start_score)) return optim_info.start_score + 10e-8;
 
     return score;
 }
@@ -417,11 +432,22 @@ double wrap_ucv_optim(unsigned n, const double* x, double*, void* my_func_data) 
     using MapType = Eigen::Map<const VectorXd>;
     MapType xm(x, n);
 
-    auto sqrt = util::invvech(xm);
-    auto H = sqrt * sqrt;
+    auto sqrt = util::invvech_triangular(xm);
+    auto H = sqrt * sqrt.transpose();
 
-    UCVScorer& ucv_scorer = *reinterpret_cast<UCVScorer*>(my_func_data);
-    auto score = ucv_scorer.score_unconstrained(H);
+    UCVOptimInfo& optim_info = *reinterpret_cast<UCVOptimInfo*>(my_func_data);
+
+    auto det = std::exp(2 * sqrt.diagonal().array().log().sum());
+
+    // Avoid too small/large determinants returning the start score.
+    // Package ks uses 1e10 as constant.
+    if (det <= 0 || det < 1e-3 * optim_info.start_determinant || det > 1e3 * optim_info.start_determinant)
+        return optim_info.start_score + 10e-8;
+
+    auto score = optim_info.ucv_scorer.score_unconstrained(H);
+
+    // Avoid scores with too much difference.
+    if (std::abs(score) > 1e3 * std::abs(optim_info.start_score)) return optim_info.start_score + 10e-8;
 
     return score;
 }
@@ -429,13 +455,20 @@ double wrap_ucv_optim(unsigned n, const double* x, double*, void* my_func_data) 
 VectorXd UCV::estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
     NormalReferenceRule nr;
 
-    auto start_bandwidth = nr.estimate_diag_bandwidth(df, variables).cwiseSqrt().eval();
-
+    auto normal_bandwidth = nr.estimate_diag_bandwidth(df, variables);
     UCVScorer ucv_scorer(df, variables);
+    auto start_score = ucv_scorer.score_unconstrained(normal_bandwidth);
+    auto start_determinant = normal_bandwidth.prod();
 
-    nlopt::opt opt(nlopt::LN_SBPLX, start_bandwidth.rows());
-    opt.set_min_objective(wrap_ucv_diag_optim, &ucv_scorer);
-    // opt.set_ftol_rel(1e-6);
+    UCVOptimInfo optim_info{/*.ucv_scorer = */ ucv_scorer,
+                            /*.start_score = */ start_score,
+                            /*.start_determinant = */ start_determinant};
+
+    auto start_bandwidth = normal_bandwidth.cwiseSqrt().eval();
+
+    nlopt::opt opt(nlopt::LN_NELDERMEAD, start_bandwidth.rows());
+    opt.set_min_objective(wrap_ucv_diag_optim, &optim_info);
+    opt.set_ftol_rel(1e-4);
     opt.set_xtol_rel(1e-4);
     std::vector<double> x(start_bandwidth.rows());
     std::copy(start_bandwidth.data(), start_bandwidth.data() + start_bandwidth.rows(), x.data());
@@ -457,14 +490,19 @@ MatrixXd UCV::estimate_bandwidth(const DataFrame& df, const std::vector<std::str
 
     auto normal_bandwidth = nr.estimate_bandwidth(df, variables);
 
-    auto start_sqrt = util::sqrt_matrix(normal_bandwidth);
-    auto start_vech = util::vech(start_sqrt);
-
     UCVScorer ucv_scorer(df, variables);
+    auto start_score = ucv_scorer.score_unconstrained(normal_bandwidth);
+    auto start_determinant = normal_bandwidth.determinant();
+    UCVOptimInfo optim_info{/*.ucv_scorer = */ ucv_scorer,
+                            /*.start_score = */ start_score,
+                            /*.start_determinant = */ start_determinant};
 
-    nlopt::opt opt(nlopt::LN_SBPLX, start_vech.rows());
-    opt.set_min_objective(wrap_ucv_optim, &ucv_scorer);
-    // opt.set_ftol_rel(1e-6);
+    LLT<Eigen::Ref<MatrixXd>> start_sqrt(normal_bandwidth);
+    auto start_vech = util::vech(start_sqrt.matrixL());
+
+    nlopt::opt opt(nlopt::LN_NELDERMEAD, start_vech.rows());
+    opt.set_min_objective(wrap_ucv_optim, &optim_info);
+    opt.set_ftol_rel(1e-4);
     opt.set_xtol_rel(1e-4);
     std::vector<double> x(start_vech.rows());
     std::copy(start_vech.data(), start_vech.data() + start_vech.rows(), x.data());
@@ -478,8 +516,8 @@ MatrixXd UCV::estimate_bandwidth(const DataFrame& df, const std::vector<std::str
 
     std::copy(x.data(), x.data() + x.size(), start_vech.data());
 
-    auto sqrt = util::invvech(start_vech);
-    auto H = sqrt * sqrt;
+    auto sqrt = util::invvech_triangular(start_vech);
+    auto H = sqrt * sqrt.transpose();
 
     return H;
 }

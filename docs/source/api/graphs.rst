@@ -3,7 +3,19 @@
 Graph Module
 ************
 
-.. automodule:: pybnesian.graph
+PyBNesian includes different types of graphs. There are four types of graphs:
+
+- Undirected graphs.
+- Directed graphs.
+- Directed acyclic graphs (DAGs).
+- Partially directed graphs.
+
+Depending on the type of edges: directed edges (arcs) or undirected edges (edges).
+
+Each graph type has two variants:
+
+- Graphs. See `Graphs`_.
+- Conditional graphs. See `Conditional Graphs`_.
 
 Graphs
 ======
@@ -20,7 +32,7 @@ nodes, can lead to some indices being greater or equal to ``num_nodes()``:
 
 .. doctest::
 
-    >>> from pybnesian.graph import UndirectedGraph
+    >>> from pybnesian import UndirectedGraph
     >>> g = UndirectedGraph(["a", "b", "c", "d"])
     >>> g.index("a")
     0
@@ -47,7 +59,7 @@ one other node.
 
 .. doctest::
 
-    >>> from pybnesian.graph import UndirectedGraph
+    >>> from pybnesian import UndirectedGraph
     >>> g = UndirectedGraph(["a", "b", "c", "d"])
     >>> g.collapsed_index("a")
     0
@@ -66,17 +78,17 @@ one other node.
     0
     >>> assert all([g.collapsed_index(n) < g.num_nodes() for n in g.nodes()])
 
-.. autoclass:: pybnesian.graph.UndirectedGraph
+.. autoclass:: pybnesian.UndirectedGraph
     :members:
     :special-members: __init__, __iter__
-.. autoclass:: pybnesian.graph.DirectedGraph
+.. autoclass:: pybnesian.DirectedGraph
     :members:
     :special-members: __init__, __iter__
-.. autoclass:: pybnesian.graph.Dag
+.. autoclass:: pybnesian.Dag
     :show-inheritance:
     :members:
     :special-members: __init__, __iter__
-.. autoclass:: pybnesian.graph.PartiallyDirectedGraph
+.. autoclass:: pybnesian.PartiallyDirectedGraph
     :members:
     :special-members: __init__, __iter__
     
@@ -95,17 +107,17 @@ a collapsed index version for only interface nodes, ``interface_collapsed_index(
 ``joint_collapsed_index()``. Note that the collapsed index for each set of nodes is independent.
 
     
-.. autoclass:: pybnesian.graph.ConditionalUndirectedGraph
+.. autoclass:: pybnesian.ConditionalUndirectedGraph
     :members:
     :special-members: __init__, __iter__
-.. autoclass:: pybnesian.graph.ConditionalDirectedGraph
+.. autoclass:: pybnesian.ConditionalDirectedGraph
     :members:
     :special-members: __init__, __iter__
-.. autoclass:: pybnesian.graph.ConditionalDag
+.. autoclass:: pybnesian.ConditionalDag
     :show-inheritance:
     :members:
     :special-members: __init__, __iter__
-.. autoclass:: pybnesian.graph.ConditionalPartiallyDirectedGraph
+.. autoclass:: pybnesian.ConditionalPartiallyDirectedGraph
     :members:
     :special-members: __init__, __iter__
 

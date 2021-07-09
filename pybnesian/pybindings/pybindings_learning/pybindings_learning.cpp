@@ -9,13 +9,9 @@ void pybindings_operators(py::module& root);
 void pybindings_algorithms(py::module& root);
 
 void pybindings_learning(py::module& root) {
-    auto learning = root.def_submodule("learning", R"doc(The pybnesian.learning module implements different types to
-learn Bayesian networks from data. This includes the parameter learning and the structure learning.
-)doc");
-
-    pybindings_scores(learning);
-    pybindings_independence_tests(learning);
-    pybindings_parameters(learning);
-    pybindings_operators(learning);
-    pybindings_algorithms(learning);
+    pybindings_scores(root);
+    pybindings_independence_tests(root);
+    pybindings_parameters(root);
+    pybindings_operators(root);
+    pybindings_algorithms(root);
 }

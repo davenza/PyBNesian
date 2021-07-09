@@ -3,9 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
-from pybnesian.dataset import *
-from pybnesian.models import *
-from pybnesian.factors.continuous import *
+import pybnesian as pbn
+from pybnesian import GaussianNetwork, ConditionalGaussianNetwork, DynamicGaussianNetwork
 import util_test
 
 df = util_test.generate_normal_data(1000)
@@ -17,7 +16,7 @@ def test_create_dbn():
     assert gbn.markovian_order() == 2
     assert gbn.variables() == ["a", "b", "c", "d"]
     assert gbn.num_variables() == 4
-    assert gbn.type() == GaussianNetworkType()
+    assert gbn.type() == pbn.GaussianNetworkType()
 
     transition_nodes = [v + "_t_0" for v in variables]
     static_nodes = [v + "_t_" + str(m) for v in variables for m in range(1, 3)]
@@ -31,13 +30,13 @@ def test_create_dbn():
 
     gbn2 = DynamicGaussianNetwork(variables, 2, static_bn, transition_bn)
 
-    wrong_transition_bn = ConditionalDiscreteBN(transition_nodes, static_nodes)
+    wrong_transition_bn = pbn.ConditionalDiscreteBN(transition_nodes, static_nodes)
 
     with pytest.raises(ValueError) as ex:
         gbn3 = DynamicGaussianNetwork(variables, 2, static_bn, wrong_transition_bn)
     assert "Static and transition Bayesian networks do not have the same type" in str(ex.value)
 
-    wrong_static_bn = DiscreteBN(static_nodes)
+    wrong_static_bn = pbn.DiscreteBN(static_nodes)
     with pytest.raises(ValueError) as ex:
         gbn4 = DynamicGaussianNetwork(variables, 2, wrong_static_bn, wrong_transition_bn)
     assert "Bayesian networks are not Gaussian." in str(ex.value)
@@ -78,7 +77,7 @@ def test_fit_dbn():
     gbn.fit(df)
     assert gbn.fitted()
 
-    ddf = DynamicDataFrame(df, 2)
+    ddf = pbn.DynamicDataFrame(df, 2)
     gbn2 = DynamicGaussianNetwork(variables, 2)
     gbn2.static_bn().fit(ddf.static_df())
     assert not gbn2.fitted()

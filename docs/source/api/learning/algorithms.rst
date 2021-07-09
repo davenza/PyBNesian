@@ -1,44 +1,44 @@
 Learning Algorithms
 -------------------
 
-.. autofunction:: pybnesian.learning.algorithms.hc
+.. autofunction:: pybnesian.hc
 
 This classes implement many different learning structure algorithms.
 
-.. autoclass:: pybnesian.learning.algorithms.GreedyHillClimbing
+.. autoclass:: pybnesian.GreedyHillClimbing
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.learning.algorithms.PC
+.. autoclass:: pybnesian.PC
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.learning.algorithms.MMPC
+.. autoclass:: pybnesian.MMPC
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.learning.algorithms.MMHC
+.. autoclass:: pybnesian.MMHC
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.learning.algorithms.DMMHC
+.. autoclass:: pybnesian.DMMHC
     :members:
     :special-members: __init__
 
 Learning Algorithms Components
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: pybnesian.learning.algorithms.MeekRules
+.. autoclass:: pybnesian.MeekRules
     :members:
 
 Learning Callbacks
 ******************
 
-.. autoclass:: pybnesian.learning.algorithms.callbacks.Callback
+.. autoclass:: pybnesian.Callback
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.learning.algorithms.callbacks.SaveModel
+.. autoclass:: pybnesian.SaveModel
     :show-inheritance:
     :members:
     :special-members: __init__

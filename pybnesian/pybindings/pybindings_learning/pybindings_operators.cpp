@@ -491,9 +491,8 @@ private:
 };
 
 void pybindings_operators(py::module& root) {
-    auto operators = root.def_submodule("operators", "Learning operators submodule");
 
-    py::class_<Operator, PyOperator<>, std::shared_ptr<Operator>> op(operators, "Operator", R"doc(
+    py::class_<Operator, PyOperator<>, std::shared_ptr<Operator>> op(root, "Operator", R"doc(
 An operator is the representation of a change in a Bayesian network structure. Each operator has a delta score
 associated that measures the difference in score when the operator is applied to the Bayesian network.
 )doc");
@@ -543,14 +542,13 @@ the same hash value.**
                  py::arg("model"),
                  py::return_value_policy::take_ownership,
                  R"doc(
-opposite(self: pybnesian.learning.operators.Operator, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> Operator
+opposite(self: pybnesian.Operator, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> Operator
 
 Returns an operator that reverses this :class:`Operator` given the ``model``. For example:
 
 .. doctest::
 
-    >>> from pybnesian.learning.operators import AddArc, RemoveArc
-    >>> from pybnesian.models import GaussianNetwork
+    >>> from pybnesian import AddArc, RemoveArc, GaussianNetwork
     >>> gbn = GaussianNetwork(["a", "b"])
     >>> add = AddArc("a", "b", 1)
     >>> assert add.opposite(gbn) == RemoveArc("a", "b", -1)
@@ -565,7 +563,7 @@ Returns an operator that reverses this :class:`Operator` given the ``model``. Fo
                  py::overload_cast<const ConditionalBayesianNetworkBase&>(&Operator::nodes_changed, py::const_),
                  py::arg("model"),
                  R"doc(
-nodes_changed(self: pybnesian.learning.operators.Operator, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> List[str]
+nodes_changed(self: pybnesian.Operator, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> List[str]
 
 Gets the list of nodes whose local score changes when the operator is applied.
 
@@ -573,7 +571,8 @@ Gets the list of nodes whose local score changes when the operator is applied.
 :returns: List of nodes whose local score changes when the operator is applied.
 )doc");
     }
-    py::class_<ArcOperator, Operator, PyArcOperator<>, std::shared_ptr<ArcOperator>>(operators, "ArcOperator", R"doc(
+
+    py::class_<ArcOperator, Operator, PyArcOperator<>, std::shared_ptr<ArcOperator>>(root, "ArcOperator", R"doc(
 This class implements an operator that perfoms a change in a single arc.
 )doc")
         .def(
@@ -595,9 +594,9 @@ Gets the target of the :class:`ArcOperator`.
 :returns: Name of the target node.
 )doc");
 
-    register_ArcOperators(operators);
+    register_ArcOperators(root);
 
-    py::class_<ChangeNodeType, Operator, std::shared_ptr<ChangeNodeType>>(operators, "ChangeNodeType", R"doc(
+    py::class_<ChangeNodeType, Operator, std::shared_ptr<ChangeNodeType>>(root, "ChangeNodeType", R"doc(
 This operator changes the :class:`FactorType` of a node.
 )doc")
         .def(py::init<std::string, std::shared_ptr<FactorType>, double>(),
@@ -622,9 +621,9 @@ Gets the new :class:`FactorType` of the :class:`ChangeNodeType`.
 :returns: New :class:`FactorType` of the node.
 )doc");
 
-    register_OperatorTabuSet(operators);
+    register_OperatorTabuSet(root);
 
-    py::class_<LocalScoreCache, std::shared_ptr<LocalScoreCache>>(operators, "LocalScoreCache", R"doc(
+    py::class_<LocalScoreCache, std::shared_ptr<LocalScoreCache>>(root, "LocalScoreCache", R"doc(
 This class implements a cache for the local score of each node.
 )doc")
         .def(py::init<>(), R"doc(
@@ -639,13 +638,13 @@ Initializes a :class:`LocalScoreCache` for the given ``model``.
 Caches the local score for all the nodes.
 
 :param model: A Bayesian network model.
-:param score: A :class:`Score <pybnesian.learning.scores.Score>` object to calculate the score.
+:param score: A :class:`Score <pybnesian.Score>` object to calculate the score.
 )doc")
         .def("cache_vlocal_scores", &LocalScoreCache::cache_vlocal_scores, py::arg("model"), py::arg("score"), R"doc(
 Caches the validation local score for all the nodes.
 
 :param model: A Bayesian network model.
-:param score: A :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>` object to calculate the score.
+:param score: A :class:`ValidatedScore <pybnesian.ValidatedScore>` object to calculate the score.
 )doc")
         .def("update_local_score",
              &LocalScoreCache::update_local_score,
@@ -656,7 +655,7 @@ Caches the validation local score for all the nodes.
 Updates the local score of the ``node`` in the ``model``.
 
 :param model: A Bayesian network model.
-:param score: A :class:`Score <pybnesian.learning.scores.Score>` object to calculate the score.
+:param score: A :class:`Score <pybnesian.Score>` object to calculate the score.
 :param node: A node name.
 )doc")
         .def("update_vlocal_score",
@@ -668,7 +667,7 @@ Updates the local score of the ``node`` in the ``model``.
 Updates the validation local score of the ``node`` in the ``model``.
 
 :param model: A Bayesian network model.
-:param score: A :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>` object to calculate the score.
+:param score: A :class:`ValidatedScore <pybnesian.ValidatedScore>` object to calculate the score.
 :param node: A node name.
 )doc")
         .def("sum", &LocalScoreCache::sum, R"doc(
@@ -684,7 +683,7 @@ Returns the local score of the ``node`` in the ``model``.
 :returns: Local score of ``node`` in ``model``.
 )doc");
 
-    py::class_<OperatorSet, PyOperatorSet, std::shared_ptr<OperatorSet>>(operators, "OperatorSet", R"doc(
+    py::class_<OperatorSet, PyOperatorSet, std::shared_ptr<OperatorSet>>(root, "OperatorSet", R"doc(
 The :class:`OperatorSet` coordinates a set of operators. It caches/updates the score of each operator in the set and
 finds the operator with the best score.
 )doc")
@@ -715,7 +714,7 @@ Returns the current :class:`LocalScoreCache` of this :class:`OperatorSet`.
 Caches the delta score values of each operator in the set.
 
 :param model: Bayesian network model.
-:param score: The :class:`Score <pybnesian.learning.scores.Score>` object to cache the scores.
+:param score: The :class:`Score <pybnesian.Score>` object to cache the scores.
 )doc")
         .def(
             "find_max",
@@ -763,7 +762,7 @@ Updates the delta score values of the operators in the set after applying an ope
 ``changed_nodes`` determines the nodes whose local score has changed after applying the operator.
 
 :param model: Bayesian network model.
-:param score: The :class:`Score <pybnesian.learning.scores.Score>` object to cache the scores.
+:param score: The :class:`Score <pybnesian.Score>` object to cache the scores.
 :param changed_nodes: The nodes whose local score has changed.
 )doc")
         .def("set_arc_blacklist",
@@ -802,7 +801,7 @@ Marks the finalization of the algorithm. It clears the state of the object, so
 :func:`OperatorSet.cache_scores` can be called again.
 )doc");
 
-    py::class_<ArcOperatorSet, OperatorSet, std::shared_ptr<ArcOperatorSet>>(operators, "ArcOperatorSet", R"doc(
+    py::class_<ArcOperatorSet, OperatorSet, std::shared_ptr<ArcOperatorSet>>(root, "ArcOperatorSet", R"doc(
 This set of operators contains all the operators related with arc changes (:class:`AddArc`, :class:`RemoveArc`,
 :class:`FlipArc`)
 )doc")
@@ -819,7 +818,7 @@ Initializes an :class:`ArcOperatorSet` with optional sets of arc blacklists/whit
 )doc");
 
     py::class_<ChangeNodeTypeSet, OperatorSet, std::shared_ptr<ChangeNodeTypeSet>>(
-        operators, "ChangeNodeTypeSet", R"doc(
+        root, "ChangeNodeTypeSet", R"doc(
 This set of operators contains all the possible operators of type :class:`ChangeNodeType`.
 )doc")
         .def(py::init<FactorTypeVector, FactorTypeVector>(),
@@ -832,7 +831,7 @@ Initializes a :class:`ChangeNodeTypeSet` with blacklisted and whitelisted :class
 :param type_whitelist: The list of whitelisted :class:`FactorType`.
 )doc");
 
-    py::class_<OperatorPool, OperatorSet, std::shared_ptr<OperatorPool>>(operators, "OperatorPool", R"doc(
+    py::class_<OperatorPool, OperatorSet, std::shared_ptr<OperatorPool>>(root, "OperatorPool", R"doc(
 This set of operators can join a list of :class:`OperatorSet`, so that they can act as a single :class:`OperatorSet`.
 )doc")
         .def(py::init<std::vector<std::shared_ptr<OperatorSet>>>(), py::arg("opsets"), R"doc(

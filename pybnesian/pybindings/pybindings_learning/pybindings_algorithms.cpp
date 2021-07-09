@@ -29,11 +29,10 @@ public:
 };
 
 void pybindings_algorithms_callbacks(py::module& root) {
-    auto callbacks = root.def_submodule("callbacks", "Callbacks for GreedyHillClimbing");
 
-    py::class_<Callback, PyCallback, std::shared_ptr<Callback>>(callbacks, "Callback", R"doc(
+    py::class_<Callback, PyCallback, std::shared_ptr<Callback>>(root, "Callback", R"doc(
 A :class:`Callback` object is called after each iteration of a
-:class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.
+:class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 )doc")
         .def(py::init<>(), R"doc(
 Initializes a :class:`Callback`.
@@ -46,20 +45,20 @@ Initializes a :class:`Callback`.
              py::arg("iteration"),
              R"doc(
 This method is called after each iteration of
-:class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.
+:class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 
 :param model: The model in the current ``iteration`` of the
-              :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.
+              :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 :param operator: The last operator applied to the ``model``. It is ``None`` at the start and at the end of the
                  algorithm.
-:param score: The score used in the :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.
+:param score: The score used in the :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 :param iteration: Iteration number of the
-                  :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`. It is 0 at the start.
+                  :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`. It is 0 at the start.
 )doc");
 
-    py::class_<SaveModel, Callback, std::shared_ptr<SaveModel>>(callbacks, "SaveModel", R"doc(
-Saves the model on each iteration of :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`
-using :func:`BayesianNetworkBase.save() <pybnesian.models.BayesianNetworkBase.save>`. Each model is named after the
+    py::class_<SaveModel, Callback, std::shared_ptr<SaveModel>>(root, "SaveModel", R"doc(
+Saves the model on each iteration of :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`
+using :func:`BayesianNetworkBase.save() <pybnesian.BayesianNetworkBase.save>`. Each model is named after the
 iteration number.
 )doc")
         .def(py::init<const std::string&>(), py::arg("folder_name"), R"doc(
@@ -70,11 +69,10 @@ Initializes a :class:`SaveModel`. It saves all the models in the folder ``folder
 }
 
 void pybindings_algorithms(py::module& root) {
-    auto algorithms = root.def_submodule("algorithms", "Learning algorithms");
 
-    pybindings_algorithms_callbacks(algorithms);
+    pybindings_algorithms_callbacks(root);
 
-    algorithms.def("hc",
+    root.def("hc",
                    &learning::algorithms::hc,
                    py::arg("df"),
                    py::arg("bn_type") = nullptr,
@@ -101,32 +99,32 @@ Executes a greedy hill-climbing algorithm. This calls :func:`GreedyHillClimbing.
 :param start: Initial structure of the :class:`GreedyHillClimbing`. If ``None``, a new Bayesian network model is
               created.
 :param score: A string representing the score used to drive the search. The possible options are:
-              "bic" for :class:`BIC <pybnesian.learning.scores.BIC>`, "bge" for
-              :class:`BGe <pybnesian.learning.scores.BGe>`, "cv-lik" for
-              :class:`CVLikelihood <pybnesian.learning.scores.CVLikelihood>`, "holdout-lik" for
-              :class:`HoldoutLikelihood <pybnesian.learning.scores.HoldoutLikelihood>`, "validated-lik for
-              :class:`ValidatedLikelihood <pybnesian.learning.scores.ValidatedLikelihood>`.
+              "bic" for :class:`BIC <pybnesian.BIC>`, "bge" for
+              :class:`BGe <pybnesian.BGe>`, "cv-lik" for
+              :class:`CVLikelihood <pybnesian.CVLikelihood>`, "holdout-lik" for
+              :class:`HoldoutLikelihood <pybnesian.HoldoutLikelihood>`, "validated-lik for
+              :class:`ValidatedLikelihood <pybnesian.ValidatedLikelihood>`.
 :param operators: Set of operators in the search process.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs)
-:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.factors.FactorType>`).
+:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration.
 :param max_indegree: Maximum indegree allowed in the graph.
 :param max_iters: Maximum number of search iterations
 :param epsilon: Minimum delta score allowed for each operator. If the new operator is less than epsilon, the search
                 process is stopped.
 :param patience: The patience parameter (only used with
-                :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>`). See `patience`_.
+                :class:`ValidatedScore <pybnesian.ValidatedScore>`). See `patience`_.
 :param seed: Seed parameter of the score (if neeeded).
-:param num_folds: Number of folds for the :class:`CVLikelihood <pybnesian.learning.scores.CVLikelihood>` and
-                  :class:`ValidatedLikelihood <pybnesian.learning.scores.ValidatedLikelihood>` scores.
-:param test_holdout_ratio: Parameter for the :class:`HoldoutLikelihood <pybnesian.learning.scores.HoldoutLikelihood>`
-                           and :class:`ValidatedLikelihood <pybnesian.learning.scores.ValidatedLikelihood>` scores.
+:param num_folds: Number of folds for the :class:`CVLikelihood <pybnesian.CVLikelihood>` and
+                  :class:`ValidatedLikelihood <pybnesian.ValidatedLikelihood>` scores.
+:param test_holdout_ratio: Parameter for the :class:`HoldoutLikelihood <pybnesian.HoldoutLikelihood>`
+                           and :class:`ValidatedLikelihood <pybnesian.ValidatedLikelihood>` scores.
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
 :returns: The estimated Bayesian network structure.
 )doc");
 
-    py::class_<GreedyHillClimbing> hc(algorithms, "GreedyHillClimbing", R"doc(
+    py::class_<GreedyHillClimbing> hc(root, "GreedyHillClimbing", R"doc(
 This class implements a greedy hill-climbing algorithm. It finds the best structure applying small local changes
 iteratively. The best operator is found using a delta score.
 
@@ -134,11 +132,11 @@ iteratively. The best operator is found using a delta score.
 
 Patience parameter:
 
-When the score is a :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>`, a tabu set is used to improve the
+When the score is a :class:`ValidatedScore <pybnesian.ValidatedScore>`, a tabu set is used to improve the
 exploration during the search process if the score does not improve. This is because it is allowed to continue
 the search process even if the training delta score of the
-:class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>` is negative. The existence of the validation delta
-score in the :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>` can help to control the uncertainty of
+:class:`ValidatedScore <pybnesian.ValidatedScore>` is negative. The existence of the validation delta
+score in the :class:`ValidatedScore <pybnesian.ValidatedScore>` can help to control the uncertainty of
 the training score (the training delta score can be negative because it is a bad operator or because there is
 uncertainty in the data). Thus, only if both the training and validation delta scores are negative for ``patience``
 iterations, the search is stopped and the best found model is returned.
@@ -201,7 +199,7 @@ Initializes a :class:`GreedyHillClimbing`.
                  py::arg("patience") = 0,
                  py::arg("verbose") = 0,
                  R"doc(
-estimate(self: pybnesian.learning.algorithms.GreedyHillClimbing, operators: pybnesian.learning.operators.OperatorSet, score: pybnesian.learning.scores.Score, start: BayesianNetworkBase or ConditionalBayesianNetworkBase, arc_blacklist: List[Tuple[str, str]] = [], arc_whitelist: List[Tuple[str, str]] = [], type_whitelist: List[Tuple[str, pybnesian.factors.FactorType]] = [], callback: pybnesian.learning.algorithms.callbacks.Callback = None, max_indegree: int = 0, max_iters: int = 2147483647, epsilon: float = 0, patience: int = 0, verbose: int = 0) -> type[start]
+estimate(self: pybnesian.GreedyHillClimbing, operators: pybnesian.OperatorSet, score: pybnesian.Score, start: BayesianNetworkBase or ConditionalBayesianNetworkBase, arc_blacklist: List[Tuple[str, str]] = [], arc_whitelist: List[Tuple[str, str]] = [], type_whitelist: List[Tuple[str, pybnesian.FactorType]] = [], callback: pybnesian.Callback = None, max_indegree: int = 0, max_iters: int = 2147483647, epsilon: float = 0, patience: int = 0, verbose: int = 0) -> type[start]
 
 Estimates the structure of a Bayesian network. The estimated Bayesian network is of the same type as ``start``. The set
 of operators allowed in the search is ``operators``. The delta score of each operator is evaluated using the ``score``.
@@ -210,25 +208,25 @@ The initial structure of the algorithm is the model ``start``.
 There are many optional parameters that restricts to the learning process.
 
 :param operators: Set of operators in the search process.
-:param score: :class:`Score <pybnesian.learning.scores.Score>` that drives the search.
-:param start: Initial structure. A :class:`BayesianNetworkBase <pybnesian.models.BayesianNetworkBase>` or
-              :class:`ConditionalBayesianNetworkBase <pybnesian.models.ConditionalBayesianNetworkBase>`
+:param score: :class:`Score <pybnesian.Score>` that drives the search.
+:param start: Initial structure. A :class:`BayesianNetworkBase <pybnesian.BayesianNetworkBase>` or
+              :class:`ConditionalBayesianNetworkBase <pybnesian.ConditionalBayesianNetworkBase>`
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs)
-:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.factors.FactorType>`).
+:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration.
 :param max_indegree: Maximum indegree allowed in the graph.
 :param max_iters: Maximum number of search iterations
 :param epsilon: Minimum delta score allowed for each operator. If the new operator is less than epsilon, the search
                 process is stopped.
 :param patience: The patience parameter (only used with
-                :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>`). See `patience`_.
+                :class:`ValidatedScore <pybnesian.ValidatedScore>`). See `patience`_.
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
 :returns: The estimated Bayesian network structure of the same type as ``start``.
 )doc");
     }
 
-    py::class_<PC>(algorithms, "PC", R"doc(
+    py::class_<PC>(root, "PC", R"doc(
 This class implements the PC learning algorithm. The PC algorithm finds the best partially directed graph that expresses
 the conditional independences in the data.
 
@@ -257,10 +255,10 @@ Initializes a :class:`PC`.
              R"doc(
 Estimates the skeleton (the partially directed graph) using the PC algorithm.
 
-:param hypot_test: The :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` object used to
+:param hypot_test: The :class:`IndependenceTest <pybnesian.IndependenceTest>` object used to
                    execute the conditional independence tests.
 :param nodes: The list of nodes of the returned skeleton. If empty (the default value), the node names are extracted
-              from :func:`IndependenceTest.variable_names() <pybnesian.learning.independences.IndependenceTest.variable_names>`.
+              from :func:`IndependenceTest.variable_names() <pybnesian.IndependenceTest.variable_names>`.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs).
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
@@ -278,7 +276,7 @@ Estimates the skeleton (the partially directed graph) using the PC algorithm.
                          order-independent while applying v-structures (as in LCPC and LMPC in [pc-stable]_). Otherwise,
                          it does not return bi-directed arcs.
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
-:returns: A :class:`PartiallyDirectedGraph <pybnesian.graph.PartiallyDirectedGraph>` trained by PC that represents
+:returns: A :class:`PartiallyDirectedGraph <pybnesian.PartiallyDirectedGraph>` trained by PC that represents
           the conditional independences in ``hypot_test``.
 )doc")
         .def("estimate_conditional",
@@ -298,7 +296,7 @@ Estimates the skeleton (the partially directed graph) using the PC algorithm.
              R"doc(
 Estimates the conditional skeleton (the conditional partially directed graph) using the PC algorithm.
 
-:param hypot_test: The :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` object used to
+:param hypot_test: The :class:`IndependenceTest <pybnesian.IndependenceTest>` object used to
                    execute the conditional independence tests.
 :param nodes: The list of nodes of the returned skeleton.
 :param interface_nodes: The list of interface nodes of the returned skeleton.
@@ -319,11 +317,11 @@ Estimates the conditional skeleton (the conditional partially directed graph) us
                          order-independent while applying v-structures (as in LCPC and LMPC in [pc-stable]_). Otherwise,
                          it does not return bi-directed arcs.
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
-:returns: A :class:`ConditionalPartiallyDirectedGraph <pybnesian.graph.ConditionalPartiallyDirectedGraph>` trained by PC
+:returns: A :class:`ConditionalPartiallyDirectedGraph <pybnesian.ConditionalPartiallyDirectedGraph>` trained by PC
           that represents the conditional independences in ``hypot_test``.
 )doc");
 
-    py::class_<MeekRules> meek(algorithms, "MeekRules", R"doc(
+    py::class_<MeekRules> meek(root, "MeekRules", R"doc(
 This class implements the Meek rules [meek]_. These rules direct some edges in a partially directed graph to create an
 equivalence class of Bayesian networks.
 )doc");
@@ -338,7 +336,7 @@ equivalence class of Bayesian networks.
                 [](ConditionalPartiallyDirectedGraph& graph) { return MeekRules::rule1(graph); },
                 py::arg("graph"),
                 R"doc(
-rule1(graph: pybnesian.graph.PartiallyDirectedGraph or pybnesian.graph.ConditionalPartiallyDirectedGraph) -> bool
+rule1(graph: pybnesian.PartiallyDirectedGraph or pybnesian.ConditionalPartiallyDirectedGraph) -> bool
 
 Applies the rule 1 to ``graph``.
 
@@ -352,7 +350,7 @@ Applies the rule 1 to ``graph``.
                 [](ConditionalPartiallyDirectedGraph& graph) { return MeekRules::rule2(graph); },
                 py::arg("graph"),
                 R"doc(
-rule2(graph: pybnesian.graph.PartiallyDirectedGraph or pybnesian.graph.ConditionalPartiallyDirectedGraph) -> bool
+rule2(graph: pybnesian.PartiallyDirectedGraph or pybnesian.ConditionalPartiallyDirectedGraph) -> bool
 
 Applies the rule 2 to ``graph``.
 
@@ -366,7 +364,7 @@ Applies the rule 2 to ``graph``.
                 [](ConditionalPartiallyDirectedGraph& graph) { return MeekRules::rule3(graph); },
                 py::arg("graph"),
                 R"doc(
-rule3(graph: pybnesian.graph.PartiallyDirectedGraph or pybnesian.graph.ConditionalPartiallyDirectedGraph) -> bool
+rule3(graph: pybnesian.PartiallyDirectedGraph or pybnesian.ConditionalPartiallyDirectedGraph) -> bool
 
 Applies the rule 3 to ``graph``.
 
@@ -375,7 +373,7 @@ Applies the rule 3 to ``graph``.
 )doc");
     }
 
-    py::class_<MMPC>(algorithms, "MMPC", R"doc(
+    py::class_<MMPC>(root, "MMPC", R"doc(
 This class implements Max-Min Parent Children (MMPC) [mmhc]_. The MMPC algorithm finds the sets of parents and children
 of each node using a measure of association. With this estimate, it constructs a skeleton (an undirected graph).
 Then, this algorithm searches for v-structures as in :class:`PC`. The final product of this algorithm is a partially
@@ -402,10 +400,10 @@ Initializes a :class:`MMPC`.
              R"doc(
 Estimates the skeleton (the partially directed graph) using the MMPC algorithm.
 
-:param hypot_test: The :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` object used to
+:param hypot_test: The :class:`IndependenceTest <pybnesian.IndependenceTest>` object used to
                    execute the conditional independence tests.
 :param nodes: The list of nodes of the returned skeleton. If empty (the default value), the node names are extracted
-              from :func:`IndependenceTest.variable_names() <pybnesian.learning.independences.IndependenceTest.variable_names>`.
+              from :func:`IndependenceTest.variable_names() <pybnesian.IndependenceTest.variable_names>`.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs).
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
@@ -418,7 +416,7 @@ Estimates the skeleton (the partially directed graph) using the MMPC algorithm.
                          order-independent while applying v-structures (as in LCPC and LMPC in [pc-stable]_). Otherwise,
                          it does not return bi-directed arcs.
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
-:returns: A :class:`PartiallyDirectedGraph <pybnesian.graph.PartiallyDirectedGraph>` trained by MMPC.
+:returns: A :class:`PartiallyDirectedGraph <pybnesian.PartiallyDirectedGraph>` trained by MMPC.
 )doc")
         .def("estimate_conditional",
              &MMPC::estimate_conditional,
@@ -436,7 +434,7 @@ Estimates the skeleton (the partially directed graph) using the MMPC algorithm.
              R"doc(
 Estimates the conditional skeleton (the conditional partially directed graph) using the MMPC algorithm.
 
-:param hypot_test: The :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` object used to
+:param hypot_test: The :class:`IndependenceTest <pybnesian.IndependenceTest>` object used to
                    execute the conditional independence tests.
 :param nodes: The list of nodes of the returned skeleton.
 :param interface_nodes: The list of interface nodes of the returned skeleton.
@@ -452,10 +450,10 @@ Estimates the conditional skeleton (the conditional partially directed graph) us
                          order-independent while applying v-structures (as in LCPC and LMPC in [pc-stable]_). Otherwise,
                          it does not return bi-directed arcs.
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
-:returns: A :class:`PartiallyDirectedGraph <pybnesian.graph.PartiallyDirectedGraph>` trained by MMPC.
+:returns: A :class:`PartiallyDirectedGraph <pybnesian.PartiallyDirectedGraph>` trained by MMPC.
 )doc");
 
-    py::class_<MMHC>(algorithms, "MMHC", R"doc(
+    py::class_<MMHC>(root, "MMHC", R"doc(
 This class implements Max-Min Hill-Climbing (MMHC) [mmhc]_. The MMHC algorithm finds the sets of possible arcs using the
 :class:`MMPC` algorithm. Then, it trains the structure using a greedy hill-climbing algorithm
 (:class:`GreedyHillClimbing`) blacklisting all the possible arcs not found by MMPC.
@@ -484,12 +482,12 @@ This class implements Max-Min Hill-Climbing (MMHC) [mmhc]_. The MMHC algorithm f
 Estimates the structure of a Bayesian network. This implementation calls :class:`MMPC` and :class:`GreedyHillClimbing`
 with the set of parameters provided.
 
-:param hypot_test: The :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` object used to
+:param hypot_test: The :class:`IndependenceTest <pybnesian.IndependenceTest>` object used to
                    execute the conditional independence tests (for :class:`MMPC`).
 :param operators: Set of operators in the search process (for :class:`GreedyHillClimbing`).
-:param score: :class:`Score <pybnesian.learning.scores.Score>` that drives the search (for :class:`GreedyHillClimbing`).
+:param score: :class:`Score <pybnesian.Score>` that drives the search (for :class:`GreedyHillClimbing`).
 :param nodes: The list of nodes of the returned skeleton. If empty (the default value), the node names are extracted
-              from :func:`IndependenceTest.variable_names() <pybnesian.learning.independences.IndependenceTest.variable_names>`.
+              from :func:`IndependenceTest.variable_names() <pybnesian.IndependenceTest.variable_names>`.
 :param bn_type: A string representing the type of Bayesian network trained. The possible options are: "gbn" for Gaussian
                 networks, "spbn" for semiparametric Bayesian network, "kdebn" for KDE Bayesian networks and "discretebn"
                 for discrete Bayesian networks.
@@ -498,14 +496,14 @@ with the set of parameters provided.
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
                        blacklist.
 :param edge_whitelist: List of edge whitelist (forced edges).
-:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.factors.FactorType>`).
+:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration of :class:`GreedyHillClimbing`.
 :param max_indegree: Maximum indegree allowed in the graph (for :class:`GreedyHillClimbing`).
 :param max_iters: Maximum number of search iterations (for :class:`GreedyHillClimbing`).
 :param epsilon: Minimum delta score allowed for each operator. If the new operator is less than epsilon, the search
                 process is stopped (for :class:`GreedyHillClimbing`).
 :param patience: The patience parameter (only used with
-                :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>`). See `patience`_ (for
+                :class:`ValidatedScore <pybnesian.ValidatedScore>`). See `patience`_ (for
                 :class:`GreedyHillClimbing`).
 :param alpha: The type I error of each independence test (for :class:`MMPC`).
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
@@ -535,10 +533,10 @@ with the set of parameters provided.
 Estimates the structure of a conditional Bayesian network. This implementation calls :class:`MMPC` and
 :class:`GreedyHillClimbing` with the set of parameters provided.
 
-:param hypot_test: The :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` object used to
+:param hypot_test: The :class:`IndependenceTest <pybnesian.IndependenceTest>` object used to
                    execute the conditional independence tests (for :class:`MMPC`).
 :param operators: Set of operators in the search process (for :class:`GreedyHillClimbing`).
-:param score: :class:`Score <pybnesian.learning.scores.Score>` that drives the search (for :class:`GreedyHillClimbing`).
+:param score: :class:`Score <pybnesian.Score>` that drives the search (for :class:`GreedyHillClimbing`).
 :param nodes: The list of nodes of the returned skeleton.
 :param interface_nodes: The list of interface nodes of the returned skeleton.
 :param bn_type: A string representing the type of Bayesian network trained. The possible options are: "gbn" for Gaussian
@@ -549,21 +547,21 @@ Estimates the structure of a conditional Bayesian network. This implementation c
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
                        blacklist.
 :param edge_whitelist: List of edge whitelist (forced edges).
-:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.factors.FactorType>`).
+:param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration of :class:`GreedyHillClimbing`.
 :param max_indegree: Maximum indegree allowed in the graph (for :class:`GreedyHillClimbing`).
 :param max_iters: Maximum number of search iterations (for :class:`GreedyHillClimbing`).
 :param epsilon: Minimum delta score allowed for each operator. If the new operator is less than epsilon, the search
                 process is stopped (for :class:`GreedyHillClimbing`).
 :param patience: The patience parameter (only used with
-                :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>`). See `patience`_ (for
+                :class:`ValidatedScore <pybnesian.ValidatedScore>`). See `patience`_ (for
                 :class:`GreedyHillClimbing`).
 :param alpha: The type I error of each independence test (for :class:`MMPC`).
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.
 :returns: The conditional Bayesian network structure learned by MMHC.
 )doc");
 
-    py::class_<DMMHC>(algorithms, "DMMHC", R"doc(
+    py::class_<DMMHC>(root, "DMMHC", R"doc(
 This class implements the Dynamic Max-Min Hill-Climbing (DMMHC) [dmmhc]_. This algorithm uses the :class:`MMHC` to
 train the static and transition components of the dynamic Bayesian network.
 )doc")
@@ -589,13 +587,13 @@ Estimates a dynamic Bayesian network. This implementation uses :class:`MMHC` to 
 Bayesian networks. This set of parameters are provided to the functions :func:`MMHC.estimate` and
 :func:`MMHC.estimate_conditional`.
 
-:param hypot_test: The :class:`DynamicIndependenceTest <pybnesian.learning.independences.DynamicIndependenceTest>`
+:param hypot_test: The :class:`DynamicIndependenceTest <pybnesian.DynamicIndependenceTest>`
                    object used to execute the conditional independence tests (for :class:`MMPC`).
 :param operators: Set of operators in the search process (for :class:`GreedyHillClimbing`).
-:param score: :class:`DynamicScore <pybnesian.learning.scores.DynamicScore>` that drives the search
+:param score: :class:`DynamicScore <pybnesian.DynamicScore>` that drives the search
               (for :class:`GreedyHillClimbing`).
 :param variables: The list of variables of the dynamic Bayesian network. If empty (the default value), the variable
-                  names are extracted from :func:`DynamicIndependenceTest.variable_names() <pybnesian.learning.independences.DynamicIndependenceTest.variable_names>`.
+                  names are extracted from :func:`DynamicIndependenceTest.variable_names() <pybnesian.DynamicIndependenceTest.variable_names>`.
 :param bn_type: A string representing the type of Bayesian network trained. The possible options are: "gbn" for Gaussian
                 networks, "spbn" for semiparametric Bayesian network, "kdebn" for KDE Bayesian networks and "discretebn"
                 for discrete Bayesian networks.
@@ -609,7 +607,7 @@ Bayesian networks. This set of parameters are provided to the functions :func:`M
 :param epsilon: Minimum delta score allowed for each operator. If the new operator is less than epsilon, the search
                 process is stopped (for :class:`GreedyHillClimbing`).
 :param patience: The patience parameter (only used with
-                :class:`ValidatedScore <pybnesian.learning.scors.ValidatedScore>`). See `patience`_ (for
+                :class:`ValidatedScore <pybnesian.ValidatedScore>`). See `patience`_ (for
                 :class:`GreedyHillClimbing`).
 :param alpha: The type I error of each independence test (for :class:`MMPC`).
 :param verbose: If True the progress will be displayed, otherwise nothing will be displayed.

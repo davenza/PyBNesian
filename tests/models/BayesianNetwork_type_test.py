@@ -1,8 +1,6 @@
-from pybnesian.models import *
-from pybnesian.factors.continuous import *
-from pybnesian.learning.algorithms import *
-from pybnesian.learning.scores import *
-from pybnesian.learning.operators import *
+import pybnesian as pbn
+from pybnesian import BayesianNetworkType, BayesianNetwork, ConditionalBayesianNetwork, GaussianNetwork,\
+    SemiparametricBN, KDENetwork, DiscreteBN
 import util_test
 
 def test_bn_type():
@@ -10,7 +8,7 @@ def test_bn_type():
     g2 = GaussianNetwork(["a", "b", "c", "d"])
     g3 = GaussianNetwork(["a", "b", "c", "d"])
 
-    assert g1.type() == GaussianNetworkType()
+    assert g1.type() == pbn.GaussianNetworkType()
     assert g1.type() == g2.type()
     assert g1.type() == g3.type()
     assert g2.type() == g3.type()
@@ -19,7 +17,7 @@ def test_bn_type():
     s2 = SemiparametricBN(["a", "b", "c", "d"])
     s3 = SemiparametricBN(["a", "b", "c", "d"])
 
-    assert s1.type() == SemiparametricBNType()
+    assert s1.type() == pbn.SemiparametricBNType()
     assert s1.type() == s2.type()
     assert s1.type() == s3.type()
     assert s2.type() == s3.type()
@@ -28,7 +26,7 @@ def test_bn_type():
     k2 = KDENetwork(["a", "b", "c", "d"])
     k3 = KDENetwork(["a", "b", "c", "d"])
 
-    assert k1.type() == KDENetworkType()
+    assert k1.type() == pbn.KDENetworkType()
     assert k1.type() == k2.type()
     assert k1.type() == k3.type()
     assert k2.type() == k3.type()
@@ -37,7 +35,7 @@ def test_bn_type():
     d2 = DiscreteBN(["a", "b", "c", "d"])
     d3 = DiscreteBN(["a", "b", "c", "d"])
 
-    assert d1.type() == DiscreteBNType()
+    assert d1.type() == pbn.DiscreteBNType()
     assert d1.type() == d2.type()
     assert d1.type() == d3.type()
     assert d2.type() == d3.type()
@@ -98,7 +96,7 @@ class MyRestrictedGaussianNetworkType(BayesianNetworkType):
         return True
 
     def default_node_type(self):
-        return LinearGaussianCPDType()
+        return pbn.LinearGaussianCPDType()
 
     def can_have_arc(self, model, source, target):
         return source == "a"
@@ -137,12 +135,12 @@ def test_new_specific_bn_type():
     assert sp2.arcs() == [("a", "b")]
 
     df = util_test.generate_normal_data_indep(1000)
-    bic = BIC(df)
+    bic = pbn.BIC(df)
 
     start = SpecificNetwork(["a", "b", "c", "d"])
 
-    hc = GreedyHillClimbing()
-    estimated = hc.estimate(ArcOperatorSet(), bic, start)
+    hc = pbn.GreedyHillClimbing()
+    estimated = hc.estimate(pbn.ArcOperatorSet(), bic, start)
     assert estimated.type() == start.type()
     assert all([s == "a" for s, t in estimated.arcs()])
 
@@ -167,7 +165,7 @@ def test_new_specific_bn_type():
 
     cstart = ConditionalSpecificNetwork(["a", "c"], ["b", "d"])
 
-    hc = GreedyHillClimbing()
-    cestimated = hc.estimate(ArcOperatorSet(), bic, cstart)
+    hc = pbn.GreedyHillClimbing()
+    cestimated = hc.estimate(pbn.ArcOperatorSet(), bic, cstart)
     assert cestimated.type() == cstart.type()
     assert all([s == "a" for s, t in cestimated.arcs()])

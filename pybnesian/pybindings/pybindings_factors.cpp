@@ -3,12 +3,6 @@
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
-#include <kde/KDE.hpp>
-#include <kde/ProductKDE.hpp>
-#include <kde/BandwidthEstimator.hpp>
-#include <kde/ScottsBandwidth.hpp>
-#include <kde/NormalReferenceRule.hpp>
-#include <kde/UCV.hpp>
 #include <factors/factors.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
@@ -21,100 +15,13 @@
 namespace py = pybind11;
 
 using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::CLinearGaussianCPD,
-    factors::continuous::DCKDE, factors::continuous::CKDE;
+    factors::continuous::DCKDE, factors::continuous::CKDE, factors::discrete::DiscreteFactor;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 
-using kde::KDE, kde::ProductKDE, kde::BandwidthEstimator, kde::ScottsBandwidth, kde::NormalReferenceRule, kde::UCV,
-    kde::UCVScorer;
-
-using factors::discrete::DiscreteFactor;
-
 using factors::Assignment, factors::AssignmentValue, factors::AssignmentHash;
-
 using util::random_seed_arg;
-
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
-
-class PyBandwidthEstimator : public BandwidthEstimator {
-public:
-    bool is_python_derived() const override { return true; }
-
-    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
-        // PYBIND11_OVERRIDE_PURE(VectorXd, BandwidthEstimator, estimate_diag_bandwidth, df, variables);
-        pybind11::gil_scoped_acquire gil;
-        pybind11::function override =
-            pybind11::get_override(static_cast<const BandwidthEstimator*>(this), "estimate_diag_bandwidth");
-
-        if (override) {
-            auto o = override(df, variables);
-
-            auto m = o.cast<VectorXd>();
-
-            if (static_cast<size_t>(m.rows()) != variables.size())
-                throw std::invalid_argument(
-                    "BandwidthEstimator::estimate_diag_bandwidth matrix must return a vector with shape "
-                    "(" +
-                    std::to_string(variables.size()) + ")");
-
-            return m;
-        }
-
-        py::pybind11_fail("Tried to call pure virtual function \"BandwidthEstimator::estimate_diag_bandwidth\"");
-    }
-
-    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
-        // PYBIND11_OVERRIDE_PURE(MatrixXd, BandwidthEstimator, estimate_bandwidth, df, variables);
-        pybind11::gil_scoped_acquire gil;
-        pybind11::function override =
-            pybind11::get_override(static_cast<const BandwidthEstimator*>(this), "estimate_bandwidth");
-
-        if (override) {
-            auto o = override(df, variables);
-
-            auto m = o.cast<MatrixXd>();
-
-            if (m.rows() != m.cols() || static_cast<size_t>(m.rows()) != variables.size())
-                throw std::invalid_argument(
-                    "BandwidthEstimator::estimate_bandwidth matrix must return an square matrix with shape "
-                    "(" +
-                    std::to_string(variables.size()) + ", " + std::to_string(variables.size()) + ")");
-
-            return m;
-        }
-
-        py::pybind11_fail("Tried to call pure virtual function \"BandwidthEstimator::estimate_bandwidth\"");
-    }
-
-    py::tuple __getstate__() const override {
-        py::gil_scoped_acquire gil;
-        py::function override = py::get_override(static_cast<const BandwidthEstimator*>(this), "__getstate_extra__");
-        if (override) {
-            return py::make_tuple(true, override());
-        } else {
-            return py::make_tuple(false, py::make_tuple());
-        }
-    }
-
-    static void __setstate__(py::object& self, py::tuple& t) {
-        // Call trampoline constructor
-        py::gil_scoped_acquire gil;
-        auto pyBandwidthEstimator = py::type::of<BandwidthEstimator>();
-        pyBandwidthEstimator.attr("__init__")(self);
-
-        auto ptr = self.cast<const BandwidthEstimator*>();
-
-        auto extra_info = t[0].cast<bool>();
-        if (extra_info) {
-            py::function override = py::get_override(ptr, "__setstate_extra__");
-            if (override) {
-                override(t[1]);
-            } else {
-                py::pybind11_fail("Tried to call function \"BandwidthEstimator::__setstate_extra__\"");
-            }
-        }
-    }
-};
 
 class PyFactorType : public FactorType {
 public:
@@ -310,15 +217,11 @@ private:
 };
 
 void pybindings_factors(py::module& root) {
-    auto factors = root.def_submodule("factors", R"doc(The pybnesian.factors implements different types of factors.
-The factors are usually represented as conditional probability functions and are a component of a Bayesian network.
-)doc");
-
-    py::class_<FactorType, PyFactorType, std::shared_ptr<FactorType>> factor_type(factors, "FactorType", R"doc(
+    py::class_<FactorType, PyFactorType, std::shared_ptr<FactorType>> factor_type(root, "FactorType", R"doc(
 A representation of a :class:`Factor` type.
 )doc");
 
-    py::class_<Factor, PyFactor, std::shared_ptr<Factor>> factor(factors, "Factor");
+    py::class_<Factor, PyFactor, std::shared_ptr<Factor>> factor(root, "Factor");
 
     factor_type
         .def(py::init<>(), R"doc(Initializes a new :class:`FactorType`)doc")
@@ -360,7 +263,7 @@ A representation of a :class:`Factor` type.
                  py::arg("variable"),
                  py::arg("evidence"),
                  R"doc(
-new_factor(self: pybnesian.factors.FactorType, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> pybnesian.factors.Factor
+new_factor(self: pybnesian.FactorType, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> pybnesian.Factor
 
 Create a new corresponding :class:`Factor` for a ``model`` with the given ``variable`` and ``evidence``.
 
@@ -450,7 +353,7 @@ Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. 
             py::arg("seed") = std::nullopt,
             R"doc(
 Samples ``n`` values from this :class:`Factor`. This method returns a :class:`pyarrow.Array` with ``n`` values with
-the same type returned by :func:``Factor.data_type``.
+the same type returned by :func:`Factor.data_type`.
 
 If this :class:`Factor` has evidence variables, the DataFrame ``evidence_values`` contains ``n`` instances for each
 evidence variable. Each sampled instance must be conditioned on ``evidence_values``.
@@ -469,9 +372,7 @@ Saves the :class:`Factor` in a pickle file with the given name.
         .def("__getstate__", [](const Factor& self) { return self.__getstate__(); })
         .def("__setstate__", [](py::object& self, py::tuple& t) { PyFactor::__setstate__(self, t); });
 
-    auto continuous = factors.def_submodule("continuous");
-
-    py::class_<UnknownFactorType, FactorType, std::shared_ptr<UnknownFactorType>>(factors, "UnknownFactorType", R"doc(
+    py::class_<UnknownFactorType, FactorType, std::shared_ptr<UnknownFactorType>>(root, "UnknownFactorType", R"doc(
 :class:`UnknownFactorType` is the representation of an unknown :class:`FactorType`. This factor type is assigned by
 default to each node in an heterogeneous Bayesian network.
 )doc")
@@ -482,7 +383,7 @@ Instantiates an :class:`UnknownFactorType`.
                         [](py::tuple&) { return UnknownFactorType::get(); }));
 
     py::class_<LinearGaussianCPDType, FactorType, std::shared_ptr<LinearGaussianCPDType>>(
-        continuous, "LinearGaussianCPDType", R"doc(
+        root, "LinearGaussianCPDType", R"doc(
 :class:`LinearGaussianCPDType` is the corresponding CPD type of :class:`LinearGaussianCPD`.
 )doc")
         .def(py::init(&LinearGaussianCPDType::get), R"doc(
@@ -491,7 +392,7 @@ Instantiates a :class:`LinearGaussianCPDType`.
         .def(py::pickle([](const LinearGaussianCPDType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return LinearGaussianCPDType::get(); }));
 
-    py::class_<LinearGaussianCPD, Factor, std::shared_ptr<LinearGaussianCPD>>(continuous, "LinearGaussianCPD", R"doc(
+    py::class_<LinearGaussianCPD, Factor, std::shared_ptr<LinearGaussianCPD>>(root, "LinearGaussianCPD", R"doc(
 This is a linear Gaussian CPD:
 
 .. math::
@@ -510,7 +411,7 @@ It is parametrized by the following attributes:
 
 .. doctest::
 
-    >>> from pybnesian.factors.continuous import LinearGaussianCPD
+    >>> from pybnesian import LinearGaussianCPD
     >>> cpd = LinearGaussianCPD("a", ["b"])
     >>> assert not cpd.fitted()
     >>> cpd.beta
@@ -572,267 +473,7 @@ Returns the cumulative distribution function values of each instance in the Data
         .def(py::pickle([](const LinearGaussianCPD& self) { return self.__getstate__(); },
                         [](py::tuple t) { return LinearGaussianCPD::__setstate__(t); }));
 
-    py::class_<BandwidthEstimator, PyBandwidthEstimator, std::shared_ptr<BandwidthEstimator>>(
-        continuous, "BandwidthEstimator", R"doc(
-A :class:`BandwidthEstimator` estimates the bandwidth of a kernel density estimation (KDE) model.
-)doc")
-        .def(py::init<>(), R"doc(
-Initializes a :class:`BandwidthEstimator`.
-)doc")
-        .def("estimate_diag_bandwidth",
-             &BandwidthEstimator::estimate_diag_bandwidth,
-             py::arg("df"),
-             py::arg("variables"),
-             R"doc(
-Estimates the bandwidth vector of a set of variables for a :class:`ProductKDE` with a given data ``df``.
-
-:param df: DataFrame to estimate the bandwidth.
-:param variables: A list of variables.
-:returns: A numpy vector of floats. The i-th entry is the bandwidth :math:`h_{i}^{2}` for the ``variables[i]``.
-)doc")
-        .def("estimate_bandwidth",
-             &BandwidthEstimator::estimate_bandwidth,
-             py::arg("df"),
-             py::arg("variables"),
-             R"doc(
-Estimates the bandwidth of a set of variables for a :class:`KDE` with a given data ``df``.
-
-:param df: DataFrame to estimate the bandwidth.
-:param variables: A list of variables.
-:returns: A float or numpy matrix of floats representing the bandwidth matrix.
-)doc")
-        .def("__getstate__", [](const BandwidthEstimator& self) { return self.__getstate__(); })
-        // Setstate for pyderived type
-        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthEstimator::__setstate__(self, t); });
-
-    py::class_<ScottsBandwidth, BandwidthEstimator, std::shared_ptr<ScottsBandwidth>>(
-        continuous, "ScottsBandwidth", R"doc(
-Estimates the bandwidth using the Scott's rule [Scott]_:
-
-.. math::
-
-    \hat{h}_{i} = \hat{\sigma}_{i}\cdot N^{-1 / (d + 4)}.
-
-This is a simplification of the normal reference rule.
-)doc")
-        .def(py::init<>(), R"doc(
-Initializes a :class:`ScottsBandwidth`.
-)doc")
-        .def(py::pickle([](const ScottsBandwidth& self) { return self.__getstate__(); },
-                        [](py::tuple&) { return std::make_shared<ScottsBandwidth>(); }));
-
-    py::class_<NormalReferenceRule, BandwidthEstimator, std::shared_ptr<NormalReferenceRule>>(continuous,
-                                                                                              "NormalReferenceRule",
-                                                                                              R"doc(
-Estimates the bandwidth using the normal reference rule:
-
-.. math::
-
-    \hat{h}_{i} = \left(\frac{4}{d + 2}\right)^{1 / (d + 4)}\hat{\sigma}_{i}\cdot N^{-1 / (d + 4)}.
-
-)doc")
-        .def(py::init<>(), R"doc(
-Initializes a :class:`NormalReferenceRule`.
-)doc")
-        .def(py::pickle([](const NormalReferenceRule& self) { return self.__getstate__(); },
-                        [](py::tuple&) { return std::make_shared<NormalReferenceRule>(); }));
-
-    py::class_<UCVScorer>(continuous, "UCVScorer")
-        .def(py::init<const DataFrame&, const std::vector<std::string>&>())
-        .def("score_diagonal", &UCVScorer::score_diagonal)
-        .def("score_unconstrained", &UCVScorer::score_unconstrained);
-
-    py::class_<UCV, BandwidthEstimator, std::shared_ptr<UCV>>(continuous, "UCV")
-        .def(py::init<>(), R"doc(
-Initializes a :class:`UCV`.
-)doc")
-        .def(py::pickle([](const UCV& self) { return self.__getstate__(); },
-                        [](py::tuple&) { return std::make_shared<UCV>(); }));
-
-    py::class_<KDE>(continuous, "KDE", R"doc(
-This class implements Kernel Density Estimation (KDE) for a set of variables:
-
-.. math::
-
-    \hat{f}(\text{variables}) = \frac{1}{N\lvert\mathbf{H} \rvert} \sum_{i=1}^{N}
-    K(\mathbf{H}^{-1}(\text{variables} - \mathbf{t}_{i}))
-
-where :math:`N` is the number of training instances, :math:`K()` is the multivariate Gaussian kernel function,
-:math:`\mathbf{t}_{i}` is the :math:`i`-th training instance, and :math:`\mathbf{H}` is the bandwidth matrix.
-)doc")
-        .def(py::init<std::vector<std::string>>(), py::arg("variables"), R"doc(
-Initializes a KDE with the given ``variables``. It uses the :class:`NormalReferenceRule` as the default bandwidth
-selector.
-
-:param variables: List of variable names.
-)doc")
-        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
-                 return KDE(variables, BandwidthEstimator::keep_python_alive(bandwidth_selector));
-             }),
-             py::arg("variables"),
-             py::arg("bandwidth_selector"),
-             R"doc(
-Initializes a KDE with the given ``variables`` and ``bandwidth_selector`` procedure to fit the bandwidth.
-
-:param variables: List of variable names.
-:param bandwidth_selector: Procedure to fit the bandwidth.
-)doc")
-        .def("variables", &KDE::variables, R"doc(
-Gets the variable names:
-
-:returns: List of variable names.
-)doc")
-        .def("num_instances", &KDE::num_instances, R"doc(
-Gets the number of training instances (:math:`N`).
-
-:returns: Number of training instances.
-)doc")
-        .def("num_variables", &KDE::num_variables, R"doc(
-Gets the number of variables.
-
-:returns: Number of variables.
-)doc")
-        .def_property("bandwidth", &KDE::bandwidth, &KDE::setBandwidth, R"doc(
-Bandwidth matrix (:math:`\mathbf{H}`)
-
-)doc")
-        .def("dataset", &KDE::training_data, R"doc(
-Gets the training dataset for this KDE (the :math:`\mathbf{t}_{i}` instances).
-
-:returns: Training instance.
-)doc")
-        .def("fitted", &KDE::fitted, R"doc(
-Checks whether the model is fitted.
-
-:returns: True if the model is fitted, False otherwise.
-)doc")
-        .def("data_type", &KDE::data_type, R"doc(
-Returns the :class:`pyarrow.DataType` that represents the type of data handled by the :class:`KDE`.
-
-It can return :func:`pyarrow.float64` or :func:`pyarrow.float32`.
-
-:returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`KDE`.
-)doc")
-        .def("fit", (void (KDE::*)(const DataFrame&)) & KDE::fit, py::arg("df"), R"doc(
-Fits the :class:`KDE` with the data in ``df``. It estimates the bandwidth :math:`\mathbf{H}` automatically using the
-provided bandwidth selector.
-
-:param df: DataFrame to fit the :class:`KDE`.
-)doc")
-        .def("logl", &KDE::logl, py::return_value_policy::take_ownership, py::arg("df"), R"doc(
-Returns the log-likelihood of each instance in the DataFrame ``df``.
-
-:param df: DataFrame to compute the log-likelihood.
-:returns: A :class:`numpy.ndarray` vector with dtype :class:`numpy.float64`, where the i-th value is the log-likelihod
-          of the i-th instance of ``df``.
-)doc")
-        .def("slogl", &KDE::slogl, py::arg("df"), R"doc(
-Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. That is, the sum of the result of
-:func:`KDE.logl`.
-
-:param df: DataFrame to compute the sum of the log-likelihood.
-:returns: The sum of log-likelihood for DataFrame ``df``.
-)doc")
-        .def("save", &KDE::save, py::arg("filename"), R"doc(
-Saves the :class:`KDE` in a pickle file with the given name.
-
-:param filename: File name of the saved graph.
-)doc")
-        .def(py::pickle([](const KDE& self) { return self.__getstate__(); },
-                        [](py::tuple t) { return KDE::__setstate__(t); }));
-
-    py::class_<ProductKDE>(continuous, "ProductKDE", R"doc(
-This class implements a product Kernel Density Estimation (KDE) for a set of variables:
-
-.. math::
-
-    \hat{f}(x_{1}, \ldots, x_{d}) = \frac{1}{N\cdot h_{1}\cdot\ldots\cdot h_{d}} \sum_{i=1}^{N}
-    \prod_{j=1}^{d} K\left(\frac{(x_{j} - t_{ji})}{h_{j}}\right)
-
-where :math:`N` is the number of training instances, :math:`d` is the dimensionality of the product KDE, :math:`K()` is
-the multivariate Gaussian kernel function, :math:`t_{ji}` is the value of the :math:`j`-th variable in the
-:math:`i`-th training instance, and :math:`h_{j}` is the bandwidth parameter for the :math:`j`-th variable.
-)doc")
-        .def(py::init<std::vector<std::string>>(), py::arg("variables"), R"doc(
-Initializes a ProductKDE with the given ``variables``.
-
-:param variables: List of variable names.
-)doc")
-        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
-                 return ProductKDE(variables, BandwidthEstimator::keep_python_alive(bandwidth_selector));
-             }),
-             py::arg("variables"),
-             py::arg("bandwidth_selector"),
-             R"doc(
-Initializes a ProductKDE with the given ``variables`` and ``bandwidth_selector`` procedure to fit the bandwidth.
-
-:param variables: List of variable names.
-:param bandwidth_selector: Procedure to fit the bandwidth.
-)doc")
-        .def("variables", &ProductKDE::variables, R"doc(
-Gets the variable names:
-
-:returns: List of variable names.
-)doc")
-        .def("num_instances", &ProductKDE::num_instances, R"doc(
-Gets the number of training instances (:math:`N`).
-
-:returns: Number of training instances.
-)doc")
-        .def("num_variables", &ProductKDE::num_variables, R"doc(
-Gets the number of variables.
-
-:returns: Number of variables.
-)doc")
-        .def_property("bandwidth", &ProductKDE::bandwidth, &ProductKDE::setBandwidth, R"doc(
-Vector of bandwidth values (:math:`h_{j}^{2}`).
-)doc")
-        .def("dataset", &ProductKDE::training_data, R"doc(
-Gets the training dataset for this ProductKDE (the :math:`\mathbf{t}_{i}` instances).
-
-:returns: Training instance.
-)doc")
-        .def("fitted", &ProductKDE::fitted, R"doc(
-Checks whether the model is fitted.
-
-:returns: True if the model is fitted, False otherwise.
-)doc")
-        .def("data_type", &ProductKDE::data_type, R"doc(
-Returns the :class:`pyarrow.DataType` that represents the type of data handled by the :class:`ProductKDE`.
-
-It can return :func:`pyarrow.float64` or :func:`pyarrow.float32`.
-
-:returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`ProductKDE`.
-)doc")
-        .def("fit", (void (ProductKDE::*)(const DataFrame&)) & ProductKDE::fit, py::arg("df"), R"doc(
-Fits the :class:`ProductKDE` with the data in ``df``. It estimates the bandwidth vector :math:`h_{j}` automatically
-using the provided bandwidth selector.
-
-:param df: DataFrame to fit the :class:`ProductKDE`.
-)doc")
-        .def("logl", &ProductKDE::logl, py::return_value_policy::take_ownership, py::arg("df"), R"doc(
-Returns the log-likelihood of each instance in the DataFrame ``df``.
-
-:param df: DataFrame to compute the log-likelihood.
-:returns: A :class:`numpy.ndarray` vector with dtype :class:`numpy.float64`, where the i-th value is the log-likelihod
-          of the i-th instance of ``df``.
-)doc")
-        .def("slogl", &ProductKDE::slogl, py::arg("df"), R"doc(
-Returns the sum of the log-likelihood of each instance in the DataFrame ``df``. That is, the sum of the result of
-:func:`ProductKDE.logl`.
-
-:param df: DataFrame to compute the sum of the log-likelihood.
-:returns: The sum of log-likelihood for DataFrame ``df``.
-)doc")
-        .def("save", &ProductKDE::save, py::arg("filename"), R"doc(
-Saves the :class:`ProductKDE` in a pickle file with the given name.
-
-:param filename: File name of the saved graph.
-)doc")
-        .def(py::pickle([](const ProductKDE& self) { return self.__getstate__(); },
-                        [](py::tuple t) { return ProductKDE::__setstate__(t); }));
-
-    py::class_<CKDEType, FactorType, std::shared_ptr<CKDEType>>(continuous, "CKDEType", R"doc(
+    py::class_<CKDEType, FactorType, std::shared_ptr<CKDEType>>(root, "CKDEType", R"doc(
 :class:`CKDEType` is the corresponding CPD type of :class:`CKDE`.
 )doc")
         .def(py::init(&CKDEType::get), R"doc(
@@ -841,7 +482,7 @@ Instantiates a :class:`CKDEType`.
         .def(py::pickle([](const CKDEType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return CKDEType::get(); }));
 
-    py::class_<CKDE, Factor, std::shared_ptr<CKDE>>(continuous, "CKDE", R"doc(
+    py::class_<CKDE, Factor, std::shared_ptr<CKDE>>(root, "CKDE", R"doc(
 A conditional kernel density estimator (CKDE) is the ratio of two KDE models:
 
 .. math::
@@ -900,10 +541,8 @@ Returns the cumulative distribution function values of each instance in the Data
         .def(py::pickle([](const CKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return CKDE::__setstate__(t); }));
 
-    auto discrete = factors.def_submodule("discrete");
-
     py::class_<DiscreteFactorType, FactorType, std::shared_ptr<DiscreteFactorType>>(
-        discrete, "DiscreteFactorType", R"doc(
+        root, "DiscreteFactorType", R"doc(
 :class:`DiscreteFactorType` is the corresponding CPD type of :class:`DiscreteFactor`.
 )doc")
         .def(py::init(&DiscreteFactorType::get), R"doc(
@@ -912,7 +551,7 @@ Instantiates a :class:`DiscreteFactorType`.
         .def(py::pickle([](const DiscreteFactorType& self) { return self.__getstate__(); },
                         [](py::tuple&) { return DiscreteFactorType::get(); }));
 
-    py::class_<DiscreteFactor, Factor, std::shared_ptr<DiscreteFactor>>(discrete, "DiscreteFactor", R"doc(
+    py::class_<DiscreteFactor, Factor, std::shared_ptr<DiscreteFactor>>(root, "DiscreteFactor", R"doc(
 This is a discrete factor implemented as a conditional probability table (CPT).
 )doc")
         .def(py::init<std::string, std::vector<std::string>>(), py::arg("variable"), py::arg("evidence"), R"doc(
@@ -924,11 +563,11 @@ Initializes a new :class:`DiscreteFactor` with a given ``variable`` and ``eviden
         .def(py::pickle([](const DiscreteFactor& self) { return self.__getstate__(); },
                         [](py::tuple t) { return DiscreteFactor::__setstate__(t); }));
 
-    py::class_<Assignment>(factors, "Assignment", R"doc(
-:class:`Assignment <pybnesian.factors.Assignment>` represents the assignment of values to a set of variables.
+    py::class_<Assignment>(root, "Assignment", R"doc(
+:class:`Assignment <pybnesian.Assignment>` represents the assignment of values to a set of variables.
 )doc")
         .def(py::init<std::unordered_map<std::string, AssignmentValue>>(), py::arg("assignments"), R"doc(
-Initializes an :class:`Assignment <pybnesian.factors.Assignment>` from a dict that contains the value for each variable.
+Initializes an :class:`Assignment <pybnesian.Assignment>` from a dict that contains the value for each variable.
 The key of the dict is the name of the variable, and the value of the dict can be an ``str`` or a ``float`` value.
 
 :param assignments: Value assignments for each variable.
@@ -946,19 +585,19 @@ Returns the assignment value for a given ``variable``.
             },
             py::arg("variables"),
             R"doc(
-Checks whether the :class:`Assignment <pybnesian.factors.Assignment>` contains assignments for all the ``variables``.
+Checks whether the :class:`Assignment <pybnesian.Assignment>` contains assignments for all the ``variables``.
 
 :param variables: Variable names.
-:returns: True if the :class:`Assignment <pybnesian.factors.Assignment>` contains values for all the given variables,
+:returns: True if the :class:`Assignment <pybnesian.Assignment>` contains values for all the given variables,
     False otherwise.
 )doc")
         .def("empty", &Assignment::empty, R"doc(
-Checks whether the :class:`Assignment <pybnesian.factors.Assignment>` does not have assignments.
+Checks whether the :class:`Assignment <pybnesian.Assignment>` does not have assignments.
 
-:returns: True if the :class:`Assignment <pybnesian.factors.Assignment>` does not have assignments, False otherwise.
+:returns: True if the :class:`Assignment <pybnesian.Assignment>` does not have assignments, False otherwise.
 )doc")
         .def("size", &Assignment::size, R"doc(
-Gets the number of assignments in the :class:`Assignment <pybnesian.factors.Assignment>`.
+Gets the number of assignments in the :class:`Assignment <pybnesian.Assignment>`.
 
 :returns: The number of assignments.
 )doc")
@@ -989,7 +628,7 @@ Removes the assignment for the ``variable``.
         .def(py::pickle([](const Assignment& self) { return self.__getstate__(); },
                         [](py::object& o) { return Assignment::__setstate__(o); }));
 
-    py::class_<CLinearGaussianCPD, Factor, std::shared_ptr<CLinearGaussianCPD>>(continuous, "CLinearGaussianCPD")
+    py::class_<CLinearGaussianCPD, Factor, std::shared_ptr<CLinearGaussianCPD>>(root, "CLinearGaussianCPD")
         .def(py::init<std::string, std::vector<std::string>>())
         .def(py::init<std::string, std::vector<std::string>, VectorXd, double>())
         .def(py::init<std::string,
@@ -999,7 +638,7 @@ Removes the assignment for the ``variable``.
         .def(py::pickle([](const CLinearGaussianCPD& self) { return self.__getstate__(); },
                         [](py::tuple t) { return CLinearGaussianCPD::__setstate__(t); }));
 
-    py::class_<DCKDE, Factor, std::shared_ptr<DCKDE>>(continuous, "DCKDE")
+    py::class_<DCKDE, Factor, std::shared_ptr<DCKDE>>(root, "DCKDE")
         .def(py::init<std::string, std::vector<std::string>>())
         .def(py::init<std::string, std::vector<std::string>, std::shared_ptr<BandwidthEstimator>>())
         .def(

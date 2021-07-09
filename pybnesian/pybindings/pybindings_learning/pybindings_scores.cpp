@@ -113,10 +113,10 @@ For example:
     >>> score.local_score(m, LinearGaussianCPDType(), "a", ["b"])
 
 returns the local score of node ``"a"`` in the model ``m``, with ``["b"]`` as parents assuming the conditional
-distribution of ``"a"`` is a :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
+distribution of ``"a"`` is a :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
 
 :param model: Bayesian network model.
-:param variable_type: The :class:`FactorType <pybnesian.factors.FactorType>` of the node ``variable``.
+:param variable_type: The :class:`FactorType <pybnesian.FactorType>` of the node ``variable``.
 :param variable: A variable name.
 :param evidence: A list of parent names.
 :returns: Local score value of ``node`` in the ``model`` with ``evidence`` as parents and ``variable_type`` as
@@ -142,7 +142,7 @@ Returns the DataFrame used to calculate the score and local scores.
                 [](const CppClass& self, const BayesianNetworkBase& m) { return self.score(m); },
                 py::arg("model"),
                 R"doc(
-score(self: pybnesian.learning.scores.Score, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> float
+score(self: pybnesian.Score, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> float
 
 Returns the score value of the ``model``.
 
@@ -170,7 +170,7 @@ void register_ValidatedScore_methods(PyClass& pyclass) {
             py::arg("model"),
             py::arg("variable"),
             R"doc(
-vlocal_score(self: pybnesian.learning.scores.ValidatedScore, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str) -> float
+vlocal_score(self: pybnesian.ValidatedScore, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str) -> float
 
 Returns the validated local score value of a node ``variable`` in the ``model``.
 
@@ -202,7 +202,7 @@ returns the validated local score of node ``"a"`` in the model ``m``. This metho
             py::arg("variable"),
             py::arg("evidence"),
             R"doc(
-vlocal_score(self: pybnesian.learning.scores.ValidatedScore, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> float
+vlocal_score(self: pybnesian.ValidatedScore, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> float
 
 Returns the validated local score value of a node ``variable`` in the ``model`` if it had ``evidence`` as parents.
 
@@ -244,10 +244,10 @@ For example:
     >>> score.vlocal_score(m, LinearGaussianCPDType(), "a", ["b"])
 
 returns the validated local score of node ``"a"`` in the model ``m``, with ``["b"]`` as parents assuming the conditional
-distribution of ``"a"`` is a :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
+distribution of ``"a"`` is a :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
 
 :param model: Bayesian network model.
-:param variable_type: The :class:`FactorType <pybnesian.factors.FactorType>` of the node ``variable``.
+:param variable_type: The :class:`FactorType <pybnesian.FactorType>` of the node ``variable``.
 :param variable: A variable name.
 :param evidence: A list of parent names.
 :returns: Validated local score value of ``node`` in the ``model`` with ``evidence`` as parents and ``variable_type`` as
@@ -268,7 +268,7 @@ distribution of ``"a"`` is a :class:`LinearGaussianCPD <pybnesian.factors.contin
                 [](const CppClass& self, const BayesianNetworkBase& m) { return self.vscore(m); },
                 py::arg("model"),
                 R"doc(
-vscore(self: pybnesian.learning.scores.ValidatedScore, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> float
+vscore(self: pybnesian.ValidatedScore, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> float
 
 Returns the validated score value of the ``model``.
 
@@ -443,10 +443,9 @@ class PyDynamicScore : public DynamicScoreBase {
 };
 
 void pybindings_scores(py::module& root) {
-    auto scores = root.def_submodule("scores", "Learning scores submodule.");
 
     // register_Score<GaussianNetwork, SemiparametricBN>(scores);
-    py::class_<Score, PyScore<>, std::shared_ptr<Score>> score(scores, "Score", R"doc(
+    py::class_<Score, PyScore<>, std::shared_ptr<Score>> score(root, "Score", R"doc(
 A :class:`Score` scores Bayesian network structures.
 )doc");
     score.def(py::init<>(), R"doc(
@@ -466,7 +465,7 @@ Initializes a :class:`Score`.
                  py::overload_cast<const std::vector<std::string>&>(&Score::has_variables, py::const_),
                  py::arg("variables"),
                  R"doc(
-has_variables(self: pybnesian.learning.scores.Score, variables: str or List[str]) -> bool
+has_variables(self: pybnesian.Score, variables: str or List[str]) -> bool
 
 Checks whether this :class:`Score` has the given ``variables``.
 
@@ -480,7 +479,7 @@ Checks whether this :class:`Score` has the given ``variables``.
                  py::overload_cast<const BayesianNetworkBase&>(&Score::compatible_bn, py::const_),
                  py::arg("model"),
                  R"doc(
-compatible_bn(self: pybnesian.learning.scores.Score, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> bool
+compatible_bn(self: pybnesian.Score, model: BayesianNetworkBase or ConditionalBayesianNetworkBase) -> bool
 
 Checks whether the ``model`` is compatible (can be used) with this :class:`Score`.
 
@@ -490,7 +489,7 @@ Checks whether the ``model`` is compatible (can be used) with this :class:`Score
     }
 
     py::class_<ValidatedScore, Score, PyValidatedScore<>, std::shared_ptr<ValidatedScore>> validated_score(
-        scores, "ValidatedScore", R"doc(
+        root, "ValidatedScore", R"doc(
 A :class:`ValidatedScore` is a score with training and validation scores. In a :class:`ValidatedScore`, the training
 is driven by the training score through the functions :func:`Score.score`, :func:`Score.local_score_variable`,
 :func:`Score.local_score` and :func:`Score.local_score_node_type`). The convergence of the structure is evaluated using
@@ -502,7 +501,7 @@ a validation likelihood (usually defined over different data) through the functi
     // register_Score_methods<ValidatedScore>(validated_score);
     register_ValidatedScore_methods<ValidatedScore>(validated_score);
 
-    py::class_<BIC, Score, std::shared_ptr<BIC>>(scores, "BIC", R"doc(
+    py::class_<BIC, Score, std::shared_ptr<BIC>>(root, "BIC", R"doc(
 This class implements the Bayesian Information Criterion (BIC).
 )doc")
         .def(py::init<const DataFrame&>(), py::arg("df"), R"doc(
@@ -511,7 +510,7 @@ Initializes a :class:`BIC` with the given DataFrame ``df``.
 :param df: DataFrame to compute the BIC score.
 )doc");
 
-    py::class_<BGe, Score, std::shared_ptr<BGe>>(scores, "BGe", R"doc(
+    py::class_<BGe, Score, std::shared_ptr<BGe>>(root, "BGe", R"doc(
 This class implements the Bayesian Gaussian equivalent (BGe).
 )doc")
         .def(py::init<const DataFrame&, double, std::optional<double>, std::optional<VectorXd>>(),
@@ -528,7 +527,7 @@ Initializes a :class:`BGe` with the given DataFrame ``df``.
 :param nu: Mean vector of the normal-Wishart prior.
 )doc");
 
-    py::class_<BDe, Score, std::shared_ptr<BDe>>(scores, "BDe", R"doc(
+    py::class_<BDe, Score, std::shared_ptr<BDe>>(root, "BDe", R"doc(
 This class implements the Bayesian Dirichlet equivalent (BDe).
 )doc")
         .def(py::init<const DataFrame&, double>(),
@@ -541,7 +540,7 @@ Initializes a :class:`BDe` with the given DataFrame ``df``.
 :param iss: Imaginary sample size of the Dirichlet prior.
 )doc");
 
-    py::class_<CVLikelihood, Score, std::shared_ptr<CVLikelihood>>(scores, "CVLikelihood", R"doc(
+    py::class_<CVLikelihood, Score, std::shared_ptr<CVLikelihood>>(root, "CVLikelihood", R"doc(
 This class implements an estimation of the log-likelihood on unseen data using k-fold cross validation over the data.
 )doc")
         .def(py::init([](const DataFrame& df, int k, std::optional<unsigned int> seed) {
@@ -552,17 +551,17 @@ This class implements an estimation of the log-likelihood on unseen data using k
              py::arg("seed") = std::nullopt,
              R"doc(
 Initializes a :class:`CVLikelihood` with the given DataFrame ``df``. It uses a
-:class:`CrossValidation <pybnesian.dataset.CrossValidation>` with ``k`` folds and the given ``seed``.
+:class:`CrossValidation <pybnesian.CrossValidation>` with ``k`` folds and the given ``seed``.
 
 :param df: DataFrame to compute the score.
 :param k: Number of folds of the cross validation.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
 )doc")
         .def_property_readonly("cv", &CVLikelihood::cv, R"doc(
-The underlying :class:`CrossValidation <pybnesian.dataset.CrossValidation>` object to compute the score.
+The underlying :class:`CrossValidation <pybnesian.CrossValidation>` object to compute the score.
 )doc");
 
-    py::class_<HoldoutLikelihood, Score, std::shared_ptr<HoldoutLikelihood>>(scores, "HoldoutLikelihood", R"doc(
+    py::class_<HoldoutLikelihood, Score, std::shared_ptr<HoldoutLikelihood>>(root, "HoldoutLikelihood", R"doc(
 This class implements an estimation of the log-likelihood on unseen data using a holdout dataset. Thus, the parameters
 are estimated using training data, and the score is estimated in the holdout data.
 )doc")
@@ -574,26 +573,26 @@ are estimated using training data, and the score is estimated in the holdout dat
              py::arg("seed") = std::nullopt,
              R"doc(
 Initializes a :class:`HoldoutLikelihood` with the given DataFrame ``df``. It uses a
-:class:`HoldOut <pybnesian.dataset.HoldOut>` with the given ``test_ratio`` and ``seed``.
+:class:`HoldOut <pybnesian.HoldOut>` with the given ``test_ratio`` and ``seed``.
 
 :param df: DataFrame to compute the score.
 :param test_ratio: Proportion of instances left for the holdout data.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
 )doc")
         .def_property_readonly("holdout", &HoldoutLikelihood::holdout, R"doc(
-The underlying :class:`HoldOut <pybnesian.dataset.Holdout>` object to compute the score.
+The underlying :class:`HoldOut <pybnesian.HoldOut>` object to compute the score.
 )doc")
         .def("training_data", &HoldoutLikelihood::training_data, py::return_value_policy::reference_internal, R"doc(
-Gets the training data of the :class:`HoldOut <pybnesian.dataset.Holdout>` object.
+Gets the training data of the :class:`HoldOut <pybnesian.HoldOut>` object.
 )doc")
         .def("test_data", &HoldoutLikelihood::test_data, py::return_value_policy::reference_internal, R"doc(
-Gets the holdout data of the :class:`HoldOut <pybnesian.dataset.Holdout>` object.
+Gets the holdout data of the :class:`HoldOut <pybnesian.HoldOut>` object.
 )doc");
 
     py::class_<ValidatedLikelihood, ValidatedScore, std::shared_ptr<ValidatedLikelihood>>(
-        scores, "ValidatedLikelihood", R"doc(
+        root, "ValidatedLikelihood", R"doc(
 This class mixes the functionality of :class:`CVLikelihood` and :class:`HoldoutLikelihood`. First, it applies a
-:class:`HoldOut <pybnesian.dataset.HoldOut>` split over the data. Then:
+:class:`HoldOut <pybnesian.HoldOut>` split over the data. Then:
 
 - It estimates the training score using a :class:`CVLikelihood` over the training data.
 - It estimates the validation score using the training data to estimate the parameters and calculating the
@@ -608,8 +607,8 @@ This class mixes the functionality of :class:`CVLikelihood` and :class:`HoldoutL
              py::arg("seed") = std::nullopt,
              R"doc(
 Initializes a :class:`ValidatedLikelihood` with the given DataFrame ``df``. The
-:class:`HoldOut <pybnesian.dataset.HoldOut>` is initialized with ``test_ratio`` and ``seed``. The ``CVLikelihood`` is
-initialized with ``k`` and ``seed`` over the training data of the holdout :class:`HoldOut <pybnesian.dataset.HoldOut>`.
+:class:`HoldOut <pybnesian.HoldOut>` is initialized with ``test_ratio`` and ``seed``. The ``CVLikelihood`` is
+initialized with ``k`` and ``seed`` over the training data of the holdout :class:`HoldOut <pybnesian.HoldOut>`.
 
 :param df: DataFrame to compute the score.
 :param test_ratio: Proportion of instances left for the holdout data.
@@ -624,23 +623,23 @@ The underlying :class:`HoldoutLikelihood` to compute the validation score.
 The underlying :class:`CVLikelihood` to compute the training score.
 )doc")
         .def("training_data", &ValidatedLikelihood::training_data, py::return_value_policy::reference_internal, R"doc(
-The underlying training data of the :class:`HoldOut <pybnesian.dataset.HoldOut>`.
+The underlying training data of the :class:`HoldOut <pybnesian.HoldOut>`.
 )doc")
         .def("validation_data",
              &ValidatedLikelihood::validation_data,
              py::return_value_policy::reference_internal,
              R"doc(
-The underlying holdout data of the :class:`HoldOut <pybnesian.dataset.HoldOut>`.
+The underlying holdout data of the :class:`HoldOut <pybnesian.HoldOut>`.
 )doc");
 
     py::class_<DynamicScore, PyDynamicScore<>, std::shared_ptr<DynamicScore>> dynamic_score(
-        scores, "DynamicScore", R"doc(
+        root, "DynamicScore", R"doc(
 A :class:`DynamicScore` adapts the static :class:`Score` to learn dynamic Bayesian networks. It generates a static and a
 transition score to learn the static and transition components of the dynamic Bayesian network.
 
-The dynamic scores are usually implemented using a :class:`DynamicDataFrame <pybnesian.dataset.DynamicDataFrame>` with
-the methods :func:`DynamicDataFrame.static_df <pybnesian.dataset.DynamicDataFrame.static_df>` and
-:func:`DynamicDataFrame.transition_df <pybnesian.dataset.DynamicDataFrame.transition_df>`.
+The dynamic scores are usually implemented using a :class:`DynamicDataFrame <pybnesian.DynamicDataFrame>` with
+the methods :func:`DynamicDataFrame.static_df <pybnesian.DynamicDataFrame.static_df>` and
+:func:`DynamicDataFrame.transition_df <pybnesian.DynamicDataFrame.transition_df>`.
 )doc");
 
     dynamic_score
@@ -670,7 +669,7 @@ It returns the transition score component of the :class:`DynamicScore`.
                  py::overload_cast<const std::vector<std::string>&>(&DynamicScore::has_variables, py::const_),
                  py::arg("variables"),
                  R"doc(
-has_variables(self: pybnesian.learning.scores.DynamicScore, variables: str or List[str]) -> bool
+has_variables(self: pybnesian.DynamicScore, variables: str or List[str]) -> bool
 
 Checks whether this :class:`DynamicScore` has the given ``variables``.
 
@@ -680,7 +679,7 @@ Checks whether this :class:`DynamicScore` has the given ``variables``.
     }
 
     py::class_<DynamicBIC, DynamicScore, std::shared_ptr<DynamicBIC>>(
-        scores, "DynamicBIC", py::multiple_inheritance(), R"doc(
+        root, "DynamicBIC", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`BIC` score.
 )doc")
         .def(py::init<DynamicDataFrame>(), py::keep_alive<1, 2>(), py::arg("ddf"), R"doc(
@@ -690,7 +689,7 @@ Initializes a :class:`DynamicBIC` with the given :class:`DynamicDataFrame` ``ddf
 )doc");
 
     py::class_<DynamicBGe, DynamicScore, std::shared_ptr<DynamicBGe>>(
-        scores, "DynamicBGe", py::multiple_inheritance(), R"doc(
+        root, "DynamicBGe", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`BGe` score.
 )doc")
         .def(py::init<DynamicDataFrame, double, std::optional<double>, std::optional<VectorXd>>(),
@@ -709,7 +708,7 @@ Initializes a :class:`DynamicBGe` with the given :class:`DynamicDataFrame` ``ddf
 )doc");
 
     py::class_<DynamicBDe, DynamicScore, std::shared_ptr<DynamicBDe>>(
-        scores, "DynamicBDe", py::multiple_inheritance(), R"doc(
+        root, "DynamicBDe", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`BDe` score.
 )doc")
         .def(py::init<DynamicDataFrame, double>(), py::keep_alive<1, 2>(), py::arg("ddf"), py::arg("iss") = 1, R"doc(
@@ -720,7 +719,7 @@ Initializes a :class:`DynamicBDe` with the given :class:`DynamicDataFrame` ``ddf
 )doc");
 
     py::class_<DynamicCVLikelihood, DynamicScore, std::shared_ptr<DynamicCVLikelihood>>(
-        scores, "DynamicCVLikelihood", py::multiple_inheritance(), R"doc(
+        root, "DynamicCVLikelihood", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`CVLikelihood` score.
 )doc")
         .def(py::init([](DynamicDataFrame df, int k, std::optional<unsigned int> seed) {
@@ -739,7 +738,7 @@ parameters are passed to the static and transition components of :class:`CVLikel
 )doc");
 
     py::class_<DynamicHoldoutLikelihood, DynamicScore, std::shared_ptr<DynamicHoldoutLikelihood>>(
-        scores, "DynamicHoldoutLikelihood", py::multiple_inheritance(), R"doc(
+        root, "DynamicHoldoutLikelihood", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`HoldoutLikelihood` score.
 )doc")
         .def(py::init([](DynamicDataFrame df, double test_ratio, std::optional<unsigned int> seed) {
@@ -758,7 +757,7 @@ Initializes a :class:`DynamicHoldoutLikelihood` with the given :class:`DynamicDa
 )doc");
 
     py::class_<DynamicValidatedLikelihood, DynamicScore, std::shared_ptr<DynamicValidatedLikelihood>>(
-        scores, "DynamicValidatedLikelihood", py::multiple_inheritance(), R"doc(
+        root, "DynamicValidatedLikelihood", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`ValidatedLikelihood` score.
 )doc")
         .def(py::init([](DynamicDataFrame df, double test_ratio, int k, std::optional<unsigned int> seed) {

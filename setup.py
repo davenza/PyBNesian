@@ -101,6 +101,7 @@ ext_modules = [
         [
          'pybnesian/lib.cpp',
          'pybnesian/pybindings/pybindings_dataset.cpp',
+         'pybnesian/pybindings/pybindings_kde.cpp',
          'pybnesian/pybindings/pybindings_factors.cpp',
          'pybnesian/pybindings/pybindings_graph.cpp',
          'pybnesian/pybindings/pybindings_models.cpp',

@@ -95,10 +95,9 @@ public:
 };
 
 void pybindings_independence_tests(py::module& root) {
-    auto independence_tests = root.def_submodule("independences", "Independence Hypothesis tests.");
 
     py::class_<IndependenceTest, PyIndependenceTest, std::shared_ptr<IndependenceTest>> indep_test(
-        independence_tests, "IndependenceTest", R"doc(
+        root, "IndependenceTest", R"doc(
 The :class:`IndependenceTest` is an abstract class defining an interface for a conditional test of independence.
 
 An :class:`IndependenceTest` is defined over a set of variables and can calculate the p-value of any conditional test on
@@ -181,7 +180,7 @@ Gets the variable name of the index-th variable.
                  py::overload_cast<const std::vector<std::string>&>(&IndependenceTest::has_variables, py::const_),
                  py::arg("variables"),
                  R"doc(
-has_variables(self: pybnesian.learning.independences.IndependenceTest, variables: str or List[str]) -> bool
+has_variables(self: pybnesian.IndependenceTest, variables: str or List[str]) -> bool
 
 Checks whether this :class:`IndependenceTest` has the given ``variables``.
 
@@ -191,7 +190,7 @@ Checks whether this :class:`IndependenceTest` has the given ``variables``.
     }
 
     py::class_<LinearCorrelation, IndependenceTest, std::shared_ptr<LinearCorrelation>>(
-        independence_tests, "LinearCorrelation", R"doc(
+        root, "LinearCorrelation", R"doc(
 This class implements a partial linear correlation independence test. This independence is only valid for continuous
 data.
 )doc")
@@ -201,7 +200,7 @@ Initializes a :class:`LinearCorrelation` for the continuous variables in the Dat
 :param df: DataFrame on which to calculate the independence tests.
 )doc");
 
-    py::class_<MutualInformation, IndependenceTest, std::shared_ptr<MutualInformation>>(independence_tests,
+    py::class_<MutualInformation, IndependenceTest, std::shared_ptr<MutualInformation>>(root,
                                                                                         "MutualInformation",
                                                                                         R"doc(
 This class implements a hypothesis test based on mutual information. This independence is implemented for a mix of
@@ -271,7 +270,7 @@ Estimates the multivariate conditional mutual information :math:`\text{MI}(x, y 
 )doc");
 
     py::class_<KMutualInformation, IndependenceTest, std::shared_ptr<KMutualInformation>>(
-        independence_tests, "KMutualInformation", R"doc(
+        root, "KMutualInformation", R"doc(
 This class implements a non-parametric independence test that is based on the estimation of the mutual information
 using k-nearest neighbors. This independence is only implemented for continuous data.
 
@@ -345,7 +344,7 @@ Estimates the multivariate conditional mutual information :math:`\text{MI}(x, y 
 :returns: The multivariate conditional mutual information :math:`\text{MI}(x, y \mid \mathbf{z})`.
 )doc");
 
-    py::class_<RCoT, IndependenceTest, std::shared_ptr<RCoT>>(independence_tests, "RCoT", R"doc(
+    py::class_<RCoT, IndependenceTest, std::shared_ptr<RCoT>>(root, "RCoT", R"doc(
 This class implements a non-parametric independence test called Randomized Conditional Correlation Test (RCoT). This
 method is described in [RCoT]_. This independence is only implemented for continuous data.
 
@@ -365,7 +364,7 @@ to ``random_fourier_z``.
 :param randoum_fourier_z: Number of random fourier features for the conditioning variables of the independence test.
 )doc");
 
-    py::class_<ChiSquare, IndependenceTest, std::shared_ptr<ChiSquare>>(independence_tests, "ChiSquare", R"doc(
+    py::class_<ChiSquare, IndependenceTest, std::shared_ptr<ChiSquare>>(root, "ChiSquare", R"doc(
 Initializes a :class:`ChiSquare` for data ``df``. This independence test is only valid for categorical data.
 
 It implements the Pearson's X^2 test.
@@ -375,15 +374,15 @@ It implements the Pearson's X^2 test.
         .def(py::init<const DataFrame&>(), py::arg("df"));
 
     py::class_<DynamicIndependenceTest, std::shared_ptr<DynamicIndependenceTest>> dynamic_indep_test(
-        independence_tests, "DynamicIndependenceTest", R"doc(
+        root, "DynamicIndependenceTest", R"doc(
 A :class:`DynamicIndependenceTest` adapts the static :class:`IndependenceTest` to learn dynamic Bayesian networks.
 It generates a static and a transition independence test to learn the static and transition components of the dynamic
 Bayesian network.
 
 The dynamic independence tests are usually implemented using a
-:class:`DynamicDataFrame <pybnesian.dataset.DynamicDataFrame>` with the methods
-:func:`DynamicDataFrame.static_df <pybnesian.dataset.DynamicDataFrame.static_df>` and
-:func:`DynamicDataFrame.transition_df <pybnesian.dataset.DynamicDataFrame.transition_df>`.
+:class:`DynamicDataFrame <pybnesian.DynamicDataFrame>` with the methods
+:func:`DynamicDataFrame.static_df <pybnesian.DynamicDataFrame.static_df>` and
+:func:`DynamicDataFrame.transition_df <pybnesian.DynamicDataFrame.transition_df>`.
 )doc");
     dynamic_indep_test
         .def("static_tests", &DynamicIndependenceTest::static_tests, py::return_value_policy::reference_internal, R"doc(
@@ -434,7 +433,7 @@ Gets the markovian order used in this :class:`DynamicIndependenceTest`.
                 py::overload_cast<const std::vector<std::string>&>(&DynamicIndependenceTest::has_variables, py::const_),
                 py::arg("variables"),
                 R"doc(
-has_variables(self: pybnesian.learning.scores.DynamicScore, variables: str or List[str]) -> bool
+has_variables(self: pybnesian.DynamicScore, variables: str or List[str]) -> bool
 
 Checks whether this :class:`DynamicScore` has the given ``variables``.
 
@@ -444,7 +443,7 @@ Checks whether this :class:`DynamicScore` has the given ``variables``.
     }
 
     py::class_<DynamicLinearCorrelation, DynamicIndependenceTest, std::shared_ptr<DynamicLinearCorrelation>>(
-        independence_tests, "DynamicLinearCorrelation", py::multiple_inheritance(), R"doc(
+        root, "DynamicLinearCorrelation", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`LinearCorrelation` independence test.
 )doc")
         .def(py::init<const DynamicDataFrame&>(), py::arg("ddf"), R"doc(
@@ -454,7 +453,7 @@ Initializes a :class:`DynamicLinearCorrelation` with the given :class:`DynamicDa
 )doc");
 
     py::class_<DynamicMutualInformation, DynamicIndependenceTest, std::shared_ptr<DynamicMutualInformation>>(
-        independence_tests, "DynamicMutualInformation", py::multiple_inheritance(), R"doc(
+        root, "DynamicMutualInformation", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`MutualInformation` independence test.
 )doc")
         .def(py::init<const DynamicDataFrame&, bool>(),
@@ -470,7 +469,7 @@ parameter is passed to the static and transition components of :class:`MutualInf
 )doc");
 
     py::class_<DynamicKMutualInformation, DynamicIndependenceTest, std::shared_ptr<DynamicKMutualInformation>>(
-        independence_tests, "DynamicKMutualInformation", py::multiple_inheritance(), R"doc(
+        root, "DynamicKMutualInformation", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`KMutualInformation` independence test.
 )doc")
         .def(py::init([](const DynamicDataFrame& df,
@@ -499,7 +498,7 @@ Initializes a :class:`DynamicKMutualInformation` with the given :class:`DynamicD
 )doc");
 
     py::class_<DynamicRCoT, DynamicIndependenceTest, std::shared_ptr<DynamicRCoT>>(
-        independence_tests, "DynamicRCoT", py::multiple_inheritance(), R"doc(
+        root, "DynamicRCoT", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`RCoT` independence test.
 )doc")
         .def(py::init<const DynamicDataFrame&, int, int>(),
@@ -517,7 +516,7 @@ Initializes a :class:`DynamicRCoT` with the given :class:`DynamicDataFrame` ``df
 )doc");
 
     py::class_<DynamicChiSquare, DynamicIndependenceTest, std::shared_ptr<DynamicChiSquare>>(
-        independence_tests, "DynamicChiSquare", py::multiple_inheritance(), R"doc(
+        root, "DynamicChiSquare", py::multiple_inheritance(), R"doc(
 The dynamic adaptation of the :class:`ChiSquare` independence test.
 )doc")
         .def(py::init<const DynamicDataFrame&>(),

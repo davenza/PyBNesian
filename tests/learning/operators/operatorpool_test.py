@@ -1,26 +1,24 @@
 import pytest
-from pybnesian.learning.operators import OperatorPool, ArcOperatorSet, ChangeNodeTypeSet
-from pybnesian.learning.scores import CVLikelihood
-from pybnesian.models import SemiparametricBN
+import pybnesian as pbn
 import util_test
 
 SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
 
 def test_create():
-    arcs = ArcOperatorSet()
-    node_type = ChangeNodeTypeSet()
-    pool = OperatorPool([arcs, node_type])
+    arcs = pbn.ArcOperatorSet()
+    node_type = pbn.ChangeNodeTypeSet()
+    pool = pbn.OperatorPool([arcs, node_type])
 
     with pytest.raises(ValueError) as ex:
-        pool = OperatorPool([])
+        pool = pbn.OperatorPool([])
     assert "cannot be empty" in str(ex.value)
 
 def test_find_max():
-    spbn = SemiparametricBN(['a', 'b', 'c', 'd'])
-    cv = CVLikelihood(df)
-    arcs = ArcOperatorSet()
-    node_type = ChangeNodeTypeSet()
+    spbn = pbn.SemiparametricBN(['a', 'b', 'c', 'd'])
+    cv = pbn.CVLikelihood(df)
+    arcs = pbn.ArcOperatorSet()
+    node_type = pbn.ChangeNodeTypeSet()
     
     arcs.cache_scores(spbn, cv)
     spbn.set_unknown_node_types(df)
@@ -29,7 +27,7 @@ def test_find_max():
     arcs_max = arcs.find_max(spbn)
     node_max = node_type.find_max(spbn)
 
-    pool = OperatorPool([arcs, node_type])
+    pool = pbn.OperatorPool([arcs, node_type])
     pool.cache_scores(spbn, cv)
 
     op_combined = pool.find_max(spbn)

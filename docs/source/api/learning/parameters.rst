@@ -1,21 +1,21 @@
 Parameter Learning
 ==================
 
-.. automodule:: pybnesian.learning.parameters
+PyBNesian implements learning parameter learning for :class:`Factor <pybnesian.Factor>` from data.
 
 Currently, it only implements Maximum Likelihood Estimation (MLE) for
-:class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>` and
-:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>`.
+:class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` and
+:class:`DiscreteFactor <pybnesian.DiscreteFactor>`.
 
-.. autofunction:: pybnesian.learning.parameters.MLE
+.. autofunction:: pybnesian.MLE
 
-.. autoclass:: pybnesian.learning.parameters.LinearGaussianParams
+.. autoclass:: pybnesian.LinearGaussianParams
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.learning.parameters.MLELinearGaussianCPD
+.. autoclass:: pybnesian.MLELinearGaussianCPD
     :members:
 
-.. autoclass:: pybnesian.learning.parameters.DiscreteFactorParams
+.. autoclass:: pybnesian.DiscreteFactorParams
     :members:
     :special-members: __init__

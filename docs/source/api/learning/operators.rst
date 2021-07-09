@@ -3,8 +3,7 @@ Learning Operators
 
 This section includes learning operators that are used to make small, local changes to a given Bayesian network
 structure. This is used for the score-and-search learning algorithms such as
-:class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`,
-:class:`MMHC <pybnesian.learning.algorithms.MMHC>` and :class:`DMMHC <pybnesian.learning.algorithms.DMMHC>`.
+:class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`, :class:`MMHC <pybnesian.MMHC>` and :class:`DMMHC <pybnesian.DMMHC>`.
 
 There are two type of classes in this section: operators and operator sets:
 
@@ -15,31 +14,31 @@ There are two type of classes in this section: operators and operator sets:
 Operators
 ^^^^^^^^^
 
-.. autoclass:: pybnesian.learning.operators.Operator
+.. autoclass:: pybnesian.Operator
     :members:
     :special-members: __init__, __str__, __eq__, __hash__
 
-.. autoclass:: pybnesian.learning.operators.ArcOperator
+.. autoclass:: pybnesian.ArcOperator
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.operators.AddArc
+.. autoclass:: pybnesian.AddArc
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.operators.RemoveArc
+.. autoclass:: pybnesian.RemoveArc
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.operators.FlipArc
+.. autoclass:: pybnesian.FlipArc
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.operators.ChangeNodeType
+.. autoclass:: pybnesian.ChangeNodeType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -47,31 +46,31 @@ Operators
 Operator Sets
 ^^^^^^^^^^^^^
     
-.. autoclass:: pybnesian.learning.operators.OperatorSet
+.. autoclass:: pybnesian.OperatorSet
     :members:
     :special-members: __init__, __str__
     
-.. autoclass:: pybnesian.learning.operators.ArcOperatorSet
+.. autoclass:: pybnesian.ArcOperatorSet
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
     
-.. autoclass:: pybnesian.learning.operators.ChangeNodeTypeSet
+.. autoclass:: pybnesian.ChangeNodeTypeSet
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
     
-.. autoclass:: pybnesian.learning.operators.OperatorPool
+.. autoclass:: pybnesian.OperatorPool
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
 Other
 ^^^^^
-.. autoclass:: pybnesian.learning.operators.OperatorTabuSet
+.. autoclass:: pybnesian.OperatorTabuSet
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.operators.LocalScoreCache
+.. autoclass:: pybnesian.LocalScoreCache
     :members:
     :special-members: __init__, __str__

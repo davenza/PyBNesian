@@ -16,7 +16,7 @@ Almost all components of the library can be extended:
 - Learning scores: to include new learning scores.
 - Learning operators: to include new operators.
 - Learning callbacks: callback function on each iteration of
-  :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.
+  :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 
 The extended functionality can be used exactly equal to the base functionality.
 
@@ -39,7 +39,7 @@ For all the extensible components, the strategy is always to implement an abstra
     of the constructor.
     
     For example, when inheriting from
-    :class:`FactorType <pybnesian.factors.FactorType>`, **DO NOT DO this:**
+    :class:`FactorType <pybnesian.FactorType>`, **DO NOT DO this:**
 
     .. code-block::
 
@@ -65,47 +65,47 @@ For all the extensible components, the strategy is always to implement an abstra
     .. code-block::
         
         >>> t = NewFactorType()
-        TypeError: pybnesian.factors.FactorType.__init__() must be called when overriding __init__
+        TypeError: pybnesian.FactorType.__init__() must be called when overriding __init__
 
 Factor Extension
 ================
 
 Implementing a new factor usually involves creating two new classes that inherit from
-:class:`FactorType <pybnesian.factors.FactorType>` and :class:`Factor <pybnesian.factors.Factor>`. A
-:class:`FactorType <pybnesian.factors.FactorType>` is the representation of a
-:class:`Factor <pybnesian.factors.Factor>` type. A :class:`Factor <pybnesian.factors.Factor>` is an specific instance of
+:class:`FactorType <pybnesian.FactorType>` and :class:`Factor <pybnesian.Factor>`. A
+:class:`FactorType <pybnesian.FactorType>` is the representation of a
+:class:`Factor <pybnesian.Factor>` type. A :class:`Factor <pybnesian.Factor>` is an specific instance of
 a factor (a conditional probability distribution for a given variable and evidence).
 
 These two classes are
-usually related: a :class:`FactorType <pybnesian.factors.FactorType>` can create instances of
-:class:`Factor <pybnesian.factors.Factor>` (with :func:`FactorType.new_factor() <pybnesian.factors.FactorType.new_factor>`),
-and a :class:`Factor <pybnesian.factors.Factor>` returns its corresponding :class:`FactorType <pybnesian.factors.FactorType>`
-(with :func:`Factor.type() <pybnesian.factors.Factor.type>`).
+usually related: a :class:`FactorType <pybnesian.FactorType>` can create instances of
+:class:`Factor <pybnesian.Factor>` (with :func:`FactorType.new_factor() <pybnesian.FactorType.new_factor>`),
+and a :class:`Factor <pybnesian.Factor>` returns its corresponding :class:`FactorType <pybnesian.FactorType>`
+(with :func:`Factor.type() <pybnesian.Factor.type>`).
 
-A new :class:`FactorType <pybnesian.factors.FactorType>` need to implement the following methods:
+A new :class:`FactorType <pybnesian.FactorType>` need to implement the following methods:
 
-- :func:`FactorType.__str__() <pybnesian.factors.FactorType.__str__>`.
-- :func:`FactorType.new_factor() <pybnesian.factors.FactorType.new_factor>`.
+- :func:`FactorType.__str__() <pybnesian.FactorType.__str__>`.
+- :func:`FactorType.new_factor() <pybnesian.FactorType.new_factor>`.
 
-A new :class:`Factor <pybnesian.factors.Factor>` need to implement the following methods:
+A new :class:`Factor <pybnesian.Factor>` need to implement the following methods:
 
-- :func:`Factor.__str__() <pybnesian.factors.Factor.__str__>`.
-- :func:`Factor.type() <pybnesian.factors.Factor.type>`.
-- :func:`Factor.fitted() <pybnesian.factors.Factor.fitted>`.
-- :func:`Factor.fit() <pybnesian.factors.Factor.fit>`. This method is needed for
-  :func:`BayesianNetwork.fit() <pybnesian.models.BayesianNetworkBase.fit>` or
-  :func:`DynamicBayesianNetwork.fit() <pybnesian.models.DynamicBayesianNetworkBase.fit>`.
-- :func:`Factor.logl() <pybnesian.factors.Factor.logl>`. This method is needed for
-  :func:`BayesianNetwork.logl() <pybnesian.models.BayesianNetworkBase.logl>` or
-  :func:`DynamicBayesianNetwork.logl() <pybnesian.models.DynamicBayesianNetworkBase.logl>`.
-- :func:`Factor.slogl() <pybnesian.factors.Factor.slogl>`. This method is needed for
-  :func:`BayesianNetwork.slogl() <pybnesian.models.BayesianNetworkBase.slogl>` or
-  :func:`DynamicBayesianNetwork.slogl() <pybnesian.models.DynamicBayesianNetworkBase.slogl>`.
-- :func:`Factor.sample() <pybnesian.factors.Factor.sample>`. This method is needed for
-  :func:`BayesianNetwork.sample() <pybnesian.models.BayesianNetworkBase.sample>` or
-  :func:`DynamicBayesianNetwork.sample() <pybnesian.models.DynamicBayesianNetworkBase.sample>`.
-- :func:`Factor.data_type() <pybnesian.factors.Factor.data_type>`. This method is needed for
-  :func:`DynamicBayesianNetwork.sample() <pybnesian.models.DynamicBayesianNetworkBase.sample>`.
+- :func:`Factor.__str__() <pybnesian.Factor.__str__>`.
+- :func:`Factor.type() <pybnesian.Factor.type>`.
+- :func:`Factor.fitted() <pybnesian.Factor.fitted>`.
+- :func:`Factor.fit() <pybnesian.Factor.fit>`. This method is needed for
+  :func:`BayesianNetworkBase.fit() <pybnesian.BayesianNetworkBase.fit>` or
+  :func:`DynamicBayesianNetworkBase.fit() <pybnesian.DynamicBayesianNetworkBase.fit>`.
+- :func:`Factor.logl() <pybnesian.Factor.logl>`. This method is needed for
+  :func:`BayesianNetworkBase.logl() <pybnesian.BayesianNetworkBase.logl>` or
+  :func:`DynamicBayesianNetworkBase.logl() <pybnesian.DynamicBayesianNetworkBase.logl>`.
+- :func:`Factor.slogl() <pybnesian.Factor.slogl>`. This method is needed for
+  :func:`BayesianNetworkBase.slogl() <pybnesian.BayesianNetworkBase.slogl>` or
+  :func:`DynamicBayesianNetworkBase.slogl() <pybnesian.DynamicBayesianNetworkBase.slogl>`.
+- :func:`Factor.sample() <pybnesian.Factor.sample>`. This method is needed for
+  :func:`BayesianNetworkBase.sample() <pybnesian.BayesianNetworkBase.sample>` or
+  :func:`DynamicBayesianNetworkBase.sample() <pybnesian.DynamicBayesianNetworkBase.sample>`.
+- :func:`Factor.data_type() <pybnesian.Factor.data_type>`. This method is needed for
+  :func:`DynamicBayesianNetworkBase.sample() <pybnesian.DynamicBayesianNetworkBase.sample>`.
 
 You can avoid implementing some of these methods if you do not need them. If a method is needed for a functionality
 but it is not implemented, an error message is shown when trying to execute that functionality:
@@ -123,8 +123,7 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
     import numpy as np
     from scipy.stats import norm
     import pyarrow as pa
-    from pybnesian.factors import FactorType, Factor
-    from pybnesian.factors.continuous import CKDEType
+    from pybnesian import FactorType, Factor, CKDEType
 
     # Define our Factor type
     class MyLGType(FactorType):
@@ -197,8 +196,8 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
 Serialization
 -------------
 
-All the factors can be saved using pickle with the method :func:`Factor.save() <pybnesian.factors.Factor.save>`. The class
-:class:`Factor <pybnesian.factors.Factor>` already provides a ``__getstate__`` and ``__setstate__``  implementation that
+All the factors can be saved using pickle with the method :func:`Factor.save() <pybnesian.Factor.save>`. The class
+:class:`Factor <pybnesian.Factor>` already provides a ``__getstate__`` and ``__setstate__``  implementation that
 saves the base information (variable name and evidence variable names). If you need to save more data in your class,
 there are two alternatives:
 
@@ -259,11 +258,11 @@ Using Extended Factors
 ----------------------
 
 The extended factors can not be used in some specific networks: A
-:class:`GaussianNetwork <pybnesian.models.GaussianNetwork>` only admits
-:class:`LinearGaussianCPDType <pybnesian.factors.continuous.LinearGaussianCPDType>`, a
-:class:`SemiparametricBN <pybnesian.models.SemiparametricBN>` admits
-:class:`LinearGaussianCPDType <pybnesian.factors.continuous.LinearGaussianCPDType>` or
-:class:`CKDEType <pybnesian.factors.continuous.CKDEType>`, and so on...
+:class:`GaussianNetwork <pybnesian.GaussianNetwork>` only admits
+:class:`LinearGaussianCPDType <pybnesian.LinearGaussianCPDType>`, a
+:class:`SemiparametricBN <pybnesian.SemiparametricBN>` admits
+:class:`LinearGaussianCPDType <pybnesian.LinearGaussianCPDType>` or
+:class:`CKDEType <pybnesian.CKDEType>`, and so on...
 
 If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raised.
 
@@ -272,8 +271,7 @@ If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raise
     import numpy as np
     from scipy.stats import norm
     import pyarrow as pa
-    from pybnesian.factors import FactorType, Factor
-    from pybnesian.factors.continuous import CKDEType
+    from pybnesian import FactorType, Factor, CKDEType
 
     # Define our Factor type
     class MyLGType(FactorType):
@@ -353,35 +351,35 @@ If you try to use :class:`MyLG` in a Gaussian network, a ``ValueError`` is raise
 
 .. doctest::
 
-    >>> from pybnesian.models import GaussianNetwork
+    >>> from pybnesian import GaussianNetwork
     >>> g = GaussianNetwork(["a", "b", "c", "d"])
     >>> g.set_node_type("a", MyLGType())
     Traceback (most recent call last):
     ...
     ValueError: Wrong factor type "MyLGType" for node "a" in Bayesian network type "GaussianNetworkType"
 
-There are two alternatives to use an extended :class:`Factor <pybnesian.factors.Factor>`:
+There are two alternatives to use an extended :class:`Factor <pybnesian.Factor>`:
 
 - Create an extended model (see :ref:`model-extension`) that admits the new extended
-  :class:`Factor <pybnesian.factors.Factor>`.
-- Use a generic Bayesian network like :class:`HomogeneousBN <pybnesian.models.HomogeneousBN>` and
-  :class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>`.
+  :class:`Factor <pybnesian.Factor>`.
+- Use a generic Bayesian network like :class:`HomogeneousBN <pybnesian.HomogeneousBN>` and
+  :class:`HeterogeneousBN <pybnesian.HeterogeneousBN>`.
 
-The :class:`HomogeneousBN <pybnesian.models.HomogeneousBN>` and
-:class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>` Bayesian networks admit any
-:class:`FactorType <pybnesian.factors.FactorType>`. The difference between them is that
-:class:`HomogeneousBN <pybnesian.models.HomogeneousBN>` is homogeneous
-(all the nodes have the same :class:`FactorType <pybnesian.factors.FactorType>`) and
-:class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>` is heterogeneous (each node can have a different
-:class:`FactorType <pybnesian.factors.FactorType>`).
+The :class:`HomogeneousBN <pybnesian.HomogeneousBN>` and
+:class:`HeterogeneousBN <pybnesian.HeterogeneousBN>` Bayesian networks admit any
+:class:`FactorType <pybnesian.FactorType>`. The difference between them is that
+:class:`HomogeneousBN <pybnesian.HomogeneousBN>` is homogeneous
+(all the nodes have the same :class:`FactorType <pybnesian.FactorType>`) and
+:class:`HeterogeneousBN <pybnesian.HeterogeneousBN>` is heterogeneous (each node can have a different
+:class:`FactorType <pybnesian.FactorType>`).
 
-Our extended factor :class:`MyLG` can be used with an :class:`HomogeneousBN <pybnesian.models.HomogeneousBN>` to create
-and alternative implementation of a :class:`GaussianNetwork <pybnesian.models.GaussianNetwork>`:
+Our extended factor :class:`MyLG` can be used with an :class:`HomogeneousBN <pybnesian.HomogeneousBN>` to create
+and alternative implementation of a :class:`GaussianNetwork <pybnesian.GaussianNetwork>`:
 
 .. doctest::
 
     >>> import pandas as pd
-    >>> from pybnesian.models import HomogeneousBN, GaussianNetwork
+    >>> from pybnesian import HomogeneousBN, GaussianNetwork
     >>> # Create some multivariate normal sample data
     >>> def generate_sample_data(size, seed=0):
     ...     np.random.seed(seed)
@@ -412,8 +410,8 @@ and alternative implementation of a :class:`GaussianNetwork <pybnesian.models.Ga
     >>> assert np.isclose(homo.slogl(df_test), gbn.slogl(df_test))
 
 The extended factor can also be used in an heterogeneous Bayesian network. For example, we can imitate the behaviour
-of a :class:`SemiparametricBN <pybnesian.models.SemiparametricBN>` using an
-:class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>`:
+of a :class:`SemiparametricBN <pybnesian.SemiparametricBN>` using an
+:class:`HeterogeneousBN <pybnesian.HeterogeneousBN>`:
 
 .. testsetup::
 
@@ -433,9 +431,7 @@ of a :class:`SemiparametricBN <pybnesian.models.SemiparametricBN>` using an
 
 .. doctest::
 
-    >>> from pybnesian.models import HeterogeneousBN
-    >>> from pybnesian.factors.continuous import CKDEType
-    >>> from pybnesian.models import SemiparametricBN
+    >>> from pybnesian import HeterogeneousBN, CKDEType, SemiparametricBN
     >>> df = generate_sample_data(300)
     >>> df_test = generate_sample_data(20, seed=1)
     >>> # Create an heterogeneous with "MyLG" factors as default.
@@ -453,18 +449,15 @@ of a :class:`SemiparametricBN <pybnesian.models.SemiparametricBN>` using an
     >>> assert np.all(np.isclose(het.logl(df_test), spbn.logl(df_test)))
     >>> assert np.isclose(het.slogl(df_test), spbn.slogl(df_test))
 
-The :class:`HeterogeneousBN <pybnesian.models.HeterogeneousBN>` can also be instantiated using a dict to specify
+The :class:`HeterogeneousBN <pybnesian.HeterogeneousBN>` can also be instantiated using a dict to specify
 different default factor types for different data types. For example, we can mix the :class:`MyLG` factor with
-:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` for discrete data:
+:class:`DiscreteFactor <pybnesian.DiscreteFactor>` for discrete data:
 
 .. doctest::
 
     >>> import pyarrow as pa
     >>> import pandas as pd
-    >>> from pybnesian.models import HeterogeneousBN
-    >>> from pybnesian.factors.continuous import CKDEType
-    >>> from pybnesian.factors.discrete import DiscreteFactorType
-    >>> from pybnesian.models import SemiparametricBN
+    >>> from pybnesian import HeterogeneousBN, CKDEType, DiscreteFactorType, SemiparametricBN
 
     >>> def generate_hybrid_sample_data(size, seed=0):
     ...     np.random.seed(seed)
@@ -499,44 +492,44 @@ Model Extension
 ===============
 
 Implementing a new model Bayesian network model involves creating a class that inherits from
-:class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>`.  Optionally, you also might want to inherit from
-:class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`,
-:class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-and :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`.
+:class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`.  Optionally, you also might want to inherit from
+:class:`BayesianNetwork <pybnesian.BayesianNetwork>`,
+:class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+and :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`.
 
-A :class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` is the representation of a Bayesian network model.
-This is similar to the relation between :class:`FactorType <pybnesian.factors.FactorType>` and a factor. The 
-:class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` defines the restrictions and properties that
-characterise a Bayesian network model. A :class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` is used by
-all the variants of Bayesian network models: :class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`,
-:class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-and :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`. For this reason, the constructors
-:func:`BayesianNetwork.__init__() <pybnesian.models.BayesianNetwork.__init__>`,
-:func:`ConditionalBayesianNetwork.__init__() <pybnesian.models.ConditionalBayesianNetwork.__init__>`
-:func:`DynamicBayesianNetwork.__init__() <pybnesian.models.DynamicBayesianNetwork.__init__>` take the underlying
-:class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` as parameter. Thus, once a new 
-:class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` is implemented, you can use your new Bayesian model
+A :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` is the representation of a Bayesian network model.
+This is similar to the relation between :class:`FactorType <pybnesian.FactorType>` and a factor. The 
+:class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` defines the restrictions and properties that
+characterise a Bayesian network model. A :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` is used by
+all the variants of Bayesian network models: :class:`BayesianNetwork <pybnesian.BayesianNetwork>`,
+:class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+and :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`. For this reason, the constructors
+:func:`BayesianNetwork.__init__() <pybnesian.BayesianNetwork.__init__>`,
+:func:`ConditionalBayesianNetwork.__init__() <pybnesian.ConditionalBayesianNetwork.__init__>`
+:func:`DynamicBayesianNetwork.__init__() <pybnesian.DynamicBayesianNetwork.__init__>` take the underlying
+:class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` as parameter. Thus, once a new 
+:class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` is implemented, you can use your new Bayesian model
 with the three variants automatically.
 
-Implementing a :class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` requires to implement the following
+Implementing a :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` requires to implement the following
 methods:
 
-- :func:`BayesianNetworkType.__str__() <pybnesian.models.BayesianNetworkType.__str__>`.
-- :func:`BayesianNetworkType.is_homogeneous() <pybnesian.models.BayesianNetworkType.is_homogeneous>`.
-- :func:`BayesianNetworkType.default_node_type() <pybnesian.models.BayesianNetworkType.default_node_type>`. This method
+- :func:`BayesianNetworkType.__str__() <pybnesian.BayesianNetworkType.__str__>`.
+- :func:`BayesianNetworkType.is_homogeneous() <pybnesian.BayesianNetworkType.is_homogeneous>`.
+- :func:`BayesianNetworkType.default_node_type() <pybnesian.BayesianNetworkType.default_node_type>`. This method
   is optional. It is only needed for homogeneous Bayesian networks.
-- :func:`BayesianNetworkType.data_default_node_type() <pybnesian.models.BayesianNetworkType.data_default_node_type>`. 
+- :func:`BayesianNetworkType.data_default_node_type() <pybnesian.BayesianNetworkType.data_default_node_type>`. 
   This method is optional. It is only needed for non-homogeneous Bayesian networks.
-- :func:`BayesianNetworkType.compatible_node_type() <pybnesian.models.BayesianNetworkType.compatible_node_type>`. This
+- :func:`BayesianNetworkType.compatible_node_type() <pybnesian.BayesianNetworkType.compatible_node_type>`. This
   method is optional. It is only needed for non-homogeneous Bayesian networks. If not implemented, it accepts any
-  :class:`FactorType <pybnesian.factors.FactorType>` for each node.
-- :func:`BayesianNetworkType.can_have_arc() <pybnesian.models.BayesianNetworkType.can_have_arc>`. This
+  :class:`FactorType <pybnesian.FactorType>` for each node.
+- :func:`BayesianNetworkType.can_have_arc() <pybnesian.BayesianNetworkType.can_have_arc>`. This
   method is optional. If not implemented, it accepts any arc.
-- :func:`BayesianNetworkType.new_bn() <pybnesian.models.BayesianNetworkType.new_bn>`.
-- :func:`BayesianNetworkType.new_cbn() <pybnesian.models.BayesianNetworkType.new_cbn>`.
-- :func:`BayesianNetworkType.alternative_node_type() <pybnesian.models.BayesianNetworkType.alternative_node_type>`.
+- :func:`BayesianNetworkType.new_bn() <pybnesian.BayesianNetworkType.new_bn>`.
+- :func:`BayesianNetworkType.new_cbn() <pybnesian.BayesianNetworkType.new_cbn>`.
+- :func:`BayesianNetworkType.alternative_node_type() <pybnesian.BayesianNetworkType.alternative_node_type>`.
   This method is optional. This method is needed to learn a Bayesian network structure with
-  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`. This method is only needed for
+  :class:`ChangeNodeTypeSet <pybnesian.ChangeNodeTypeSet>`. This method is only needed for
   non-homogeneous Bayesian networks.
 
 To illustrate, we will create a Gaussian network that only admits arcs ``source`` -> ``target`` where
@@ -545,7 +538,7 @@ To illustrate, we will create a Gaussian network that only admits arcs ``source`
 
 .. code-block::
 
-    from pybnesian.models import BayesianNetworkType
+    from pybnesian import BayesianNetworkType
 
     class MyRestrictedGaussianType(BayesianNetworkType):
         def __init__(self):
@@ -590,12 +583,12 @@ To illustrate, we will create a Gaussian network that only admits arcs ``source`
         #    pass
         
 The arc restrictions defined by
-:func:`BayesianNetworkType.can_have_arc() <pybnesian.models.BayesianNetworkType.can_have_arc>` can be an alternative to
+:func:`BayesianNetworkType.can_have_arc() <pybnesian.BayesianNetworkType.can_have_arc>` can be an alternative to
 the blacklist lists in some learning algorithms. However, this arc restrictions are applied always:
 
 .. testsetup::
 
-    from pybnesian.models import BayesianNetworkType
+    from pybnesian import BayesianNetworkType
 
     class MyRestrictedGaussianType(BayesianNetworkType):
         def __init__(self):
@@ -633,7 +626,7 @@ the blacklist lists in some learning algorithms. However, this arc restrictions 
 
 .. doctest::
 
-    >>> from pybnesian.models import BayesianNetwork
+    >>> from pybnesian import BayesianNetwork
     >>> g = BayesianNetwork(MyRestrictedGaussianType(), ["a", "b", "c", "d"])
     >>> g.add_arc("a", "b") # This is OK
     >>> g.add_arc("b", "c") # Not allowed
@@ -652,18 +645,18 @@ the blacklist lists in some learning algorithms. However, this arc restrictions 
 Creating Bayesian Network Types
 -------------------------------
 
-:class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>` can adapt the behavior of a Bayesian network
+:class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` can adapt the behavior of a Bayesian network
 with a few lines of code. However, you may want to create your own Bayesian network class instead of directly using a
-:class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`, 
-a :class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-or a :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`. This has some advantages:
+:class:`BayesianNetwork <pybnesian.BayesianNetwork>`, 
+a :class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+or a :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`. This has some advantages:
 
 - The source code can be better organized using a different class for each Bayesian network model.
 - Using ``type(model)`` over different types of models would return a different type:
 
 .. doctest::
     
-    >>> from pybnesian.models import GaussianNetworkType, BayesianNetwork
+    >>> from pybnesian import GaussianNetworkType, BayesianNetwork
     >>> g1 = BayesianNetwork(GaussianNetworkType(), ["a", "b", "c", "d"])
     >>> g2 = BayesianNetwork(MyRestrictedGaussianType(), ["a", "b", "c", "d"])
     >>> assert type(g1) == type(g2) # The class type is the same, but the code would be
@@ -673,13 +666,13 @@ or a :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`. 
 - It allows more customization of the Bayesian network behavior.
 
 To create your own Bayesian network, you have to inherit from
-:class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`, 
-:class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-or :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`:
+:class:`BayesianNetwork <pybnesian.BayesianNetwork>`, 
+:class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+or :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`:
 
 .. code-block::
 
-    from pybnesian.models import BayesianNetwork, ConditionalBayesianNetwork,\
+    from pybnesian import BayesianNetwork, ConditionalBayesianNetwork,\
                                  DynamicBayesianNetwork
 
     class MyRestrictedBN(BayesianNetwork):
@@ -707,8 +700,8 @@ or :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`:
                                             markovian_order)
 
 Also, it is recommended to change the 
-:func:`BayesianNetworkType.new_bn() <pybnesian.models.BayesianNetworkType.new_bn>`
-and :func:`BayesianNetworkType.new_cbn() <pybnesian.models.BayesianNetworkType.new_cbn>` definitions:
+:func:`BayesianNetworkType.new_bn() <pybnesian.BayesianNetworkType.new_bn>`
+and :func:`BayesianNetworkType.new_cbn() <pybnesian.BayesianNetworkType.new_cbn>` definitions:
 
 .. code-block::
 
@@ -726,7 +719,7 @@ and :func:`BayesianNetworkType.new_cbn() <pybnesian.models.BayesianNetworkType.n
 
 .. testsetup::
 
-    from pybnesian.models import BayesianNetwork, ConditionalBayesianNetwork,\
+    from pybnesian import BayesianNetwork, ConditionalBayesianNetwork,\
                                  DynamicBayesianNetwork
 
     class MyRestrictedBN(BayesianNetwork):
@@ -758,7 +751,7 @@ and :func:`BayesianNetworkType.new_cbn() <pybnesian.models.BayesianNetworkType.n
             DynamicBayesianNetwork.__init__(self, MyRestrictedGaussianType(), variables,
                                             markovian_order)
 
-    from pybnesian.models import BayesianNetworkType
+    from pybnesian import BayesianNetworkType
 
     class MyRestrictedGaussianType(BayesianNetworkType):
         def __init__(self):
@@ -815,38 +808,38 @@ completely the behavior of your Bayesian network. For example, we can print a me
 
 .. note::
 
-    :class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`, 
-    :class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-    and :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>` are not abstract classes. These
+    :class:`BayesianNetwork <pybnesian.BayesianNetwork>`, 
+    :class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+    and :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>` are not abstract classes. These
     classes provide an implementation for the abstract classes
-    :class:`BayesianNetworkBase <pybnesian.models.BayesianNetworkBase>`, 
-    :class:`ConditionalBayesianNetworkBase <pybnesian.models.ConditionalBayesianNetworkBase>`
-    or :class:`DynamicBayesianNetworkBase <pybnesian.models.DynamicBayesianNetworkBase>`.
+    :class:`BayesianNetworkBase <pybnesian.BayesianNetworkBase>`, 
+    :class:`ConditionalBayesianNetworkBase <pybnesian.ConditionalBayesianNetworkBase>`
+    or :class:`DynamicBayesianNetworkBase <pybnesian.DynamicBayesianNetworkBase>`.
 
 Serialization
 -------------
 
 The Bayesian network models can be saved using pickle with the
-:func:`BayesianNetworkBase.save() <pybnesian.models.BayesianNetworkBase.save>` method. This method saves the structure
+:func:`BayesianNetworkBase.save() <pybnesian.BayesianNetworkBase.save>` method. This method saves the structure
 of the Bayesian network and, optionally, the factors within the Bayesian network. When the
-:func:`BayesianNetworkBase.save() <pybnesian.models.BayesianNetworkBase.save>` is called,
+:func:`BayesianNetworkBase.save() <pybnesian.BayesianNetworkBase.save>` is called,
 :attr:`.BayesianNetworkBase.include_cpd` property is first set and then ``__getstate__()`` is called. ``__getstate__()``
 saves the factors within the Bayesian network model only if :attr:`.BayesianNetworkBase.include_cpd` is ``True``. The
-factors can be saved only if the :class:`Factor <pybnesian.factors.Factor>` is also plickeable (see
+factors can be saved only if the :class:`Factor <pybnesian.Factor>` is also plickeable (see
 :ref:`Factor serialization <factor-extension-serialization>`).
 
 As with factor serialization, an implementation of ``__getstate__()`` and ``__setstate__()`` is provided when
-inheriting from :class:`BayesianNetwork <pybnesian.models.BayesianNetwork>`,
-:class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-or :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`. This implementation saves:
+inheriting from :class:`BayesianNetwork <pybnesian.BayesianNetwork>`,
+:class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+or :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`. This implementation saves:
 
 - The underlying graph of the Bayesian network.
-- The underlying :class:`BayesianNetworkType <pybnesian.models.BayesianNetworkType>`.
-- The list of :class:`FactorType <pybnesian.factors.FactorType>` for each node.
-- The list of :class:`Factor <pybnesian.factors.Factor>` within the Bayesian network (if
+- The underlying :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`.
+- The list of :class:`FactorType <pybnesian.FactorType>` for each node.
+- The list of :class:`Factor <pybnesian.Factor>` within the Bayesian network (if
   :attr:`.BayesianNetworkBase.include_cpd` is ``True``).
 
-In the case of :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`, it saves the above list for
+In the case of :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`, it saves the above list for
 both the static and transition networks.
 
 If your extended Bayesian network class need to save more data, there are two alternatives:
@@ -913,8 +906,8 @@ If your extended Bayesian network class need to save more data, there are two al
         self.extra_data = d['extra_data']
 
 The same strategy is used to implement serialization in
-:class:`ConditionalBayesianNetwork <pybnesian.models.ConditionalBayesianNetwork>`
-and :class:`DynamicBayesianNetwork <pybnesian.models.DynamicBayesianNetwork>`.
+:class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>`
+and :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>`.
 
 .. warning::
 
@@ -927,23 +920,23 @@ Independence Test Extension
 ===========================
 
 Implementing a new conditional independence test involves creating a class that inherits from
-:class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>`.
+:class:`IndependenceTest <pybnesian.IndependenceTest>`.
 
-A new :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` needs to implement the following
+A new :class:`IndependenceTest <pybnesian.IndependenceTest>` needs to implement the following
 methods:
 
-- :func:`IndependenceTest.num_variables() <pybnesian.learning.independences.IndependenceTest.num_variables>`.
-- :func:`IndependenceTest.variable_names() <pybnesian.learning.independences.IndependenceTest.variable_names>`.
-- :func:`IndependenceTest.has_variables() <pybnesian.learning.independences.IndependenceTest.has_variables>`.
-- :func:`IndependenceTest.name() <pybnesian.learning.independences.IndependenceTest.name>`.
-- :func:`IndependenceTest.pvalue() <pybnesian.learning.independences.IndependenceTest.name>`.
+- :func:`IndependenceTest.num_variables() <pybnesian.IndependenceTest.num_variables>`.
+- :func:`IndependenceTest.variable_names() <pybnesian.IndependenceTest.variable_names>`.
+- :func:`IndependenceTest.has_variables() <pybnesian.IndependenceTest.has_variables>`.
+- :func:`IndependenceTest.name() <pybnesian.IndependenceTest.name>`.
+- :func:`IndependenceTest.pvalue() <pybnesian.IndependenceTest.pvalue>`.
 
 To illustrate, we will implement a conditional independence test that has perfect information about the
 conditional indepencences (an oracle independence test):
 
 .. code-block::
 
-    from pybnesian.learning.independences import IndependenceTest
+    from pybnesian import IndependenceTest
 
     class OracleTest(IndependenceTest):
 
@@ -996,11 +989,11 @@ conditional indepencences (an oracle independence test):
                 return 0
 
 The oracle version of the PC algorithm guarantees the return of the correct network structure. We can use our new oracle
-independence test with the :class:`PC <pybnesian.learning.algorithms.PC>` algorithm.
+independence test with the :class:`PC <pybnesian.PC>` algorithm.
 
 .. testsetup::
 
-    from pybnesian.learning.independences import IndependenceTest
+    from pybnesian import IndependenceTest
 
     class OracleTest(IndependenceTest):
 
@@ -1054,7 +1047,7 @@ independence test with the :class:`PC <pybnesian.learning.algorithms.PC>` algori
 
 .. doctest::
 
-    >>> from pybnesian.learning.algorithms import PC
+    >>> from pybnesian import PC
     >>> pc = PC()
     >>> oracle = OracleTest()
     >>> graph = pc.estimate(oracle)
@@ -1062,71 +1055,71 @@ independence test with the :class:`PC <pybnesian.learning.algorithms.PC>` algori
     >>> assert graph.num_edges() == 0
 
 To learn dynamic Bayesian networks your class has to override
-:class:`DynamicIndependenceTest <pybnesian.learning.independences.DynamicIndependenceTest>`. A new
-:class:`DynamicIndependenceTest <pybnesian.learning.independences.DynamicIndependenceTest>` needs to implement the
+:class:`DynamicIndependenceTest <pybnesian.DynamicIndependenceTest>`. A new
+:class:`DynamicIndependenceTest <pybnesian.DynamicIndependenceTest>` needs to implement the
 following methods:
 
-- :func:`DynamicIndependenceTest.num_variables() <pybnesian.learning.independences.DynamicIndependenceTest.num_variables>`.
-- :func:`DynamicIndependenceTest.variable_names() <pybnesian.learning.independences.DynamicIndependenceTest.variable_names>`.
-- :func:`DynamicIndependenceTest.has_variables() <pybnesian.learning.independences.DynamicIndependenceTest.has_variables>`.
-- :func:`DynamicIndependenceTest.name() <pybnesian.learning.independences.DynamicIndependenceTest.name>`.
-- :func:`DynamicIndependenceTest.markovian_order() <pybnesian.learning.independences.DynamicIndependenceTest.markovian_order>`.
-- :func:`DynamicIndependenceTest.static_tests() <pybnesian.learning.independences.DynamicIndependenceTest.static_tests>`.
-- :func:`DynamicIndependenceTest.transition_tests() <pybnesian.learning.independences.DynamicIndependenceTest.transition_tests>`.
+- :func:`DynamicIndependenceTest.num_variables() <pybnesian.DynamicIndependenceTest.num_variables>`.
+- :func:`DynamicIndependenceTest.variable_names() <pybnesian.DynamicIndependenceTest.variable_names>`.
+- :func:`DynamicIndependenceTest.has_variables() <pybnesian.DynamicIndependenceTest.has_variables>`.
+- :func:`DynamicIndependenceTest.name() <pybnesian.DynamicIndependenceTest.name>`.
+- :func:`DynamicIndependenceTest.markovian_order() <pybnesian.DynamicIndependenceTest.markovian_order>`.
+- :func:`DynamicIndependenceTest.static_tests() <pybnesian.DynamicIndependenceTest.static_tests>`.
+- :func:`DynamicIndependenceTest.transition_tests() <pybnesian.DynamicIndependenceTest.transition_tests>`.
 
-Usually, your extended :class:`IndependenceTest <pybnesian.learning.independences.IndependenceTest>` will use data.
-It is easy to implement a related :class:`DynamicIndependenceTest <pybnesian.learning.independences.DynamicIndependenceTest>` by
-taking a :class:`DynamicDataFrame <pybnesian.dataset.DynamicDataFrame>` as parameter and using the methods
-:func:`DynamicDataFrame.static_df() <pybnesian.dataset.DynamicDataFrame.static_df>` and
-:func:`DynamicDataFrame.transition_df() <pybnesian.dataset.DynamicDataFrame.transition_df>` to implement
-:func:`DynamicIndependenceTest.static_tests() <pybnesian.learning.independences.DynamicIndependenceTest.static_tests>`
-and :func:`DynamicIndependenceTest.transition_tests() <pybnesian.learning.independences.DynamicIndependenceTest.transition_tests>`
+Usually, your extended :class:`IndependenceTest <pybnesian.IndependenceTest>` will use data.
+It is easy to implement a related :class:`DynamicIndependenceTest <pybnesian.DynamicIndependenceTest>` by
+taking a :class:`DynamicDataFrame <pybnesian.DynamicDataFrame>` as parameter and using the methods
+:func:`DynamicDataFrame.static_df() <pybnesian.DynamicDataFrame.static_df>` and
+:func:`DynamicDataFrame.transition_df() <pybnesian.DynamicDataFrame.transition_df>` to implement
+:func:`DynamicIndependenceTest.static_tests() <pybnesian.DynamicIndependenceTest.static_tests>`
+and :func:`DynamicIndependenceTest.transition_tests() <pybnesian.DynamicIndependenceTest.transition_tests>`
 respectively.
 
 Learning Scores Extension
 =========================
 
 Implementing a new learning score involves creating a class that inherits from
-:class:`Score <pybnesian.learning.scores.Score>` or :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>`.
+:class:`Score <pybnesian.Score>` or :class:`ValidatedScore <pybnesian.ValidatedScore>`.
 The score must be decomposable.
 
-The :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>` is an
-:class:`Score <pybnesian.learning.scores.Score>` that is evaluated in two different data sets: a training dataset and a
+The :class:`ValidatedScore <pybnesian.ValidatedScore>` is an
+:class:`Score <pybnesian.Score>` that is evaluated in two different data sets: a training dataset and a
 validation dataset.
 
-An extended :class:`Score <pybnesian.learning.scores.Score>` class needs to implement the following methods:
+An extended :class:`Score <pybnesian.Score>` class needs to implement the following methods:
 
-- :func:`Score.has_variables() <pybnesian.learning.scores.Score.has_variables>`.
-- :func:`Score.compatible_bn() <pybnesian.learning.scores.Score.compatible_bn>`.
-- :func:`Score.score() <pybnesian.learning.scores.Score.score>`. This method is optional. The default
+- :func:`Score.has_variables() <pybnesian.Score.has_variables>`.
+- :func:`Score.compatible_bn() <pybnesian.Score.compatible_bn>`.
+- :func:`Score.score() <pybnesian.Score.score>`. This method is optional. The default
   implementation sums the local score for all the nodes.
-- :func:`Score.local_score() <pybnesian.learning.scores.Score.local_score>`. Only the version with 3 arguments
+- :func:`Score.local_score() <pybnesian.Score.local_score>`. Only the version with 3 arguments
   ``score.local_score(model, variable, evidence)`` needs to be implemented. The version with 2 arguments can not be
   overriden.
-- :func:`Score.local_score_node_type() <pybnesian.learning.scores.Score.local_score_node_type>`. This method is
+- :func:`Score.local_score_node_type() <pybnesian.Score.local_score_node_type>`. This method is
   optional. This method is only needed if the score is used together with
-  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`.
-- :func:`Score.data() <pybnesian.learning.scores.Score.data>`. This method is optional. It is needed to infer the
-  default node types in the :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>` algorithm.
+  :class:`ChangeNodeTypeSet <pybnesian.ChangeNodeTypeSet>`.
+- :func:`Score.data() <pybnesian.Score.data>`. This method is optional. It is needed to infer the
+  default node types in the :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` algorithm.
 
-In addition, an extended :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>` class needs to implement the
+In addition, an extended :class:`ValidatedScore <pybnesian.ValidatedScore>` class needs to implement the
 following methods to get the score in the validation dataset:
 
-- :func:`ValidatedScore.vscore() <pybnesian.learning.scores.ValidatedScore.vscore>`. This method is optional. The
+- :func:`ValidatedScore.vscore() <pybnesian.ValidatedScore.vscore>`. This method is optional. The
   default implementation sums the validation local score for all the nodes.
-- :func:`ValidatedScore.vlocal_score() <pybnesian.learning.scores.ValidatedScore.vlocal_score>`. Only the version with 3
+- :func:`ValidatedScore.vlocal_score() <pybnesian.ValidatedScore.vlocal_score>`. Only the version with 3
   arguments ``score.vlocal_score(model, variable, evidence)`` needs to be implemented. The version with 2 arguments can
   not be overriden.
-- :func:`ValidatedScore.vlocal_score_node_type() <pybnesian.learning.scores.ValidatedScore.vlocal_score_node_type>`.
+- :func:`ValidatedScore.vlocal_score_node_type() <pybnesian.ValidatedScore.vlocal_score_node_type>`.
   This method is optional. This method is only needed if the score is used together with
-  :class:`ChangeNodeTypeSet <pybnesian.learning.operators.ChangeNodeTypeSet>`.
+  :class:`ChangeNodeTypeSet <pybnesian.ChangeNodeTypeSet>`.
 
 To illustrate, we will implement an oracle score that only returns positive score to the arcs ``a`` -> ``c``,
 ``b`` -> ``c`` and ``c`` -> ``d``.
 
 .. code-block::
 
-    from pybnesian.learning.scores import Score
+    from pybnesian import Score
 
     class OracleScore(Score):
 
@@ -1173,11 +1166,11 @@ To illustrate, we will implement an oracle score that only returns positive scor
             return None
 
 We can use this new score, for example, with a
-:class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`.
+:class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 
 .. testsetup::
 
-    from pybnesian.learning.scores import Score
+    from pybnesian import Score
 
     class OracleScore(Score):
 
@@ -1220,9 +1213,7 @@ We can use this new score, for example, with a
 
 .. doctest::
 
-    >>> from pybnesian.models import GaussianNetwork
-    >>> from pybnesian.learning.algorithms import GreedyHillClimbing
-    >>> from pybnesian.learning.operators import ArcOperatorSet
+    >>> from pybnesian import GaussianNetwork, GreedyHillClimbing, ArcOperatorSet
     >>>
     >>> hc = GreedyHillClimbing()
     >>> start_model = GaussianNetwork(["a", "b", "c", "d"])
@@ -1230,21 +1221,21 @@ We can use this new score, for example, with a
     >>> assert set(learned_model.arcs()) == {('a', 'c'), ('b', 'c'), ('c', 'd')}
 
 To learn dynamic Bayesian networks your class has to override
-:class:`DynamicScore <pybnesian.learning.scores.DynamicScore>`. A new
-:class:`DynamicScore <pybnesian.learning.scores.DynamicScore>` needs to implement the
+:class:`DynamicScore <pybnesian.DynamicScore>`. A new
+:class:`DynamicScore <pybnesian.DynamicScore>` needs to implement the
 following methods:
 
-- :func:`DynamicScore.has_variables() <pybnesian.learning.scores.DynamicScore.has_variables>`.
-- :func:`DynamicScore.static_score() <pybnesian.learning.scores.DynamicScore.static_score>`.
-- :func:`DynamicScore.transition_score() <pybnesian.learning.scores.DynamicScore.transition_score>`.
+- :func:`DynamicScore.has_variables() <pybnesian.DynamicScore.has_variables>`.
+- :func:`DynamicScore.static_score() <pybnesian.DynamicScore.static_score>`.
+- :func:`DynamicScore.transition_score() <pybnesian.DynamicScore.transition_score>`.
 
-Usually, your extended :class:`Score <pybnesian.learning.scores.Score>` will use data.
-It is easy to implement a related :class:`DynamicScore <pybnesian.learning.scores.DynamicScore>` by
-taking a :class:`DynamicDataFrame <pybnesian.dataset.DynamicDataFrame>` as parameter and using the methods
-:func:`DynamicDataFrame.static_df() <pybnesian.dataset.DynamicDataFrame.static_df>` and
-:func:`DynamicDataFrame.transition_df() <pybnesian.dataset.DynamicDataFrame.transition_df>` to implement
-:func:`DynamicScore.static_score() <pybnesian.learning.scores.DynamicScore.static_score>`
-and :func:`DynamicScore.transition_score() <pybnesian.learning.scores.DynamicScore.transition_score>`
+Usually, your extended :class:`Score <pybnesian.Score>` will use data.
+It is easy to implement a related :class:`DynamicScore <pybnesian.DynamicScore>` by
+taking a :class:`DynamicDataFrame <pybnesian.DynamicDataFrame>` as parameter and using the methods
+:func:`DynamicDataFrame.static_df() <pybnesian.DynamicDataFrame.static_df>` and
+:func:`DynamicDataFrame.transition_df() <pybnesian.DynamicDataFrame.transition_df>` to implement
+:func:`DynamicScore.static_score() <pybnesian.DynamicScore.static_score>`
+and :func:`DynamicScore.transition_score() <pybnesian.DynamicScore.transition_score>`
 respectively.
 
 
@@ -1252,34 +1243,34 @@ Learning Operators Extension
 ============================
 
 Implementing a new learning score involves creating a class that inherits from
-:class:`Operator <pybnesian.learning.operators.Operator>` (or
-:class:`ArcOperator <pybnesian.learning.operators.ArcOperator>` for operators related with a single arc). Next, a new
-:class:`OperatorSet <pybnesian.learning.operators.OperatorSet>` must be defined to use the new learning operator
+:class:`Operator <pybnesian.Operator>` (or
+:class:`ArcOperator <pybnesian.ArcOperator>` for operators related with a single arc). Next, a new
+:class:`OperatorSet <pybnesian.OperatorSet>` must be defined to use the new learning operator
 within a learning algorithm.
 
-An extended :class:`Operator <pybnesian.learning.operators.Operator>` class needs to implement the following methods:
+An extended :class:`Operator <pybnesian.Operator>` class needs to implement the following methods:
 
-- :func:`Operator.__eq__() <pybnesian.learning.operators.Operator.__eq__>`.  This method is optional. This method
-  is needed if the :class:`OperatorTabuSet <pybnesian.learning.operators.OperatorTabuSet>` is used (in the
-  :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>` it is used when the score is
-  :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>`).
-- :func:`Operator.__hash__() <pybnesian.learning.operators.Operator.__hash__>`. This method is optional. This method
-  is needed if the :class:`OperatorTabuSet <pybnesian.learning.operators.OperatorTabuSet>` is used (in the
-  :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>` it is used when the score is
-  :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>`).
-- :func:`Operator.__str__() <pybnesian.learning.operators.Operator.__str__>`.
-- :func:`Operator.apply() <pybnesian.learning.operators.Operator.apply>`.
-- :func:`Operator.nodes_changed() <pybnesian.learning.operators.Operator.nodes_changed>`.
-- :func:`Operator.opposite() <pybnesian.learning.operators.Operator.opposite>`. This method is optional. This method
-  is needed if the :class:`OperatorTabuSet <pybnesian.learning.operators.OperatorTabuSet>` is used (in the
-  :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>` it is used when the score is
-  :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>`).
+- :func:`Operator.__eq__() <pybnesian.Operator.__eq__>`.  This method is optional. This method
+  is needed if the :class:`OperatorTabuSet <pybnesian.OperatorTabuSet>` is used (in the
+  :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` it is used when the score is
+  :class:`ValidatedScore <pybnesian.ValidatedScore>`).
+- :func:`Operator.__hash__() <pybnesian.Operator.__hash__>`. This method is optional. This method
+  is needed if the :class:`OperatorTabuSet <pybnesian.OperatorTabuSet>` is used (in the
+  :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` it is used when the score is
+  :class:`ValidatedScore <pybnesian.ValidatedScore>`).
+- :func:`Operator.__str__() <pybnesian.Operator.__str__>`.
+- :func:`Operator.apply() <pybnesian.Operator.apply>`.
+- :func:`Operator.nodes_changed() <pybnesian.Operator.nodes_changed>`.
+- :func:`Operator.opposite() <pybnesian.Operator.opposite>`. This method is optional. This method
+  is needed if the :class:`OperatorTabuSet <pybnesian.OperatorTabuSet>` is used (in the
+  :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` it is used when the score is
+  :class:`ValidatedScore <pybnesian.ValidatedScore>`).
 
-To illustrate, we will create a new :class:`AddArc <pybnesian.learning.operators.AddArc>` operator.
+To illustrate, we will create a new :class:`AddArc <pybnesian.AddArc>` operator.
 
 .. code-block::
 
-    from pybnesian.learning.operators import Operator, RemoveArc
+    from pybnesian import Operator, RemoveArc
 
     class MyAddArc(Operator):
 
@@ -1307,36 +1298,36 @@ To illustrate, we will create a new :class:`AddArc <pybnesian.learning.operators
         def opposite():
             return RemoveArc(self.source, self.target, -self.delta())
 
-To use this new operator, we need to define a :class:`OperatorSet <pybnesian.learning.operators.OperatorSet>` that
-returns this type of operators. An extended :class:`OperatorSet <pybnesian.learning.operators.OperatorSet>` class needs
+To use this new operator, we need to define a :class:`OperatorSet <pybnesian.OperatorSet>` that
+returns this type of operators. An extended :class:`OperatorSet <pybnesian.OperatorSet>` class needs
 to implement the following methods:
 
-- :func:`OperatorSet.cache_scores() <pybnesian.learning.operators.OperatorSet.cache_scores>`.
-- :func:`OperatorSet.find_max() <pybnesian.learning.operators.OperatorSet.find_max>`.
-- :func:`OperatorSet.find_max_tabu() <pybnesian.learning.operators.OperatorSet.find_max_tabu>`. This method is optional.
-  This method is needed if the :class:`OperatorTabuSet <pybnesian.learning.operators.OperatorTabuSet>` is used (in the
-  :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>` it is used when the score is
-  :class:`ValidatedScore <pybnesian.learning.scores.ValidatedScore>`).
-- :func:`OperatorSet.set_arc_blacklist() <pybnesian.learning.operators.OperatorSet.set_arc_blacklist>`. This method is
+- :func:`OperatorSet.cache_scores() <pybnesian.OperatorSet.cache_scores>`.
+- :func:`OperatorSet.find_max() <pybnesian.OperatorSet.find_max>`.
+- :func:`OperatorSet.find_max_tabu() <pybnesian.OperatorSet.find_max_tabu>`. This method is optional.
+  This method is needed if the :class:`OperatorTabuSet <pybnesian.OperatorTabuSet>` is used (in the
+  :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` it is used when the score is
+  :class:`ValidatedScore <pybnesian.ValidatedScore>`).
+- :func:`OperatorSet.set_arc_blacklist() <pybnesian.OperatorSet.set_arc_blacklist>`. This method is
   optional. Implement it only if you need to check that an arc is blacklisted.
-- :func:`OperatorSet.set_arc_whitelist() <pybnesian.learning.operators.OperatorSet.set_arc_whitelist>`. This method is
+- :func:`OperatorSet.set_arc_whitelist() <pybnesian.OperatorSet.set_arc_whitelist>`. This method is
   optional. Implement it only if you need to check that an arc is whitelisted.
-- :func:`OperatorSet.set_max_indegree() <pybnesian.learning.operators.OperatorSet.set_max_indegree>`. This method is
+- :func:`OperatorSet.set_max_indegree() <pybnesian.OperatorSet.set_max_indegree>`. This method is
   optional. Implement it only if you need to check the maximum indegree of the graph.
-- :func:`OperatorSet.set_type_blacklist() <pybnesian.learning.operators.OperatorSet.set_type_blacklist>`. This method is
+- :func:`OperatorSet.set_type_blacklist() <pybnesian.OperatorSet.set_type_blacklist>`. This method is
   optional. Implement it only if you need to check that a node type is blacklisted.
-- :func:`OperatorSet.set_type_whitelist() <pybnesian.learning.operators.OperatorSet.set_type_whitelist>`. This method is
+- :func:`OperatorSet.set_type_whitelist() <pybnesian.OperatorSet.set_type_whitelist>`. This method is
   optional. Implement it only if you need to check that a node type is whitelisted.
-- :func:`OperatorSet.update_scores() <pybnesian.learning.operators.OperatorSet.update_scores>`.
-- :func:`OperatorSet.finished() <pybnesian.learning.operators.OperatorSet.finished>`. This method is optional. Implement
+- :func:`OperatorSet.update_scores() <pybnesian.OperatorSet.update_scores>`.
+- :func:`OperatorSet.finished() <pybnesian.OperatorSet.finished>`. This method is optional. Implement
   it only if your class needs to clear the state.
 
-To illustrate, we will create an operator set that only contains the :class:`MyAddArc` operators. Therefore, this
-:class:`OperatorSet <pybnesian.learning.operators.OperatorSet>` can only add arcs.
+To illustrate, we will create an operator set that only contains the :class:`MyAddArc <pybnesian.MyAddArc>` operators. Therefore, this
+:class:`OperatorSet <pybnesian.OperatorSet>` can only add arcs.
 
 .. code-block::
 
-    from pybnesian.learning.operators import OperatorSet
+    from pybnesian import OperatorSet
 
     class MyAddArcSet(OperatorSet):
 
@@ -1412,12 +1403,12 @@ To illustrate, we will create an operator set that only contains the :class:`MyA
             self.max_indegree = 0
             self.set.clear()
 
-This :class:`OperatorSet <pybnesian.learning.operators.OperatorSet>` can be used in a
-:class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`:
+This :class:`OperatorSet <pybnesian.OperatorSet>` can be used in a
+:class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`:
 
 .. testsetup::
 
-    from pybnesian.learning.operators import Operator, RemoveArc, OperatorSet
+    from pybnesian import Operator, RemoveArc, OperatorSet
 
     class MyAddArc(Operator):
 
@@ -1520,7 +1511,7 @@ This :class:`OperatorSet <pybnesian.learning.operators.OperatorSet>` can be used
 
 .. doctest::
 
-    >>> from pybnesian.learning.algorithms import GreedyHillClimbing
+    >>> from pybnesian import GreedyHillClimbing
     >>> hc = GreedyHillClimbing()
     >>> add_set = MyAddArcSet()
     >>> # We will use the OracleScore: a -> c <- b, c -> d
@@ -1538,16 +1529,16 @@ Callbacks Extension
 
 The greedy hill-climbing algorithm admits a ``callback`` parameter that allows some custom functionality to be run on
 each iteration. To create a callback, a new class must be created that inherits from
-:class:`Callback <pybnesian.learning.algorithms.callbacks.Callback>`. A new
-:class:`Callback <pybnesian.learning.algorithms.callbacks.Callback>` needs to implement the following method:
+:class:`Callback <pybnesian.Callback>`. A new
+:class:`Callback <pybnesian.Callback>` needs to implement the following method:
 
-:func:`Callback.call <pybnesian.learning.algorithms.callbacks.Callback.call>`.
+- :func:`Callback.call <pybnesian.Callback.call>`.
 
 To illustrate, we will create a callback that prints the last operator applied on each iteration:
 
 .. code-block::
 
-    from pybnesian.learning.algorithms.callbacks import Callback
+    from pybnesian import Callback
 
     class PrintOperator(Callback):
 
@@ -1564,11 +1555,11 @@ To illustrate, we will create a callback that prints the last operator applied o
             else:
                 print("Iteration " + str(iteration) + ". Last operator: " + str(operator))
 
-Now, we can use this callback in the :class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`:
+Now, we can use this callback in the :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`:
 
 .. testsetup::
 
-    from pybnesian.learning.algorithms.callbacks import Callback
+    from pybnesian import Callback
 
     class PrintOperator(Callback):
 
@@ -1587,7 +1578,7 @@ Now, we can use this callback in the :class:`GreedyHillClimbing <pybnesian.learn
 
 .. doctest::
 
-    >>> from pybnesian.learning.algorithms import GreedyHillClimbing
+    >>> from pybnesian import GreedyHillClimbing
     >>> hc = GreedyHillClimbing()
     >>> add_set = MyAddArcSet()
     >>> # We will use the OracleScore: a -> c <- b, c -> d

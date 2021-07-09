@@ -10,25 +10,8 @@ using dataset::DataFrame, dataset::CrossValidation, dataset::HoldOut, dataset::D
 using util::random_seed_arg;
 
 void pybindings_dataset(py::module& root) {
-    auto dataset = root.def_submodule("dataset", R"doc(
-The pybnesian.dataset module implements some useful dataset manipulation techniques such as k-fold cross validation and hold-out.
 
-DataFrame
-^^^^^^^^^
-
-Internally, PyBNesian uses a :class:`pyarrow.RecordBatch` to enable a zero-copy data exchange between C++ and Python.
-
-Most of the classes and methods takes as argument, or returns a :class:`DataFrame` type. This represents an
-encapsulation of :class:`pyarrow.RecordBatch`:
-
-- When a :class:`DataFrame` is taken as argument in a function, both a :class:`pyarrow.RecordBatch` or a
-  :class:`pandas.DataFrame` can be used as a parameter.
-
-- When PyBNesian specifies a :class:`DataFrame` return  type, a :class:`pyarrow.RecordBatch` is returned. 
-  This can be converted easily to a :class:`pandas.DataFrame` using :meth:`pyarrow.RecordBatch.to_pandas`.
-)doc");
-
-    py::class_<CrossValidation> cv(dataset, "CrossValidation", R"doc(
+    py::class_<CrossValidation> cv(root, "CrossValidation", R"doc(
 This class implements k-fold cross-validation, i.e. it splits the data into k disjoint sets of train and test data.
 )doc");
 
@@ -68,7 +51,7 @@ Iterates over the k-fold cross-validation.
 
 .. doctest::
 
-    >>> from pybnesian.dataset import CrossValidation
+    >>> from pybnesian import CrossValidation
     >>> df = pd.DataFrame({'a': np.random.rand(20), 'b': np.random.rand(20)})
     >>> for (training_data, test_data) in CrossValidation(df):
     ...     assert training_data.num_rows == 18
@@ -98,7 +81,7 @@ Iterates over the row indices of each training and test :class:`DataFrame`.
 
 .. doctest::
 
-    >>> from pybnesian.dataset import CrossValidation
+    >>> from pybnesian import CrossValidation
     >>> df = pd.DataFrame({'a': np.random.rand(20), 'b': np.random.rand(20)})
     >>> for (training_indices, test_indices) in CrossValidation(df).indices():
     ...     assert set(range(20)) == set(list(training_indices) + list(test_indices))
@@ -121,7 +104,7 @@ Iterates over the row indices of each training and test :class:`DataFrame`.
             .def(
                 "loc", [](CrossValidation& self, std::vector<int> v) { return self.loc(v); }, py::arg("columns"), R"doc(
 
-loc(self: pybnesian.dataset.CrossValidation, columns: str or int or List[str] or List[int]) -> CrossValidation
+loc(self: pybnesian.CrossValidation, columns: str or int or List[str] or List[int]) -> CrossValidation
 
 Selects columns from the :class:`CrossValidation` object.
 
@@ -131,7 +114,7 @@ Selects columns from the :class:`CrossValidation` object.
 )doc");
     }
 
-    py::class_<HoldOut>(dataset, "HoldOut", R"doc(
+    py::class_<HoldOut>(root, "HoldOut", R"doc(
 This class implements holdout validation, i.e. it splits the data into training and test sets.
 )doc")
         .def(py::init([](const DataFrame& df, double test_ratio, std::optional<unsigned int> seed, bool include_null) {
@@ -163,7 +146,7 @@ Gets the test data.
 :returns: Test data.
 )doc");
 
-    py::class_<DynamicVariable<int>>(dataset, "DynamicVariable<int>")
+    py::class_<DynamicVariable<int>>(root, "DynamicVariable<int>")
         .def(py::init<int, int>())
         .def(py::init<std::pair<int, int>>())
         .def_property(
@@ -175,7 +158,7 @@ Gets the test data.
             [](DynamicVariable<int>& self) { return self.temporal_slice; },
             [](DynamicVariable<int>& self, int slice) { self.temporal_slice = slice; });
 
-    py::class_<DynamicVariable<std::string>>(dataset, "DynamicVariable<std::string>", R"doc(
+    py::class_<DynamicVariable<std::string>>(root, "DynamicVariable<std::string>", R"doc(
 This class implements a DynamicVariable.
 )doc")
         .def(py::init<std::string, int>())
@@ -192,7 +175,7 @@ This class implements a DynamicVariable.
     py::implicitly_convertible<std::pair<int, int>, DynamicVariable<int>>();
     py::implicitly_convertible<std::pair<std::string, int>, DynamicVariable<std::string>>();
 
-    py::class_<DynamicDataFrame> ddf(dataset, "DynamicDataFrame", R"doc(
+    py::class_<DynamicDataFrame> ddf(root, "DynamicDataFrame", R"doc(
 This class implements the adaptation of a :class:`DynamicDataFrame` to a dynamic context (temporal series). This
 is useful to make easier to learn dynamic Bayesian networks.
 
@@ -217,7 +200,7 @@ All the operations are implemented using a zero-copy strategy to avoid wasting m
 
 .. doctest::
 
-    >>> from pybnesian.dataset import DynamicDataFrame
+    >>> from pybnesian import DynamicDataFrame
     >>> df = pd.DataFrame({'a': np.arange(10, dtype=float)})
     >>> ddf = DynamicDataFrame(df, 2)
     >>> ddf.transition_df().to_pandas()
@@ -301,7 +284,7 @@ probability f(``t_0`` | ``t_1``, ..., ``t_[markovian_order]``). See `DynamicData
                 },
                 py::arg("indices"),
                 R"doc(
-temporal_slice(self: pybnesian.dataset.DynamicDataFrame, indices: int or List[int]) -> DataFrame
+temporal_slice(self: pybnesian.DynamicDataFrame, indices: int or List[int]) -> DataFrame
 
 Gets a temporal slice or a set of temporal slices. The i-th temporal slice is composed by the columns
 ``[variable_name]_t_i``
@@ -315,7 +298,7 @@ Gets a temporal slice or a set of temporal slices. The i-th temporal slice is co
 
 .. doctest::
 
-    >>> from pybnesian.dataset import DynamicDataFrame
+    >>> from pybnesian import DynamicDataFrame
     >>> df = pd.DataFrame({'a': np.arange(10, dtype=float), 'b': np.arange(0, 100, 10, dtype=float)})
     >>> ddf = DynamicDataFrame(df, 2)
     >>> ddf.temporal_slice(1).to_pandas()
@@ -360,7 +343,7 @@ Gets a temporal slice or a set of temporal slices. The i-th temporal slice is co
                 },
                 py::arg("columns"),
                 R"doc(
-loc(self: pybnesian.dataset.DynamicDataFrame, columns: DynamicVariable or List[DynamicVariable]) -> DataFrame
+loc(self: pybnesian.DynamicDataFrame, columns: DynamicVariable or List[DynamicVariable]) -> DataFrame
 
 Gets a column or set of columns from the :class:`DynamicDataFrame`. See :class:`DynamicVariable`.
 
@@ -373,7 +356,7 @@ Gets a column or set of columns from the :class:`DynamicDataFrame`. See :class:`
 
 .. doctest::
 
-    >>> from pybnesian.dataset import DynamicDataFrame
+    >>> from pybnesian import DynamicDataFrame
     >>> df = pd.DataFrame({'a': np.arange(10, dtype=float),
     ...                    'b': np.arange(0, 100, 10, dtype=float)})
     >>> ddf = DynamicDataFrame(df, 2)

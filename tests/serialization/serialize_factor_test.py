@@ -1,9 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-from pybnesian.factors import *
-from pybnesian.factors.continuous import *
-from pybnesian.factors.discrete import *
+import pybnesian as pbn
+from pybnesian import FactorType, Factor, LinearGaussianCPD, CKDE, DiscreteFactor
 import pickle
 
 @pytest.fixture
@@ -105,19 +104,19 @@ def test_serialization_unfitted_factor(lg_bytes, ckde_bytes, discrete_bytes, new
     assert loaded_lg.variable() == "c"
     assert set(loaded_lg.evidence()) == set(["a", "b"])
     assert not loaded_lg.fitted()
-    assert loaded_lg.type() == LinearGaussianCPDType()
+    assert loaded_lg.type() == pbn.LinearGaussianCPDType()
 
     loaded_ckde = pickle.loads(ckde_bytes)
     assert loaded_ckde.variable() == "c"
     assert set(loaded_ckde.evidence()) == set(["a", "b"])
     assert not loaded_ckde.fitted()
-    assert loaded_ckde.type() == CKDEType()
+    assert loaded_ckde.type() == pbn.CKDEType()
 
     loaded_discrete = pickle.loads(discrete_bytes)
     assert loaded_discrete.variable() == "c"
     assert set(loaded_discrete.evidence()) == set(["a", "b"])
     assert not loaded_discrete.fitted()
-    assert loaded_discrete.type() == DiscreteFactorType()
+    assert loaded_discrete.type() == pbn.DiscreteFactorType()
 
     loaded_new = pickle.loads(new_bytes)
     assert loaded_new.variable() == "c"
@@ -127,7 +126,7 @@ def test_serialization_unfitted_factor(lg_bytes, ckde_bytes, discrete_bytes, new
     nn = NewFactor("a", [])
     assert loaded_new.type() == nn.type()
 
-    from pybnesian.models import GaussianNetwork
+    from pybnesian import GaussianNetwork
     dummy_network = GaussianNetwork(["a", "b", "c", "d"])
     assert type(loaded_new.type().new_factor(dummy_network, "a", [])) == NewFactor
 
@@ -195,7 +194,7 @@ def test_serialization_fitted_factor(lg_fitted_bytes, ckde_fitted_bytes, discret
     assert loaded_ckde.variable() == "c"
     assert set(loaded_ckde.evidence()) == set(["a", "b"])
     assert loaded_ckde.fitted()
-    assert loaded_ckde.type() == CKDEType()
+    assert loaded_ckde.type() == pbn.CKDEType()
     assert loaded_ckde.num_instances() == 10
     tr = loaded_ckde.kde_joint().dataset().to_pandas()
     assert np.all(tr['a'] == np.arange(10))
@@ -206,7 +205,7 @@ def test_serialization_fitted_factor(lg_fitted_bytes, ckde_fitted_bytes, discret
     assert loaded_discrete.variable() == "c"
     assert set(loaded_discrete.evidence()) == set(["a", "b"])
     assert loaded_discrete.fitted()
-    assert loaded_discrete.type() == DiscreteFactorType()
+    assert loaded_discrete.type() == pbn.DiscreteFactorType()
 
     test = pd.DataFrame({'a': ["a1", "a2", "a1", "a2", "a1", "a2", "a1", "a2"], 
                          'b': ["b1", "b1", "b2", "b2", "b1", "b1", "b2", "b2"],

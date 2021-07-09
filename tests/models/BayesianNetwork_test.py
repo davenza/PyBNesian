@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from pybnesian.models import *
-from pybnesian.factors.continuous import *
+import pybnesian as pbn
+from pybnesian import BayesianNetwork, GaussianNetwork
 import util_test
 
 df = util_test.generate_normal_data(10000)
@@ -40,7 +40,7 @@ def test_create_bn():
     assert "must be a DAG" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
-        gbn = BayesianNetwork(GaussianNetworkType(), ['a', 'b', 'c', 'd'], [], [('a', CKDEType())])
+        gbn = BayesianNetwork(pbn.GaussianNetworkType(), ['a', 'b', 'c', 'd'], [], [('a', pbn.CKDEType())])
     assert "Wrong factor type" in str(ex.value)
     
 def gbn_generator():
@@ -249,26 +249,26 @@ def test_add_cpds():
     gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
     with pytest.raises(ValueError) as ex:
-        gbn.add_cpds([LinearGaussianCPD('e', [])])
+        gbn.add_cpds([pbn.LinearGaussianCPD('e', [])])
     assert "variable which is not present" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
-        gbn.add_cpds([LinearGaussianCPD('a', ['e'])])
+        gbn.add_cpds([pbn.LinearGaussianCPD('a', ['e'])])
     assert "Evidence variable" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
-        gbn.add_cpds([LinearGaussianCPD('a', ['b'])])
+        gbn.add_cpds([pbn.LinearGaussianCPD('a', ['b'])])
     assert "CPD do not have the model's parent set as evidence" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
-        gbn.add_cpds([LinearGaussianCPD('b', [])])
+        gbn.add_cpds([pbn.LinearGaussianCPD('b', [])])
     assert "CPD do not have the model's parent set as evidence" in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
-        gbn.add_cpds([LinearGaussianCPD('b', ['c'])])
+        gbn.add_cpds([pbn.LinearGaussianCPD('b', ['c'])])
     assert "CPD do not have the model's parent set as evidence" in str(ex.value)
 
-    lg = LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)
+    lg = pbn.LinearGaussianCPD('b', ['a'], [2.5, 1.65], 4)
     assert lg.fitted()
 
     gbn.add_cpds([lg])
@@ -293,7 +293,7 @@ def test_add_cpds():
     assert "CPD of variable \"d\" not added. Call add_cpds() or fit() to add the CPD." in str(ex.value)
 
     with pytest.raises(ValueError) as ex:
-        gbn.add_cpds([LinearGaussianCPD('e', [])])
+        gbn.add_cpds([pbn.LinearGaussianCPD('e', [])])
     assert "variable which is not present" in str(ex.value)
 
 

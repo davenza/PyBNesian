@@ -28,22 +28,20 @@ DiscreteFactor::ParamsClass numpy_to_discrete_params(
 }
 
 void pybindings_parameters(py::module& root) {
-    auto parameters = root.def_submodule("parameters", R"doc(The pybnesian.learning.parameters implements
-learning parameter learning for :class:`Factor` from data.)doc");
 
-    parameters.def("MLE",
+    root.def("MLE",
                    &pybindings::learning::parameters::mle_python_wrapper,
                    py::return_value_policy::take_ownership,
                    py::arg("factor_type"),
                    R"doc(
 Generates an MLE estimator for the given ``factor_type``.
 
-:param factor_type: A :class:`FactorType <pybnesian.factors.FactorType>`.
+:param factor_type: A :class:`FactorType <pybnesian.FactorType>`.
 :returns: An MLE estimator.
 )doc");
 
     // TODO Fit LinearGaussianCPD with ParamsClass.
-    py::class_<LinearGaussianCPD::ParamsClass>(parameters, "LinearGaussianParams")
+    py::class_<LinearGaussianCPD::ParamsClass>(root, "LinearGaussianParams")
         .def(py::init([](VectorXd b, double v) {
                  return LinearGaussianCPD::ParamsClass{/*beta = */ b,
                                                        /*variance = */ v};
@@ -64,15 +62,14 @@ size ``len(evidence) + 1``.
 The variance of the linear Gaussian CPD. This is a :class:`float` value.
 )doc");
 
-    py::class_<MLE<LinearGaussianCPD>>(parameters, "MLELinearGaussianCPD", R"doc(
-Maximum Likelihood Estimator (MLE) for :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
+    py::class_<MLE<LinearGaussianCPD>>(root, "MLELinearGaussianCPD", R"doc(
+Maximum Likelihood Estimator (MLE) for :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
 
 This class is created using the function :func:`MLE`.
 
 .. doctest::
 
-    >>> from pybnesian.factors.continuous import LinearGaussianCPDType
-    >>> from pybnesian.learning.parameters import MLE
+    >>> from pybnesian import LinearGaussianCPDType, MLE
     >>> mle = MLE(LinearGaussianCPDType())
 
 )doc")
@@ -86,15 +83,15 @@ This class is created using the function :func:`MLE`.
             py::arg("variable"),
             py::arg("evidence"),
             R"doc(
-Estimate the parameters of a :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>` with the
+Estimate the parameters of a :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` with the
 given ``variable`` and ``evidence``. The parameters are estimated with maximum likelihood estimation on the data ``df``.
 
 :param df: DataFrame to estimate the parameters.
-:param variable: Variable of the :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
-:param evidence: Evidence of the :class:`LinearGaussianCPD <pybnesian.factors.continuous.LinearGaussianCPD>`.
+:param variable: Variable of the :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
+:param evidence: Evidence of the :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
 )doc");
 
-    py::class_<DiscreteFactor::ParamsClass>(parameters, "DiscreteFactorParams")
+    py::class_<DiscreteFactor::ParamsClass>(root, "DiscreteFactorParams")
         .def(py::init(&numpy_to_discrete_params), py::arg("logprob"), R"doc(
 Initializes :class:`DiscreteFactorParams` with a given ``logprob`` (see :attr:`DiscreteFactorParams.logprob`).
 )doc")
@@ -139,7 +136,7 @@ Each dimension have a shape equal to the cardinality of the corresponding variab
 to the log-probability of the assignments for all the variables.
 
 For example, if we are modelling the parameters for the
-:class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` of a variable with two evidence variables:
+:class:`DiscreteFactor <pybnesian.DiscreteFactor>` of a variable with two evidence variables:
 
 .. math::
 
@@ -155,8 +152,7 @@ As logprob defines a conditional probability table, the sum of conditional proba
 .. doctest::
 
 
-    >>> from pybnesian.factors.discrete import DiscreteFactorType
-    >>> from pybnesian.learning.parameters import MLE
+    >>> from pybnesian import DiscreteFactorType, MLE
     >>> variable = np.random.choice(["a1", "a2", "a3"], size=50, p=[0.5, 0.3, 0.2])
     >>> evidence = np.random.choice(["b1", "b2"], size=50, p=[0.5, 0.5])
     >>> df = pd.DataFrame({'variable': variable, 'evidence': evidence}, dtype="category")
@@ -168,15 +164,14 @@ As logprob defines a conditional probability table, the sum of conditional proba
     >>> assert np.all(np.isclose(ss, np.ones(2)))
 )doc");
 
-    py::class_<MLE<DiscreteFactor>>(parameters, "MLEDiscreteFactor", R"doc(
-Maximum Likelihood Estimator (MLE) for :class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>`.
+    py::class_<MLE<DiscreteFactor>>(root, "MLEDiscreteFactor", R"doc(
+Maximum Likelihood Estimator (MLE) for :class:`DiscreteFactor <pybnesian.DiscreteFactor>`.
 
 This class is created using the function :func:`MLE`.
 
 .. doctest::
 
-    >>> from pybnesian.factors.continuous import DiscreteFactorType
-    >>> from pybnesian.learning.parameters import MLE
+    >>> from pybnesian import DiscreteFactorType, MLE
     >>> mle = MLE(DiscreteFactorType())
 
 )doc")
@@ -190,11 +185,11 @@ This class is created using the function :func:`MLE`.
             py::arg("variable"),
             py::arg("evidence"),
             R"doc(
-Estimate the parameters of a :class:`DiscreteFactor <pybnesian.factors.discrete.DiscreteFactor>` with the
+Estimate the parameters of a :class:`DiscreteFactor <pybnesian.DiscreteFactor>` with the
 given ``variable`` and ``evidence``. The parameters are estimated with maximum likelihood estimation on the data ``df``.
 
 :param df: DataFrame to estimate the parameters.
-:param variable: Variable of the :class:`DiscreteFactor <pybnesian.factors.continuous.DiscreteFactor>`.
-:param evidence: Evidence of the :class:`DiscreteFactor <pybnesian.factors.continuous.DiscreteFactor>`.
+:param variable: Variable of the :class:`DiscreteFactor <pybnesian.DiscreteFactor>`.
+:param evidence: Evidence of the :class:`DiscreteFactor <pybnesian.DiscreteFactor>`.
 )doc");
 }

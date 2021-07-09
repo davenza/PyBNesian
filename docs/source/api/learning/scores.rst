@@ -3,83 +3,82 @@ Structure Scores
 
 This section includes different learning scores that evaluate the goodness of a Bayesian network. This is used
 for the score-and-search learning algorithms such as
-:class:`GreedyHillClimbing <pybnesian.learning.algorithms.GreedyHillClimbing>`,
-:class:`MMHC <pybnesian.learning.algorithms.MMHC>` and :class:`DMMHC <pybnesian.learning.algorithms.DMMHC>`.
+:class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`, :class:`MMHC <pybnesian.MMHC>` and :class:`DMMHC <pybnesian.DMMHC>`.
 
 Abstract classes
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: pybnesian.learning.scores.Score
+.. autoclass:: pybnesian.Score
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.ValidatedScore
+.. autoclass:: pybnesian.ValidatedScore
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
     
-.. autoclass:: pybnesian.learning.scores.DynamicScore
+.. autoclass:: pybnesian.DynamicScore
     :members:
     :special-members: __init__, __str__
 
 Concrete classes
 ^^^^^^^^^^^^^^^^
-.. autoclass:: pybnesian.learning.scores.BIC
+.. autoclass:: pybnesian.BIC
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.BGe
+.. autoclass:: pybnesian.BGe
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.BDe
+.. autoclass:: pybnesian.BDe
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.CVLikelihood
+.. autoclass:: pybnesian.CVLikelihood
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.HoldoutLikelihood
+.. autoclass:: pybnesian.HoldoutLikelihood
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.ValidatedLikelihood
+.. autoclass:: pybnesian.ValidatedLikelihood
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.DynamicBIC
+.. autoclass:: pybnesian.DynamicBIC
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.DynamicBGe
+.. autoclass:: pybnesian.DynamicBGe
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.DynamicBDe
+.. autoclass:: pybnesian.DynamicBDe
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.DynamicCVLikelihood
+.. autoclass:: pybnesian.DynamicCVLikelihood
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.DynamicHoldoutLikelihood
+.. autoclass:: pybnesian.DynamicHoldoutLikelihood
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.scores.DynamicValidatedLikelihood
+.. autoclass:: pybnesian.DynamicValidatedLikelihood
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

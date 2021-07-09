@@ -1,32 +1,31 @@
 Factors module
 **************
 
-.. automodule:: pybnesian.factors
+The factors are usually represented as conditional probability functions and are a component of a Bayesian network.
 
 Abstract Types
 ==============
 
-The :class:`FactorType` and :class:`Factor` classes are abstract and both of them need to be implemented to create a new
-factor type. Each :class:`Factor` is always associated with a specific :class:`FactorType`.
+The :class:`FactorType <pybnesian.FactorType>` and :class:`Factor <pybnesian.Factor>` classes are abstract and both of them need to be implemented to create a new
+factor type. Each :class:`Factor <pybnesian.Factor>` is always associated with a specific :class:`FactorType <pybnesian.FactorType>`.
 
-.. autoclass:: pybnesian.factors.FactorType
+.. autoclass:: pybnesian.FactorType
     :members:
     :special-members: __init__, __str__
-.. autoclass:: pybnesian.factors.Factor
+.. autoclass:: pybnesian.Factor
     :members:
     :special-members: __init__, __str__
 
 Continuous Factors
 ==================
-The continuous factors are implemented in the submodule pybnesian.factors.continuous.
 
 Linear Gaussian CPD
 -------------------
-.. autoclass:: pybnesian.factors.continuous.LinearGaussianCPDType
+.. autoclass:: pybnesian.LinearGaussianCPDType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
-.. autoclass:: pybnesian.factors.continuous.LinearGaussianCPD
+.. autoclass:: pybnesian.LinearGaussianCPD
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -34,24 +33,23 @@ Linear Gaussian CPD
 Conditional Kernel Density Estimation (CKDE)
 --------------------------------------------
 
-.. autoclass:: pybnesian.factors.continuous.CKDEType
+.. autoclass:: pybnesian.CKDEType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
-.. autoclass:: pybnesian.factors.continuous.CKDE
+.. autoclass:: pybnesian.CKDE
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
     
 Discrete Factors
 ================
-The discrete factors are implemented in the submodule pybnesian.factors.discrete.
 
-.. autoclass:: pybnesian.factors.discrete.DiscreteFactorType
+.. autoclass:: pybnesian.DiscreteFactorType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
-.. autoclass:: pybnesian.factors.discrete.DiscreteFactor
+.. autoclass:: pybnesian.DiscreteFactor
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -64,36 +62,41 @@ This types are not factors, but are auxiliary types for other factors.
 Kernel Density Estimation
 -------------------------
 
-.. autoclass:: pybnesian.factors.continuous.BandwidthEstimator
+.. autoclass:: pybnesian.BandwidthEstimator
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.factors.continuous.ScottsBandwidth
+.. autoclass:: pybnesian.ScottsBandwidth
     :show-inheritance:
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.factors.continuous.NormalReferenceRule
+.. autoclass:: pybnesian.NormalReferenceRule
     :show-inheritance:
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.factors.continuous.KDE
+.. autoclass:: pybnesian.UCV
+    :show-inheritance:
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.factors.continuous.ProductKDE
+.. autoclass:: pybnesian.KDE
+    :members:
+    :special-members: __init__
+
+.. autoclass:: pybnesian.ProductKDE
     :members:
     :special-members: __init__
 
 Other
 -----
 
-.. autoclass:: pybnesian.factors.UnknownFactorType
+.. autoclass:: pybnesian.UnknownFactorType
     :members:
     :special-members: __init__
 
-.. autoclass:: pybnesian.factors.Assignment
+.. autoclass:: pybnesian.Assignment
     :members:
     :special-members: __init__
 

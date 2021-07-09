@@ -1,9 +1,6 @@
 import numpy as np
 from scipy.stats import norm
-from pybnesian.models import GaussianNetwork
-from pybnesian.learning.scores import BIC
-from pybnesian.factors.continuous import LinearGaussianCPD
-
+import pybnesian as pbn
 import util_test
 
 SIZE = 10000
@@ -32,9 +29,9 @@ def numpy_local_score(data, variable, evidence):
     return loglik.sum() - np.log(N) * 0.5 * (d + 2)
 
 def test_bic_local_score():
-    gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+    gbn = pbn.GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
-    bic = BIC(df)
+    bic = pbn.BIC(df)
     
     assert np.isclose(bic.local_score(gbn, 'a', []), numpy_local_score(df, 'a', []))
     assert np.isclose(bic.local_score(gbn, 'b', ['a']), numpy_local_score(df, 'b', ['a']))
@@ -48,7 +45,7 @@ def test_bic_local_score():
     assert bic.local_score(gbn, 'd') == bic.local_score(gbn, 'd', gbn.parents('d'))
 
 def test_bic_local_score_null():
-    gbn = GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+    gbn = pbn.GaussianNetwork(['a', 'b', 'c', 'd'], [('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
 
     np.random.seed(0)
     a_null = np.random.randint(0, SIZE, size=100)
@@ -62,7 +59,7 @@ def test_bic_local_score_null():
     df_null.loc[df_null.index[c_null], 'c'] = np.nan
     df_null.loc[df_null.index[d_null], 'd'] = np.nan
     
-    bic = BIC(df_null)
+    bic = pbn.BIC(df_null)
     
     assert np.isclose(bic.local_score(gbn, 'a', []), numpy_local_score(df_null, 'a', []))
     assert np.isclose(bic.local_score(gbn, 'b', ['a']), numpy_local_score(df_null, 'b', ['a']))
@@ -76,9 +73,9 @@ def test_bic_local_score_null():
     assert bic.local_score(gbn, 'd') == bic.local_score(gbn, 'd', gbn.parents('d'))
 
 def test_bic_score():
-    gbn = GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
+    gbn = pbn.GaussianNetwork([('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'c'), ('b', 'd'), ('c', 'd')])
     
-    bic = BIC(df)
+    bic = pbn.BIC(df)
     
     assert np.isclose(bic.score(gbn), (bic.local_score(gbn, 'a', []) + 
                               bic.local_score(gbn, 'b', ['a']) + 

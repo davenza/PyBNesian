@@ -1,5 +1,4 @@
-from pybnesian.graph import PartiallyDirectedGraph
-from pybnesian.learning.algorithms import MeekRules
+from pybnesian import PartiallyDirectedGraph, MeekRules
 
 def test_meek_rule1():
     # From Koller Chapter 3.4, Figure 3.12, pag 89.

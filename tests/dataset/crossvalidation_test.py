@@ -1,5 +1,5 @@
 import numpy as np
-from pybnesian.dataset import CrossValidation
+import pybnesian as pbn
 
 import util_test
 
@@ -8,7 +8,7 @@ SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
 
 def test_cv_disjoint_indices():
-    cv = CrossValidation(df)
+    cv = pbn.CrossValidation(df)
 
     for (train_df, test_df), (train_indices, test_indices) in zip(cv, cv.indices()):
         nptrain = np.asarray(train_indices)
@@ -28,7 +28,7 @@ def test_cv_disjoint_indices():
 
 
 def test_cv_fold():
-    cv = CrossValidation(df)
+    cv = pbn.CrossValidation(df)
 
     for i, (train_df, test_df) in enumerate(cv):
         train_fold, test_fold = cv.fold(i)
@@ -38,23 +38,23 @@ def test_cv_fold():
 
 
 def test_cv_seed():
-    cv = CrossValidation(df, seed=0)
+    cv = pbn.CrossValidation(df, seed=0)
     
     dataframes = list(cv)
 
-    cv2 = CrossValidation(df, seed=0)
+    cv2 = pbn.CrossValidation(df, seed=0)
 
     for (train_cv, test_cv), (train_cv2, test_cv2) in zip(dataframes, cv2):
         assert train_cv.equals(train_cv2), "Train CV DataFrames with the same seed are not equal."
         assert test_cv.equals(test_cv2), "Test CV DataFrames with the same seed are not equal."
 
-    cv3 = CrossValidation(df, seed=1)
+    cv3 = pbn.CrossValidation(df, seed=1)
     for (train_cv2, test_cv2), (train_cv3, test_cv3) in zip(cv2, cv3):
         assert not train_cv2.equals(train_cv3), "Train CV DataFrames with different seeds return the same result."
         assert not test_cv2.equals(test_cv3), "Test CV DataFrames with different seeds return the same result."
 
 def test_cv_num_folds():
-    cv = CrossValidation(df)
+    cv = pbn.CrossValidation(df)
     
     dataframes = list(cv)
     indices = list(cv.indices())
@@ -62,7 +62,7 @@ def test_cv_num_folds():
     assert len(dataframes) == 10, "Default number of folds must be 10."
     assert len(indices) == 10, "Default number of folds must be 10."
     
-    cv5 = CrossValidation(df, 5)
+    cv5 = pbn.CrossValidation(df, 5)
     dataframes = list(cv5)
     indices = list(cv5.indices())
     assert len(dataframes) == 5, "Wrong number of folds"
@@ -70,7 +70,7 @@ def test_cv_num_folds():
 
 
 def test_cv_loc():
-    cv = CrossValidation(df)
+    cv = pbn.CrossValidation(df)
     
     for (train_df, test_df) in cv.loc("a"):
         assert train_df.num_columns == 1, "Only column \"a\" must be present in train DataFrame."
@@ -119,7 +119,7 @@ def test_cv_null():
     df_null.loc[df_null.index[d_null], 'd'] = np.nan
 
     non_null = df_null.dropna()
-    cv = CrossValidation(df_null)
+    cv = pbn.CrossValidation(df_null)
 
     for (train_df, test_df), (train_indices, test_indices) in zip(cv, cv.indices()):
         assert non_null.shape[0] == (train_df.num_rows + test_df.num_rows), "CV did not remove null instances correctly."
@@ -141,7 +141,7 @@ def test_cv_null():
         assert np.all(np.sort(np.setdiff1d(train_indices, test_indices)) == np.sort(train_indices)), "The train indices includes test indices"
         assert np.all(np.sort(np.setdiff1d(test_indices, train_indices)) == np.sort(test_indices)), "The test indices includes train indices"
 
-    cv_include_null = CrossValidation(df_null, include_null=True)
+    cv_include_null = pbn.CrossValidation(df_null, include_null=True)
 
     for (train_df, test_df), (train_indices, test_indices) in zip(cv_include_null, cv_include_null.indices()):
         assert (train_df.num_rows + test_df.num_rows) == SIZE, "CV did not remove null instances correctly."

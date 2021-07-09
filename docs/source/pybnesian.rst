@@ -89,8 +89,7 @@ Usage Example
 
 .. doctest:: python
 
-    >>> from pybnesian.models import GaussianNetwork
-    >>> from pybnesian.factors.continuous import LinearGaussianCPD
+    >>> from pybnesian import GaussianNetwork, LinearGaussianCPD
     >>> # Create a GaussianNetwork with 4 nodes and no arcs.
     >>> gbn = GaussianNetwork(['a', 'b', 'c', 'd'])
     >>> # Create a GaussianNetwork with 4 nodes and 3 arcs.
@@ -206,8 +205,7 @@ Usage Example
     >>> loaded_gbn = load('test.pickle')
 
     >>> # Learn the structure using greedy hill-climbing.
-    >>> from pybnesian.learning.algorithms import hc
-    >>> from pybnesian.models import GaussianNetworkType
+    >>> from pybnesian import hc, GaussianNetworkType
     >>> # Learn a Gaussian network.
     >>> learned = hc(df, bn_type=GaussianNetworkType())
     >>> learned.num_arcs()

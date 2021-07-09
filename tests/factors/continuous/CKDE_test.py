@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pyarrow as pa
 import pandas as pd
-from pybnesian.factors.continuous import CKDE
+import pybnesian as pbn
 from scipy.stats import gaussian_kde
 from scipy.stats import norm
 from scipy.stats import multivariate_normal as mvn
@@ -20,16 +20,16 @@ df_small_float = df_small.astype('float32')
 
 def test_variable():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         assert cpd.variable() == variable
 
 def test_evidence():
     for variable, evidence in [('a', []), ('b', ['a']), ('c', ['a', 'b']), ('d', ['a', 'b', 'c'])]:
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         assert cpd.evidence() == evidence
 
 def test_kde_data_type():
-    k = CKDE("a", [])
+    k = pbn.CKDE("a", [])
 
     with pytest.raises(ValueError) as ex:
         k.data_type()
@@ -42,7 +42,7 @@ def test_kde_data_type():
 
 def test_ckde_kde_joint():
     def _test_ckde_kde_joint_iter(variable, evidence, _df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
         kde_joint = cpd.kde_joint
         kde_joint().bandwidth = np.eye(len(evidence) + 1)
@@ -54,7 +54,7 @@ def test_ckde_kde_joint():
 
 def test_ckde_kde_marg():
     def _test_ckde_kde_marg_iter(variable, evidence, _df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
         kde_marg = cpd.kde_marg
 
@@ -76,7 +76,7 @@ def test_ckde_fit():
         scipy_kde = gaussian_kde(npdata[:instances, :].T,
                         bw_method=lambda s : np.power(4 / (s.d + 2), 1 / (s.d + 4)) * s.scotts_factor())
 
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         assert not cpd.fitted()
         cpd.fit(_df.iloc[:instances])
         assert cpd.fitted()
@@ -98,7 +98,7 @@ def test_ckde_fit():
 
 def test_ckde_fit_null():
     def _test_ckde_fit_null(variable, evidence, variables, _df, instances):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         assert not cpd.fitted()
         cpd.fit(_df.iloc[:instances])
         assert cpd.fitted()
@@ -220,7 +220,7 @@ def scipy_ckde_cdf(test_data, joint_kde, marg_kde, variable, evidence):
 
 def test_ckde_logl():
     def _test_ckde_logl(variable, evidence, _df, _test_df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(_df, variable, evidence)
 
@@ -241,21 +241,21 @@ def test_ckde_logl():
         _test_ckde_logl(variable, evidence, df_float, test_df_float)
         _test_ckde_logl(variable, evidence, df_small_float, test_df_float)
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
     assert np.all(np.isclose(cpd.logl(test_df), cpd2.logl(test_df))), "Order of evidence changes logl() result."
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df_float)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.logl(test_df_float), cpd2.logl(test_df_float), atol=0.0005)), "Order of evidence changes logl() result."
 
 def test_ckde_logl_null():
     def _test_ckde_logl_null(variable, evidence, _df, _test_df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(_df, variable, evidence)
@@ -295,18 +295,18 @@ def test_ckde_logl_null():
         _test_ckde_logl_null(variable, evidence, df_float, df_null_float)
         _test_ckde_logl_null(variable, evidence, df_small_float, df_null_float)
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
 
     ll = cpd.logl(df_null)
     ll2 = cpd2.logl(df_null)
     assert np.all(np.isclose(ll, ll2, equal_nan=True)), "Order of evidence changes the position of nan values."
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df_float)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
 
     ll = cpd.logl(df_null_float)
@@ -315,7 +315,7 @@ def test_ckde_logl_null():
 
 def test_ckde_slogl():
     def _test_ckde_slogl(variable, evidence, _df, _test_df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(_df, variable, evidence)
@@ -336,21 +336,21 @@ def test_ckde_slogl():
         _test_ckde_slogl(variable, evidence, df_float, test_df_float)
         _test_ckde_slogl(variable, evidence, df_small_float, test_df_float)
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
     assert np.all(np.isclose(cpd.slogl(test_df), cpd2.slogl(test_df))), "Order of evidence changes slogl() result."
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df_float)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.slogl(test_df_float), cpd2.slogl(test_df_float))), "Order of evidence changes slogl() result."
 
 def test_ckde_slogl_null():
     def _test_ckde_slogl_null(variable, evidence, _df, _test_df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(_df, variable, evidence)
@@ -391,21 +391,21 @@ def test_ckde_slogl_null():
         _test_ckde_slogl_null(variable, evidence, df_small_float, df_null_float)
 
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
     assert np.all(np.isclose(cpd.slogl(df_null), cpd2.slogl(df_null))), "Order of evidence changes slogl() result."
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df_float)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.slogl(df_null_float), cpd2.slogl(df_null_float))), "Order of evidence changes slogl() result."
 
 def test_ckde_cdf():
     def _test_ckde_cdf(variable, evidence, _df, _test_df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(_df, variable, evidence)
 
@@ -426,21 +426,21 @@ def test_ckde_cdf():
         _test_ckde_cdf(variable, evidence, df_float, test_df_float)
         _test_ckde_cdf(variable, evidence, df_small_float, test_df_float)
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
     assert np.all(np.isclose(cpd.cdf(test_df), cpd2.cdf(test_df))), "Order of evidence changes logl() result."
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df_float)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.cdf(test_df_float), cpd2.cdf(test_df_float), atol=0.0005)), "Order of evidence changes logl() result."
 
 def test_ckde_cdf_null():
     def _test_ckde_cdf_null(variable, evidence, _df, _test_df):
-        cpd = CKDE(variable, evidence)
+        cpd = pbn.CKDE(variable, evidence)
         cpd.fit(_df)
 
         scipy_kde_joint, scipy_kde_marg = train_scipy_ckde(_df, variable, evidence)
@@ -482,15 +482,15 @@ def test_ckde_cdf_null():
         _test_ckde_cdf_null(variable, evidence, df_small_float, df_null_float)
 
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df)
     assert np.all(np.isclose(cpd.cdf(df_null), cpd2.cdf(df_null), equal_nan=True)), "Order of evidence changes cdf() result."
 
-    cpd = CKDE('d', ['a', 'b', 'c'])
+    cpd = pbn.CKDE('d', ['a', 'b', 'c'])
     cpd.fit(df_float)
-    cpd2 = CKDE('d', ['c', 'b', 'a'])
+    cpd2 = pbn.CKDE('d', ['c', 'b', 'a'])
     cpd2.fit(df_float)
     assert np.all(np.isclose(cpd.cdf(df_null_float), 
                              cpd2.cdf(df_null_float), 
@@ -499,7 +499,7 @@ def test_ckde_cdf_null():
 def test_ckde_sample():
     SAMPLE_SIZE = 1000
 
-    cpd = CKDE('a', [])
+    cpd = pbn.CKDE('a', [])
     cpd.fit(df)
     
     sampled = cpd.sample(SAMPLE_SIZE, None, 0)
@@ -507,7 +507,7 @@ def test_ckde_sample():
     assert sampled.type == pa.float64()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
         
-    cpd = CKDE('b', ['a'])
+    cpd = pbn.CKDE('b', ['a'])
     cpd.fit(df)
 
     sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0)})
@@ -516,7 +516,7 @@ def test_ckde_sample():
     assert sampled.type == pa.float64()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
     
-    cpd = CKDE('c', ['a', 'b'])
+    cpd = pbn.CKDE('c', ['a', 'b'])
     cpd.fit(df)
 
     sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0),
@@ -526,7 +526,7 @@ def test_ckde_sample():
     assert sampled.type == pa.float64()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
 
-    cpd = CKDE('a', [])
+    cpd = pbn.CKDE('a', [])
     cpd.fit(df_float)
     
     sampled = cpd.sample(SAMPLE_SIZE, None, 0)
@@ -534,7 +534,7 @@ def test_ckde_sample():
     assert sampled.type == pa.float32()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
         
-    cpd = CKDE('b', ['a'])
+    cpd = pbn.CKDE('b', ['a'])
     cpd.fit(df_float)
 
     sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0, dtype=np.float32)})
@@ -543,7 +543,7 @@ def test_ckde_sample():
     assert sampled.type == pa.float32()
     assert int(sampled.nbytes / (sampled.type.bit_width / 8)) == SAMPLE_SIZE
     
-    cpd = CKDE('c', ['a', 'b'])
+    cpd = pbn.CKDE('c', ['a', 'b'])
     cpd.fit(df_float)
 
     sampling_df = pd.DataFrame({'a': np.full((SAMPLE_SIZE,), 3.0, dtype=np.float32),

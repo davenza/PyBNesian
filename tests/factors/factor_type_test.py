@@ -1,33 +1,31 @@
 import pytest
-from pybnesian.factors import FactorType, Factor
-from pybnesian.factors.continuous import LinearGaussianCPD, LinearGaussianCPDType, CKDE, CKDEType
-from pybnesian.factors.discrete import DiscreteFactor, DiscreteFactorType
-
+import pybnesian as pbn
+from pybnesian import FactorType, Factor
 
 def test_factor_type():
-    lg1 = LinearGaussianCPD("a", [])
-    lg2 = LinearGaussianCPD("b", ["a"])
-    lg3 = LinearGaussianCPD("c", ["b", "a"])
+    lg1 = pbn.LinearGaussianCPD("a", [])
+    lg2 = pbn.LinearGaussianCPD("b", ["a"])
+    lg3 = pbn.LinearGaussianCPD("c", ["b", "a"])
 
-    assert lg1.type() == LinearGaussianCPDType()
+    assert lg1.type() == pbn.LinearGaussianCPDType()
     assert lg1.type() == lg2.type()
     assert lg1.type() == lg3.type()
     assert lg2.type() == lg3.type()
 
-    c1 = CKDE("a", [])
-    c2 = CKDE("b", ["a"])
-    c3 = CKDE("c", ["b", "a"])
+    c1 = pbn.CKDE("a", [])
+    c2 = pbn.CKDE("b", ["a"])
+    c3 = pbn.CKDE("c", ["b", "a"])
 
-    assert c1.type() == CKDEType()
+    assert c1.type() == pbn.CKDEType()
     assert c1.type() == c2.type()
     assert c1.type() == c3.type()
     assert c2.type() == c3.type()
 
-    d1 = DiscreteFactor("a", [])
-    d2 = DiscreteFactor("b", ["a"])
-    d3 = DiscreteFactor("c", ["b", "a"])
+    d1 = pbn.DiscreteFactor("a", [])
+    d2 = pbn.DiscreteFactor("b", ["a"])
+    d3 = pbn.DiscreteFactor("c", ["b", "a"])
 
-    assert d1.type() == DiscreteFactorType()
+    assert d1.type() == pbn.DiscreteFactorType()
     assert d1.type() == d2.type()
     assert d1.type() == d3.type()
     assert d2.type() == d3.type()
@@ -88,8 +86,7 @@ def test_factor_defined_factor_type():
 
     assert str(f1.type()) == str(f2.type()) == str(f3.type()) == "FType"
 
-    from pybnesian.models import GaussianNetwork
-    dummy_network = GaussianNetwork(["a", "b", "c", "d"])
+    dummy_network = pbn.GaussianNetwork(["a", "b", "c", "d"])
     with pytest.raises(RuntimeError) as ex:
         f4 = f1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
     assert 'Tried to call pure virtual function "FactorType::new_factor"' in str(ex.value)

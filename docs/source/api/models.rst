@@ -1,69 +1,69 @@
 Bayesian Networks
 =================
 
-.. automodule:: pybnesian.models
+PyBNesian includes many different types of Bayesian networks.
 
 .. _models-abstract-classes:
 
 Abstract Classes
 ^^^^^^^^^^^^^^^^
-This classes are abstract and define the interface for Bayesian network objects. The :class:`BayesianNetworkType`
+This classes are abstract and define the interface for Bayesian network objects. The :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`
 specifies the type of Bayesian networks. 
 
-Each :class:`BayesianNetworkType` can be used in many multiple variants
-of Bayesian networks: :class:`BayesianNetworkBase` (a normal Bayesian network), :class:`ConditionalBayesianNetworkBase`
-(a conditional Bayesian network) and :class:`DynamicBayesianNetworkBase` (a dynamic Bayesian network).
+Each :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>` can be used in many multiple variants
+of Bayesian networks: :class:`BayesianNetworkBase <pybnesian.BayesianNetworkBase>` (a normal Bayesian network), :class:`ConditionalBayesianNetworkBase <pybnesian.ConditionalBayesianNetworkBase>`
+(a conditional Bayesian network) and :class:`DynamicBayesianNetworkBase <pybnesian.DynamicBayesianNetworkBase>` (a dynamic Bayesian network).
 
-.. autoclass:: pybnesian.models.BayesianNetworkType
+.. autoclass:: pybnesian.BayesianNetworkType
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.BayesianNetworkBase
+.. autoclass:: pybnesian.BayesianNetworkBase
     :members:
     :special-members: __str__
     
-.. autoclass:: pybnesian.models.ConditionalBayesianNetworkBase
+.. autoclass:: pybnesian.ConditionalBayesianNetworkBase
     :show-inheritance:
     :members:
     :special-members: __str__
 
-.. autoclass:: pybnesian.models.DynamicBayesianNetworkBase
+.. autoclass:: pybnesian.DynamicBayesianNetworkBase
     :members:
     :special-members: __str__
 
 Bayesian Network Types
 ^^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: pybnesian.models.GaussianNetworkType
+.. autoclass:: pybnesian.GaussianNetworkType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.SemiparametricBNType
+.. autoclass:: pybnesian.SemiparametricBNType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.KDENetworkType
+.. autoclass:: pybnesian.KDENetworkType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DiscreteBNType
+.. autoclass:: pybnesian.DiscreteBNType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.HomogeneousBNType
+.. autoclass:: pybnesian.HomogeneousBNType
     :show-inheritance:
     :members:
     :special-members: __init__, __str_
 
-.. autoclass:: pybnesian.models.HeterogeneousBNType
+.. autoclass:: pybnesian.HeterogeneousBNType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.CLGNetworkType
+.. autoclass:: pybnesian.CLGNetworkType
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -71,7 +71,7 @@ Bayesian Network Types
 
 Bayesian Networks
 ^^^^^^^^^^^^^^^^^
-.. autoclass:: pybnesian.models.BayesianNetwork
+.. autoclass:: pybnesian.BayesianNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -79,40 +79,40 @@ Bayesian Networks
 Concrete Bayesian Networks
 **************************
 
-These classes implements :class:`BayesianNetwork` with an specific :class:`BayesianNetworkType`. Thus, the constructors
+These classes implements :class:`BayesianNetwork <pybnesian.BayesianNetwork>` with an specific :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`. Thus, the constructors
 do not have the ``type`` parameter.
 
-.. autoclass:: pybnesian.models.GaussianNetwork
+.. autoclass:: pybnesian.GaussianNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.SemiparametricBN
+.. autoclass:: pybnesian.SemiparametricBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.KDENetwork
+.. autoclass:: pybnesian.KDENetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DiscreteBN
+.. autoclass:: pybnesian.DiscreteBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.HomogeneousBN
+.. autoclass:: pybnesian.HomogeneousBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.HeterogeneousBN
+.. autoclass:: pybnesian.HeterogeneousBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.CLGNetwork
+.. autoclass:: pybnesian.CLGNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -120,7 +120,7 @@ do not have the ``type`` parameter.
 Conditional Bayesian Networks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: pybnesian.models.ConditionalBayesianNetwork
+.. autoclass:: pybnesian.ConditionalBayesianNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -128,47 +128,47 @@ Conditional Bayesian Networks
 Concrete Conditional Bayesian Networks
 **************************************
 
-These classes implements :class:`ConditionalBayesianNetwork` with an specific :class:`BayesianNetworkType`.
+These classes implements :class:`ConditionalBayesianNetwork <pybnesian.ConditionalBayesianNetwork>` with an specific :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`.
 Thus, the constructors do not have the ``type`` parameter.
 
-.. autoclass:: pybnesian.models.ConditionalGaussianNetwork
+.. autoclass:: pybnesian.ConditionalGaussianNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.ConditionalSemiparametricBN
+.. autoclass:: pybnesian.ConditionalSemiparametricBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.ConditionalKDENetwork
+.. autoclass:: pybnesian.ConditionalKDENetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.ConditionalDiscreteBN
+.. autoclass:: pybnesian.ConditionalDiscreteBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
     
-.. autoclass:: pybnesian.models.ConditionalHomogeneousBN
+.. autoclass:: pybnesian.ConditionalHomogeneousBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.ConditionalHeterogeneousBN
+.. autoclass:: pybnesian.ConditionalHeterogeneousBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.ConditionalCLGNetwork
+.. autoclass:: pybnesian.ConditionalCLGNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
 Dynamic Bayesian Networks
 ^^^^^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: pybnesian.models.DynamicBayesianNetwork
+.. autoclass:: pybnesian.DynamicBayesianNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
@@ -176,40 +176,40 @@ Dynamic Bayesian Networks
 Concrete Dynamic Bayesian Networks
 **************************************
 
-These classes implements :class:`DynamicBayesianNetwork` with an specific :class:`BayesianNetworkType`. Thus, the
+These classes implements :class:`DynamicBayesianNetwork <pybnesian.DynamicBayesianNetwork>` with an specific :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`. Thus, the
 constructors do not have the ``type`` parameter.
 
-.. autoclass:: pybnesian.models.DynamicGaussianNetwork
+.. autoclass:: pybnesian.DynamicGaussianNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DynamicSemiparametricBN
+.. autoclass:: pybnesian.DynamicSemiparametricBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DynamicKDENetwork
+.. autoclass:: pybnesian.DynamicKDENetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DynamicDiscreteBN
+.. autoclass:: pybnesian.DynamicDiscreteBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DynamicHomogeneousBN
+.. autoclass:: pybnesian.DynamicHomogeneousBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DynamicHeterogeneousBN
+.. autoclass:: pybnesian.DynamicHeterogeneousBN
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.models.DynamicCLGNetwork
+.. autoclass:: pybnesian.DynamicCLGNetwork
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

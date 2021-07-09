@@ -1,31 +1,31 @@
 import pytest
-from pybnesian.models import *
+import pybnesian as pbn
 import pickle
 import itertools
 
 @pytest.fixture
 def gaussian_type_bytes():
-    g = GaussianNetworkType()
+    g = pbn.GaussianNetworkType()
     return pickle.dumps(g)
 
 @pytest.fixture
 def spbn_type_bytes():
-    s = SemiparametricBNType()
+    s = pbn.SemiparametricBNType()
     return pickle.dumps(s)
 
 @pytest.fixture
 def kde_type_bytes():
-    k = KDENetworkType()
+    k = pbn.KDENetworkType()
     return pickle.dumps(k)
 
 @pytest.fixture
 def discrete_type_bytes():
-    d = DiscreteBNType()
+    d = pbn.DiscreteBNType()
     return pickle.dumps(d)
 
-class NewBNType(BayesianNetworkType):
+class NewBNType(pbn.BayesianNetworkType):
     def __init__(self):
-        BayesianNetworkType.__init__(self)
+        pbn.BayesianNetworkType.__init__(self)
 
     def __str__(self):
         return "NewType"
@@ -35,9 +35,9 @@ def new_type_bytes():
     nn = NewBNType()
     return pickle.dumps(nn)
 
-class OtherBNType(BayesianNetworkType):
+class OtherBNType(pbn.BayesianNetworkType):
     def __init__(self):
-        BayesianNetworkType.__init__(self)
+        pbn.BayesianNetworkType.__init__(self)
         self.some_useful_info = "info"
 
     def __str__(self):
@@ -58,19 +58,19 @@ def other_type_bytes():
 def test_serialization_bn_type(gaussian_type_bytes, spbn_type_bytes, kde_type_bytes,
                                discrete_type_bytes, new_type_bytes, other_type_bytes):
     loaded_g = pickle.loads(gaussian_type_bytes)
-    new_g = GaussianNetworkType()
+    new_g = pbn.GaussianNetworkType()
     assert loaded_g == new_g
 
     loaded_s = pickle.loads(spbn_type_bytes)
-    new_s = SemiparametricBNType()
+    new_s = pbn.SemiparametricBNType()
     assert loaded_s == new_s
 
     loaded_k = pickle.loads(kde_type_bytes)
-    new_k = KDENetworkType()
+    new_k = pbn.KDENetworkType()
     assert loaded_k == new_k
 
     loaded_d = pickle.loads(discrete_type_bytes)
-    new_d = DiscreteBNType()
+    new_d = pbn.DiscreteBNType()
     assert loaded_d == new_d
 
     loaded_nn = pickle.loads(new_type_bytes)

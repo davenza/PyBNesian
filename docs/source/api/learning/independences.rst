@@ -2,69 +2,68 @@ Independence Tests
 ------------------
 
 This section includes conditional tests of independence. These tests are used in many constraint-based learning
-algorithms such as :class:`PC <pybnesian.learning.algorithms.PC>`, :class:`MMPC <pybnesian.learning.algorithms.MMPC>`,
-:class:`MMHC <pybnesian.learning.algorithms.MMHC>` and :class:`DMMHC <pybnesian.learning.algorithms.DMMHC>`.
+algorithms such as :class:`PC <pybnesian.PC>`, :class:`MMPC <pybnesian.MMPC>`, :class:`MMHC <pybnesian.MMHC>` and :class:`DMMHC <pybnesian.DMMHC>`.
 
 Abstract classes
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: pybnesian.learning.independences.IndependenceTest
+.. autoclass:: pybnesian.IndependenceTest
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.DynamicIndependenceTest
+.. autoclass:: pybnesian.DynamicIndependenceTest
     :members:
     :special-members: __str__
 
 Concrete classes
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: pybnesian.learning.independences.LinearCorrelation
+.. autoclass:: pybnesian.LinearCorrelation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.MutualInformation
+.. autoclass:: pybnesian.MutualInformation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.KMutualInformation
+.. autoclass:: pybnesian.KMutualInformation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.RCoT
+.. autoclass:: pybnesian.RCoT
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.ChiSquare
+.. autoclass:: pybnesian.ChiSquare
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.DynamicLinearCorrelation
+.. autoclass:: pybnesian.DynamicLinearCorrelation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.DynamicMutualInformation
+.. autoclass:: pybnesian.DynamicMutualInformation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.DynamicKMutualInformation
+.. autoclass:: pybnesian.DynamicKMutualInformation
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.DynamicRCoT
+.. autoclass:: pybnesian.DynamicRCoT
     :show-inheritance:
     :members:
     :special-members: __init__, __str__
 
-.. autoclass:: pybnesian.learning.independences.DynamicChiSquare
+.. autoclass:: pybnesian.DynamicChiSquare
     :show-inheritance:
     :members:
     :special-members: __init__, __str__

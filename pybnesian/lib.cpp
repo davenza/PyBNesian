@@ -11,6 +11,7 @@ namespace py = pybind11;
 namespace pyarrow = arrow::py;
 
 void pybindings_dataset(py::module& root);
+void pybindings_kde(py::module& root);
 void pybindings_factors(py::module& root);
 void pybindings_graph(py::module& root);
 void pybindings_models(py::module& root);
@@ -59,14 +60,14 @@ PYBIND11_MODULE(pybnesian, m) {
 #endif
 
     m.def("load", &util::load, py::arg("filename"), R"doc(
-Load the saved object (a :class:`Factor <pybnesian.factors.Factor>`, a graph, a
-:class:`BayesianNetworkBase <pybnesian.models.BayesianNetworkBase>`, etc...) in ``filename``.
+Load the saved object (a :class:`Factor <pybnesian.Factor>`, a graph, a :class:`BayesianNetworkBase <pybnesian.BayesianNetworkBase>`, etc...) in ``filename``.
 
 :param filename: File name.
 :returns: The object saved in the file.
 )doc");
 
     pybindings_dataset(m);
+    pybindings_kde(m);
     pybindings_factors(m);
     pybindings_graph(m);
     pybindings_models(m);

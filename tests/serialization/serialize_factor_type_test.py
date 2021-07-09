@@ -1,22 +1,21 @@
 import pytest
-from pybnesian.factors import *
-from pybnesian.factors.continuous import *
-from pybnesian.factors.discrete import *
+import pybnesian as pbn
+from pybnesian import FactorType
 import pickle
 
 @pytest.fixture
 def lg_type_bytes():
-    lg = LinearGaussianCPDType()
+    lg = pbn.LinearGaussianCPDType()
     return pickle.dumps(lg)
 
 @pytest.fixture
 def ckde_type_bytes():
-    ckde = CKDEType()
+    ckde = pbn.CKDEType()
     return pickle.dumps(ckde)
 
 @pytest.fixture
 def discrete_type_bytes():
-    discrete = DiscreteFactorType()
+    discrete = pbn.DiscreteFactorType()
     return pickle.dumps(discrete)
 
 class NewType(FactorType):
@@ -39,15 +38,15 @@ def other_type_bytes():
 
 def test_serialization_factor_type(lg_type_bytes, ckde_type_bytes, discrete_type_bytes, new_type_bytes, other_type_bytes):
     loaded_lg = pickle.loads(lg_type_bytes)
-    new_lg = LinearGaussianCPDType()
+    new_lg = pbn.LinearGaussianCPDType()
     assert new_lg == loaded_lg
 
     loaded_ckde = pickle.loads(ckde_type_bytes)
-    new_ckde = CKDEType()
+    new_ckde = pbn.CKDEType()
     assert loaded_ckde == new_ckde
 
     loaded_discrete = pickle.loads(discrete_type_bytes)
-    new_discrete = DiscreteFactorType()
+    new_discrete = pbn.DiscreteFactorType()
     assert loaded_discrete == new_discrete
 
     loaded_new = pickle.loads(new_type_bytes)

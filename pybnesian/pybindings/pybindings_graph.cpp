@@ -94,7 +94,7 @@ Checks whether a index is a valid index (the node is not removed). All the valid
         options.disable_function_signatures();
 
         std::stringstream signature;
-        signature << "remove_node(self: pybnesian.graph." << class_name << ", node: int or str) -> None";
+        signature << "remove_node(self: pybnesian." << class_name << ", node: int or str) -> None";
 
         auto doc = signature.str() + R"doc(
 
@@ -300,14 +300,14 @@ Checks whether a index is a valid index (the node is not removed). All the valid
         py::options options;
         options.disable_function_signatures();
 
-        auto remove_node_doc = "remove_node(self: pybnesian.graph." + class_name + R"doc(, node: int or str) -> None
+        auto remove_node_doc = "remove_node(self: pybnesian." + class_name + R"doc(, node: int or str) -> None
 
 Removes a node.
 
 :param node: A node name or index.
 )doc";
 
-        auto remove_interface_node_doc = "remove_interface_node(self: pybnesian.graph." + class_name +
+        auto remove_interface_node_doc = "remove_interface_node(self: pybnesian." + class_name +
                                          R"doc(, node: int or str) -> None
 
 Removes an interface node.
@@ -315,7 +315,7 @@ Removes an interface node.
 :param node: A node name or index.
 )doc";
 
-        auto is_interface_doc = "is_interface(self: pybnesian.graph." + class_name + R"doc(, node: int or str) -> bool
+        auto is_interface_doc = "is_interface(self: pybnesian." + class_name + R"doc(, node: int or str) -> bool
 
 Checks whether the ``node`` is an interface node.
 
@@ -323,14 +323,14 @@ Checks whether the ``node`` is an interface node.
 :returns: True if ``node`` is interface node, False, otherwise.
 )doc";
 
-        auto set_interface_doc = "set_interface(self: pybnesian.graph." + class_name + R"doc(, node: int or str) -> None
+        auto set_interface_doc = "set_interface(self: pybnesian." + class_name + R"doc(, node: int or str) -> None
 
 Converts a normal node into an interface node.
 
 :param node: A node name or index.
 )doc";
 
-        auto set_node_doc = "set_node(self: pybnesian.graph." + class_name + R"doc(, node: int or str) -> None
+        auto set_node_doc = "set_node(self: pybnesian." + class_name + R"doc(, node: int or str) -> None
 
 Converts an interface node into a normal node.
 
@@ -451,7 +451,7 @@ an unconditional graph without the interface nodes.
             },
             leaves_doc.c_str());
 
-    std::string signature_type = "pybnesian.graph." + class_name;
+    std::string signature_type = "pybnesian." + class_name;
     std::string num_parents_doc = "num_parents(self: " + signature_type + R"doc(, node: int or str) -> int
 
 Gets the number of parent nodes of a node.
@@ -685,7 +685,7 @@ Gets the list of edges.
 :returns: A list of tuples (n1, n2) representing an edge between n1 and n2.
 )doc");
 
-    std::string signature_type = "pybnesian.graph." + class_name;
+    std::string signature_type = "pybnesian." + class_name;
     std::string num_neighbors_doc = "num_neighbors(self: " + signature_type + R"doc(, node: int or str) -> int
 
 Gets the number of neighbors (adjacent nodes by an edge) of a node.
@@ -829,7 +829,7 @@ The algorithm is based on generating a topological sort which tries to preserve 
         [](const CppClass& self) { return self.to_approximate_dag(); },
         approximate_dag_doc.c_str());
 
-    std::string signature_type = "pybnesian.graph." + class_name;
+    std::string signature_type = "pybnesian." + class_name;
     std::string direct_doc = "direct(self: " + signature_type + R"doc(, source: int or str, target: int or str) -> None
 
 Transformation to create the arc ``source`` -> ``target`` when possible.
@@ -924,7 +924,7 @@ void add_directed_methods(PyClass& c, std::string class_name) {
     py::options options;
     options.disable_function_signatures();
 
-    std::string signature_type = "pybnesian.graph." + class_name;
+    std::string signature_type = "pybnesian." + class_name;
     std::string has_path_doc = "has_path(self: " + signature_type + R"doc(, n1: int or str, n2: int or str) -> bool
 
 Checks whether there is a directed path between nodes ``n1`` and ``n2``.
@@ -956,7 +956,7 @@ void add_undirected_methods(PyClass& c, std::string class_name) {
     py::options options;
     options.disable_function_signatures();
 
-    std::string signature_type = "pybnesian.graph." + class_name;
+    std::string signature_type = "pybnesian." + class_name;
     std::string has_path_doc = "has_path(self: " + signature_type + R"doc(, n1: int or str, n2: int or str) -> bool
 
 Checks whether there is an undirected path between nodes ``n1`` and ``n2``.
@@ -1114,7 +1114,7 @@ It implements the DAG-to-PDAG algorithm in [dag2pdag]_. See also [dag2pdag_extra
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-can_add_arc(self: pybnesian.graph.Dag, source: int or str, target: int or str) -> bool
+can_add_arc(self: pybnesian.Dag, source: int or str, target: int or str) -> bool
 
 Checks whether an arc between the nodes ``source`` and ``target`` can be added. That is, the arc is valid and do not
 generate a cycle.
@@ -1138,7 +1138,7 @@ generate a cycle.
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-can_flip_arc(self: pybnesian.graph.Dag, source: int or str, target: int or str) -> bool
+can_flip_arc(self: pybnesian.Dag, source: int or str, target: int or str) -> bool
 
 Checks whether an arc between the nodes ``source`` and ``target`` can be flipped. That is, the flipped arc is valid and
 do not generate a cycle. If the arc ``source`` -> ``target`` do not exist, it will return :func:`Dag.can_add_arc`.
@@ -1160,7 +1160,7 @@ do not generate a cycle. If the arc ``source`` -> ``target`` do not exist, it wi
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-add_arc(self: pybnesian.graph.Dag, source: int or str, target: int or str) -> None
+add_arc(self: pybnesian.Dag, source: int or str, target: int or str) -> None
 
 Adds an arc between the nodes ``source`` and ``target``. If the arc already exists, the graph is left unaffected.
 
@@ -1180,7 +1180,7 @@ Adds an arc between the nodes ``source`` and ``target``. If the arc already exis
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-flip_arc(self: pybnesian.graph.Dag, source: int or str, target: int or str) -> None
+flip_arc(self: pybnesian.Dag, source: int or str, target: int or str) -> None
 
 Flips (reverses) an arc between the nodes ``source`` and ``target``. If the arc do not exist, the graph is left
 unaffected.
@@ -1357,7 +1357,7 @@ It implements the DAG-to-PDAG algorithm in [dag2pdag]_. See also [dag2pdag_extra
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-can_add_arc(self: pybnesian.graph.ConditionalDag, source: int or str, target: int or str) -> bool
+can_add_arc(self: pybnesian.ConditionalDag, source: int or str, target: int or str) -> bool
 
 Checks whether an arc between the nodes ``source`` and ``target`` can be added. That is, the arc is valid and do not
 generate a cycle or connects two interface nodes.
@@ -1381,7 +1381,7 @@ generate a cycle or connects two interface nodes.
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-can_flip_arc(self: pybnesian.graph.ConditionalDag, source: int or str, target: int or str) -> bool
+can_flip_arc(self: pybnesian.ConditionalDag, source: int or str, target: int or str) -> bool
 
 Checks whether an arc between the nodes ``source`` and ``target`` can be flipped. That is, the flipped arc is valid and
 do not generate a cycle. If the arc ``source`` -> ``target`` do not exist, it will return
@@ -1406,7 +1406,7 @@ do not generate a cycle. If the arc ``source`` -> ``target`` do not exist, it wi
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-add_arc(self: pybnesian.graph.ConditionalDag, source: int or str, target: int or str) -> None
+add_arc(self: pybnesian.ConditionalDag, source: int or str, target: int or str) -> None
 
 Adds an arc between the nodes ``source`` and ``target``. If the arc already exists, the graph is left unaffected.
 
@@ -1428,7 +1428,7 @@ Adds an arc between the nodes ``source`` and ``target``. If the arc already exis
                 py::arg("source"),
                 py::arg("target"),
                 R"doc(
-flip_arc(self: pybnesian.graph.ConditionalDag, source: int or str, target: int or str) -> None
+flip_arc(self: pybnesian.ConditionalDag, source: int or str, target: int or str) -> None
 
 Flips (reverses) an arc between the nodes ``source`` and ``target``. If the arc do not exist, the graph is left
 unaffected.
@@ -1531,55 +1531,40 @@ undirected graph connects every pair of nodes with an edge, except for pairs of 
 }
 
 void pybindings_graph(py::module& root) {
-    auto graph = root.def_submodule("graph", R"doc(
-The pybnesian.graph submodule includes different types of graphs. There are four types of graphs:
 
-- Undirected graphs.
-- Directed graphs.
-- Directed acyclic graphs (DAGs).
-- Partially directed graphs.
-
-Depending on the type of edges: directed edges (arcs) or undirected edges (edges).
-
-Each graph type has two variants:
-
-- Graphs. See `Graphs`_.
-- Conditional graphs. See `Conditional Graphs`_.
-)doc");
-
-    py::class_<DirectedGraph> dg(graph, "DirectedGraph", R"doc(
+    py::class_<DirectedGraph> dg(root, "DirectedGraph", R"doc(
 Directed graph that may contain cycles.
 )doc");
 
-    py::class_<Dag, DirectedGraph> dag(graph,
+    py::class_<Dag, DirectedGraph> dag(root,
                                        "Dag",
                                        py::multiple_inheritance(),
                                        R"doc(
 Directed acyclic graph.
 )doc");
 
-    py::class_<UndirectedGraph> ug(graph, "UndirectedGraph", R"doc(
+    py::class_<UndirectedGraph> ug(root, "UndirectedGraph", R"doc(
 Undirected graph.
 )doc");
 
-    py::class_<PartiallyDirectedGraph> pdag(graph, "PartiallyDirectedGraph", R"doc(
+    py::class_<PartiallyDirectedGraph> pdag(root, "PartiallyDirectedGraph", R"doc(
 Partially directed graph. This graph can have edges and arcs.
 )doc");
 
-    py::class_<ConditionalDirectedGraph> cdg(graph, "ConditionalDirectedGraph", R"doc(
+    py::class_<ConditionalDirectedGraph> cdg(root, "ConditionalDirectedGraph", R"doc(
 Conditional directed graph.
 )doc");
 
     py::class_<ConditionalDag, ConditionalDirectedGraph> cdag(
-        graph, "ConditionalDag", py::multiple_inheritance(), R"doc(
+        root, "ConditionalDag", py::multiple_inheritance(), R"doc(
 Conditional directed acyclic graph.
 )doc");
 
-    py::class_<ConditionalUndirectedGraph> cug(graph, "ConditionalUndirectedGraph", R"doc(
+    py::class_<ConditionalUndirectedGraph> cug(root, "ConditionalUndirectedGraph", R"doc(
 Conditional undirected graph.
 )doc");
 
-    py::class_<ConditionalPartiallyDirectedGraph> cpdag(graph, "ConditionalPartiallyDirectedGraph", R"doc(
+    py::class_<ConditionalPartiallyDirectedGraph> cpdag(root, "ConditionalPartiallyDirectedGraph", R"doc(
 Conditional partially directed graph. This graph can have edges and arcs, except between pairs of interface nodes.
 )doc");
 

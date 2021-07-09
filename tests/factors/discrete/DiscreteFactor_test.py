@@ -2,13 +2,13 @@ import pytest
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from pybnesian.factors.discrete import DiscreteFactor
+import pybnesian as pbn
 import util_test
 
 df = util_test.generate_discrete_data_dependent(10000)
 
 def test_data_type():
-    a = DiscreteFactor("A", [])
+    a = pbn.DiscreteFactor("A", [])
     with pytest.raises(ValueError) as ex:
         a.data_type()
     "DiscreteFactor factor not fitted." in str(ex.value)
@@ -33,5 +33,5 @@ def test_data_type():
 
 def test_fit():
     # a = DiscreteFactor('C', ['A', 'B'])
-    a = DiscreteFactor('C', [])
+    a = pbn.DiscreteFactor('C', [])
     a.fit(df)

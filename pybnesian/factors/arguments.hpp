@@ -34,7 +34,7 @@ public:
     Arguments() = default;
 
     Arguments(py::dict dict_arguments) {
-        for (const auto& arg_params : dict_arguments) {
+        for (const auto arg_params : dict_arguments) {
             try {
                 auto str = py::cast<std::string>(arg_params.first);
                 auto args = process_args(arg_params.second);

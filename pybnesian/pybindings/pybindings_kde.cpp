@@ -164,7 +164,20 @@ Initializes a :class:`NormalReferenceRule <pybnesian.NormalReferenceRule>`.
         .def("score_diagonal", &UCVScorer::score_diagonal)
         .def("score_unconstrained", &UCVScorer::score_unconstrained);
 
-    py::class_<UCV, BandwidthSelector, std::shared_ptr<UCV>>(root, "UCV")
+    py::class_<UCV, BandwidthSelector, std::shared_ptr<UCV>>(root, "UCV", R"doc(
+Selects the bandwidth using the Unbiased Cross Validation (UCV) criterion (also known as least-squares cross
+validation).
+
+See Equation (3.8) in [MVKSA]_:
+
+.. math::
+
+    \text{UCV}(\mathbf{H}) = N^{-1}\lvert\mathbf{H}\rvert^{-1/2}(4\pi)^{-d/2} + \{N(N-1)\}^{-1}\sum\limits_{i, j:\ i \neq j}^{N}\{(1 - N^{-1})\phi_{2\mathbf{H}} - \phi_{\mathbf{H}}\}(\mathbf{t}_{i} - \mathbf{t}_{j})
+
+where :math:`N` is the number of training instances, :math:`\phi_{\Sigma}` is the multivariate Gaussian kernel function
+with covariance :math:`\Sigma`, :math:`\mathbf{t}_{i}` is the :math:`i`-th training instance, and :math:`\mathbf{H}` is
+the bandwidth matrix.
+)doc")
         .def(py::init<>(), R"doc(
 Initializes a :class:`UCV <pybnesian.UCV>`.
 )doc")

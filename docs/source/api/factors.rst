@@ -116,3 +116,4 @@ Bibliography
 ============
 .. [Scott] Scott, D. W. (2015). Multivariate Density Estimation: Theory, Practice and Visualization. 2nd Edition.
            Wiley
+.. [MVKSA] José E. Chacón and Tarn Duong. (2018). Multivariate Kernel Smoothing and Its Applications. CRC Press.

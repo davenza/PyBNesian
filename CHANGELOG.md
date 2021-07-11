@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.3.0
+
+- Removed all the submodules to simplify the imports. Now, all the classes are accessible directly from the pybnesian
+  root module.
+- Added a `ProductKDE` class that implements `KDE` with diagonal bandwidth matrix.
+- Added an abstract class `BandwidthSelector` to implement bandwidth selection for `KDE` and `ProductKDE`. Three
+  concrete implementations of bandwidth selection are included: `ScottsBandwidth`, `NormalReferenceRule` and `UCV`.
+- Added `Arguments`, `Args` and `Kwargs` to store a set of arguments to be used to create new factors through
+  `FactorType::new_factor()`. The `Arguments` are accepted by `BayesianNetworkBase::fit()` and the constructors of
+  `CVLikelihood`, `HoldoutLikelihood` and `ValidatedLikelihood`.
+
 ## v0.2.1
 
 - An error related to the processing of categorical data with too many categories has been corrected.

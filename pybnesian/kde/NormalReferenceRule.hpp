@@ -1,6 +1,8 @@
 #ifndef PYBNESIAN_KDE_NORMALREFERENCERULE_HPP
 #define PYBNESIAN_KDE_NORMALREFERENCERULE_HPP
 
+#include <kde/BandwidthSelector.hpp>
+
 namespace kde {
 
 class NormalReferenceRule : public BandwidthSelector {

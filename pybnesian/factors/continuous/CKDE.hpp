@@ -4,13 +4,13 @@
 #include <random>
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
-#include <opencl/opencl_config.hpp>
 #include <dataset/dataset.hpp>
 #include <factors/factors.hpp>
 #include <factors/discrete/DiscreteAdaptator.hpp>
 #include <kde/BandwidthSelector.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <kde/KDE.hpp>
+#include <opencl/opencl_config.hpp>
 #include <util/math_constants.hpp>
 
 namespace py = pybind11;

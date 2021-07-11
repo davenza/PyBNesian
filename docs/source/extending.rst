@@ -1591,3 +1591,34 @@ Now, we can use this callback in the :class:`GreedyHillClimbing <pybnesian.Greed
     Iteration 2. Last operator: MyAddArc(b -> c)
     Iteration 3. Last operator: MyAddArc(a -> c)
     The algorithm ends!
+
+Bandwidth Selection
+===================
+
+The :class:`KDE <pybnesian.KDE>` :class:`ProductKDE <pybnesian.ProductKDE>` and :class:`CKDE <pybnesian.CKDE>` classes
+can accept an :class:`BandwidthSelector <pybnesian.BandwidthSelector>` to estimate the bandwidth of the kernel density
+estimation models.
+
+A new bandwidth selection technique can be implemented by creating a class that inherits from
+:class:`BandwidthSelector <pybnesian.BandwidthSelector>` and implementing the following methods:
+
+- :func:`BandwidthSelector.bandwidth <pybnesian.BandwidthSelector.bandwidth>`. To select an unconstrained bandwidth
+  matrix :math:`\mathbf{H}` for a :class:`KDE <pybnesian.KDE>`.
+- :func:`BandwidthSelector.diag_bandwidth <pybnesian.BandwidthSelector.diag_bandwidth>`. To select a diagonal bandwidth
+  matrix :math:`\mathbf{h}` for a :class:`ProductKDE <pybnesian.ProductKDE>`.
+
+To illustrate, we will create a bandwidth selector that always return an unitary bandwidth matrix:
+
+.. code-block:: python
+
+    class UnitaryBandwidth(BandwidthSelector):
+        def __init__(self):
+            BandwidthSelector.__init__(self)
+
+        # For a KDE.
+        def bandwidth(self, df, variables):
+        return np.eye(len(variables))
+
+        # For a ProductKDE.
+        def diag_bandwidth(self, df, variables):
+            return np.ones((len(variables),))

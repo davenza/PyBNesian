@@ -5,23 +5,23 @@
 #include <pybind11/operators.h>
 #include <kde/KDE.hpp>
 #include <kde/ProductKDE.hpp>
-#include <kde/BandwidthEstimator.hpp>
+#include <kde/BandwidthSelector.hpp>
 #include <kde/ScottsBandwidth.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <kde/UCV.hpp>
 
-using kde::KDE, kde::ProductKDE, kde::BandwidthEstimator, kde::ScottsBandwidth, kde::NormalReferenceRule, kde::UCV,
+using kde::KDE, kde::ProductKDE, kde::BandwidthSelector, kde::ScottsBandwidth, kde::NormalReferenceRule, kde::UCV,
     kde::UCVScorer;
 
-class PyBandwidthEstimator : public BandwidthEstimator {
+class PyBandwidthSelector : public BandwidthSelector {
 public:
     bool is_python_derived() const override { return true; }
 
-    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
-        // PYBIND11_OVERRIDE_PURE(VectorXd, BandwidthEstimator, estimate_diag_bandwidth, df, variables);
+    VectorXd diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        // PYBIND11_OVERRIDE_PURE(VectorXd, BandwidthSelector, diag_bandwidth, df, variables);
         pybind11::gil_scoped_acquire gil;
         pybind11::function override =
-            pybind11::get_override(static_cast<const BandwidthEstimator*>(this), "estimate_diag_bandwidth");
+            pybind11::get_override(static_cast<const BandwidthSelector*>(this), "diag_bandwidth");
 
         if (override) {
             auto o = override(df, variables);
@@ -30,21 +30,21 @@ public:
 
             if (static_cast<size_t>(m.rows()) != variables.size())
                 throw std::invalid_argument(
-                    "BandwidthEstimator::estimate_diag_bandwidth matrix must return a vector with shape "
+                    "BandwidthSelector::diag_bandwidth matrix must return a vector with shape "
                     "(" +
                     std::to_string(variables.size()) + ")");
 
             return m;
         }
 
-        py::pybind11_fail("Tried to call pure virtual function \"BandwidthEstimator::estimate_diag_bandwidth\"");
+        py::pybind11_fail("Tried to call pure virtual function \"BandwidthSelector::diag_bandwidth\"");
     }
 
-    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
-        // PYBIND11_OVERRIDE_PURE(MatrixXd, BandwidthEstimator, estimate_bandwidth, df, variables);
+    MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        // PYBIND11_OVERRIDE_PURE(MatrixXd, BandwidthSelector, bandwidth, df, variables);
         pybind11::gil_scoped_acquire gil;
         pybind11::function override =
-            pybind11::get_override(static_cast<const BandwidthEstimator*>(this), "estimate_bandwidth");
+            pybind11::get_override(static_cast<const BandwidthSelector*>(this), "bandwidth");
 
         if (override) {
             auto o = override(df, variables);
@@ -53,19 +53,19 @@ public:
 
             if (m.rows() != m.cols() || static_cast<size_t>(m.rows()) != variables.size())
                 throw std::invalid_argument(
-                    "BandwidthEstimator::estimate_bandwidth matrix must return an square matrix with shape "
+                    "BandwidthSelector::bandwidth matrix must return an square matrix with shape "
                     "(" +
                     std::to_string(variables.size()) + ", " + std::to_string(variables.size()) + ")");
 
             return m;
         }
 
-        py::pybind11_fail("Tried to call pure virtual function \"BandwidthEstimator::estimate_bandwidth\"");
+        py::pybind11_fail("Tried to call pure virtual function \"BandwidthSelector::bandwidth\"");
     }
 
     py::tuple __getstate__() const override {
         py::gil_scoped_acquire gil;
-        py::function override = py::get_override(static_cast<const BandwidthEstimator*>(this), "__getstate_extra__");
+        py::function override = py::get_override(static_cast<const BandwidthSelector*>(this), "__getstate_extra__");
         if (override) {
             return py::make_tuple(true, override());
         } else {
@@ -76,10 +76,10 @@ public:
     static void __setstate__(py::object& self, py::tuple& t) {
         // Call trampoline constructor
         py::gil_scoped_acquire gil;
-        auto pyBandwidthEstimator = py::type::of<BandwidthEstimator>();
-        pyBandwidthEstimator.attr("__init__")(self);
+        auto pyBandwidthSelector = py::type::of<BandwidthSelector>();
+        pyBandwidthSelector.attr("__init__")(self);
 
-        auto ptr = self.cast<const BandwidthEstimator*>();
+        auto ptr = self.cast<const BandwidthSelector*>();
 
         auto extra_info = t[0].cast<bool>();
         if (extra_info) {
@@ -87,48 +87,49 @@ public:
             if (override) {
                 override(t[1]);
             } else {
-                py::pybind11_fail("Tried to call function \"BandwidthEstimator::__setstate_extra__\"");
+                py::pybind11_fail("Tried to call function \"BandwidthSelector::__setstate_extra__\"");
             }
         }
     }
 };
 
 void pybindings_kde(py::module& root) {
-    py::class_<BandwidthEstimator, PyBandwidthEstimator, std::shared_ptr<BandwidthEstimator>>(
-        root, "BandwidthEstimator", R"doc(
-A :class:`BandwidthEstimator <pybnesian.BandwidthEstimator>` estimates the bandwidth of a kernel density estimation (KDE) model.
+    py::class_<BandwidthSelector, PyBandwidthSelector, std::shared_ptr<BandwidthSelector>>(
+        root, "BandwidthSelector", R"doc(
+A :class:`BandwidthSelector <pybnesian.BandwidthSelector>` estimates the bandwidth of a kernel density estimation (KDE) model.
 )doc")
         .def(py::init<>(), R"doc(
-Initializes a :class:`BandwidthEstimator <pybnesian.BandwidthEstimator>`.
+Initializes a :class:`BandwidthSelector <pybnesian.BandwidthSelector>`.
 )doc")
-        .def("estimate_diag_bandwidth",
-             &BandwidthEstimator::estimate_diag_bandwidth,
+        .def("diag_bandwidth",
+             &BandwidthSelector::diag_bandwidth,
              py::arg("df"),
              py::arg("variables"),
              R"doc(
-Estimates the bandwidth vector of a set of variables for a :class:`ProductKDE <pybnesian.ProductKDE>` with a given data ``df``.
+Selects the bandwidth vector of a set of variables for a :class:`ProductKDE <pybnesian.ProductKDE>` with a given data
+``df``.
 
-:param df: DataFrame to estimate the bandwidth.
+:param df: DataFrame to select the bandwidth.
 :param variables: A list of variables.
 :returns: A numpy vector of floats. The i-th entry is the bandwidth :math:`h_{i}^{2}` for the ``variables[i]``.
 )doc")
-        .def("estimate_bandwidth",
-             &BandwidthEstimator::estimate_bandwidth,
+        .def("bandwidth",
+             &BandwidthSelector::bandwidth,
              py::arg("df"),
              py::arg("variables"),
              R"doc(
-Estimates the bandwidth of a set of variables for a :class:`KDE <pybnesian.KDE>` with a given data ``df``.
+Selects the bandwidth of a set of variables for a :class:`KDE <pybnesian.KDE>` with a given data ``df``.
 
-:param df: DataFrame to estimate the bandwidth.
+:param df: DataFrame to select the bandwidth.
 :param variables: A list of variables.
 :returns: A float or numpy matrix of floats representing the bandwidth matrix.
 )doc")
-        .def("__getstate__", [](const BandwidthEstimator& self) { return self.__getstate__(); })
+        .def("__getstate__", [](const BandwidthSelector& self) { return self.__getstate__(); })
         // Setstate for pyderived type
-        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthEstimator::__setstate__(self, t); });
+        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthSelector::__setstate__(self, t); });
 
-    py::class_<ScottsBandwidth, BandwidthEstimator, std::shared_ptr<ScottsBandwidth>>(root, "ScottsBandwidth", R"doc(
-Estimates the bandwidth using the Scott's rule [Scott]_:
+    py::class_<ScottsBandwidth, BandwidthSelector, std::shared_ptr<ScottsBandwidth>>(root, "ScottsBandwidth", R"doc(
+Selects the bandwidth using the Scott's rule [Scott]_:
 
 .. math::
 
@@ -142,10 +143,10 @@ Initializes a :class:`ScottsBandwidth <pybnesian.ScottsBandwidth>`.
         .def(py::pickle([](const ScottsBandwidth& self) { return self.__getstate__(); },
                         [](py::tuple&) { return std::make_shared<ScottsBandwidth>(); }));
 
-    py::class_<NormalReferenceRule, BandwidthEstimator, std::shared_ptr<NormalReferenceRule>>(root,
+    py::class_<NormalReferenceRule, BandwidthSelector, std::shared_ptr<NormalReferenceRule>>(root,
                                                                                               "NormalReferenceRule",
                                                                                               R"doc(
-Estimates the bandwidth using the normal reference rule:
+Selects the bandwidth using the normal reference rule:
 
 .. math::
 
@@ -163,7 +164,7 @@ Initializes a :class:`NormalReferenceRule <pybnesian.NormalReferenceRule>`.
         .def("score_diagonal", &UCVScorer::score_diagonal)
         .def("score_unconstrained", &UCVScorer::score_unconstrained);
 
-    py::class_<UCV, BandwidthEstimator, std::shared_ptr<UCV>>(root, "UCV")
+    py::class_<UCV, BandwidthSelector, std::shared_ptr<UCV>>(root, "UCV")
         .def(py::init<>(), R"doc(
 Initializes a :class:`UCV <pybnesian.UCV>`.
 )doc")
@@ -187,8 +188,8 @@ selector.
 
 :param variables: List of variable names.
 )doc")
-        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
-                 return KDE(variables, BandwidthEstimator::keep_python_alive(bandwidth_selector));
+        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthSelector> bandwidth_selector) {
+                 return KDE(variables, BandwidthSelector::keep_python_alive(bandwidth_selector));
              }),
              py::arg("variables"),
              py::arg("bandwidth_selector"),
@@ -279,8 +280,8 @@ Initializes a ProductKDE with the given ``variables``.
 
 :param variables: List of variable names.
 )doc")
-        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
-                 return ProductKDE(variables, BandwidthEstimator::keep_python_alive(bandwidth_selector));
+        .def(py::init<>([](std::vector<std::string> variables, std::shared_ptr<BandwidthSelector> bandwidth_selector) {
+                 return ProductKDE(variables, BandwidthSelector::keep_python_alive(bandwidth_selector));
              }),
              py::arg("variables"),
              py::arg("bandwidth_selector"),

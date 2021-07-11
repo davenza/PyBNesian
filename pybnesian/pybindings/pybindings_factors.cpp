@@ -584,8 +584,8 @@ Initializes a new :class:`CKDE` with a given ``variable`` and ``evidence``.
 )doc")
         .def(py::init<>([](std::string variable,
                            std::vector<std::string> evidence,
-                           std::shared_ptr<BandwidthEstimator> bandwidth_selector) {
-                 return CKDE(variable, evidence, BandwidthEstimator::keep_python_alive(bandwidth_selector));
+                           std::shared_ptr<BandwidthSelector> bandwidth_selector) {
+                 return CKDE(variable, evidence, BandwidthSelector::keep_python_alive(bandwidth_selector));
              }),
              py::arg("variable"),
              py::arg("evidence"),
@@ -720,11 +720,11 @@ Removes the assignment for the ``variable``.
 
     py::class_<DCKDE, Factor, std::shared_ptr<DCKDE>>(root, "DCKDE")
         .def(py::init<std::string, std::vector<std::string>>())
-        .def(py::init<std::string, std::vector<std::string>, std::shared_ptr<BandwidthEstimator>>())
+        .def(py::init<std::string, std::vector<std::string>, std::shared_ptr<BandwidthSelector>>())
         .def(
             py::init<std::string,
                      std::vector<std::string>,
-                     std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthEstimator>>, AssignmentHash>>())
+                     std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash>>())
         .def("conditional_factor", &DCKDE::conditional_factor, py::return_value_policy::reference_internal)
         .def(py::pickle([](const DCKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return DCKDE::__setstate__(t); }));

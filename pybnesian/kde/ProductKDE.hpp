@@ -2,7 +2,7 @@
 #define PYBNESIAN_KDE_PRODUCTKDE_HPP
 
 #include <util/pickle.hpp>
-#include <kde/BandwidthEstimator.hpp>
+#include <kde/BandwidthSelector.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <opencl/opencl_config.hpp>
 #include <util/math_constants.hpp>
@@ -22,7 +22,7 @@ public:
 
     ProductKDE(std::vector<std::string> variables) : ProductKDE(variables, std::make_shared<NormalReferenceRule>()) {}
 
-    ProductKDE(std::vector<std::string> variables, std::shared_ptr<BandwidthEstimator> b_selector)
+    ProductKDE(std::vector<std::string> variables, std::shared_ptr<BandwidthSelector> b_selector)
         : m_variables(variables), m_fitted(false), m_bselector(b_selector), N(0), m_training_type(arrow::float64()) {
         if (b_selector == nullptr) throw std::runtime_error("Bandwidth selector procedure must be non-null.");
 
@@ -61,7 +61,7 @@ public:
         return m_training_type;
     }
 
-    std::shared_ptr<BandwidthEstimator> bandwidth_type() const { return m_bselector; }
+    std::shared_ptr<BandwidthSelector> bandwidth_type() const { return m_bselector; }
 
     VectorXd logl(const DataFrame& df) const;
 
@@ -108,7 +108,7 @@ private:
 
     std::vector<std::string> m_variables;
     bool m_fitted;
-    std::shared_ptr<BandwidthEstimator> m_bselector;
+    std::shared_ptr<BandwidthSelector> m_bselector;
     VectorXd m_bandwidth;
     std::vector<cl::Buffer> m_cl_bandwidth;
     std::vector<cl::Buffer> m_training;
@@ -165,7 +165,7 @@ void ProductKDE::_fit(const DataFrame& df) {
 
     auto& opencl = OpenCLConfig::get();
 
-    m_bandwidth = m_bselector->estimate_diag_bandwidth(df, m_variables);
+    m_bandwidth = m_bselector->diag_bandwidth(df, m_variables);
 
     for (size_t i = 0; i < m_variables.size(); ++i) {
         if constexpr (std::is_same_v<CType, double>) {

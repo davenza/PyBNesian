@@ -121,7 +121,7 @@ KDE KDE::__setstate__(py::tuple& t) {
     KDE kde(t[0].cast<std::vector<std::string>>());
 
     kde.m_fitted = t[1].cast<bool>();
-    kde.m_bselector = t[2].cast<std::shared_ptr<BandwidthEstimator>>();
+    kde.m_bselector = t[2].cast<std::shared_ptr<BandwidthSelector>>();
 
     if (kde.m_fitted) {
         kde.m_bandwidth = t[3].cast<MatrixXd>();

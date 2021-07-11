@@ -3,7 +3,7 @@
 
 #include <dataset/dataset.hpp>
 #include <opencl/opencl_config.hpp>
-#include <kde/BandwidthEstimator.hpp>
+#include <kde/BandwidthSelector.hpp>
 
 using dataset::DataFrame;
 
@@ -44,10 +44,10 @@ private:
     size_t d;
 };
 
-class UCV : public BandwidthEstimator {
+class UCV : public BandwidthSelector {
 public:
-    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
-    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
+    VectorXd diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
+    MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
 
     py::tuple __getstate__() const override { return py::make_tuple(); }
     static std::shared_ptr<UCV> __setstate__(py::tuple&) { return std::make_shared<UCV>(); }

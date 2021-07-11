@@ -8,7 +8,7 @@
 #include <dataset/dataset.hpp>
 #include <factors/factors.hpp>
 #include <factors/discrete/DiscreteAdaptator.hpp>
-#include <kde/BandwidthEstimator.hpp>
+#include <kde/BandwidthSelector.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <kde/KDE.hpp>
 #include <util/math_constants.hpp>
@@ -18,7 +18,7 @@ namespace pyarrow = arrow::py;
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;
 using factors::FactorType, factors::discrete::DiscreteAdaptator;
-using kde::KDE, kde::BandwidthEstimator, kde::NormalReferenceRule, kde::UnivariateKDE, kde::MultivariateKDE;
+using kde::KDE, kde::BandwidthSelector, kde::NormalReferenceRule, kde::UnivariateKDE, kde::MultivariateKDE;
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
@@ -66,7 +66,7 @@ public:
     CKDE() = default;
     CKDE(std::string variable, std::vector<std::string> evidence)
         : CKDE(variable, evidence, std::make_shared<NormalReferenceRule>()) {}
-    CKDE(std::string variable, std::vector<std::string> evidence, std::shared_ptr<BandwidthEstimator> b_selector)
+    CKDE(std::string variable, std::vector<std::string> evidence, std::shared_ptr<BandwidthSelector> b_selector)
         : Factor(variable, evidence),
           m_variables(),
           m_fitted(false),
@@ -113,7 +113,7 @@ public:
 
     bool fitted() const override { return m_fitted; }
 
-    std::shared_ptr<BandwidthEstimator> bandwidth_type() const { return m_bselector; }
+    std::shared_ptr<BandwidthSelector> bandwidth_type() const { return m_bselector; }
 
     void fit(const DataFrame& df) override;
     VectorXd logl(const DataFrame& df) const override;
@@ -172,7 +172,7 @@ private:
 
     std::vector<std::string> m_variables;
     bool m_fitted;
-    std::shared_ptr<BandwidthEstimator> m_bselector;
+    std::shared_ptr<BandwidthSelector> m_bselector;
     std::shared_ptr<arrow::DataType> m_training_type;
     size_t N;
     KDE m_joint;

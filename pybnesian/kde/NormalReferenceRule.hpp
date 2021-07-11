@@ -3,25 +3,25 @@
 
 namespace kde {
 
-class NormalReferenceRule : public BandwidthEstimator {
+class NormalReferenceRule : public BandwidthSelector {
 public:
-    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+    VectorXd diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
         switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
-                return estimate_diag_bandwidth<arrow::DoubleType>(df, variables);
+                return diag_bandwidth<arrow::DoubleType>(df, variables);
             case Type::FLOAT:
-                return estimate_diag_bandwidth<arrow::FloatType>(df, variables);
+                return diag_bandwidth<arrow::FloatType>(df, variables);
             default:
                 throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
         }
     }
 
-    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+    MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
         switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
-                return estimate_bandwidth<arrow::DoubleType>(df, variables);
+                return bandwidth<arrow::DoubleType>(df, variables);
             case Type::FLOAT:
-                return estimate_bandwidth<arrow::FloatType>(df, variables);
+                return bandwidth<arrow::FloatType>(df, variables);
             default:
                 throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
         }
@@ -35,7 +35,7 @@ public:
 
 private:
     template <typename ArrowType>
-    VectorXd estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
+    VectorXd diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
         using CType = typename ArrowType::c_type;
 
         auto cov_ptr = df.cov<ArrowType>(variables);
@@ -61,7 +61,7 @@ private:
     }
 
     template <typename ArrowType>
-    MatrixXd estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
+    MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
         using CType = typename ArrowType::c_type;
 
         auto cov = df.cov<ArrowType>(variables);

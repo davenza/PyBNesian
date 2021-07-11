@@ -447,10 +447,10 @@ double wrap_ucv_optim(unsigned n, const double* x, double*, void* my_func_data) 
     return score;
 }
 
-VectorXd UCV::estimate_diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
+VectorXd UCV::diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
     NormalReferenceRule nr;
 
-    auto normal_bandwidth = nr.estimate_diag_bandwidth(df, variables);
+    auto normal_bandwidth = nr.diag_bandwidth(df, variables);
     UCVScorer ucv_scorer(df, variables);
     auto start_score = ucv_scorer.score_unconstrained(normal_bandwidth);
     auto start_determinant = normal_bandwidth.prod();
@@ -480,10 +480,10 @@ VectorXd UCV::estimate_diag_bandwidth(const DataFrame& df, const std::vector<std
     return start_bandwidth.array().square().matrix();
 }
 
-MatrixXd UCV::estimate_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
+MatrixXd UCV::bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
     NormalReferenceRule nr;
 
-    auto normal_bandwidth = nr.estimate_bandwidth(df, variables);
+    auto normal_bandwidth = nr.bandwidth(df, variables);
 
     UCVScorer ucv_scorer(df, variables);
     auto start_score = ucv_scorer.score_unconstrained(normal_bandwidth);

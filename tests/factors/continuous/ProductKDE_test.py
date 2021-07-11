@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pyarrow as pa
 import pybnesian as pbn
-from pybnesian import BandwidthEstimator
+from pybnesian import BandwidthSelector
 from scipy.stats import gaussian_kde
 from functools import reduce
 
@@ -80,18 +80,12 @@ def test_productkde_bandwidth():
     cpd.bandwidth = [1]
     assert cpd.bandwidth == np.asarray([1]), "Could not change bandwidth."
 
-class UnitaryBandwidth(BandwidthEstimator):
+class UnitaryBandwidth(BandwidthSelector):
     def __init__(self):
-        BandwidthEstimator.__init__(self)
+        BandwidthSelector.__init__(self)
 
-    def estimate_diag_bandwidth(self, df, variables):
+    def diag_bandwidth(self, df, variables):
         return np.ones((len(variables),))
-
-    def estimate_bandwidth(self, df, variables):
-        if isinstance(variables, str):
-            return 1
-        if isinstance(variables, list):
-            return np.eye(len(variables))
     
 def test_productkde_new_bandwidth():
     kde = pbn.ProductKDE(["a"], UnitaryBandwidth())

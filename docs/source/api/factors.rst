@@ -62,7 +62,7 @@ This types are not factors, but are auxiliary types for other factors.
 Kernel Density Estimation
 -------------------------
 
-.. autoclass:: pybnesian.BandwidthEstimator
+.. autoclass:: pybnesian.BandwidthSelector
     :members:
     :special-members: __init__
 

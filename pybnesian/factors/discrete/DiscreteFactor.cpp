@@ -17,14 +17,18 @@ namespace factors::discrete {
 
 std::shared_ptr<Factor> DiscreteFactorType::new_factor(const BayesianNetworkBase&,
                                                        const std::string& variable,
-                                                       const std::vector<std::string>& evidence) const {
-    return std::make_shared<DiscreteFactor>(variable, evidence);
+                                                       const std::vector<std::string>& evidence,
+                                                       py::args args,
+                                                       py::kwargs kwargs) const {
+    return generic_new_factor<DiscreteFactor>(variable, evidence, args, kwargs);
 }
 
 std::shared_ptr<Factor> DiscreteFactorType::new_factor(const ConditionalBayesianNetworkBase&,
                                                        const std::string& variable,
-                                                       const std::vector<std::string>& evidence) const {
-    return std::make_shared<DiscreteFactor>(variable, evidence);
+                                                       const std::vector<std::string>& evidence,
+                                                       py::args args,
+                                                       py::kwargs kwargs) const {
+    return generic_new_factor<DiscreteFactor>(variable, evidence, args, kwargs);
 }
 
 void DiscreteFactor::fit(const DataFrame& df) {

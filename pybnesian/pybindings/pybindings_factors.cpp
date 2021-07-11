@@ -4,6 +4,7 @@
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <factors/factors.hpp>
+#include <factors/arguments.hpp>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>
 #include <factors/assignment.hpp>
@@ -14,14 +15,15 @@
 
 namespace py = pybind11;
 
+using factors::Arguments, factors::Args, factors::Kwargs;
 using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::CLinearGaussianCPD,
     factors::continuous::DCKDE, factors::continuous::CKDE, factors::discrete::DiscreteFactor;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 
 using factors::Assignment, factors::AssignmentValue, factors::AssignmentHash;
-using util::random_seed_arg;
 using models::BayesianNetworkBase, models::ConditionalBayesianNetworkBase;
+using util::random_seed_arg;
 
 class PyFactorType : public FactorType {
 public:
@@ -35,12 +37,14 @@ public:
 
     std::shared_ptr<Factor> new_factor(const BayesianNetworkBase& model,
                                        const std::string& variable,
-                                       const std::vector<std::string>& parents) const override {
+                                       const std::vector<std::string>& parents,
+                                       py::args args = py::args{},
+                                       py::kwargs kwargs = py::kwargs{}) const override {
         pybind11::gil_scoped_acquire gil;
         pybind11::function override = pybind11::get_override(static_cast<const FactorType*>(this), "new_factor");
 
         if (override) {
-            auto o = override(model.shared_from_this(), variable, parents);
+            auto o = override(model.shared_from_this(), variable, parents, *args, **kwargs);
 
             if (o.is(py::none())) {
                 throw std::invalid_argument("FactorType::new_factor can not return None.");
@@ -55,12 +59,14 @@ public:
 
     std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase& model,
                                        const std::string& variable,
-                                       const std::vector<std::string>& parents) const override {
+                                       const std::vector<std::string>& parents,
+                                       py::args args = py::args{},
+                                       py::kwargs kwargs = py::kwargs{}) const override {
         pybind11::gil_scoped_acquire gil;
         pybind11::function override = pybind11::get_override(static_cast<const FactorType*>(this), "new_factor");
 
         if (override) {
-            auto o = override(model.shared_from_this(), variable, parents);
+            auto o = override(model.shared_from_this(), variable, parents, *args, **kwargs);
 
             if (o.is(py::none())) {
                 throw std::invalid_argument("FactorType::new_factor can not return None.");
@@ -217,6 +223,73 @@ private:
 };
 
 void pybindings_factors(py::module& root) {
+    py::class_<Args>(root, "Args").def(py::init<py::args>(), R"doc(
+The :class:`Args` defines a wrapper over `*args`. This class allows to distinguish between a tuple representing `*args`
+or a tuple parameter while using :class:`Arguments <pybnesian.Arguments>`.
+
+.. _Example Args/Kwargs:
+
+Example:
+
+.. code-block:: python
+
+    Arguments({ 'a' : ((1, 2), {'param': 3}) })
+    # or
+    Arguments({ 'a' : Args((1, 2), {'param': 3}) })
+
+defines an `*args` with 2 arguments: a tuple (1, 2) and a dict {'param': 3}. No `**kwargs` is defined.
+
+.. code-block:: python
+
+    Arguments({ 'a' : (Args(1, 2), Kwargs(param = 3)) })
+
+defines an `*args` with 2 arguments: 1 and 2. It also defines a `**kwargs` with param = 3.
+)doc");
+    py::class_<Kwargs>(root, "Kwargs").def(py::init<py::kwargs>(), R"doc(
+The :class:`Kwargs` defines a wrapper over `**kwargs`. This class allows to distinguish between a dict representing
+`**kwargs` or a dict parameter while using :class:`Arguments <pybnesian.Arguments>`.
+
+See `Example Args/Kwargs`_.
+)doc");
+    py::class_<Arguments>(root, "Arguments", R"doc(
+The :class:`Arguments` class collects different arguments to construct :class:`Factor <pybnesian.Factor>`.
+
+The :class:`Arguments` object is constructed from a dictionary that associates each :class:`Factor <pybnesian.Factor>`
+configuration with a set of arguments.
+
+The keys of the dictionary can be:
+
+    - A 2-tuple (``name``, ``factor_type``) defines arguments for a :class:`Factor <pybnesian.Factor>` of variable
+      ``name`` with :class:`FactorType <pybnesian.FactorType>` ``factor_type``.
+    - An str defines arguments for a :class:`Factor <pybnesian.Factor>` of variable ``name``.
+    - A :class:`FactorType <pybnesian.FactorType>` defines arguments for a :class:`Factor <pybnesian.Factor>` with
+      :class:`FactorType <pybnesian.FactorType>` ``factor_type``.
+
+The values of the dictionary can be:
+
+    - A 2-tuple (:class:`Args <pybnesian.Args>`, :class:`Kwargs <pybnesian.Kwargs>`) defines `*args` and `**kwargs`.
+    - An :class:`Args <pybnesian.Args>` or tuple ( ... )  defines only `*args`.
+    - A :class:`Kwargs <pybnesian.Kwargs>` or dict { ... }: defines only `**kwargs`.
+
+When searching for the defined arguments in :class:`Arguments <pybnesian.Arguments>` for a given factor with ``name``
+and ``factor_type``, the most specific configurations have preference over more general ones.
+
+    - If a 2-tuple (``name``, ``factor_type``) configuration exists, the corresponding arguments are returned.
+    - Else, if a ``name`` configuration exists, the corresponding arguments are returned.
+    - Else, if a ``factor_type`` configuration exists, the corresponding arguments are returned.
+    - Else, empty `*args` and `**kwargs` are returned.
+)doc")
+        .def(py::init<>(), R"doc(
+Initializes an empty :class:`Arguments`.
+)doc")
+        .def(py::init<py::dict>(), py::arg("dict_arguments"), R"doc(
+Initializes a new :class:`Arguments` with the given configurations and arguments.
+
+:param dict_arguments: A dictionary { configurations : arguments} that associates each
+    :class:`Factor <pybnesian.Factor>` configuration with a set of arguments.
+)doc")
+        .def("__repr__", [](const Arguments&) { return "Arguments"; });
+
     py::class_<FactorType, PyFactorType, std::shared_ptr<FactorType>> factor_type(root, "FactorType", R"doc(
 A representation of a :class:`Factor` type.
 )doc");
@@ -242,6 +315,7 @@ A representation of a :class:`Factor` type.
         .def("__getstate__", [](const FactorType& self) { return self.__getstate__(); })
         // Setstate for pyderived type
         .def("__setstate__", [](py::object& self, py::tuple& t) { PyFactorType::__setstate__(self, t); })
+        .def("__hash__", &FactorType::hash)
         .def("__repr__", [](const FactorType& self) { return self.ToString(); })
         .def("__str__", [](const FactorType& self) { return self.ToString(); });
 
@@ -252,18 +326,23 @@ A representation of a :class:`Factor` type.
             .def("new_factor",
                  py::overload_cast<const ConditionalBayesianNetworkBase&,
                                    const std::string&,
-                                   const std::vector<std::string>&>(&FactorType::new_factor, py::const_),
+                                   const std::vector<std::string>&,
+                                   py::args,
+                                   py::kwargs>(&FactorType::new_factor, py::const_),
                  py::arg("model"),
                  py::arg("variable"),
                  py::arg("evidence"))
             .def("new_factor",
-                 py::overload_cast<const BayesianNetworkBase&, const std::string&, const std::vector<std::string>&>(
-                     &FactorType::new_factor, py::const_),
+                 py::overload_cast<const BayesianNetworkBase&,
+                                   const std::string&,
+                                   const std::vector<std::string>&,
+                                   py::args,
+                                   py::kwargs>(&FactorType::new_factor, py::const_),
                  py::arg("model"),
                  py::arg("variable"),
                  py::arg("evidence"),
                  R"doc(
-new_factor(self: pybnesian.FactorType, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str]) -> pybnesian.Factor
+new_factor(self: pybnesian.FactorType, model: BayesianNetworkBase or ConditionalBayesianNetworkBase, variable: str, evidence: List[str], *args, **kwargs) -> pybnesian.Factor
 
 Create a new corresponding :class:`Factor` for a ``model`` with the given ``variable`` and ``evidence``.
 
@@ -272,6 +351,8 @@ Note that ``evidence`` might be different from ``model.parents(variable)``.
 :param model: The model that will contain the :class:`Factor`.
 :param variable: Variable name.
 :param evidence: List of evidence variable names.
+:param args: Additional arguments to construct the :class:`Factor`.
+:param kwargs: Additional keyword arguments used to construct the :class:`Factor`.
 :returns: A corresponding :class:`Factor` with the given ``variable`` and ``evidence``.
 )doc");
     }
@@ -490,7 +571,7 @@ A conditional kernel density estimator (CKDE) is the ratio of two KDE models:
     \hat{f}(\text{variable} \mid \text{evidence}) =
     \frac{\hat{f}_{K}(\text{variable}, \text{evidence})}{\hat{f}_{K}(\text{evidence})}
 
-where \hat{f}_{K} is a :class:`KDE` estimation.
+where :math:`\hat{f}_{K}` is a :class:`KDE` estimation.
 )doc")
         .def(py::init<std::string, std::vector<std::string>>(),
              py::arg("variable"),
@@ -541,8 +622,7 @@ Returns the cumulative distribution function values of each instance in the Data
         .def(py::pickle([](const CKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return CKDE::__setstate__(t); }));
 
-    py::class_<DiscreteFactorType, FactorType, std::shared_ptr<DiscreteFactorType>>(
-        root, "DiscreteFactorType", R"doc(
+    py::class_<DiscreteFactorType, FactorType, std::shared_ptr<DiscreteFactorType>>(root, "DiscreteFactorType", R"doc(
 :class:`DiscreteFactorType` is the corresponding CPD type of :class:`DiscreteFactor`.
 )doc")
         .def(py::init(&DiscreteFactorType::get), R"doc(

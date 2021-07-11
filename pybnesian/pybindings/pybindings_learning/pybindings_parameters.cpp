@@ -28,12 +28,11 @@ DiscreteFactor::ParamsClass numpy_to_discrete_params(
 }
 
 void pybindings_parameters(py::module& root) {
-
     root.def("MLE",
-                   &pybindings::learning::parameters::mle_python_wrapper,
-                   py::return_value_policy::take_ownership,
-                   py::arg("factor_type"),
-                   R"doc(
+             &pybindings::learning::parameters::mle_python_wrapper,
+             py::return_value_policy::take_ownership,
+             py::arg("factor_type"),
+             R"doc(
 Generates an MLE estimator for the given ``factor_type``.
 
 :param factor_type: A :class:`FactorType <pybnesian.FactorType>`.

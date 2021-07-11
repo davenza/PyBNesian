@@ -127,8 +127,7 @@ Estimates the bandwidth of a set of variables for a :class:`KDE <pybnesian.KDE>`
         // Setstate for pyderived type
         .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthEstimator::__setstate__(self, t); });
 
-    py::class_<ScottsBandwidth, BandwidthEstimator, std::shared_ptr<ScottsBandwidth>>(
-        root, "ScottsBandwidth", R"doc(
+    py::class_<ScottsBandwidth, BandwidthEstimator, std::shared_ptr<ScottsBandwidth>>(root, "ScottsBandwidth", R"doc(
 Estimates the bandwidth using the Scott's rule [Scott]_:
 
 .. math::

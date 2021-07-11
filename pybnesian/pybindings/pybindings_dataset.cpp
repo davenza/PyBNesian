@@ -10,7 +10,6 @@ using dataset::DataFrame, dataset::CrossValidation, dataset::HoldOut, dataset::D
 using util::random_seed_arg;
 
 void pybindings_dataset(py::module& root) {
-
     py::class_<CrossValidation> cv(root, "CrossValidation", R"doc(
 This class implements k-fold cross-validation, i.e. it splits the data into k disjoint sets of train and test data.
 )doc");

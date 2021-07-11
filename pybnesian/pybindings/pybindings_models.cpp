@@ -403,7 +403,9 @@ public:
         PYBIND11_OVERRIDE_PURE(void, Base, add_cpds, cpds);
     }
 
-    void fit(const DataFrame& df) override { PYBIND11_OVERRIDE_PURE(void, Base, fit, df); }
+    void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) override {
+        PYBIND11_OVERRIDE_PURE(void, Base, fit, df, construction_args);
+    }
 
     VectorXd logl(const DataFrame& df) const override { PYBIND11_OVERRIDE_PURE(VectorXd, Base, logl, df); }
 
@@ -679,7 +681,9 @@ public:
         PYBIND11_OVERRIDE(void, Base, add_cpds, cpds);
     }
 
-    void fit(const DataFrame& df) override { PYBIND11_OVERRIDE(void, Base, fit, df); }
+    void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) override {
+        PYBIND11_OVERRIDE(void, Base, fit, df, construction_args);
+    }
 
     VectorXd logl(const DataFrame& df) const override { PYBIND11_OVERRIDE(VectorXd, Base, logl, df); }
 
@@ -921,7 +925,9 @@ public:
 
     bool fitted() const override { PYBIND11_OVERRIDE_PURE(bool, Base, fitted, ); }
 
-    void fit(const DataFrame& df) override { PYBIND11_OVERRIDE_PURE(void, Base, fit, df); }
+    void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) override {
+        PYBIND11_OVERRIDE_PURE(void, Base, fit, df, construction_args);
+    }
 
     VectorXd logl(const DataFrame& df) const override { PYBIND11_OVERRIDE_PURE(VectorXd, Base, logl, df); }
 
@@ -981,7 +987,9 @@ public:
 
     bool fitted() const override { PYBIND11_OVERRIDE(bool, Base, fitted, ); }
 
-    void fit(const DataFrame& df) override { PYBIND11_OVERRIDE(void, Base, fit, df); }
+    void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) override {
+        PYBIND11_OVERRIDE(void, Base, fit, df, construction_args);
+    }
 
     VectorXd logl(const DataFrame& df) const override { PYBIND11_OVERRIDE(VectorXd, Base, logl, df); }
 
@@ -1239,10 +1247,11 @@ partial (just some a subset of the nodes).
 
 :param cpds: List of :class:`Factor <pybnesian.Factor>`.
 )doc")
-        .def("fit", &CppClass::fit, py::arg("df"), R"doc(
+        .def("fit", &CppClass::fit, py::arg("df"), py::arg("construction_args") = Arguments(), R"doc(
 Fit all the unfitted :class:`Factor <pybnesian.Factor>` with the data ``df``.
 
 :param df: DataFrame to fit the Bayesian network.
+:param construction_args: Additional arguments provided to construct the :class:`Factor <pybnesian.Factor>`.
 )doc")
         .def("logl",
              &CppClass::logl,
@@ -1608,11 +1617,12 @@ Removes a variable. It removes all the corresponding nodes in the static and tra
 
 :param variable: A variable name.
 )doc")
-        .def("fit", &CppClass::fit, py::arg("df"), R"doc(
+        .def("fit", &CppClass::fit, py::arg("df"), py::arg("construction_args") = Arguments(), R"doc(
 Fit all the unfitted :class:`Factor <pybnesian.Factor>` with the data ``df`` in both the static and transition
 Bayesian networks.
 
 :param df: DataFrame to fit the dynamic Bayesian network.
+:param construction_args: Additional arguments provided to construct the :class:`Factor <pybnesian.Factor>`.
 )doc")
         .def("logl",
              &CppClass::logl,
@@ -1798,7 +1808,6 @@ Both ``static_bn`` and ``transition_bn`` must contain the expected nodes:
 }
 
 void pybindings_models(py::module& root) {
-
     py::class_<BayesianNetworkType, PyBayesianNetworkType, std::shared_ptr<BayesianNetworkType>> bn_type(
         root, "BayesianNetworkType", R"doc(
 A representation of a :class:`BayesianNetwork` that defines its behaviour.
@@ -1883,7 +1892,8 @@ Returns an empty conditional Bayesian network of this type with the given ``node
         .def("__str__", &BayesianNetworkType::ToString)
         .def("__repr__", &BayesianNetworkType::ToString)
         .def("__getstate__", [](const BayesianNetworkType& self) { return self.__getstate__(); })
-        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBayesianNetworkType::__setstate__(self, t); });
+        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBayesianNetworkType::__setstate__(self, t); })
+        .def("__hash__", &BayesianNetworkType::hash);
 
     {
         py::options options;

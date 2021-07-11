@@ -13,14 +13,18 @@ namespace learning::scores {
 
 class CVLikelihood : public Score {
 public:
-    CVLikelihood(const DataFrame& df, int k = 10, unsigned int seed = std::random_device{}()) : m_cv(df, k, seed) {}
+    CVLikelihood(const DataFrame& df,
+                 int k = 10,
+                 unsigned int seed = std::random_device{}(),
+                 Arguments construction_args = Arguments())
+        : m_cv(df, k, seed), m_arguments(construction_args) {}
 
     double local_score(const BayesianNetworkBase& model,
                        const std::string& variable,
                        const std::vector<std::string>& evidence) const override;
 
     double local_score(const BayesianNetworkBase& model,
-                       const FactorType& variable_type,
+                       const std::shared_ptr<FactorType>& variable_type,
                        const std::string& variable,
                        const std::vector<std::string>& evidence) const override;
 
@@ -47,6 +51,7 @@ private:
     double factor_score(const std::string& variable, const std::vector<std::string>& evidence) const;
 
     CrossValidation m_cv;
+    Arguments m_arguments;
 };
 
 using DynamicCVLikelihood = DynamicScoreAdaptator<CVLikelihood>;

@@ -14,26 +14,30 @@ namespace factors::continuous {
 
 std::shared_ptr<Factor> CKDEType::new_factor(const BayesianNetworkBase& m,
                                              const std::string& variable,
-                                             const std::vector<std::string>& evidence) const {
+                                             const std::vector<std::string>& evidence,
+                                             py::args args,
+                                             py::kwargs kwargs) const {
     for (const auto& e : evidence) {
         if (m.node_type(e) == DiscreteFactorType::get()) {
-            return std::make_shared<DCKDE>(variable, evidence);
+            return generic_new_factor<DCKDE>(variable, evidence, args, kwargs);
         }
     }
 
-    return std::make_shared<CKDE>(variable, evidence);
+    return generic_new_factor<CKDE>(variable, evidence, args, kwargs);
 }
 
 std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBase& m,
                                              const std::string& variable,
-                                             const std::vector<std::string>& evidence) const {
+                                             const std::vector<std::string>& evidence,
+                                             py::args args,
+                                             py::kwargs kwargs) const {
     for (const auto& e : evidence) {
         if (m.node_type(e) == DiscreteFactorType::get()) {
-            return std::make_shared<DCKDE>(variable, evidence);
+            return generic_new_factor<DCKDE>(variable, evidence, args, kwargs);
         }
     }
 
-    return std::make_shared<CKDE>(variable, evidence);
+    return generic_new_factor<CKDE>(variable, evidence, args, kwargs);
 }
 
 void CKDE::fit(const DataFrame& df) {

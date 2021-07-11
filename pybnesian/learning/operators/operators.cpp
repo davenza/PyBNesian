@@ -475,7 +475,7 @@ void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Sco
                 if (bn_type->compatible_node_type(model, collapsed_name, alt_node_types[k]) && not_blacklisted) {
                     auto parents = model.parents(collapsed_name);
                     delta.back()(k) =
-                        score.local_score(model, *alt_node_types[k], collapsed_name, parents) - current_score;
+                        score.local_score(model, alt_node_types[k], collapsed_name, parents) - current_score;
                 } else {
                     delta.back()(k) = std::numeric_limits<double>::lowest();
                 }
@@ -584,7 +584,7 @@ void ChangeNodeTypeSet::update_scores(const BayesianNetworkBase& model,
 
             if (bn_type->compatible_node_type(model, n, alt_node_types[k]) && not_blacklisted) {
                 auto parents = model.parents(n);
-                delta[collapsed_index](k) = score.local_score(model, *alt_node_types[k], n, parents) - current_score;
+                delta[collapsed_index](k) = score.local_score(model, alt_node_types[k], n, parents) - current_score;
             } else {
                 delta[collapsed_index](k) = std::numeric_limits<double>::lowest();
             }

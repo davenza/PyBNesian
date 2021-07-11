@@ -20,7 +20,7 @@ public:
                        const std::vector<std::string>& parents) const override;
 
     double local_score(const BayesianNetworkBase& model,
-                       const FactorType& node_type,
+                       const std::shared_ptr<FactorType>& node_type,
                        const std::string& variable,
                        const std::vector<std::string>& parents) const override;
 

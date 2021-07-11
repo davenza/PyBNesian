@@ -96,10 +96,10 @@ type of ``"a"`` is ``m.node_type("a")``.
                const std::shared_ptr<FactorType>& variable_type,
                const std::string& variable,
                const std::vector<std::string>& evidence) {
-                return self.local_score(m, *variable_type, variable, evidence);
+                return self.local_score(m, variable_type, variable, evidence);
             },
             py::arg("model"),
-            py::arg("variable_type"),
+            py::arg("variable_type").none(false),
             py::arg("variable"),
             py::arg("evidence"),
             R"doc(
@@ -227,10 +227,10 @@ that the node type of ``"a"`` is ``m.node_type("a")``.
                const std::shared_ptr<FactorType>& variable_type,
                const std::string& variable,
                const std::vector<std::string>& evidence) {
-                return self.vlocal_score(m, *variable_type, variable, evidence);
+                return self.vlocal_score(m, variable_type, variable, evidence);
             },
             py::arg("model"),
-            py::arg("variable_type"),
+            py::arg("variable_type").none(false),
             py::arg("variable"),
             py::arg("evidence"),
             R"doc(
@@ -309,7 +309,7 @@ public:
     }
 
     double local_score(const BayesianNetworkBase& model,
-                       const FactorType& node_type,
+                       const std::shared_ptr<FactorType>& node_type,
                        const std::string& variable,
                        const std::vector<std::string>& parents) const override {
         PYBIND11_OVERRIDE_PURE_NAME(double,    /* Return type */
@@ -317,7 +317,7 @@ public:
                                     "local_score_node_type",
                                     local_score, /* Name of function in C++ (must match Python name) */
                                     model.shared_from_this(),
-                                    &node_type,
+                                    node_type,
                                     variable, /* Argument(s) */
                                     parents);
     }
@@ -411,7 +411,7 @@ public:
     }
 
     double vlocal_score(const BayesianNetworkBase& model,
-                        const FactorType& node_type,
+                        const std::shared_ptr<FactorType>& node_type,
                         const std::string& variable,
                         const std::vector<std::string>& parents) const override {
         PYBIND11_OVERRIDE_PURE_NAME(double,             /* Return type */
@@ -419,7 +419,7 @@ public:
                                     "vlocal_score_node_type",
                                     vlocal_score, /* Name of function in C++ (must match Python name) */
                                     model.shared_from_this(),
-                                    &node_type,
+                                    node_type,
                                     variable, /* Argument(s) */
                                     parents);
     }
@@ -443,7 +443,6 @@ class PyDynamicScore : public DynamicScoreBase {
 };
 
 void pybindings_scores(py::module& root) {
-
     // register_Score<GaussianNetwork, SemiparametricBN>(scores);
     py::class_<Score, PyScore<>, std::shared_ptr<Score>> score(root, "Score", R"doc(
 A :class:`Score` scores Bayesian network structures.
@@ -543,12 +542,13 @@ Initializes a :class:`BDe` with the given DataFrame ``df``.
     py::class_<CVLikelihood, Score, std::shared_ptr<CVLikelihood>>(root, "CVLikelihood", R"doc(
 This class implements an estimation of the log-likelihood on unseen data using k-fold cross validation over the data.
 )doc")
-        .def(py::init([](const DataFrame& df, int k, std::optional<unsigned int> seed) {
-                 return CVLikelihood(df, k, random_seed_arg(seed));
+        .def(py::init([](const DataFrame& df, int k, std::optional<unsigned int> seed, Arguments construction_args) {
+                 return CVLikelihood(df, k, random_seed_arg(seed), construction_args);
              }),
              py::arg("df"),
              py::arg("k") = 10,
              py::arg("seed") = std::nullopt,
+             py::arg("construction_args") = Arguments(),
              R"doc(
 Initializes a :class:`CVLikelihood` with the given DataFrame ``df``. It uses a
 :class:`CrossValidation <pybnesian.CrossValidation>` with ``k`` folds and the given ``seed``.
@@ -556,6 +556,7 @@ Initializes a :class:`CVLikelihood` with the given DataFrame ``df``. It uses a
 :param df: DataFrame to compute the score.
 :param k: Number of folds of the cross validation.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
+:param construction_args: Additional arguments provided to construct the :class:`Factor <pybnesian.Factor>`.
 )doc")
         .def_property_readonly("cv", &CVLikelihood::cv, R"doc(
 The underlying :class:`CrossValidation <pybnesian.CrossValidation>` object to compute the score.
@@ -565,12 +566,16 @@ The underlying :class:`CrossValidation <pybnesian.CrossValidation>` object to co
 This class implements an estimation of the log-likelihood on unseen data using a holdout dataset. Thus, the parameters
 are estimated using training data, and the score is estimated in the holdout data.
 )doc")
-        .def(py::init([](const DataFrame& df, double test_ratio, std::optional<unsigned int> seed) {
-                 return HoldoutLikelihood(df, test_ratio, random_seed_arg(seed));
+        .def(py::init([](const DataFrame& df,
+                         double test_ratio,
+                         std::optional<unsigned int> seed,
+                         Arguments construction_args) {
+                 return HoldoutLikelihood(df, test_ratio, random_seed_arg(seed), construction_args);
              }),
              py::arg("df"),
              py::arg("test_ratio") = 0.2,
              py::arg("seed") = std::nullopt,
+             py::arg("construction_args") = Arguments(),
              R"doc(
 Initializes a :class:`HoldoutLikelihood` with the given DataFrame ``df``. It uses a
 :class:`HoldOut <pybnesian.HoldOut>` with the given ``test_ratio`` and ``seed``.
@@ -578,6 +583,7 @@ Initializes a :class:`HoldoutLikelihood` with the given DataFrame ``df``. It use
 :param df: DataFrame to compute the score.
 :param test_ratio: Proportion of instances left for the holdout data.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
+:param construction_args: Additional arguments provided to construct the :class:`Factor <pybnesian.Factor>`.
 )doc")
         .def_property_readonly("holdout", &HoldoutLikelihood::holdout, R"doc(
 The underlying :class:`HoldOut <pybnesian.HoldOut>` object to compute the score.
@@ -598,13 +604,18 @@ This class mixes the functionality of :class:`CVLikelihood` and :class:`HoldoutL
 - It estimates the validation score using the training data to estimate the parameters and calculating the
   log-likelihood on the holdout data.
 )doc")
-        .def(py::init([](const DataFrame& df, double test_ratio, int k, std::optional<unsigned int> seed) {
-                 return ValidatedLikelihood(df, test_ratio, k, random_seed_arg(seed));
+        .def(py::init([](const DataFrame& df,
+                         double test_ratio,
+                         int k,
+                         std::optional<unsigned int> seed,
+                         Arguments construction_args) {
+                 return ValidatedLikelihood(df, test_ratio, k, random_seed_arg(seed), construction_args);
              }),
              py::arg("df"),
              py::arg("test_ratio") = 0.2,
              py::arg("k") = 10,
              py::arg("seed") = std::nullopt,
+             py::arg("construction_args") = Arguments(),
              R"doc(
 Initializes a :class:`ValidatedLikelihood` with the given DataFrame ``df``. The
 :class:`HoldOut <pybnesian.HoldOut>` is initialized with ``test_ratio`` and ``seed``. The ``CVLikelihood`` is
@@ -614,6 +625,7 @@ initialized with ``k`` and ``seed`` over the training data of the holdout :class
 :param test_ratio: Proportion of instances left for the holdout data.
 :param k: Number of folds of the cross validation.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
+:param construction_args: Additional arguments provided to construct the :class:`Factor <pybnesian.Factor>`.
 )doc")
         .def_property_readonly(
             "holdout_lik", &ValidatedLikelihood::holdout, py::return_value_policy::reference_internal, R"doc(
@@ -632,8 +644,7 @@ The underlying training data of the :class:`HoldOut <pybnesian.HoldOut>`.
 The underlying holdout data of the :class:`HoldOut <pybnesian.HoldOut>`.
 )doc");
 
-    py::class_<DynamicScore, PyDynamicScore<>, std::shared_ptr<DynamicScore>> dynamic_score(
-        root, "DynamicScore", R"doc(
+    py::class_<DynamicScore, PyDynamicScore<>, std::shared_ptr<DynamicScore>> dynamic_score(root, "DynamicScore", R"doc(
 A :class:`DynamicScore` adapts the static :class:`Score` to learn dynamic Bayesian networks. It generates a static and a
 transition score to learn the static and transition components of the dynamic Bayesian network.
 

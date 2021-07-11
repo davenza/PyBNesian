@@ -29,7 +29,6 @@ public:
 };
 
 void pybindings_algorithms_callbacks(py::module& root) {
-
     py::class_<Callback, PyCallback, std::shared_ptr<Callback>>(root, "Callback", R"doc(
 A :class:`Callback` object is called after each iteration of a
 :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
@@ -69,29 +68,28 @@ Initializes a :class:`SaveModel`. It saves all the models in the folder ``folder
 }
 
 void pybindings_algorithms(py::module& root) {
-
     pybindings_algorithms_callbacks(root);
 
     root.def("hc",
-                   &learning::algorithms::hc,
-                   py::arg("df"),
-                   py::arg("bn_type") = nullptr,
-                   py::arg("start") = nullptr,
-                   py::arg("score") = std::nullopt,
-                   py::arg("operators") = std::nullopt,
-                   py::arg("arc_blacklist") = ArcStringVector(),
-                   py::arg("arc_whitelist") = ArcStringVector(),
-                   py::arg("type_whitelist") = FactorTypeVector(),
-                   py::arg("callback") = nullptr,
-                   py::arg("max_indegree") = 0,
-                   py::arg("max_iters") = std::numeric_limits<int>::max(),
-                   py::arg("epsilon") = 0,
-                   py::arg("patience") = 0,
-                   py::arg("seed") = std::nullopt,
-                   py::arg("num_folds") = 10,
-                   py::arg("test_holdout_ratio") = 0.2,
-                   py::arg("verbose") = 0,
-                   R"doc(
+             &learning::algorithms::hc,
+             py::arg("df"),
+             py::arg("bn_type") = nullptr,
+             py::arg("start") = nullptr,
+             py::arg("score") = std::nullopt,
+             py::arg("operators") = std::nullopt,
+             py::arg("arc_blacklist") = ArcStringVector(),
+             py::arg("arc_whitelist") = ArcStringVector(),
+             py::arg("type_whitelist") = FactorTypeVector(),
+             py::arg("callback") = nullptr,
+             py::arg("max_indegree") = 0,
+             py::arg("max_iters") = std::numeric_limits<int>::max(),
+             py::arg("epsilon") = 0,
+             py::arg("patience") = 0,
+             py::arg("seed") = std::nullopt,
+             py::arg("num_folds") = 10,
+             py::arg("test_holdout_ratio") = 0.2,
+             py::arg("verbose") = 0,
+             R"doc(
 Executes a greedy hill-climbing algorithm. This calls :func:`GreedyHillClimbing.estimate`.
 
 :param df: DataFrame used to learn a Bayesian network model.

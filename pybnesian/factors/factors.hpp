@@ -49,10 +49,14 @@ public:
 
     virtual std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
                                                const std::string&,
-                                               const std::vector<std::string>&) const = 0;
+                                               const std::vector<std::string>&,
+                                               py::args = py::args{},
+                                               py::kwargs = py::kwargs{}) const = 0;
     virtual std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
                                                const std::string&,
-                                               const std::vector<std::string>&) const = 0;
+                                               const std::vector<std::string>&,
+                                               py::args = py::args{},
+                                               py::kwargs = py::kwargs{}) const = 0;
     virtual std::string ToString() const = 0;
 
     virtual std::size_t hash() const { return m_hash; }
@@ -63,6 +67,21 @@ protected:
     // Use memory address of object as hash value.
     mutable std::uintptr_t m_hash;
 };
+
+// Create a C++ new factor taking into account the args/kwargs.
+template <typename F>
+std::shared_ptr<F> generic_new_factor(const std::string& variable,
+                                      const std::vector<std::string>& evidence,
+                                      py::args args,
+                                      py::kwargs kwargs) {
+    if (args.empty() && kwargs.empty())
+        return std::make_shared<F>(variable, evidence);
+    else {
+        auto type = py::type::handle_of<F>();
+        auto obj = type(variable, evidence, *args, **kwargs);
+        return obj.template cast<std::shared_ptr<F>>();
+    }
+}
 
 class Factor {
 public:

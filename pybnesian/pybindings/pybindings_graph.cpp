@@ -1531,7 +1531,6 @@ undirected graph connects every pair of nodes with an edge, except for pairs of 
 }
 
 void pybindings_graph(py::module& root) {
-
     py::class_<DirectedGraph> dg(root, "DirectedGraph", R"doc(
 Directed graph that may contain cycles.
 )doc");
@@ -1555,8 +1554,7 @@ Partially directed graph. This graph can have edges and arcs.
 Conditional directed graph.
 )doc");
 
-    py::class_<ConditionalDag, ConditionalDirectedGraph> cdag(
-        root, "ConditionalDag", py::multiple_inheritance(), R"doc(
+    py::class_<ConditionalDag, ConditionalDirectedGraph> cdag(root, "ConditionalDag", py::multiple_inheritance(), R"doc(
 Conditional directed acyclic graph.
 )doc");
 

@@ -155,14 +155,14 @@ double BGe::local_score(const BayesianNetworkBase& model,
 }
 
 double BGe::local_score(const BayesianNetworkBase& model,
-                        const FactorType& node_type,
+                        const std::shared_ptr<FactorType>& node_type,
                         const std::string& variable,
                         const std::vector<std::string>& parents) const {
-    if (node_type != LinearGaussianCPDType::get_ref()) {
+    if (*node_type != LinearGaussianCPDType::get_ref()) {
         return bge_impl(model, variable, parents);
     }
 
-    throw std::invalid_argument("Node type \"" + node_type.ToString() + "\" not valid for score BGe");
+    throw std::invalid_argument("Node type \"" + node_type->ToString() + "\" not valid for score BGe");
 }
 
 }  // namespace learning::scores

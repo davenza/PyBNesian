@@ -142,14 +142,14 @@ double BIC::local_score(const BayesianNetworkBase& model,
 }
 
 double BIC::local_score(const BayesianNetworkBase& model,
-                        const FactorType& node_type,
+                        const std::shared_ptr<FactorType>& node_type,
                         const std::string& variable,
                         const std::vector<std::string>& parents) const {
-    if (node_type == LinearGaussianCPDType::get_ref()) {
+    if (*node_type == LinearGaussianCPDType::get_ref()) {
         return bic_lineargaussian(variable, parents);
     }
 
-    if (node_type == DiscreteFactorType::get_ref()) {
+    if (*node_type == DiscreteFactorType::get_ref()) {
         if (!are_all_discrete(model, parents)) {
             throw std::invalid_argument("Local score for discrete variable " + variable +
                                         " cannot be calculated"
@@ -159,7 +159,7 @@ double BIC::local_score(const BayesianNetworkBase& model,
         return bic_discrete(variable, parents);
     }
 
-    throw std::invalid_argument("Node type \"" + node_type.ToString() + "\" not valid for score BIC");
+    throw std::invalid_argument("Node type \"" + node_type->ToString() + "\" not valid for score BIC");
 }
 
 }  // namespace learning::scores

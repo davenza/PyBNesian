@@ -14,15 +14,18 @@ namespace learning::scores {
 
 class HoldoutLikelihood : public Score {
 public:
-    HoldoutLikelihood(const DataFrame& df, double test_ratio = 0.2, unsigned int seed = std::random_device{}())
-        : m_holdout(df, test_ratio, seed) {}
+    HoldoutLikelihood(const DataFrame& df,
+                      double test_ratio = 0.2,
+                      unsigned int seed = std::random_device{}(),
+                      Arguments construction_args = Arguments())
+        : m_holdout(df, test_ratio, seed), m_arguments(construction_args) {}
 
     double local_score(const BayesianNetworkBase& model,
                        const std::string& variable,
                        const std::vector<std::string>& evidence) const override;
 
     double local_score(const BayesianNetworkBase& model,
-                       const FactorType& variable_type,
+                       const std::shared_ptr<FactorType>& variable_type,
                        const std::string& variable,
                        const std::vector<std::string>& evidence) const override;
 
@@ -54,6 +57,7 @@ private:
     double factor_score(const std::string& variable, const std::vector<std::string>& evidence) const;
 
     HoldOut m_holdout;
+    Arguments m_arguments;
 };
 
 template <typename FactorType>

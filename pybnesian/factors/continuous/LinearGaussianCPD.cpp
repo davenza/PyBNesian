@@ -34,26 +34,30 @@ namespace factors::continuous {
 
 std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const BayesianNetworkBase& m,
                                                           const std::string& variable,
-                                                          const std::vector<std::string>& evidence) const {
+                                                          const std::vector<std::string>& evidence,
+                                                          py::args args,
+                                                          py::kwargs kwargs) const {
     for (const auto& e : evidence) {
         if (m.node_type(e) == DiscreteFactorType::get()) {
-            return std::make_shared<CLinearGaussianCPD>(variable, evidence);
+            return generic_new_factor<CLinearGaussianCPD>(variable, evidence, args, kwargs);
         }
     }
 
-    return std::make_shared<LinearGaussianCPD>(variable, evidence);
+    return generic_new_factor<LinearGaussianCPD>(variable, evidence, args, kwargs);
 }
 
 std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayesianNetworkBase& m,
                                                           const std::string& variable,
-                                                          const std::vector<std::string>& evidence) const {
+                                                          const std::vector<std::string>& evidence,
+                                                          py::args args,
+                                                          py::kwargs kwargs) const {
     for (const auto& e : evidence) {
         if (m.node_type(e) == DiscreteFactorType::get()) {
-            return std::make_shared<CLinearGaussianCPD>(variable, evidence);
+            return generic_new_factor<CLinearGaussianCPD>(variable, evidence, args, kwargs);
         }
     }
 
-    return std::make_shared<LinearGaussianCPD>(variable, evidence);
+    return generic_new_factor<LinearGaussianCPD>(variable, evidence, args, kwargs);
 }
 
 LinearGaussianCPD::LinearGaussianCPD(std::string variable, std::vector<std::string> evidence)

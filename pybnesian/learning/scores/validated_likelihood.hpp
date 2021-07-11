@@ -14,8 +14,10 @@ public:
     ValidatedLikelihood(const DataFrame& df,
                         double test_ratio = 0.2,
                         int k = 10,
-                        unsigned int seed = std::random_device{}())
-        : m_holdout(df, test_ratio, seed), m_cv(m_holdout.training_data(), k, seed) {}
+                        unsigned int seed = std::random_device{}(),
+                        Arguments construction_args = Arguments())
+        : m_holdout(df, test_ratio, seed, construction_args),
+          m_cv(m_holdout.training_data(), k, seed, construction_args) {}
 
     using ValidatedScore::local_score;
 
@@ -26,7 +28,7 @@ public:
     }
 
     double local_score(const BayesianNetworkBase& model,
-                       const FactorType& variable_type,
+                       const std::shared_ptr<FactorType>& variable_type,
                        const std::string& variable,
                        const std::vector<std::string>& parents) const override {
         return m_cv.local_score(model, variable_type, variable, parents);
@@ -51,7 +53,7 @@ public:
     }
 
     double vlocal_score(const BayesianNetworkBase& model,
-                        const FactorType& variable_type,
+                        const std::shared_ptr<FactorType>& variable_type,
                         const std::string& variable,
                         const std::vector<std::string>& evidence) const override {
         return m_holdout.local_score(model, variable_type, variable, evidence);

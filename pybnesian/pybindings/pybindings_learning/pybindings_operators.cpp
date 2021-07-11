@@ -491,7 +491,6 @@ private:
 };
 
 void pybindings_operators(py::module& root) {
-
     py::class_<Operator, PyOperator<>, std::shared_ptr<Operator>> op(root, "Operator", R"doc(
 An operator is the representation of a change in a Bayesian network structure. Each operator has a delta score
 associated that measures the difference in score when the operator is applied to the Bayesian network.
@@ -817,8 +816,7 @@ Initializes an :class:`ArcOperatorSet` with optional sets of arc blacklists/whit
 :param max_indegree: Max indegree allowed.
 )doc");
 
-    py::class_<ChangeNodeTypeSet, OperatorSet, std::shared_ptr<ChangeNodeTypeSet>>(
-        root, "ChangeNodeTypeSet", R"doc(
+    py::class_<ChangeNodeTypeSet, OperatorSet, std::shared_ptr<ChangeNodeTypeSet>>(root, "ChangeNodeTypeSet", R"doc(
 This set of operators contains all the possible operators of type :class:`ChangeNodeType`.
 )doc")
         .def(py::init<FactorTypeVector, FactorTypeVector>(),

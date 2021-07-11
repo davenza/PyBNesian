@@ -136,7 +136,7 @@ To illustrate, we will create an alternative implementation of a linear Gaussian
             return "MyLGType"
         
         # Create the factor instance defined below.
-        def new_factor(self, model, variable, evidence):
+        def new_factor(self, model, variable, evidence, *args, **kwargs):
             return MyLG(variable, evidence)
         
     class MyLG(Factor):

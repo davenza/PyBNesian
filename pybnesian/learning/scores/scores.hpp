@@ -32,7 +32,7 @@ public:
                                const std::string& variable,
                                const std::vector<std::string>& parents) const = 0;
     virtual double local_score(const BayesianNetworkBase& model,
-                               const FactorType& node_type,
+                               const std::shared_ptr<FactorType>& node_type,
                                const std::string& variable,
                                const std::vector<std::string>& parents) const = 0;
 
@@ -66,7 +66,7 @@ public:
                                 const std::string& variable,
                                 const std::vector<std::string>& parents) const = 0;
     virtual double vlocal_score(const BayesianNetworkBase&,
-                                const FactorType& variable_type,
+                                const std::shared_ptr<FactorType>& variable_type,
                                 const std::string& variable,
                                 const std::vector<std::string>& parents) const = 0;
 };

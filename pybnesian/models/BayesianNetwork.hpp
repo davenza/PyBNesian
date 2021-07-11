@@ -4,6 +4,7 @@
 #include <random>
 #include <dataset/dataset.hpp>
 #include <factors/factors.hpp>
+#include <factors/arguments.hpp>
 #include <factors/unknown_factor.hpp>
 #include <graph/generic_graph.hpp>
 #include <util/parameter_traits.hpp>
@@ -11,7 +12,7 @@
 
 using arrow::DataType;
 using dataset::DataFrame;
-using factors::Factor, factors::UnknownFactorType;
+using factors::Factor, factors::Arguments, factors::UnknownFactorType;
 using graph::DagBase, graph::ConditionalDagBase, graph::Dag, graph::ConditionalDag;
 using util::ArcStringVector, util::FactorTypeVector;
 
@@ -76,7 +77,7 @@ public:
     virtual std::shared_ptr<Factor> cpd(const std::string& node) = 0;
     virtual const std::shared_ptr<Factor> cpd(const std::string& node) const = 0;
     virtual void add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) = 0;
-    virtual void fit(const DataFrame& df) = 0;
+    virtual void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) = 0;
     virtual VectorXd logl(const DataFrame& df) const = 0;
     virtual double slogl(const DataFrame& df) const = 0;
     virtual std::shared_ptr<BayesianNetworkType> type() const = 0;
@@ -587,7 +588,7 @@ public:
                                     const FactorType& model_node_type,
                                     const std::vector<std::string>& model_parents) const;
     void add_cpds(const std::vector<std::shared_ptr<Factor>>& cpds) override;
-    void fit(const DataFrame& df) override;
+    void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) override;
     VectorXd logl(const DataFrame& df) const override;
     double slogl(const DataFrame& df) const override;
 
@@ -890,7 +891,7 @@ bool BNGeneric<DagType>::must_construct_cpd(const Factor& cpd,
 }
 
 template <typename DagType>
-void BNGeneric<DagType>::fit(const DataFrame& df) {
+void BNGeneric<DagType>::fit(const DataFrame& df, const Arguments& construction_args) {
     if (m_cpds.empty()) {
         m_cpds.resize(num_raw_nodes());
     }
@@ -917,7 +918,8 @@ void BNGeneric<DagType>::fit(const DataFrame& df) {
         auto node_type_ = node_type(nn);
 
         if (!m_cpds[i] || must_construct_cpd(*m_cpds[i], *node_type_, p)) {
-            m_cpds[i] = node_type_->new_factor(*this, nn, p);
+            auto [args, kwargs] = construction_args.args(nn, node_type_);
+            m_cpds[i] = node_type_->new_factor(*this, nn, p, args, kwargs);
             m_cpds[i]->fit(df);
         } else if (!m_cpds[i]->fitted()) {
             m_cpds[i]->fit(df);

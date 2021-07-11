@@ -18,8 +18,8 @@ namespace pyarrow = arrow::py;
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;
 using factors::FactorType, factors::discrete::DiscreteAdaptator;
-using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 using kde::KDE, kde::BandwidthEstimator, kde::NormalReferenceRule, kde::UnivariateKDE, kde::MultivariateKDE;
+using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
 namespace factors::continuous {
 
@@ -40,10 +40,14 @@ public:
 
     std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
                                        const std::string&,
-                                       const std::vector<std::string>&) const override;
+                                       const std::vector<std::string>&,
+                                       py::args = py::args{},
+                                       py::kwargs = py::kwargs{}) const override;
     std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
                                        const std::string&,
-                                       const std::vector<std::string>&) const override;
+                                       const std::vector<std::string>&,
+                                       py::args = py::args{},
+                                       py::kwargs = py::kwargs{}) const override;
 
     std::string ToString() const override { return "CKDEFactor"; }
 
@@ -78,9 +82,9 @@ public:
             m_variables.push_back(*it);
         }
 
-        m_joint = KDE(m_variables);
+        m_joint = KDE(m_variables, b_selector);
         if (!this->evidence().empty()) {
-            m_marg = KDE(this->evidence());
+            m_marg = KDE(this->evidence(), b_selector);
         }
     }
 

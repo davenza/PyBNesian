@@ -95,7 +95,6 @@ public:
 };
 
 void pybindings_independence_tests(py::module& root) {
-
     py::class_<IndependenceTest, PyIndependenceTest, std::shared_ptr<IndependenceTest>> indep_test(
         root, "IndependenceTest", R"doc(
 The :class:`IndependenceTest` is an abstract class defining an interface for a conditional test of independence.

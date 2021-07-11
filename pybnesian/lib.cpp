@@ -17,7 +17,6 @@ void pybindings_graph(py::module& root);
 void pybindings_models(py::module& root);
 void pybindings_learning(py::module& root);
 
-
 /*This module is needed to trick the MSVC linker, so a PyInit___init__() method exists.*/
 #ifdef _MSC_VER
 PYBIND11_MODULE(__init__, m) {}

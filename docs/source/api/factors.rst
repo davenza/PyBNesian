@@ -100,6 +100,18 @@ Other
     :members:
     :special-members: __init__
 
+.. autoclass:: pybnesian.Args
+    :members:
+    :special-members: __init__
+
+.. autoclass:: pybnesian.Kwargs
+    :members:
+    :special-members: __init__
+
+.. autoclass:: pybnesian.Arguments
+    :members:
+    :special-members: __init__
+
 Bibliography
 ============
 .. [Scott] Scott, D. W. (2015). Multivariate Density Estimation: Theory, Practice and Visualization. 2nd Edition.

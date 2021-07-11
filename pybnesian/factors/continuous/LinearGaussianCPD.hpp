@@ -33,10 +33,14 @@ public:
 
     std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
                                        const std::string&,
-                                       const std::vector<std::string>&) const override;
+                                       const std::vector<std::string>&,
+                                       py::args = py::args{},
+                                       py::kwargs = py::kwargs{}) const override;
     std::shared_ptr<Factor> new_factor(const ConditionalBayesianNetworkBase&,
                                        const std::string&,
-                                       const std::vector<std::string>&) const override;
+                                       const std::vector<std::string>&,
+                                       py::args = py::args{},
+                                       py::kwargs = py::kwargs{}) const override;
 
     std::string ToString() const override { return "LinearGaussianFactor"; }
 

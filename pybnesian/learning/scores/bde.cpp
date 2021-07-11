@@ -61,17 +61,17 @@ double BDe::local_score(const BayesianNetworkBase& model,
 }
 
 double BDe::local_score(const BayesianNetworkBase&,
-                        const FactorType& node_type,
+                        const std::shared_ptr<FactorType>& node_type,
                         const std::string& variable,
                         const std::vector<std::string>& parents) const {
-    if (node_type != DiscreteFactorType::get_ref()) {
+    if (*node_type != DiscreteFactorType::get_ref()) {
         if (parents.empty())
             return bde_impl_noparents(variable);
         else
             return bde_impl_parents(variable, parents);
     }
 
-    throw std::invalid_argument("Node type \"" + node_type.ToString() + "\" not valid for score BGe");
+    throw std::invalid_argument("Node type \"" + node_type->ToString() + "\" not valid for score BGe");
 }
 
 }  // namespace learning::scores

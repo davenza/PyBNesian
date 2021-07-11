@@ -29,7 +29,7 @@ public:
     virtual void add_variable(const std::string& name) = 0;
     virtual void remove_variable(const std::string& name) = 0;
     virtual bool fitted() const = 0;
-    virtual void fit(const DataFrame& df) = 0;
+    virtual void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) = 0;
     virtual VectorXd logl(const DataFrame& df) const = 0;
     virtual double slogl(const DataFrame& df) const = 0;
     virtual std::shared_ptr<BayesianNetworkType> type() const = 0;
@@ -111,11 +111,11 @@ public:
 
     bool fitted() const override { return m_static->fitted() && m_transition->fitted(); }
 
-    void fit(const DataFrame& df) override {
+    void fit(const DataFrame& df, const Arguments& construction_args = Arguments()) override {
         DynamicDataFrame ddf(df, m_markovian_order);
 
-        m_static->fit(ddf.static_df());
-        m_transition->fit(ddf.transition_df());
+        m_static->fit(ddf.static_df(), construction_args);
+        m_transition->fit(ddf.transition_df(), construction_args);
     }
 
     void check_fitted() const {

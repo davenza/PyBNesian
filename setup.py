@@ -55,11 +55,25 @@ class Build_CMakeExternalLibrary(build_clib):
 
             log.info("building CMake '%s' library", name)
 
+            # The next command should work:
+            # However, the -B flag is only available from CMake 3.13:
+            # https://cmake.org/cmake/help/v3.13/manual/cmake.1.html#options
+            ###############################################################
+            # subprocess.check_call(
+            #     ["cmake", "-B" + build_directory, "-DCMAKE_INSTALL_PREFIX=" + install_directory] +
+            #     cmake_config.cmake_flags + [cmake_config.cmake_folder]
+            # )
+            ###############################################################
+
+            # We can support older CMake versions by changing the current directory to the build directory
+            current_dir = os.getcwd()
+            os.chdir(build_directory)
             # Run CMake
             subprocess.check_call(
-                ["cmake", "-B" + build_directory, "-DCMAKE_INSTALL_PREFIX=" + install_directory] +
-                cmake_config.cmake_flags + [cmake_config.cmake_folder]
+                ["cmake", "-DCMAKE_INSTALL_PREFIX=" + os.path.relpath(install_directory, build_directory)] +
+                cmake_config.cmake_flags + [os.path.join(current_dir, cmake_config.cmake_folder)]
             )
+            os.chdir(current_dir)
 
             # Run make && make install (this command should be multi-platform (Unix, Windows).
             subprocess.check_call(

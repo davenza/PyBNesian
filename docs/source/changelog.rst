@@ -2,6 +2,14 @@
 Changelog
 *********
 
+v0.3.1
+======
+
+- Fixed the build process to support CMake versions older than 3.13.
+- Fixed a bug that might raise an error with a call to :func:`FactorType.new_factor <pybnesian.FactorType.new_factor>`
+  with `*args` and `**kwargs` arguments . This bug was only reproducible if the library was compiled with gcc.
+- Added CMake as prerequisite to compile the library in the docs.
+
 v0.3.0
 ======
 

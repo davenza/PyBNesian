@@ -26,6 +26,8 @@ public:
         return b;
     }
 
+    virtual std::string ToString() const = 0;
+
     virtual py::tuple __getstate__() const = 0;
 };
 

@@ -744,8 +744,11 @@ py::tuple CKDE::__getstate__() const {
     return py::make_tuple(this->variable(), this->evidence(), m_fitted, joint_tuple);
 }
 
-static const char dckdename[] = "DCKDE";
-using DCKDE = DiscreteAdaptator<CKDE, dckdename>;
+// Fix const name: https://stackoverflow.com/a/15862594
+struct DCKDEName {
+    inline constexpr static auto* str = "DCKDE";
+};
+using DCKDE = DiscreteAdaptator<CKDE, DCKDEName>;
 
 }  // namespace factors::continuous
 

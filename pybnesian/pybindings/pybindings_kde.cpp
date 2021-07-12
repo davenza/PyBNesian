@@ -43,8 +43,7 @@ public:
     MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
         // PYBIND11_OVERRIDE_PURE(MatrixXd, BandwidthSelector, bandwidth, df, variables);
         pybind11::gil_scoped_acquire gil;
-        pybind11::function override =
-            pybind11::get_override(static_cast<const BandwidthSelector*>(this), "bandwidth");
+        pybind11::function override = pybind11::get_override(static_cast<const BandwidthSelector*>(this), "bandwidth");
 
         if (override) {
             auto o = override(df, variables);
@@ -61,6 +60,10 @@ public:
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"BandwidthSelector::bandwidth\"");
+    }
+
+    std::string ToString() const override {
+        PYBIND11_OVERRIDE_PURE_NAME(std::string, BandwidthSelector, "__str__", ToString, );
     }
 
     py::tuple __getstate__() const override {
@@ -126,7 +129,9 @@ Selects the bandwidth of a set of variables for a :class:`KDE <pybnesian.KDE>` w
 )doc")
         .def("__getstate__", [](const BandwidthSelector& self) { return self.__getstate__(); })
         // Setstate for pyderived type
-        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthSelector::__setstate__(self, t); });
+        .def("__setstate__", [](py::object& self, py::tuple& t) { PyBandwidthSelector::__setstate__(self, t); })
+        .def("__repr__", [](const BandwidthSelector& self) { return self.ToString(); })
+        .def("__str__", [](const BandwidthSelector& self) { return self.ToString(); });
 
     py::class_<ScottsBandwidth, BandwidthSelector, std::shared_ptr<ScottsBandwidth>>(root, "ScottsBandwidth", R"doc(
 Selects the bandwidth using the Scott's rule [Scott]_:
@@ -144,8 +149,8 @@ Initializes a :class:`ScottsBandwidth <pybnesian.ScottsBandwidth>`.
                         [](py::tuple&) { return std::make_shared<ScottsBandwidth>(); }));
 
     py::class_<NormalReferenceRule, BandwidthSelector, std::shared_ptr<NormalReferenceRule>>(root,
-                                                                                              "NormalReferenceRule",
-                                                                                              R"doc(
+                                                                                             "NormalReferenceRule",
+                                                                                             R"doc(
 Selects the bandwidth using the normal reference rule:
 
 .. math::

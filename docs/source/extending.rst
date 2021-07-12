@@ -1606,6 +1606,7 @@ A new bandwidth selection technique can be implemented by creating a class that 
   matrix :math:`\mathbf{H}` for a :class:`KDE <pybnesian.KDE>`.
 - :func:`BandwidthSelector.diag_bandwidth <pybnesian.BandwidthSelector.diag_bandwidth>`. To select a diagonal bandwidth
   matrix :math:`\mathbf{h}` for a :class:`ProductKDE <pybnesian.ProductKDE>`.
+- :func:`BandwidthSelector.__str__ <pybnesian.BandwidthSelector.__str__>`, which is also automatically used as __repr__.
 
 To illustrate, we will create a bandwidth selector that always return an unitary bandwidth matrix:
 
@@ -1622,3 +1623,6 @@ To illustrate, we will create a bandwidth selector that always return an unitary
         # For a ProductKDE.
         def diag_bandwidth(self, df, variables):
             return np.ones((len(variables),))
+
+        def __str__(self):
+            return "UnitaryBandwidth"

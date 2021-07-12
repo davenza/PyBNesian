@@ -119,8 +119,11 @@ private:
     double m_variance;
 };
 
-static const char clgname[] = "CLinearGaussianCPD";
-using CLinearGaussianCPD = DiscreteAdaptator<LinearGaussianCPD, clgname>;
+// Fix const name: https://stackoverflow.com/a/15862594
+struct CLinearGaussianCPDName {
+    inline constexpr static auto* str = "CLinearGaussianCPD";
+};
+using CLinearGaussianCPD = DiscreteAdaptator<LinearGaussianCPD, CLinearGaussianCPDName>;
 
 }  // namespace factors::continuous
 

@@ -721,10 +721,9 @@ Removes the assignment for the ``variable``.
     py::class_<DCKDE, Factor, std::shared_ptr<DCKDE>>(root, "DCKDE")
         .def(py::init<std::string, std::vector<std::string>>())
         .def(py::init<std::string, std::vector<std::string>, std::shared_ptr<BandwidthSelector>>())
-        .def(
-            py::init<std::string,
-                     std::vector<std::string>,
-                     std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash>>())
+        .def(py::init<std::string,
+                      std::vector<std::string>,
+                      std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash>>())
         .def("conditional_factor", &DCKDE::conditional_factor, py::return_value_policy::reference_internal)
         .def(py::pickle([](const DCKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return DCKDE::__setstate__(t); }));

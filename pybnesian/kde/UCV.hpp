@@ -49,6 +49,8 @@ public:
     VectorXd diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
     MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override;
 
+    std::string ToString() const override { return "UCV"; }
+
     py::tuple __getstate__() const override { return py::make_tuple(); }
     static std::shared_ptr<UCV> __setstate__(py::tuple&) { return std::make_shared<UCV>(); }
 };

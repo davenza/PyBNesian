@@ -27,6 +27,8 @@ public:
         }
     }
 
+    std::string ToString() const override { return "ScottsBandwidth"; }
+
     py::tuple __getstate__() const override { return py::make_tuple(); }
 
     static std::shared_ptr<ScottsBandwidth> __setstate__(py::tuple&) { return std::make_shared<ScottsBandwidth>(); }

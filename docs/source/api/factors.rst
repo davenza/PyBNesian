@@ -64,22 +64,22 @@ Kernel Density Estimation
 
 .. autoclass:: pybnesian.BandwidthSelector
     :members:
-    :special-members: __init__
+    :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.ScottsBandwidth
     :show-inheritance:
     :members:
-    :special-members: __init__
+    :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.NormalReferenceRule
     :show-inheritance:
     :members:
-    :special-members: __init__
+    :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.UCV
     :show-inheritance:
     :members:
-    :special-members: __init__
+    :special-members: __init__, __str__
 
 .. autoclass:: pybnesian.KDE
     :members:

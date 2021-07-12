@@ -29,6 +29,8 @@ public:
         }
     }
 
+    std::string ToString() const override { return "NormalReferenceRule"; }
+
     py::tuple __getstate__() const override { return py::make_tuple(); }
 
     static std::shared_ptr<NormalReferenceRule> __setstate__(py::tuple&) {

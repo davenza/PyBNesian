@@ -47,6 +47,7 @@ Prerequisites
 
 - Python 3.6, 3.7, 3.8 or 3.9.
 - C++17 compatible compiler.
+- CMake (it is needed to compile `NLopt <https://github.com/stevengj/nlopt>`).
 - OpenCL 1.2 headers/library available.
 
 If needed you can select a C++ compiler by setting the environment variable `CC`. For example, in Ubuntu, we can use

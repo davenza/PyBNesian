@@ -45,6 +45,8 @@ void DiscreteFactor::fit(const DataFrame& df) {
     }
 
     auto dict_variable = std::static_pointer_cast<arrow::DictionaryArray>(df.col(variable()));
+
+    factors::discrete::check_is_string_dictionary(dict_variable, variable());
     auto dict_variable_values = std::static_pointer_cast<arrow::StringArray>(dict_variable->dictionary());
 
     m_variable_values.clear();
@@ -57,6 +59,8 @@ void DiscreteFactor::fit(const DataFrame& df) {
     m_evidence_values.reserve(evidence().size());
     for (auto it = evidence().begin(), end = evidence().end(); it != end; ++it) {
         auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
+
+        factors::discrete::check_is_string_dictionary(dict_evidence, *it);
         auto dict_evidence_values = std::static_pointer_cast<arrow::StringArray>(dict_evidence->dictionary());
 
         std::vector<std::string> ev;

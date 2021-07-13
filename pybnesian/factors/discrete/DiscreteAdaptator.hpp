@@ -220,6 +220,8 @@ void DiscreteAdaptator<BaseFactor, FactorName>::fit(const DataFrame& df) {
         m_discrete_values.reserve(m_discrete_evidence.size());
         for (auto it = m_discrete_evidence.begin(), end = m_discrete_evidence.end(); it != end; ++it) {
             auto dict_evidence = std::static_pointer_cast<arrow::DictionaryArray>(df.col(*it));
+
+            factors::discrete::check_is_string_dictionary(dict_evidence, *it);
             auto dict_evidence_values = std::static_pointer_cast<arrow::StringArray>(dict_evidence->dictionary());
 
             std::vector<std::string> ev;

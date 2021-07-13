@@ -12,6 +12,8 @@ using Eigen::VectorXi;
 
 namespace factors::discrete {
 
+void check_is_string_dictionary(const std::shared_ptr<arrow::DictionaryArray>& dict, const std::string& variable);
+
 template <typename ArrowType>
 void sum_to_discrete_indices_null(VectorXi& accum_indices,
                                   Array_ptr& indices,

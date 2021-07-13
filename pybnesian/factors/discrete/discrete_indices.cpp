@@ -2,6 +2,14 @@
 
 namespace factors::discrete {
 
+void check_is_string_dictionary(const std::shared_ptr<arrow::DictionaryArray>& dict, const std::string& variable) {
+    if (dict->dictionary()->type_id() != Type::STRING) {
+        throw std::invalid_argument(
+            "The categories of the data must be of type string. The categories of the variable " + variable +
+            " are of type " + dict->dictionary()->type()->ToString() + ".");
+    }
+}
+
 void sum_to_discrete_indices_null(VectorXi& accum_indices,
                                   Array_ptr& indices,
                                   int stride,
@@ -207,8 +215,10 @@ void check_domain_variable(const DataFrame& df,
     if (var_array->type_id() != arrow::Type::DICTIONARY)
         throw std::invalid_argument("Variable " + variable + " is not categorical.");
 
-    auto var_dictionary = std::static_pointer_cast<arrow::DictionaryArray>(var_array)->dictionary();
-    auto var_names = std::static_pointer_cast<arrow::StringArray>(var_dictionary);
+    auto var_dictionary = std::static_pointer_cast<arrow::DictionaryArray>(var_array);
+
+    factors::discrete::check_is_string_dictionary(var_dictionary, variable);
+    auto var_names = std::static_pointer_cast<arrow::StringArray>(var_dictionary->dictionary());
 
     if (variable_values.size() != static_cast<size_t>(var_names->length()))
         throw std::invalid_argument("Variable " + variable + " does not contain the same categories.");

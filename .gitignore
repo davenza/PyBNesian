@@ -141,7 +141,7 @@ cython_debug/
 .idea
 
 # Ignore generated OpenCL
-pybnesian/factors/continuous/opencl/CKDE.cl
+pybnesian/kde/opencl_kernels/KDE.cl
 # Automatically generated code.
 pybnesian/opencl/opencl_code.hpp
 docs/build

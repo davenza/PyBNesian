@@ -37,10 +37,16 @@ typename LinearGaussianCPD::ParamsClass _fit_1parent(const DataFrame& df,
 
     auto b = cov / var;
     auto a = my - b * mx;
-    auto v = (dy - b * dx).matrix().squaredNorm() / (rows - 2);
 
     auto beta = VectorXd(2);
     beta << a, b;
+
+    if (rows <= 2) {
+        return typename LinearGaussianCPD::ParamsClass{/*.beta = */ beta,
+                                                       /*.variance = */ std::numeric_limits<double>::infinity()};
+    }
+
+    auto v = (dy - b * dx).matrix().squaredNorm() / (rows - 2);
 
     return typename LinearGaussianCPD::ParamsClass{/*.beta = */ beta,
                                                    /*.variance = */ v};
@@ -87,10 +93,16 @@ typename LinearGaussianCPD::ParamsClass _fit_2parent(const DataFrame& df,
     auto b2 = (cov_yx2 - b1 * cov_xx) / var_x2;
 
     auto a = mean_y - b1 * mean_x1 - b2 * mean_x2;
-    auto v = (dy - b1 * dx1 - b2 * dx2).matrix().squaredNorm() / (rows - 3);
 
     auto b = VectorXd(3);
     b << a, b1, b2;
+
+    if (rows <= 3) {
+        return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
+                                                       /*.variance = */ std::numeric_limits<double>::infinity()};
+    }
+
+    auto v = (dy - b1 * dx1 - b2 * dx2).matrix().squaredNorm() / (rows - 3);
 
     return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
                                                    /*.variance = */ v};
@@ -116,6 +128,17 @@ typename LinearGaussianCPD::ParamsClass _fit_nparent(const DataFrame& df,
     auto rows = y->rows();
 
     const auto b = X->colPivHouseholderQr().solve(*y).eval();
+
+    if (rows <= b.rows()) {
+        if constexpr (std::is_same_v<typename ArrowType::c_type, double>) {
+            return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
+                                                           /*.variance = */ std::numeric_limits<double>::infinity()};
+        } else {
+            return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b.template cast<double>(),
+                                                           /*.variance = */ std::numeric_limits<double>::infinity()};
+        }
+    }
+
     auto r = (*X) * b;
     auto v = ((*y) - r).squaredNorm() / (rows - b.rows());
 
@@ -134,11 +157,17 @@ typename LinearGaussianCPD::ParamsClass _fit(const DataFrame& df,
                                              const std::vector<std::string>& evidence) {
     if (evidence.size() == 0) {
         auto v = df.to_eigen<false, ArrowType, contains_null>(variable);
-        auto mean = v->mean();
-        auto var = (v->array() - mean).matrix().squaredNorm();
 
+        auto mean = v->mean();
         auto b = VectorXd(1);
         b(0) = mean;
+
+        if (v->rows() == 1) {
+            return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
+                                                           /*.variance = */ std::numeric_limits<double>::infinity()};
+        }
+
+        auto var = (v->array() - mean).matrix().squaredNorm();
         return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
                                                        /*.variance = */ var / (v->rows() - 1)};
     } else if (evidence.size() == 1) {

@@ -14,7 +14,7 @@ double BIC::bic_lineargaussian(const std::string& variable, const std::vector<st
 
     auto mle_params = mle.estimate(m_df, variable, parents);
 
-    if (mle_params.variance < util::machine_tol) {
+    if (mle_params.variance < util::machine_tol || std::isinf(mle_params.variance)) {
         return -std::numeric_limits<double>::infinity();
     }
 
@@ -51,6 +51,10 @@ double BIC::bic_clg(const std::string& variable,
 
             auto num_valid_config = df_filtered.valid_rows(variable, continuous_parents);
             auto mle_params = mle.estimate(df_filtered, variable, continuous_parents);
+
+            if (mle_params.variance < util::machine_tol || std::isinf(mle_params.variance)) {
+                return -std::numeric_limits<double>::infinity();
+            }
 
             loglik += 0.5 * (1 + static_cast<double>(num_continuous_parents) - static_cast<double>(num_valid_config)) -
                       0.5 * num_valid_config * std::log(2 * util::pi<double>) -

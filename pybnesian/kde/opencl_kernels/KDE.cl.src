@@ -481,8 +481,8 @@ __kernel void sum_ucv_1d_@dt@(__constant @dt@ *data,
                               __private @dt@ lognorm_h,
                               __global @dt@ *sum2h,
                               __global @dt@ *sumh) {
-    unsigned int i = get_global_id(0) + index_offset;
-    double ii = get_global_id(0) + 1;
+    unsigned int i = get_global_id(0);
+    double ii = get_global_id(0) + index_offset + 1;
 
     unsigned int i1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
     unsigned int i2 = (unsigned int) (ii - (i1-1) * i1 * 0.5 - 1);
@@ -536,8 +536,8 @@ __kernel void ucv_diag_@dt@(__constant @dt@ *data,
                                 __private uint index_offset,
                                 __constant @dt@ *h,
                                 __global @dt@ *tmph) {
-    unsigned int i = get_global_id(0) + index_offset;
-    double ii = get_global_id(0) + 1;
+    unsigned int i = get_global_id(0);
+    double ii = get_global_id(0) + index_offset + 1;
 
     unsigned int i1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
     unsigned int i2 = (unsigned int) (ii - (i1-1) * i1 * 0.5 - 1);
@@ -555,8 +555,8 @@ __kernel void sum_ucv_diag_@dt@(__constant @dt@ *data,
                                 __constant @dt@ *h,
                                 __private uint h_index,
                                 __global @dt@ *tmph) {
-    unsigned int i = get_global_id(0) + index_offset;
-    double ii = get_global_id(0) + 1;
+    unsigned int i = get_global_id(0);
+    double ii = get_global_id(0) + index_offset + 1;
 
     unsigned int i1 = (unsigned int) ceil(sqrt(2.0 * ii + 0.25) - 0.5);
     unsigned int i2 = (unsigned int) (ii - (i1-1) * i1 * 0.5 - 1);

@@ -5,7 +5,7 @@ Changelog
 v0.3.2
 ======
 
-- Fixed a bug in the UCV bandwidth selector that may cause segmentation fault.
+- Fixed a bug in the :class:`UCV <pybnesian.UCV>` bandwidth selector that may cause segmentation fault.
 - Added some checks to ensure that the categorical data is of type string.
 - Fixed the :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` iteration counter, which was begin increased
   twice per iteration.

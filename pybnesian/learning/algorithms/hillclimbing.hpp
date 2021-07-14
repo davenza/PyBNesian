@@ -207,7 +207,6 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
         op_set.update_scores(*current_model, score, nodes_changed);
 
         spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
-        ++iter;
     }
 
     op_set.finished();

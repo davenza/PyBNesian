@@ -1329,7 +1329,7 @@ Returns the unconditional Bayesian network version of this Bayesian network.
 
 :returns: The unconditional graph transformation of ``self``.
 )doc")
-        .def("save", &CppClass::save, py::arg("filename"), py::arg("include_cpd"), R"doc(
+        .def("save", &CppClass::save, py::arg("filename"), py::arg("include_cpd") = false, R"doc(
 Saves the Bayesian network in a pickle file with the given name. If ``include_cpd`` is True, it also saves the
 conditional probability distributions (CPDs) in the Bayesian network.
 
@@ -1660,7 +1660,7 @@ instances.
 :param n: Number of instances to sample.
 :param seed: A random seed number. If not specified or ``None``, a random seed is generated.
 )doc")
-        .def("save", &CppClass::save, py::arg("filename"), py::arg("include_cpd"), R"doc(
+        .def("save", &CppClass::save, py::arg("filename"), py::arg("include_cpd") = false, R"doc(
 Saves the dynamic Bayesian network in a pickle file with the given name. If ``include_cpd`` is True, it also saves the
 conditional probability distributions (CPDs) in the dynamic Bayesian network.
 

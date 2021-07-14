@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.2
+
+- Fixed a bug in the UCV bandwidth selector that may cause segmentation fault.
+- Added some checks to ensure that the categorical data is of type string.
+- Fixed the `GreedyHillClimbing` iteration counter, which was begin increased twice per iteration.
+- Added a default parameter value for `include_cpd` in `BayesianNetworkBase:save()` and
+  `DynamicBayesianNetworkBase::save()`.
+- Added more checks to detect ill-conditioned regression problems. The `BIC` score returns `-infinity` for
+  ill-conditioned regression problems.
+
 ## v0.3.1
 
 - Fixed the build process to support CMake versions older than 3.13.

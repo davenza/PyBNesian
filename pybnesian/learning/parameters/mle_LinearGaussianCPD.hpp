@@ -32,10 +32,25 @@ typename LinearGaussianCPD::ParamsClass _fit_1parent(const DataFrame& df,
 
     auto dy = (y.array() - my);
     auto dx = (x.array() - mx);
-    auto var = dx.matrix().squaredNorm() / (rows - 1);
-    auto cov = (dy * dx).sum() / (rows - 1);
+    auto var_x = dx.matrix().squaredNorm() / (rows - 1);
 
-    auto b = cov / var;
+    if (var_x < util::machine_tol) {
+        auto beta = VectorXd(2);
+        beta << my, 0;
+        auto v = dy.matrix().squaredNorm() / (rows - 2);
+
+        if (rows <= 2) {
+            return typename LinearGaussianCPD::ParamsClass{/*.beta = */ beta,
+                                                           /*.variance = */ std::numeric_limits<double>::infinity()};
+        } else {
+            return typename LinearGaussianCPD::ParamsClass{/*.beta = */ beta,
+                                                           /*.variance = */ v};
+        }
+    }
+
+    auto cov_yx = (dy * dx).sum() / (rows - 1);
+
+    auto b = cov_yx / var_x;
     auto a = my - b * mx;
 
     auto beta = VectorXd(2);
@@ -76,6 +91,7 @@ typename LinearGaussianCPD::ParamsClass _fit_2parent(const DataFrame& df,
     auto mean_x1 = x1->mean();
     auto dx1 = (x1->array() - mean_x1);
     auto var_x1 = dx1.matrix().squaredNorm() / (rows - 1);
+    auto singular1 = var_x1 < util::machine_tol;
 
     auto mean_x2 = x2->mean();
     auto dx2 = (x2->array() - mean_x2);
@@ -83,29 +99,53 @@ typename LinearGaussianCPD::ParamsClass _fit_2parent(const DataFrame& df,
 
     auto cov_xx = (dx1 * dx2).sum() / (rows - 1);
 
+    auto singular2 = var_x2 < util::machine_tol || std::abs(cov_xx / (var_x1 * var_x2)) > (1 - util::machine_tol);
+
     auto mean_y = y->mean();
     auto dy = (y->array() - mean_y);
-    auto cov_yx1 = (dy * dx1).sum() / (rows - 1);
-    auto cov_yx2 = (dy * dx2).sum() / (rows - 1);
 
-    auto den = var_x1 * var_x2 - cov_xx * cov_xx;
-    auto b1 = (var_x2 * cov_yx1 - cov_xx * cov_yx2) / den;
-    auto b2 = (cov_yx2 - b1 * cov_xx) / var_x2;
+    VectorXd beta(3);
+    double variance = 0;
+    if (singular1) {
+        if (singular2) {
+            beta << mean_y, 0, 0;
+            variance = dy.matrix().squaredNorm() / (rows - 3);
+        } else {
+            auto cov_yx2 = (dy * dx2).sum() / (rows - 1);
+            auto b2 = cov_yx2 / var_x2;
+            auto a = mean_y - b2 * mean_x2;
+            beta << a, 0, b2;
+            variance = (dy - b2 * dx2).matrix().squaredNorm() / (rows - 3);
+        }
+    } else {
+        if (singular2) {
+            auto cov_yx1 = (dy * dx1).sum() / (rows - 1);
+            auto b1 = cov_yx1 / var_x1;
+            auto a = mean_y - b1 * mean_x1;
+            beta << a, b1, 0;
+            variance = (dy - b1 * dx1).matrix().squaredNorm() / (rows - 3);
+        } else {
+            auto cov_yx1 = (dy * dx1).sum() / (rows - 1);
+            auto cov_yx2 = (dy * dx2).sum() / (rows - 1);
 
-    auto a = mean_y - b1 * mean_x1 - b2 * mean_x2;
+            auto den = var_x1 * var_x2 - cov_xx * cov_xx;
+            auto b1 = (var_x2 * cov_yx1 - cov_xx * cov_yx2) / den;
+            auto b2 = (cov_yx2 - b1 * cov_xx) / var_x2;
 
-    auto b = VectorXd(3);
-    b << a, b1, b2;
+            auto a = mean_y - b1 * mean_x1 - b2 * mean_x2;
 
-    if (rows <= 3) {
-        return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
-                                                       /*.variance = */ std::numeric_limits<double>::infinity()};
+            beta << a, b1, b2;
+            variance = (dy - b1 * dx1 - b2 * dx2).matrix().squaredNorm() / (rows - 3);
+        }
     }
 
-    auto v = (dy - b1 * dx1 - b2 * dx2).matrix().squaredNorm() / (rows - 3);
-
-    return typename LinearGaussianCPD::ParamsClass{/*.beta = */ b,
-                                                   /*.variance = */ v};
+    if (rows <= 3) {
+        return typename LinearGaussianCPD::ParamsClass{/*.beta = */ beta,
+                                                       /*.variance = */ std::numeric_limits<double>::infinity()};
+    } else {
+        return typename LinearGaussianCPD::ParamsClass{/*.beta = */ beta,
+                                                       /*.variance = */ variance};
+    }
 }
 
 template <typename ArrowType, bool contains_null>

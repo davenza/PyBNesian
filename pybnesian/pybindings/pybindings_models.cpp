@@ -2267,7 +2267,7 @@ for the nodes.
             if (self.get_type().ptr() == py::type::of<BayesianNetwork>().ptr()) {
                 models::__nonderived_bn_setstate__<BayesianNetwork>(self, t);
             } else {
-                PyBayesianNetwork<>::__setstate__(self, t);
+                PyBayesianNetwork<BayesianNetwork>::__setstate__(self, t);
             }
         });
 

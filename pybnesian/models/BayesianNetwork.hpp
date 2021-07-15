@@ -606,6 +606,9 @@ public:
     void save(std::string name, bool include_cpd = false) const override;
     virtual py::tuple __getstate__() const override;
 
+    template <typename DerivedBN>
+    friend std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t);
+
     bool include_cpd() const override { return m_include_cpd; }
 
     void set_include_cpd(bool include_cpd) const override { m_include_cpd = include_cpd; }
@@ -1117,14 +1120,8 @@ void __nonderived_bn_setstate__(py::object& self, py::tuple& t) {
         auto node_types = t[2].cast<FactorTypeVector>();
         if (node_types.empty()) pybntype.attr("__init__")(self, type, std::move(dag));
 
-        if constexpr (std::is_constructible_v<BayesianNetwork,
-                                              std::shared_ptr<BayesianNetworkType>,
-                                              Dag&&,
-                                              FactorTypeVector>) {
-            pybntype.attr("__init__")(self, type, std::move(dag), node_types);
-        } else {
-            throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
-        }
+        // BNType is BayesianNetwork or ConditionalBayesianNetwork, so this constructor always exists.
+        pybntype.attr("__init__")(self, type, std::move(dag), node_types);
     }
 
     auto cpp_self = self.cast<std::shared_ptr<BNType>>();
@@ -1154,7 +1151,9 @@ std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t) {
             if constexpr (std::is_constructible_v<DerivedBN, DagType&&, FactorTypeVector>) {
                 return std::make_shared<DerivedBN>(std::move(dag), node_types);
             } else {
-                throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
+                auto m = std::make_shared<DerivedBN>(std::move(dag));
+                m->initialize_types(node_types);
+                return m;
             }
         }
     }();

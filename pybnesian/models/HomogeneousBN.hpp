@@ -13,7 +13,7 @@ public:
     void operator=(const HomogeneousBNType&) = delete;
 
     HomogeneousBNType(std::shared_ptr<FactorType> ft) : m_ftype(ft) {
-        if (ft == nullptr) throw std::invalid_argument("factor_type can not be null.");
+        if (ft == nullptr) throw std::invalid_argument("factor_type cannot be null.");
 
         auto obj = py::cast(this);
 

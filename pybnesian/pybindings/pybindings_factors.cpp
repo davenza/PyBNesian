@@ -47,7 +47,7 @@ public:
             auto o = override(model.shared_from_this(), variable, parents, *args, **kwargs);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("FactorType::new_factor can not return None.");
+                throw std::invalid_argument("FactorType::new_factor cannot return None.");
             }
 
             auto f = o.cast<std::shared_ptr<Factor>>();
@@ -69,7 +69,7 @@ public:
             auto o = override(model.shared_from_this(), variable, parents, *args, **kwargs);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("FactorType::new_factor can not return None.");
+                throw std::invalid_argument("FactorType::new_factor cannot return None.");
             }
 
             auto f = o.cast<std::shared_ptr<Factor>>();
@@ -146,7 +146,7 @@ public:
             auto o = override();
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("Factor::type can not return None.");
+                throw std::invalid_argument("Factor::type cannot return None.");
             }
 
             auto type = o.get_type();

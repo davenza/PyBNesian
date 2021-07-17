@@ -285,7 +285,7 @@ void estimate(G& skeleton,
         skeleton.direct(a.first, a.second);
     }
 
-    // A cycle can not be generated with less than 2 arcs.
+    // A cycle cannot be generated with less than 2 arcs.
     if (restrictions.arc_whitelist.size() > 2) {
         try {
             skeleton.to_dag();

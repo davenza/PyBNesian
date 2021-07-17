@@ -31,7 +31,7 @@ public:
 
     HeterogeneousBNType(std::shared_ptr<FactorType> default_ft)
         : m_default_ftype(default_ft), m_default_ftypes(), m_single_default(true) {
-        if (default_ft == nullptr) throw std::invalid_argument("Default factor_type can not be null.");
+        if (default_ft == nullptr) throw std::invalid_argument("Default factor_type cannot be null.");
 
         auto obj = py::cast(this);
 

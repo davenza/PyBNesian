@@ -148,7 +148,7 @@ public:
                 auto o = override(m.shared_from_this());
 
                 if (o.is(py::none())) {
-                    throw std::invalid_argument("Operator::opposite can not return None.");
+                    throw std::invalid_argument("Operator::opposite cannot return None.");
                 }
 
                 auto op = o.cast<std::shared_ptr<Operator>>();
@@ -179,7 +179,7 @@ public:
                 auto o = override(m.shared_from_this());
 
                 if (o.is(py::none())) {
-                    throw std::invalid_argument("Operator::opposite can not return None.");
+                    throw std::invalid_argument("Operator::opposite cannot return None.");
                 }
 
                 auto op = o.cast<std::shared_ptr<Operator>>();
@@ -768,7 +768,7 @@ Updates the delta score values of the operators in the set after applying an ope
              py::overload_cast<const ArcStringVector&>(&OperatorSet::set_arc_blacklist),
              py::arg("arc_blacklist"),
              R"doc(
-Sets the arc blacklist (a list of arcs that can not be added).
+Sets the arc blacklist (a list of arcs that cannot be added).
 
 :param arc_blacklist: The list of blacklisted arcs.
 )doc")

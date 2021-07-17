@@ -25,7 +25,7 @@ class BaseFactorParametersImpl : public BaseFactorParameters {
 public:
     BaseFactorParametersImpl(Args... args) : m_args(args...) {
         static_assert(std::is_constructible_v<BaseFactor, const std::string&, const std::vector<std::string>&, Args...>,
-                      "BaseFactor can not be constructed with provided Args...");
+                      "BaseFactor cannot be constructed with provided Args...");
     }
 
     std::shared_ptr<Factor> initialize(const std::string& variable,
@@ -56,7 +56,7 @@ public:
     SpecificBaseFactorParameters(std::unordered_map<Assignment, std::tuple<Args...>, AssignmentHash>& args)
         : m_args(args) {
         static_assert(std::is_constructible_v<BaseFactor, const std::string&, const std::vector<std::string>&, Args...>,
-                      "BaseFactor can not be constructed with provided Args...");
+                      "BaseFactor cannot be constructed with provided Args...");
     }
 
     std::shared_ptr<Factor> initialize(const std::string& variable,

@@ -46,7 +46,7 @@ public:
             auto o = override(nodes);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("BayesianNetworkType::new_bn can not return None.");
+                throw std::invalid_argument("BayesianNetworkType::new_bn cannot return None.");
             }
 
             auto m = o.cast<std::shared_ptr<BayesianNetworkBase>>();
@@ -64,7 +64,7 @@ public:
             auto o = override(nodes, interface_nodes);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("BayesianNetworkType::new_cbn can not return None.");
+                throw std::invalid_argument("BayesianNetworkType::new_cbn cannot return None.");
             }
 
             auto m = o.cast<std::shared_ptr<ConditionalBayesianNetworkBase>>();
@@ -84,7 +84,7 @@ public:
             auto o = override();
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("BayesianNetworkType::default_node_type can not return None.");
+                throw std::invalid_argument("BayesianNetworkType::default_node_type cannot return None.");
             }
 
             auto f = o.cast<std::shared_ptr<FactorType>>();
@@ -103,7 +103,7 @@ public:
             auto o = override(dt);
 
             if (o.is(py::none())) {
-                throw std::invalid_argument("BayesianNetworkType::data_default_node_type can not return None.");
+                throw std::invalid_argument("BayesianNetworkType::data_default_node_type cannot return None.");
             }
 
             auto f = o.cast<std::shared_ptr<FactorType>>();
@@ -187,7 +187,7 @@ public:
             for (auto& f : v) {
                 if (f == nullptr) {
                     throw std::invalid_argument(
-                        "BayesianNetworkType::alternative_node_type can not return a list that contains None.");
+                        "BayesianNetworkType::alternative_node_type cannot return a list that contains None.");
                 }
 
                 f = FactorType::keep_python_alive(f);
@@ -217,7 +217,7 @@ public:
             for (auto& f : v) {
                 if (f == nullptr) {
                     throw std::invalid_argument(
-                        "BayesianNetworkType::alternative_node_type can not return a list that contains None.");
+                        "BayesianNetworkType::alternative_node_type cannot return a list that contains None.");
                 }
 
                 f = FactorType::keep_python_alive(f);

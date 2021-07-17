@@ -817,7 +817,7 @@ It implements the algorithm in [pdag2dag]_.
     auto approximate_dag_doc = R"doc(
 Gets a :class:`Dag` approximate extension of ``self``. This method can be useful
 when :func:`)doc" + class_name +
-                               R"doc(.to_dag` can not return a valid extension.
+                               R"doc(.to_dag` cannot return a valid extension.
 
 The algorithm is based on generating a topological sort which tries to preserve a similar structure.
 

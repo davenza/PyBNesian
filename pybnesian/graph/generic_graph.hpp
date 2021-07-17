@@ -599,7 +599,7 @@ public:
           m_joint_nodes(),
           m_indices(),
           m_free_indices() {
-        if (nodes.empty()) throw std::invalid_argument("Nodes can not be empty.");
+        if (nodes.empty()) throw std::invalid_argument("Nodes cannot be empty.");
 
         m_joint_nodes.reserve(nodes.size() + interface_nodes.size());
         m_joint_nodes.insert(m_string_nodes.begin(), m_string_nodes.end());
@@ -951,7 +951,7 @@ void check_can_exist_arc(const GraphBase<Derived>&, int, int) {}
 template <typename Derived>
 void check_can_exist_arc(const ConditionalGraphBase<Derived>& g, int source, int target) {
     if (!can_exist_arc(g, source, target)) {
-        throw std::invalid_argument("Interface node can not have parents.");
+        throw std::invalid_argument("Interface node cannot have parents.");
     }
 }
 template <typename Derived>

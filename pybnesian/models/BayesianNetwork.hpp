@@ -967,7 +967,7 @@ DataFrame BNGeneric<DagType>::sample(int n, unsigned int seed, bool ordered) con
     if constexpr (graph::is_conditional_graph_v<DagType>) {
         if (this->num_interface_nodes() > 0)
             throw std::runtime_error(
-                "Can not sample from ConditionalBayesianNetwork "
+                "ConditionalBayesianNetwork cannot sample "
                 "if evidence is not provided for the interface nodes.");
     }
 

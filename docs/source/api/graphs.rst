@@ -98,7 +98,7 @@ Conditional Graphs
 A conditional graph is the underlying graph in a conditional Bayesian networks ([PGM]_, Section 5.6). In a conditional
 Bayesian network, only the normal nodes can have a conditional probability density, while the interface nodes are always
 observed. A conditional graph splits all the nodes in two subsets: normal nodes and interface nodes. In a conditional
-graph, the interface nodes can not have parents.
+graph, the interface nodes cannot have parents.
 
 In a conditional graph, normal nodes can be returned with ``nodes()``, the interface nodes with
 ``interface_nodes()`` and the joint set of nodes with ``joint_nodes()``. Also, there are many other functions

@@ -1094,7 +1094,7 @@ An extended :class:`Score <pybnesian.Score>` class needs to implement the follow
 - :func:`Score.score() <pybnesian.Score.score>`. This method is optional. The default
   implementation sums the local score for all the nodes.
 - :func:`Score.local_score() <pybnesian.Score.local_score>`. Only the version with 3 arguments
-  ``score.local_score(model, variable, evidence)`` needs to be implemented. The version with 2 arguments can not be
+  ``score.local_score(model, variable, evidence)`` needs to be implemented. The version with 2 arguments cannot be
   overriden.
 - :func:`Score.local_score_node_type() <pybnesian.Score.local_score_node_type>`. This method is
   optional. This method is only needed if the score is used together with
@@ -1383,7 +1383,7 @@ To illustrate, we will create an operator set that only contains the :class:`MyA
                 arc = s[0]
                 delta = s[1]
                 op = MyAddArc(arc[0], arc[1], delta)
-                # The operator can not be in the tabu set.
+                # The operator cannot be in the tabu set.
                 if model.can_add_arc(arc[0], arc[1]) and not tabu.contains(op):
                     return op
             return None
@@ -1489,7 +1489,7 @@ This :class:`OperatorSet <pybnesian.OperatorSet>` can be used in a
                 arc = s[0]
                 delta = s[1]
                 op = MyAddArc(arc[0], arc[1], delta)
-                # The operator can not be in the tabu set.
+                # The operator cannot be in the tabu set.
                 if model.can_add_arc(arc[0], arc[1]) and not tabu.contains(op):
                     return op
             return None

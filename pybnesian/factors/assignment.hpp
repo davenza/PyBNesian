@@ -207,10 +207,15 @@ public:
         size_t index = 0;
 
         for (size_t i = 0; i < variables.size(); ++i) {
-            auto vindex = std::distance(variable_values[i].begin(),
-                                        std::find(variable_values[i].begin(),
-                                                  variable_values[i].end(),
-                                                  static_cast<std::string>(value(variables[i]))));
+            auto it = std::find(
+                variable_values[i].begin(), variable_values[i].end(), static_cast<std::string>(value(variables[i])));
+
+            if (it == variable_values[i].end()) {
+                throw std::invalid_argument("Category \"" + static_cast<std::string>(value(variables[i])) +
+                                            "\" is not valid for variable " + variables[i]);
+            }
+
+            auto vindex = std::distance(variable_values[i].begin(), it);
 
             index += vindex * strides(i);
         }
@@ -317,6 +322,9 @@ public:
             return true;
         } else if (PyFloat_Check(py_ptr)) {
             value = factors::AssignmentValue(src.cast<double>());
+            return true;
+        } else if (PyLong_Check(py_ptr)) {
+            value = PyLong_AsDouble(py_ptr);
             return true;
         } else {
             return false;

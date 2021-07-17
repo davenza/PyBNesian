@@ -2,12 +2,27 @@
 #define PYBNESIAN_KDE_NORMALREFERENCERULE_HPP
 
 #include <kde/BandwidthSelector.hpp>
+#include <util/basic_eigen_ops.hpp>
 
 namespace kde {
 
 class NormalReferenceRule : public BandwidthSelector {
 public:
     VectorXd diag_bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        if (variables.empty()) return VectorXd(0);
+
+        size_t valid_rows = df.valid_rows(variables);
+        if (valid_rows <= variables.size()) {
+            std::stringstream ss;
+            ss << "Diagonal bandwidth matrix of " << std::to_string(variables.size()) << " variables [" << variables[0];
+            for (size_t i = 1; i < variables.size(); ++i) {
+                ss << ", " << variables[i];
+            }
+            ss << "] cannot be estimated with " << std::to_string(valid_rows) << " instances";
+
+            throw std::invalid_argument(ss.str());
+        }
+
         switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
                 return diag_bandwidth<arrow::DoubleType>(df, variables);
@@ -19,6 +34,20 @@ public:
     }
 
     MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const override {
+        if (variables.empty()) return MatrixXd(0, 0);
+
+        auto valid_rows = df.valid_rows(variables);
+        if (static_cast<size_t>(valid_rows) <= variables.size()) {
+            std::stringstream ss;
+            ss << "Bandwidth matrix of " << std::to_string(variables.size()) << " variables [" << variables[0];
+            for (size_t i = 1; i < variables.size(); ++i) {
+                ss << ", " << variables[i];
+            }
+            ss << "] cannot be estimated with " << std::to_string(valid_rows) << " instances";
+
+            throw std::invalid_argument(ss.str());
+        }
+
         switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
                 return bandwidth<arrow::DoubleType>(df, variables);
@@ -44,6 +73,17 @@ private:
 
         auto cov_ptr = df.cov<ArrowType>(variables);
         auto& cov = *cov_ptr;
+
+        if (!util::is_psd(cov)) {
+            std::stringstream ss;
+            ss << "Covariance matrix for variables [" << variables[0];
+            for (size_t i = 1; i < variables.size(); ++i) {
+                ss << ", " << variables[i];
+            }
+            ss << "] is not positive-definite.";
+            throw std::invalid_argument(ss.str());
+        }
+
         auto diag = cov.diagonal();
         auto delta = (cov.array().colwise() * diag.cwiseInverse().array()).matrix();
         auto delta_inv = delta.inverse();
@@ -69,6 +109,17 @@ private:
         using CType = typename ArrowType::c_type;
 
         auto cov = df.cov<ArrowType>(variables);
+
+        if (!util::is_psd(*cov)) {
+            std::stringstream ss;
+            ss << "Covariance matrix for variables [" << variables[0];
+            for (size_t i = 1; i < variables.size(); ++i) {
+                ss << ", " << variables[i];
+            }
+            ss << "] is not positive-definite.";
+            throw std::invalid_argument(ss.str());
+        }
+
         auto N = static_cast<CType>(df.valid_rows(variables));
         auto d = static_cast<CType>(variables.size());
 

@@ -1,6 +1,8 @@
 #ifndef PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
 #define PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
 
+#include <util/math_constants.hpp>
+
 namespace util {
 
 template <typename Vector>
@@ -127,6 +129,19 @@ Matrix<typename M::Scalar, Dynamic, Dynamic> sqrt_matrix(const M& m) {
 
     Eigen::SelfAdjointEigenSolver<M> svd_solver(m);
     return svd_solver.operatorSqrt();
+}
+
+// Checks whether M is positive definite.
+template <typename M>
+bool is_psd(const M& m) {
+    using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;
+    Eigen::SelfAdjointEigenSolver<MatrixType> eigen_solver(m, Eigen::EigenvaluesOnly);
+
+    if (eigen_solver.eigenvalues().minCoeff() < util::machine_tol) {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace util

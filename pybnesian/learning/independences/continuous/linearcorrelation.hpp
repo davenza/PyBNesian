@@ -50,7 +50,7 @@ double cor_1cond(EigenMatrix& cov, int v1, int v2, int ev) {
     m << cov(v1, v1), cov(v1, v2), cov(v1, ev), cov(v2, v1), cov(v2, v2), cov(v2, ev), cov(ev, v1), cov(ev, v2),
         cov(ev, ev);
 
-    auto eigen_solver = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(m);
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver(m);
 
     auto& d = eigen_solver.eigenvalues();
     auto& u = eigen_solver.eigenvectors();
@@ -59,7 +59,7 @@ double cor_1cond(EigenMatrix& cov, int v1, int v2, int ev) {
 
 template <typename EigenMatrix>
 double cor_general(EigenMatrix& cov) {
-    auto eigen_solver = Eigen::SelfAdjointEigenSolver<EigenMatrix>(cov);
+    Eigen::SelfAdjointEigenSolver<EigenMatrix> eigen_solver(cov);
     auto& d = eigen_solver.eigenvalues();
     auto& u = eigen_solver.eigenvectors();
     return cor_svd(d, u);

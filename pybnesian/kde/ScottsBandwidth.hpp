@@ -17,9 +17,8 @@ public:
             }
             ss << "] cannot be estimated with " << std::to_string(valid_rows) << " instances";
 
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
-
 
         switch (df.same_type(variables)->id()) {
             case Type::DOUBLE:
@@ -43,7 +42,7 @@ public:
             }
             ss << "] cannot be estimated with " << std::to_string(valid_rows) << " instances";
 
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
 
         switch (df.same_type(variables)->id()) {
@@ -101,7 +100,7 @@ private:
                 ss << ", " << variables[i];
             }
             ss << "] is not positive-definite.";
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
 
         auto N = static_cast<CType>(df.valid_rows(variables));

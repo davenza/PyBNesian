@@ -748,7 +748,19 @@ py::tuple CKDE::__getstate__() const {
 struct DCKDEName {
     inline constexpr static auto* str = "DCKDE";
 };
-using DCKDE = DiscreteAdaptator<CKDE, DCKDEName>;
+
+struct CKDEFitter {
+    static bool fit(const std::shared_ptr<Factor>& factor, const DataFrame& df) {
+        try {
+            factor->fit(df);
+            return true;
+        } catch (util::singular_covariance_data& e) {
+            return false;
+        }
+    }
+};
+
+using DCKDE = DiscreteAdaptator<CKDE, CKDEFitter, DCKDEName>;
 
 }  // namespace factors::continuous
 

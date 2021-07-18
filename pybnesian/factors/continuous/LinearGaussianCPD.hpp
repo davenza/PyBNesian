@@ -123,7 +123,21 @@ private:
 struct CLinearGaussianCPDName {
     inline constexpr static auto* str = "CLinearGaussianCPD";
 };
-using CLinearGaussianCPD = DiscreteAdaptator<LinearGaussianCPD, CLinearGaussianCPDName>;
+
+struct LinearGaussianFitter {
+    static bool fit(const std::shared_ptr<Factor>& factor, const DataFrame& df) {
+        factor->fit(df);
+        auto dwn = std::static_pointer_cast<LinearGaussianCPD>(factor);
+
+        if (dwn->variance() < util::machine_tol || std::isinf(dwn->variance())) {
+            return false;
+        }
+
+        return true;
+    }
+};
+
+using CLinearGaussianCPD = DiscreteAdaptator<LinearGaussianCPD, LinearGaussianFitter, CLinearGaussianCPDName>;
 
 }  // namespace factors::continuous
 

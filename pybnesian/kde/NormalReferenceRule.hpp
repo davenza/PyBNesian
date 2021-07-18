@@ -3,6 +3,7 @@
 
 #include <kde/BandwidthSelector.hpp>
 #include <util/basic_eigen_ops.hpp>
+#include <util/exceptions.hpp>
 
 namespace kde {
 
@@ -20,7 +21,7 @@ public:
             }
             ss << "] cannot be estimated with " << std::to_string(valid_rows) << " instances";
 
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
 
         switch (df.same_type(variables)->id()) {
@@ -45,7 +46,7 @@ public:
             }
             ss << "] cannot be estimated with " << std::to_string(valid_rows) << " instances";
 
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
 
         switch (df.same_type(variables)->id()) {
@@ -81,7 +82,7 @@ private:
                 ss << ", " << variables[i];
             }
             ss << "] is not positive-definite.";
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
 
         auto diag = cov.diagonal();
@@ -117,7 +118,7 @@ private:
                 ss << ", " << variables[i];
             }
             ss << "] is not positive-definite.";
-            throw std::invalid_argument(ss.str());
+            throw util::singular_covariance_data(ss.str());
         }
 
         auto N = static_cast<CType>(df.valid_rows(variables));

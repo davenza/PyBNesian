@@ -87,7 +87,7 @@ private:
     std::unordered_map<Assignment, std::tuple<Args...>, AssignmentHash> m_args;
 };
 
-template <typename BaseFactor, typename FactorName>
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
 class DiscreteAdaptator : public Factor {
 public:
     template <typename... CArgs>
@@ -140,8 +140,8 @@ public:
 
     py::tuple __getstate__() const override;
 
-    static DiscreteAdaptator<BaseFactor, FactorName> __setstate__(py::tuple& t);
-    static DiscreteAdaptator<BaseFactor, FactorName> __setstate__(py::tuple&& t) { return __setstate__(t); }
+    static DiscreteAdaptator<BaseFactor, BaseFitter, FactorName> __setstate__(py::tuple& t);
+    static DiscreteAdaptator<BaseFactor, BaseFitter, FactorName> __setstate__(py::tuple&& t) { return __setstate__(t); }
 
 private:
     void check_fitted() const;
@@ -161,13 +161,13 @@ private:
     std::vector<std::shared_ptr<Factor>> m_factors;
 };
 
-template <typename BaseFactor, typename FactorName>
-void DiscreteAdaptator<BaseFactor, FactorName>::check_fitted() const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::check_fitted() const {
     if (!m_fitted) throw std::invalid_argument("Factor " + ToString() + " not fitted.");
 }
 
-template <typename BaseFactor, typename FactorName>
-void DiscreteAdaptator<BaseFactor, FactorName>::check_equal_domain(const DataFrame& df) const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::check_equal_domain(const DataFrame& df) const {
     df.raise_has_columns(evidence());
 
     for (const auto& e : m_continuous_evidence) {
@@ -185,8 +185,8 @@ void DiscreteAdaptator<BaseFactor, FactorName>::check_equal_domain(const DataFra
     }
 }
 
-template <typename BaseFactor, typename FactorName>
-void DiscreteAdaptator<BaseFactor, FactorName>::fit(const DataFrame& df) {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::fit(const DataFrame& df) {
     std::vector<std::string> discrete_evidence, continuous_evidence;
 
     for (const auto& e : evidence()) {
@@ -250,7 +250,10 @@ void DiscreteAdaptator<BaseFactor, FactorName>::fit(const DataFrame& df) {
 
                 if (!m_factors.back()->fitted()) {
                     auto df_filtered = df.take(take_indices);
-                    m_factors.back()->fit(df_filtered);
+
+                    if (!BaseFitter::fit(m_factors.back(), df_filtered)) {
+                        m_factors.back() = nullptr;
+                    }
                 }
             } else {
                 m_factors.push_back(nullptr);
@@ -281,8 +284,8 @@ void logl_impl(const std::shared_ptr<Factor>& f, const DataFrame& df, const Arra
     }
 }
 
-template <typename BaseFactor, typename FactorName>
-VectorXd DiscreteAdaptator<BaseFactor, FactorName>::logl(const DataFrame& df) const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+VectorXd DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::logl(const DataFrame& df) const {
     run_checks(df);
 
     if (m_discrete_evidence.empty()) {
@@ -328,8 +331,8 @@ VectorXd DiscreteAdaptator<BaseFactor, FactorName>::logl(const DataFrame& df) co
     }
 }
 
-template <typename BaseFactor, typename FactorName>
-double DiscreteAdaptator<BaseFactor, FactorName>::slogl(const DataFrame& df) const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+double DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::slogl(const DataFrame& df) const {
     run_checks(df);
 
     if (m_discrete_evidence.empty()) {
@@ -356,15 +359,16 @@ double DiscreteAdaptator<BaseFactor, FactorName>::slogl(const DataFrame& df) con
     }
 }
 
-template <typename BaseFactor, typename FactorName>
-std::shared_ptr<Factor> DiscreteAdaptator<BaseFactor, FactorName>::conditional_factor(Assignment& assignment) const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+std::shared_ptr<Factor> DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::conditional_factor(
+    Assignment& assignment) const {
     check_fitted();
     auto index = assignment.index(m_discrete_evidence, m_discrete_values, m_strides);
     return m_factors[index];
 }
 
-template <typename BaseFactor, typename FactorName>
-std::string DiscreteAdaptator<BaseFactor, FactorName>::ToString() const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+std::string DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::ToString() const {
     std::stringstream ss;
 
     if (!this->evidence().empty()) {
@@ -506,10 +510,10 @@ void sample_impl(std::vector<arrow::AdaptiveIntBuilder>& slice_builders,
     }
 }
 
-template <typename BaseFactor, typename FactorName>
-Array_ptr DiscreteAdaptator<BaseFactor, FactorName>::sample(int n,
-                                                            const DataFrame& evidence_values,
-                                                            unsigned int seed) const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+Array_ptr DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::sample(int n,
+                                                                        const DataFrame& evidence_values,
+                                                                        unsigned int seed) const {
     if (n < 0) {
         throw std::invalid_argument("n should be a non-negative number");
     }
@@ -554,8 +558,8 @@ Array_ptr DiscreteAdaptator<BaseFactor, FactorName>::sample(int n,
     }
 }
 
-template <typename BaseFactor, typename FactorName>
-py::tuple DiscreteAdaptator<BaseFactor, FactorName>::__getstate__() const {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+py::tuple DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::__getstate__() const {
     return py::make_tuple(this->variable(),
                           this->evidence(),
                           m_args->__getstate__(),
@@ -568,19 +572,20 @@ py::tuple DiscreteAdaptator<BaseFactor, FactorName>::__getstate__() const {
                           m_factors);
 }
 
-template <typename BaseFactor, typename FactorName>
-DiscreteAdaptator<BaseFactor, FactorName> DiscreteAdaptator<BaseFactor, FactorName>::__setstate__(py::tuple& t) {
+template <typename BaseFactor, typename BaseFitter, typename FactorName>
+DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>
+DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::__setstate__(py::tuple& t) {
     auto pyargs = t[2].cast<py::tuple>();
     auto specific_args = pyargs[0].cast<bool>();
 
     auto args = py::module_::import("pickle").attr("loads")(pyargs[1]);
     auto res = [specific_args, &t, &args]() {
         if (specific_args)
-            return py::type::of<DiscreteAdaptator<BaseFactor, FactorName>>()(t[0], t[1], args)
-                .template cast<DiscreteAdaptator<BaseFactor, FactorName>>();
+            return py::type::of<DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>>()(t[0], t[1], args)
+                .template cast<DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>>();
         else
-            return py::type::of<DiscreteAdaptator<BaseFactor, FactorName>>()(t[0], t[1], *args)
-                .template cast<DiscreteAdaptator<BaseFactor, FactorName>>();
+            return py::type::of<DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>>()(t[0], t[1], *args)
+                .template cast<DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>>();
     }();
 
     res.m_fitted = t[3].cast<bool>();

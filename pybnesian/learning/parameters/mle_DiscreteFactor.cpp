@@ -48,7 +48,7 @@ typename DiscreteFactor::ParamsClass MLE<DiscreteFactor>::estimate(const DataFra
     auto type = df.same_type(variable, evidence);
 
     if (type->id() != Type::DICTIONARY) {
-        throw py::value_error("Wrong data type to fit DiscreteFactor. Categorical data is expected.");
+        throw std::invalid_argument("Wrong data type to fit DiscreteFactor. Categorical data is expected.");
     }
 
     return _fit(df, variable, evidence);

@@ -63,7 +63,7 @@ void ProductKDE::fit(const DataFrame& df) {
             break;
         }
         default:
-            throw py::value_error("Wrong data type to fit ProductKDE. [double] or [float] data is expected.");
+            throw std::invalid_argument("Wrong data type to fit ProductKDE. [double] or [float] data is expected.");
     }
 
     m_fitted = true;

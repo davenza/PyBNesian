@@ -570,8 +570,8 @@ public:
         if (!m_cpds.empty() && m_cpds[idx])
             return m_cpds[idx];
         else
-            throw py::value_error("CPD of variable \"" + node +
-                                  "\" not added. Call add_cpds() or fit() to add the CPD.");
+            throw std::invalid_argument("CPD of variable \"" + node +
+                                        "\" not added. Call add_cpds() or fit() to add the CPD.");
     }
 
     const std::shared_ptr<Factor> cpd(const std::string& node) const override {
@@ -579,8 +579,8 @@ public:
         if (!m_cpds.empty() && m_cpds[idx])
             return m_cpds[idx];
         else
-            throw py::value_error("CPD of variable \"" + node +
-                                  "\" not added. Call add_cpds() or fit() to add the CPD.");
+            throw std::invalid_argument("CPD of variable \"" + node +
+                                        "\" not added. Call add_cpds() or fit() to add the CPD.");
     }
 
     virtual void check_compatible_cpd(const Factor& cpd) const;

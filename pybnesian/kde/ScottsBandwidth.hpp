@@ -26,7 +26,7 @@ public:
             case Type::FLOAT:
                 return diag_bandwidth<arrow::FloatType>(df, variables);
             default:
-                throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
+                throw std::invalid_argument("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
         }
     }
 
@@ -51,7 +51,7 @@ public:
             case Type::FLOAT:
                 return bandwidth<arrow::FloatType>(df, variables);
             default:
-                throw py::value_error("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
+                throw std::invalid_argument("Wrong data type to fit bandwidth. [double] or [float] data is expected.");
         }
     }
 

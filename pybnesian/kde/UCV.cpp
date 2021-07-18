@@ -202,7 +202,7 @@ cl::Buffer UCVScorer::_copy_training_data(const DataFrame& df, const std::vector
             break;
         }
         default:
-            throw py::value_error("Wrong data type to score UCV. [double] or [float] data is expected.");
+            throw std::invalid_argument("Wrong data type to score UCV. [double] or [float] data is expected.");
     }
 }
 
@@ -370,7 +370,7 @@ double UCVScorer::score_diagonal(const VectorXd& diagonal_bandwidth) const {
             return score_diagonal_impl<arrow::FloatType>(diagonal_bandwidth.template cast<float>().cwiseSqrt());
         }
         default:
-            throw py::value_error("Unreachable code");
+            throw std::runtime_error("Unreachable code");
     }
 }
 
@@ -394,7 +394,7 @@ double UCVScorer::score_unconstrained(const MatrixXd& bandwidth) const {
                     bandwidth.template cast<float>());
         }
         default:
-            throw py::value_error("Unreachable code");
+            throw std::runtime_error("Unreachable code");
     }
 }
 

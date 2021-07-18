@@ -69,12 +69,13 @@ LinearGaussianCPD::LinearGaussianCPD(std::string variable,
                                      double variance)
     : Factor(variable, evidence), m_fitted(true), m_variance(variance) {
     if (static_cast<size_t>(beta.rows()) != (evidence.size() + 1)) {
-        throw py::value_error("Wrong number of beta parameters. Beta vector size: " + std::to_string(beta.size()) +
-                              ". Expected beta vector size: " + std::to_string(evidence.size() + 1) + ".");
+        throw std::invalid_argument(
+            "Wrong number of beta parameters. Beta vector size: " + std::to_string(beta.size()) +
+            ". Expected beta vector size: " + std::to_string(evidence.size() + 1) + ".");
     }
 
     if (variance <= 0) {
-        throw py::value_error("Variance must be a positive value.");
+        throw std::invalid_argument("Variance must be a positive value.");
     }
 
     m_beta = beta;
@@ -268,7 +269,7 @@ VectorXd LinearGaussianCPD::logl(const DataFrame& df) const {
             }
         }
         default:
-            throw py::value_error("Wrong data type to compute logl. (double) or (float) data is expected.");
+            throw std::invalid_argument("Wrong data type to compute logl. [double] or [float] data is expected.");
     }
 }
 
@@ -288,7 +289,7 @@ double LinearGaussianCPD::slogl(const DataFrame& df) const {
                 return slogl_impl_null<arrow::FloatType>(df, m_beta, m_variance, this->variable(), this->evidence());
         }
         default:
-            throw py::value_error("Wrong data type to compute slogl. (double) or (float) data is expected.");
+            throw std::invalid_argument("Wrong data type to compute slogl. [double] or [float] data is expected.");
     }
 }
 
@@ -311,7 +312,7 @@ VectorXd LinearGaussianCPD::cdf(const DataFrame& df) const {
             }
         }
         default:
-            throw py::value_error("Wrong data type to compute cdf. (double) or (float) data is expected.");
+            throw std::invalid_argument("Wrong data type to compute cdf. [double] or [float] data is expected.");
     }
 }
 

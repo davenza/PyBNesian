@@ -94,7 +94,7 @@ public:
     double variance() const { return m_variance; }
     void set_variance(double v) {
         if (v <= 0) {
-            throw py::value_error("Variance must be a positive value.");
+            throw std::invalid_argument("Variance must be a positive value.");
         }
 
         m_variance = v;

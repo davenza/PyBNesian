@@ -260,8 +260,8 @@ cl::Buffer OpenCLConfig::new_buffer(int size, cl_mem_flags flags) {
     cl::Buffer b(m_context, flags, sizeof(T) * size, NULL, &err_code);
 
     if (err_code != CL_SUCCESS) {
-        throw std::runtime_error(std::string("Error creating OpenCL buffer of size ") + std::to_string(size) + opencl::opencl_error(err_code) + " (" +
-                                 std::to_string(err_code) + ").");
+        throw std::runtime_error(std::string("Error creating OpenCL buffer of size ") + std::to_string(size) +
+                                 opencl::opencl_error(err_code) + " (" + std::to_string(err_code) + ").");
     }
 
     return b;

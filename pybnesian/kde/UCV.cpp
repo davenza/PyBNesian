@@ -413,7 +413,8 @@ double wrap_ucv_diag_optim(unsigned n, const double* x, double*, void* my_func_d
     auto det_sqrt = xm.prod();
     auto det = det_sqrt * det_sqrt;
 
-    if (det <= 0 || det < 1e-3 * optim_info.start_determinant || det > 1e3 * optim_info.start_determinant)
+    if (det <= util::machine_tol || det < 1e-3 * optim_info.start_determinant ||
+        det > 1e3 * optim_info.start_determinant)
         return optim_info.start_score + 10e-8;
 
     auto score = optim_info.ucv_scorer.score_diagonal(xm.array().square().matrix());
@@ -436,7 +437,8 @@ double wrap_ucv_optim(unsigned n, const double* x, double*, void* my_func_data) 
 
     // Avoid too small/large determinants returning the start score.
     // Package ks uses 1e10 as constant.
-    if (det <= 0 || det < 1e-3 * optim_info.start_determinant || det > 1e3 * optim_info.start_determinant)
+    if (det <= util::machine_tol || det < 1e-3 * optim_info.start_determinant ||
+        det > 1e3 * optim_info.start_determinant || std::isnan(det))
         return optim_info.start_score + 10e-8;
 
     auto score = optim_info.ucv_scorer.score_unconstrained(H);

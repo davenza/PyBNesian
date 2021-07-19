@@ -9,9 +9,12 @@
 #include <kde/ScottsBandwidth.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <kde/UCV.hpp>
+#include <util/exceptions.hpp>
 
 using kde::KDE, kde::ProductKDE, kde::BandwidthSelector, kde::ScottsBandwidth, kde::NormalReferenceRule, kde::UCV,
     kde::UCVScorer;
+
+using util::singular_covariance_data;
 
 class PyBandwidthSelector : public BandwidthSelector {
 public:
@@ -97,6 +100,8 @@ public:
 };
 
 void pybindings_kde(py::module& root) {
+    py::exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
+
     py::class_<BandwidthSelector, PyBandwidthSelector, std::shared_ptr<BandwidthSelector>>(
         root, "BandwidthSelector", R"doc(
 A :class:`BandwidthSelector <pybnesian.BandwidthSelector>` estimates the bandwidth of a kernel density estimation (KDE) model.

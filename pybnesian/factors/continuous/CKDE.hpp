@@ -756,6 +756,13 @@ struct CKDEFitter {
             return true;
         } catch (util::singular_covariance_data& e) {
             return false;
+        } catch (py::error_already_set& e) {
+            auto t = py::module_::import("pybnesian").attr("SingularCovarianceData");
+            if (e.matches(t)) {
+                return false;
+            } else {
+                throw;
+            }
         }
     }
 };

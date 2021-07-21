@@ -163,7 +163,7 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
     op_set.set_type_whitelist(type_whitelist);
     op_set.set_max_indegree(max_indegree);
 
-    auto best_model = start.clone();
+    auto best_model = current_model->clone();
 
     spinner->update_status("Caching scores...");
 

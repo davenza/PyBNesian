@@ -154,7 +154,8 @@ def lg_fitted_bytes():
 
 @pytest.fixture
 def ckde_fitted_bytes():
-    data = pd.DataFrame({'a': np.arange(10), 'b': np.arange(10), 'c': np.arange(10)}).astype(float)
+    np.random.seed(1)
+    data = pd.DataFrame({'a': np.random.rand(10), 'b': np.random.rand(10), 'c': np.random.rand(10)}).astype(float)
     ckde = CKDE("c", ["a", "b"])
     ckde.fit(data)
     return pickle.dumps(ckde)
@@ -197,9 +198,10 @@ def test_serialization_fitted_factor(lg_fitted_bytes, ckde_fitted_bytes, discret
     assert loaded_ckde.type() == pbn.CKDEType()
     assert loaded_ckde.num_instances() == 10
     tr = loaded_ckde.kde_joint().dataset().to_pandas()
-    assert np.all(tr['a'] == np.arange(10))
-    assert np.all(tr['b'] == np.arange(10))
-    assert np.all(tr['c'] == np.arange(10))
+    np.random.seed(1)
+    assert np.all(tr['a'] == np.random.rand(10))
+    assert np.all(tr['b'] == np.random.rand(10))
+    assert np.all(tr['c'] == np.random.rand(10))
 
     loaded_discrete = pickle.loads(discrete_fitted_bytes)
     assert loaded_discrete.variable() == "c"

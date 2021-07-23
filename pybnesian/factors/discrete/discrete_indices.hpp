@@ -140,10 +140,10 @@ VectorXi joint_counts(const DataFrame& df,
 
 VectorXi marginal_counts(const VectorXi& joint_counts, int index, const VectorXi& cardinality, const VectorXi& strides);
 
-std::vector<arrow::AdaptiveIntBuilder> discrete_slice_indices(const DataFrame& df,
-                                                              const std::vector<std::string>& discrete_vars,
-                                                              const VectorXi& indices,
-                                                              int num_factors);
+std::vector<Array_ptr> discrete_slice_indices(const DataFrame& df,
+                                              const std::vector<std::string>& discrete_vars,
+                                              const VectorXi& indices,
+                                              int num_factors);
 
 std::vector<Assignment> assignments_from_indices(const std::vector<std::string>& variables,
                                                  const std::vector<std::vector<std::string>>& variable_values,

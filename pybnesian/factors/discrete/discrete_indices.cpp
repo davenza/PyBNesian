@@ -166,17 +166,19 @@ VectorXi marginal_counts(const VectorXi& joint_counts,
     return result;
 }
 
-std::vector<arrow::AdaptiveIntBuilder> discrete_slice_indices(const DataFrame& df,
-                                                              const std::vector<std::string>& discrete_vars,
-                                                              const VectorXi& strides,
-                                                              int num_factors) {
-    std::vector<arrow::AdaptiveIntBuilder> slice_builders(num_factors);
+std::vector<Array_ptr> discrete_slice_indices(const DataFrame& df,
+                                              const std::vector<std::string>& discrete_vars,
+                                              const VectorXi& strides,
+                                              int num_factors) {
+    arrow::NumericBuilder<arrow::Int32Type> builder;
+    std::vector<Array_ptr> slices(num_factors);
+    std::vector<std::vector<int>> slice_indices(num_factors);
 
     auto indices = discrete_indices(df, discrete_vars, strides);
 
     if (df.null_count(discrete_vars) == 0) {
         for (auto i = 0; i < indices.rows(); ++i) {
-            RAISE_STATUS_ERROR(slice_builders[indices(i)].Append(i));
+            slice_indices[indices(i)].push_back(i);
         }
     } else {
         auto bitmap = df.combined_bitmap(discrete_vars);
@@ -184,12 +186,21 @@ std::vector<arrow::AdaptiveIntBuilder> discrete_slice_indices(const DataFrame& d
 
         for (auto i = 0, j = 0; i < df->num_rows(); ++i) {
             if (arrow::BitUtil::GetBit(bitmap_data, i)) {
-                RAISE_STATUS_ERROR(slice_builders[indices(j++)].Append(i));
+                slice_indices[indices(j++)].push_back(i);
             }
         }
     }
 
-    return slice_builders;
+    for (auto i = 0; i < num_factors; ++i) {
+        if (slice_indices[i].empty())
+            slices[i] = nullptr;
+        else {
+            RAISE_STATUS_ERROR(builder.AppendValues(slice_indices[i].data(), slice_indices[i].size()));
+            RAISE_STATUS_ERROR(builder.Finish(&slices[i]));
+        }
+    }
+
+    return slices;
 }
 
 std::vector<Assignment> assignments_from_indices(const std::vector<std::string>& variables,

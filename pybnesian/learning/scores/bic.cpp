@@ -32,7 +32,7 @@ double BIC::bic_clg(const std::string& variable,
     auto [cardinality, strides] = factors::discrete::create_cardinality_strides(m_df, discrete_parents);
 
     auto num_configs = cardinality.prod();
-    auto slice_builders = factors::discrete::discrete_slice_indices(m_df, discrete_parents, strides, num_configs);
+    auto slices = factors::discrete::discrete_slice_indices(m_df, discrete_parents, strides, num_configs);
 
     MLE<LinearGaussianCPD> mle;
 
@@ -41,13 +41,9 @@ double BIC::bic_clg(const std::string& variable,
     auto num_continuous_parents = continuous_parents.size();
 
     for (auto i = 0; i < num_configs; ++i) {
-        auto num_config_rows = slice_builders[i].length();
-        if (num_config_rows > 0) {
-            Array_ptr take_indices;
-            RAISE_STATUS_ERROR(slice_builders[i].Finish(&take_indices));
-
+        if (slices[i]) {
             // Calling take() can be slower than fitting all the linear regressions at the same time (as bnlearn)
-            auto df_filtered = m_df.loc(variable, continuous_parents).take(take_indices);
+            auto df_filtered = m_df.loc(variable, continuous_parents).take(slices[i]);
 
             auto num_valid_config = df_filtered.valid_rows(variable, continuous_parents);
             auto mle_params = mle.estimate(df_filtered, variable, continuous_parents);

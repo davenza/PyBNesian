@@ -236,20 +236,17 @@ void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::fit(const DataFrame&
         auto num_factors = m_cardinality.prod();
         m_factors.reserve(num_factors);
 
-        auto slice_builders = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
+        auto slices = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
 
         auto assignments = assignments_from_indices(m_discrete_evidence, m_discrete_values, m_cardinality, m_strides);
 
         for (auto i = 0; i < num_factors; ++i) {
-            if (slice_builders[i].length() > 0) {
-                Array_ptr take_indices;
-                RAISE_STATUS_ERROR(slice_builders[i].Finish(&take_indices));
-
+            if (slices[i]) {
                 auto factor = m_args->initialize(variable(), m_continuous_evidence, assignments[i]);
                 m_factors.push_back(std::move(factor));
 
                 if (!m_factors.back()->fitted()) {
-                    auto df_filtered = df.take(take_indices);
+                    auto df_filtered = df.take(slices[i]);
 
                     if (!BaseFitter::fit(m_factors.back(), df_filtered)) {
                         m_factors.back() = nullptr;
@@ -292,7 +289,7 @@ VectorXd DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::logl(const DataF
         return m_factors[0]->logl(df);
     } else {
         auto num_factors = m_factors.size();
-        auto slice_builders = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
+        auto slices = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
 
         VectorXd res(df->num_rows());
 
@@ -304,26 +301,8 @@ VectorXd DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::logl(const DataF
         }
 
         for (size_t i = 0; i < num_factors; ++i) {
-            if (slice_builders[i].length() > 0) {
-                Array_ptr take_indices;
-                RAISE_STATUS_ERROR(slice_builders[i].Finish(&take_indices));
-
-                switch (take_indices->type_id()) {
-                    case Type::INT8:
-                        logl_impl<arrow::Int8Type>(m_factors[i], df, take_indices, res);
-                        break;
-                    case Type::INT16:
-                        logl_impl<arrow::Int16Type>(m_factors[i], df, take_indices, res);
-                        break;
-                    case Type::INT32:
-                        logl_impl<arrow::Int32Type>(m_factors[i], df, take_indices, res);
-                        break;
-                    case Type::INT64:
-                        logl_impl<arrow::Int64Type>(m_factors[i], df, take_indices, res);
-                        break;
-                    default:
-                        throw std::invalid_argument("Unreachable code!");
-                }
+            if (slices[i]) {
+                logl_impl<arrow::Int32Type>(m_factors[i], df, slices[i], res);
             }
         }
 
@@ -339,19 +318,14 @@ double DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::slogl(const DataFr
         return m_factors[0]->slogl(df);
     } else {
         auto num_factors = m_factors.size();
-        auto slice_builders = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
+        auto slices = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
 
         double res = 0;
 
         for (size_t i = 0; i < num_factors; ++i) {
-            if (slice_builders[i].length() > 0) {
-                Array_ptr take_indices;
-                RAISE_STATUS_ERROR(slice_builders[i].Finish(&take_indices));
-
-                if (m_factors[i]) {
-                    auto df_filtered = df.take(take_indices);
-                    res += m_factors[i]->slogl(df_filtered);
-                }
+            if (slices[i] && m_factors[i]) {
+                auto df_filtered = df.take(slices[i]);
+                res += m_factors[i]->slogl(df_filtered);
             }
         }
 
@@ -469,7 +443,7 @@ void sample_factor_impl(const std::shared_ptr<Factor>& f,
 }
 
 template <typename ResultArrowType>
-void sample_impl(std::vector<arrow::AdaptiveIntBuilder>& slice_builders,
+void sample_impl(std::vector<Array_ptr>& slice_builders,
                  const std::vector<std::shared_ptr<Factor>>& factors,
                  int n,
                  const DataFrame& evidence_values,
@@ -478,34 +452,9 @@ void sample_impl(std::vector<arrow::AdaptiveIntBuilder>& slice_builders,
     auto num_factors = factors.size();
 
     for (size_t i = 0; i < num_factors; ++i) {
-        if (slice_builders[i].length() > 0) {
-            Array_ptr take_indices;
-            RAISE_STATUS_ERROR(slice_builders[i].Finish(&take_indices));
-
-            switch (take_indices->type_id()) {
-                case Type::INT8: {
-                    sample_factor_impl<arrow::Int8Type, ResultArrowType>(
-                        factors[i], n, evidence_values, seed + i, take_indices, res);
-                    break;
-                }
-                case Type::INT16: {
-                    sample_factor_impl<arrow::Int16Type, ResultArrowType>(
-                        factors[i], n, evidence_values, seed + i, take_indices, res);
-                    break;
-                }
-                case Type::INT32: {
-                    sample_factor_impl<arrow::Int32Type, ResultArrowType>(
-                        factors[i], n, evidence_values, seed + i, take_indices, res);
-                    break;
-                }
-                case Type::INT64: {
-                    sample_factor_impl<arrow::Int64Type, ResultArrowType>(
-                        factors[i], n, evidence_values, seed + i, take_indices, res);
-                    break;
-                }
-                default:
-                    throw std::invalid_argument("Unreachable code!");
-            }
+        if (slice_builders[i]) {
+            sample_factor_impl<arrow::Int32Type, ResultArrowType>(
+                factors[i], n, evidence_values, seed + i, slice_builders[i], res);
         }
     }
 }
@@ -529,7 +478,7 @@ Array_ptr DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::sample(int n,
         return m_factors[0]->sample(n, evidence_values, seed);
     } else {
         auto num_factors = m_factors.size();
-        auto slice_builders = discrete_slice_indices(evidence_values, m_discrete_evidence, m_strides, num_factors);
+        auto slices = discrete_slice_indices(evidence_values, m_discrete_evidence, m_strides, num_factors);
 
         Array_ptr res;
 
@@ -539,7 +488,7 @@ Array_ptr DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::sample(int n,
                 RAISE_STATUS_ERROR(builder.AppendEmptyValues(n));
                 RAISE_STATUS_ERROR(builder.Finish(&res));
 
-                sample_impl<arrow::DoubleType>(slice_builders, m_factors, n, evidence_values, seed, res);
+                sample_impl<arrow::DoubleType>(slices, m_factors, n, evidence_values, seed, res);
                 break;
             }
             case Type::FLOAT: {
@@ -547,7 +496,7 @@ Array_ptr DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::sample(int n,
                 RAISE_STATUS_ERROR(builder.AppendEmptyValues(n));
                 RAISE_STATUS_ERROR(builder.Finish(&res));
 
-                sample_impl<arrow::FloatType>(slice_builders, m_factors, n, evidence_values, seed, res);
+                sample_impl<arrow::FloatType>(slices, m_factors, n, evidence_values, seed, res);
                 break;
             }
             default:

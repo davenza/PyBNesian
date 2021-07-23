@@ -203,22 +203,6 @@ std::vector<Array_ptr> discrete_slice_indices(const DataFrame& df,
     return slices;
 }
 
-std::vector<Assignment> assignments_from_indices(const std::vector<std::string>& variables,
-                                                 const std::vector<std::vector<std::string>>& variable_values,
-                                                 const VectorXi& cardinality,
-                                                 const VectorXi& strides) {
-    auto num_factors = cardinality.prod();
-
-    std::vector<Assignment> ass;
-    ass.reserve(num_factors);
-
-    for (auto i = 0; i < num_factors; ++i) {
-        ass.push_back(Assignment::from_index(i, variables, variable_values, cardinality, strides));
-    }
-
-    return ass;
-}
-
 void check_domain_variable(const DataFrame& df,
                            const std::string& variable,
                            const std::vector<std::string>& variable_values) {

@@ -238,11 +238,12 @@ void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::fit(const DataFrame&
 
         auto slices = discrete_slice_indices(df, m_discrete_evidence, m_strides, num_factors);
 
-        auto assignments = assignments_from_indices(m_discrete_evidence, m_discrete_values, m_cardinality, m_strides);
-
         for (auto i = 0; i < num_factors; ++i) {
             if (slices[i]) {
-                auto factor = m_args->initialize(variable(), m_continuous_evidence, assignments[i]);
+                auto assignment =
+                    Assignment::from_index(i, m_discrete_evidence, m_discrete_values, m_cardinality, m_strides);
+
+                auto factor = m_args->initialize(variable(), m_continuous_evidence, assignment);
                 m_factors.push_back(std::move(factor));
 
                 if (!m_factors.back()->fitted()) {
@@ -361,9 +362,6 @@ std::string DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::ToString() co
         if (m_fitted) {
             ss << std::endl;
 
-            auto assignments =
-                assignments_from_indices(m_discrete_evidence, m_discrete_values, m_cardinality, m_strides);
-
             fort::char_table table;
             table.set_cell_text_align(fort::text_align::center);
 
@@ -382,8 +380,9 @@ std::string DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::ToString() co
             table << fort::endr << fort::header;
             table.range_write_ln(m_discrete_evidence.begin(), m_discrete_evidence.end());
 
-            for (size_t k = 0; k < assignments.size(); ++k) {
-                const auto& ass = assignments[k];
+            for (size_t k = 0, num_factors = m_cardinality.prod(); k < num_factors; ++k) {
+                auto ass = Assignment::from_index(k, m_discrete_evidence, m_discrete_values, m_cardinality, m_strides);
+
                 for (const auto& discrete_evidence : m_discrete_evidence) {
                     table << static_cast<std::string>(ass.value(discrete_evidence));
                 }

@@ -145,11 +145,6 @@ std::vector<Array_ptr> discrete_slice_indices(const DataFrame& df,
                                               const VectorXi& indices,
                                               int num_factors);
 
-std::vector<Assignment> assignments_from_indices(const std::vector<std::string>& variables,
-                                                 const std::vector<std::vector<std::string>>& variable_values,
-                                                 const VectorXi& cardinality,
-                                                 const VectorXi& strides);
-
 void check_domain_variable(const DataFrame& df,
                            const std::string& variable,
                            const std::vector<std::string>& variable_values);

@@ -191,7 +191,7 @@ std::shared_ptr<T> estimate_validation_hc(OperatorSet& op_set,
         auto nodes_changed = best_op->nodes_changed(*current_model);
         double validation_delta = validation_delta_score(*current_model, score, nodes_changed, local_validation);
 
-        if ((validation_delta + validation_offset) > 0) {
+        if ((validation_delta + validation_offset) > util::machine_tol) {
             p = 0;
             validation_offset = 0;
             best_model = current_model->clone();

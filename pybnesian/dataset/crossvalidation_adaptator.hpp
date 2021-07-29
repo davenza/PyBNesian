@@ -16,7 +16,7 @@ class CrossValidationProperties {
 public:
     CrossValidationProperties(const DataFrame& df, int k, unsigned int seed, bool include_null)
         : k(k), m_seed(seed), indices(), limits() {
-        if (k > df->num_rows()) {
+        if (k <= 1 || k > df->num_rows()) {
             throw std::invalid_argument("Cannot split " + std::to_string(df->num_rows()) + " instances into " +
                                         std::to_string(k) + " folds.");
         }

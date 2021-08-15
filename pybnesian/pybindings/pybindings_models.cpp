@@ -1342,6 +1342,17 @@ Gets the corresponding :class:`FactorType <pybnesian.FactorType>` for ``node``.
 :param node: A node name.
 :returns: The :class:`FactorType <pybnesian.FactorType>` of ``node``.
 )doc")
+        .def("underlying_node_type", &CppClass::underlying_node_type, py::arg("df"), py::arg("node"), R"doc(
+Gets the underlying :class:`FactorType <pybnesian.FactorType>` for a given node type.
+
+1) If the node has a node type different from :class:`UnknownFactorType <pybnesian.UnknownFactorType>`, it returns it.
+2) Else, it returns the default node type from
+  :func:`BayesianNetworkType.data_default_node_type <pybnesian.BayesianNetworkType.data_default_node_type>`.
+
+:param df: Data to extract the underlying node type (if 2) is required).
+:param node: A node name.
+:returns: The underlying :class:`FactorType <pybnesian.FactorType>` for each node.
+)doc")
         .def("node_types", &CppClass::node_types, R"doc(
 Gets the :class:`FactorType <pybnesian.FactorType>` for all the nodes.
 

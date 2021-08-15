@@ -19,7 +19,7 @@ std::shared_ptr<Factor> CKDEType::new_factor(const BayesianNetworkBase& m,
                                              py::kwargs kwargs) const {
     for (const auto& e : evidence) {
         if (m.node_type(e) == DiscreteFactorType::get()) {
-            return generic_new_factor<DCKDE>(variable, evidence, args, kwargs);
+            return generic_new_factor<HCKDE>(variable, evidence, args, kwargs);
         }
     }
 
@@ -33,7 +33,7 @@ std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBas
                                              py::kwargs kwargs) const {
     for (const auto& e : evidence) {
         if (m.node_type(e) == DiscreteFactorType::get()) {
-            return generic_new_factor<DCKDE>(variable, evidence, args, kwargs);
+            return generic_new_factor<HCKDE>(variable, evidence, args, kwargs);
         }
     }
 

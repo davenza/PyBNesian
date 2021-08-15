@@ -17,7 +17,7 @@ namespace py = pybind11;
 
 using factors::Arguments, factors::Args, factors::Kwargs;
 using factors::Factor, factors::continuous::LinearGaussianCPD, factors::continuous::CLinearGaussianCPD,
-    factors::continuous::DCKDE, factors::continuous::CKDE, factors::discrete::DiscreteFactor;
+    factors::continuous::HCKDE, factors::continuous::CKDE, factors::discrete::DiscreteFactor;
 using factors::FactorType, factors::continuous::LinearGaussianCPDType, factors::continuous::CKDEType,
     factors::discrete::DiscreteFactorType;
 
@@ -718,13 +718,13 @@ Removes the assignment for the ``variable``.
         .def(py::pickle([](const CLinearGaussianCPD& self) { return self.__getstate__(); },
                         [](py::tuple t) { return CLinearGaussianCPD::__setstate__(t); }));
 
-    py::class_<DCKDE, Factor, std::shared_ptr<DCKDE>>(root, "DCKDE")
+    py::class_<HCKDE, Factor, std::shared_ptr<HCKDE>>(root, "HCKDE")
         .def(py::init<std::string, std::vector<std::string>>())
         .def(py::init<std::string, std::vector<std::string>, std::shared_ptr<BandwidthSelector>>())
         .def(py::init<std::string,
                       std::vector<std::string>,
                       std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash>>())
-        .def("conditional_factor", &DCKDE::conditional_factor, py::return_value_policy::reference_internal)
-        .def(py::pickle([](const DCKDE& self) { return self.__getstate__(); },
-                        [](py::tuple t) { return DCKDE::__setstate__(t); }));
+        .def("conditional_factor", &HCKDE::conditional_factor, py::return_value_policy::reference_internal)
+        .def(py::pickle([](const HCKDE& self) { return self.__getstate__(); },
+                        [](py::tuple t) { return HCKDE::__setstate__(t); }));
 }

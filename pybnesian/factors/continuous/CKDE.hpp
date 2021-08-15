@@ -745,8 +745,8 @@ py::tuple CKDE::__getstate__() const {
 }
 
 // Fix const name: https://stackoverflow.com/a/15862594
-struct DCKDEName {
-    inline constexpr static auto* str = "DCKDE";
+struct HCKDEName {
+    inline constexpr static auto* str = "HCKDE";
 };
 
 struct CKDEFitter {
@@ -760,7 +760,7 @@ struct CKDEFitter {
     }
 };
 
-using DCKDE = DiscreteAdaptator<CKDE, CKDEFitter, DCKDEName>;
+using HCKDE = DiscreteAdaptator<CKDE, CKDEFitter, HCKDEName>;
 
 }  // namespace factors::continuous
 

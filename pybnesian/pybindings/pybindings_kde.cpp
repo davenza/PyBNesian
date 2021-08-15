@@ -100,11 +100,16 @@ public:
 };
 
 void pybindings_kde(py::module& root) {
-    py::exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
+//     py::exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
+    py::register_exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
 
     py::class_<BandwidthSelector, PyBandwidthSelector, std::shared_ptr<BandwidthSelector>>(
         root, "BandwidthSelector", R"doc(
-A :class:`BandwidthSelector <pybnesian.BandwidthSelector>` estimates the bandwidth of a kernel density estimation (KDE) model.
+A :class:`BandwidthSelector <pybnesian.BandwidthSelector>` estimates the bandwidth of a kernel density estimation (KDE)
+model.
+
+If the bandwidth matrix cannot be calculated because the data has a singular covariance matrix, you should raise a
+:class:`SingularCovarianceData <pybnesian.SingularCovarianceData>`.
 )doc")
         .def(py::init<>(), R"doc(
 Initializes a :class:`BandwidthSelector <pybnesian.BandwidthSelector>`.

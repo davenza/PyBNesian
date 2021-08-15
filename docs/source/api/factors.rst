@@ -89,6 +89,11 @@ Kernel Density Estimation
     :members:
     :special-members: __init__
 
+.. autoexception:: pybnesian.SingularCovarianceData
+    :show-inheritance:
+
+    This exception signals that the data has a singular covariance matrix.
+
 Other
 -----
 

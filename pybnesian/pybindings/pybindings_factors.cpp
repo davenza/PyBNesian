@@ -288,7 +288,14 @@ Initializes a new :class:`Arguments` with the given configurations and arguments
 :param dict_arguments: A dictionary { configurations : arguments} that associates each
     :class:`Factor <pybnesian.Factor>` configuration with a set of arguments.
 )doc")
-        .def("__repr__", [](const Arguments&) { return "Arguments"; });
+        .def("__repr__", [](const Arguments&) { return "Arguments"; })
+        .def("args", &Arguments::args, py::arg("node"), py::arg("node_type"), R"doc(
+Returns the *args and **kwargs defined for a ``node`` with a given ``node_type``.
+
+:param node: A node name.
+:param node_type: :class:`FactorType <pybnesian.FactorType>` for ``node``.
+:returns: 2-tuple containing ``(*args, **kwargs)``
+)doc");
 
     py::class_<FactorType, PyFactorType, std::shared_ptr<FactorType>> factor_type(root, "FactorType", R"doc(
 A representation of a :class:`Factor` type.

@@ -1342,6 +1342,11 @@ Gets the corresponding :class:`FactorType <pybnesian.FactorType>` for ``node``.
 :param node: A node name.
 :returns: The :class:`FactorType <pybnesian.FactorType>` of ``node``.
 )doc")
+        .def("node_types", &CppClass::node_types, R"doc(
+Gets the :class:`FactorType <pybnesian.FactorType>` for all the nodes.
+
+:returns: The corresponding :class:`FactorType <pybnesian.FactorType>` for each node.
+)doc")
         .def("underlying_node_type", &CppClass::underlying_node_type, py::arg("df"), py::arg("node"), R"doc(
 Gets the underlying :class:`FactorType <pybnesian.FactorType>` for a given node type.
 
@@ -1352,11 +1357,6 @@ Gets the underlying :class:`FactorType <pybnesian.FactorType>` for a given node 
 :param df: Data to extract the underlying node type (if 2) is required).
 :param node: A node name.
 :returns: The underlying :class:`FactorType <pybnesian.FactorType>` for each node.
-)doc")
-        .def("node_types", &CppClass::node_types, R"doc(
-Gets the :class:`FactorType <pybnesian.FactorType>` for all the nodes.
-
-:returns: The corresponding :class:`FactorType <pybnesian.FactorType>` for each node.
 )doc")
         .def("has_unknown_node_types", &CppClass::has_unknown_node_types, R"doc(
 Checks whether there are nodes with an unknown node type (i.e.

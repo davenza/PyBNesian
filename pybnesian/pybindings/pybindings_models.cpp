@@ -1352,7 +1352,7 @@ Gets the underlying :class:`FactorType <pybnesian.FactorType>` for a given node 
 
 1) If the node has a node type different from :class:`UnknownFactorType <pybnesian.UnknownFactorType>`, it returns it.
 2) Else, it returns the default node type from
-  :func:`BayesianNetworkType.data_default_node_type <pybnesian.BayesianNetworkType.data_default_node_type>`.
+   :func:`BayesianNetworkType.data_default_node_type <pybnesian.BayesianNetworkType.data_default_node_type>`.
 
 :param df: Data to extract the underlying node type (if 2) is required).
 :param node: A node name.

@@ -290,7 +290,7 @@ Initializes a new :class:`Arguments` with the given configurations and arguments
 )doc")
         .def("__repr__", [](const Arguments&) { return "Arguments"; })
         .def("args", &Arguments::args, py::arg("node"), py::arg("node_type"), R"doc(
-Returns the *args and **kwargs defined for a ``node`` with a given ``node_type``.
+Returns the \*args and \*\*kwargs defined for a ``node`` with a given ``node_type``.
 
 :param node: A node name.
 :param node_type: :class:`FactorType <pybnesian.FactorType>` for ``node``.

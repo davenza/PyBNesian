@@ -8,7 +8,7 @@ import setuptools
 import os
 import find_opencl
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 
 if sys.platform == 'darwin':
     darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.14']

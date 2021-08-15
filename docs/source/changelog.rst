@@ -2,6 +2,23 @@
 Changelog
 *********
 
+v0.3.3
+======
+
+- Adds support for pyarrow 5.0.0 in the PyPi wheels.
+- Added :func:`Arguments.args <pybnesian.Arguments.args>` to access the ``args`` and ``kwargs`` for a node.
+- Added :func:`BayesianNetworkBase.underlying_node_type <pybnesian.BayesianNetworkBase.underlying_node_type>` to get the underlying node type of a node given some data.
+- Improves the fitting of hybrid factors. Now, an specific discrete configuration can be left unfitted if the base continuous factor raises :class:`SingularCovarianceData <pybnesian.SingularCovarianceData>`.
+- Improves the :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` fit when the covariance matrix of the data is singular.
+- Improves the :class:`NormalReferenceRule <pybnesian.NormalReferenceRule>`, :class:`ScottsBandwidth <pybnesian.ScottsBandwidth>`, and :class:`UCV <pybnesian.UCV>` estimation when the covariance of the data is singular.
+- Fixes a bug loading an heterogeneous Bayesian network from a file.
+- Introduces a check that a needed category exists in discrete data.
+- :class:`Assignment <pybnesian.Assignment>` now supports integer numbers converting them automatically to float.
+- Fix a bug in :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` that caused the return of Bayesian networks with :class:`UnknownFactorType <pybnesian.UnknownFactorType>`.
+- Reduces memory usage when fitting and printing an hybrid :class:`Factor <pybnesian.Factor>`.
+- Fixes a precision bug in :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
+- Improves :class:`CrossValidation <pybnesian.CrossValidation>` parameter checking.
+
 v0.3.2
 ======
 

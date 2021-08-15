@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.3
+
+- Adds support for pyarrow 5.0.0 in the PyPi wheels.
+- Added `Arguments.args()` to access the `args` and `kwargs` for a node.
+- Added `BayesianNetworkBase.underlying_node_type()` to get the underlying node type of a node given some data.
+- Improves the fitting of hybrid factors. Now, an specific discrete configuration can be left unfitted if the base continuous factor raises `SingularCovarianceData`.
+- Improves the `LinearGaussianCPD` fit when the covariance matrix of the data is singular.
+- Improves the `NormalReferenceRule`, `ScottsBandwidth`, and `UCV` estimation when the covariance of the data is singular.
+- Fixes a bug loading an heterogeneous Bayesian network from a file.
+- Introduces a check that a needed category exists in discrete data.
+- `Assignment` now supports integer numbers converting them automatically to float.
+- Fix a bug in `GreedyHillClimbing` that caused the return of Bayesian networks with `UnknownFactorType`.
+- Reduces memory usage when fitting and printing an hybrid `Factor`.
+- Fixes a precision bug in `GreedyHillClimbing`.
+- Improves `CrossValidation` parameter checking.
+
 ## v0.3.2
 
 - Fixed a bug in the `UCV` bandwidth selector that may cause segmentation fault.

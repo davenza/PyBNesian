@@ -137,7 +137,9 @@ bool is_psd(const M& m) {
     using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;
     Eigen::SelfAdjointEigenSolver<MatrixType> eigen_solver(m, Eigen::EigenvaluesOnly);
 
-    if (eigen_solver.eigenvalues().minCoeff() < util::machine_tol) {
+    auto tol = eigen_solver.eigenvalues().maxCoeff() * m.rows() * std::numeric_limits<typename M::Scalar>::epsilon();
+
+    if (eigen_solver.eigenvalues().minCoeff() < tol) {
         return false;
     }
 

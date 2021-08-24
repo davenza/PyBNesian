@@ -225,7 +225,6 @@ void random_fourier_features(InputMatrix& m,
     for (auto j = 0; j < W.cols(); ++j) {
         for (auto i = 0; i < W.rows(); ++i) {
             W(i, j) = normal(rng);
-            ;
         }
     }
     W *= (1 / sigma);

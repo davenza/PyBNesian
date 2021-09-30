@@ -12,6 +12,8 @@
 
 namespace py = pybind11;
 
+using models::GaussianNetworkType;
+
 using learning::algorithms::GreedyHillClimbing, learning::algorithms::PC, learning::algorithms::MeekRules,
     learning::algorithms::MMPC, learning::algorithms::MMHC;
 using learning::algorithms::callbacks::Callback, learning::algorithms::callbacks::SaveModel;
@@ -463,7 +465,7 @@ This class implements Max-Min Hill-Climbing (MMHC) [mmhc]_. The MMHC algorithm f
              py::arg("operators"),
              py::arg("score"),
              py::arg("nodes") = std::vector<std::string>(),
-             py::arg("bn_type") = "gbn",
+             py::arg("bn_type") = GaussianNetworkType::get(),
              py::arg("arc_blacklist") = ArcStringVector(),
              py::arg("arc_whitelist") = ArcStringVector(),
              py::arg("edge_blacklist") = EdgeStringVector(),
@@ -486,9 +488,7 @@ with the set of parameters provided.
 :param score: :class:`Score <pybnesian.Score>` that drives the search (for :class:`GreedyHillClimbing`).
 :param nodes: The list of nodes of the returned skeleton. If empty (the default value), the node names are extracted
               from :func:`IndependenceTest.variable_names() <pybnesian.IndependenceTest.variable_names>`.
-:param bn_type: A string representing the type of Bayesian network trained. The possible options are: "gbn" for Gaussian
-                networks, "spbn" for semiparametric Bayesian network, "kdebn" for KDE Bayesian networks and "discretebn"
-                for discrete Bayesian networks.
+:param bn_type: A :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs).
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
@@ -514,7 +514,7 @@ with the set of parameters provided.
              py::arg("score"),
              py::arg("nodes") = std::vector<std::string>(),
              py::arg("interface_nodes") = std::vector<std::string>(),
-             py::arg("bn_type") = "gbn",
+             py::arg("bn_type") = GaussianNetworkType::get(),
              py::arg("arc_blacklist") = ArcStringVector(),
              py::arg("arc_whitelist") = ArcStringVector(),
              py::arg("edge_blacklist") = EdgeStringVector(),
@@ -537,9 +537,7 @@ Estimates the structure of a conditional Bayesian network. This implementation c
 :param score: :class:`Score <pybnesian.Score>` that drives the search (for :class:`GreedyHillClimbing`).
 :param nodes: The list of nodes of the returned skeleton.
 :param interface_nodes: The list of interface nodes of the returned skeleton.
-:param bn_type: A string representing the type of Bayesian network trained. The possible options are: "gbn" for Gaussian
-                networks, "spbn" for semiparametric Bayesian network, "kdebn" for KDE Bayesian networks and "discretebn"
-                for discrete Bayesian networks.
+:param bn_type: A :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs).
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
@@ -570,7 +568,7 @@ train the static and transition components of the dynamic Bayesian network.
              py::arg("operators"),
              py::arg("score"),
              py::arg("variables") = std::vector<std::string>(),
-             py::arg("bn_type") = "gbn",
+             py::arg("bn_type") = GaussianNetworkType::get(),
              py::arg("markovian_order") = 1,
              py::arg("static_callback") = nullptr,
              py::arg("transition_callback") = nullptr,
@@ -592,9 +590,7 @@ Bayesian networks. This set of parameters are provided to the functions :func:`M
               (for :class:`GreedyHillClimbing`).
 :param variables: The list of variables of the dynamic Bayesian network. If empty (the default value), the variable
                   names are extracted from :func:`DynamicIndependenceTest.variable_names() <pybnesian.DynamicIndependenceTest.variable_names>`.
-:param bn_type: A string representing the type of Bayesian network trained. The possible options are: "gbn" for Gaussian
-                networks, "spbn" for semiparametric Bayesian network, "kdebn" for KDE Bayesian networks and "discretebn"
-                for discrete Bayesian networks.
+:param bn_type: A :class:`BayesianNetworkType <pybnesian.BayesianNetworkType>`.
 :param markovian_order: The markovian order of the dynamic Bayesian network.
 :param static_callback: Callback object that is called after each iteration of :class:`GreedyHillClimbing` to learn the
                         static component of the dynamic Bayesian network.

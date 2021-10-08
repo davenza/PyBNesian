@@ -1,5 +1,6 @@
 #include <learning/independences/discrete/chi_square.hpp>
 #include <factors/discrete/discrete_indices.hpp>
+#include <util/math_constants.hpp>
 #include <boost/math/distributions/chi_squared.hpp>
 
 namespace learning::independences::discrete {
@@ -122,6 +123,12 @@ double ChiSquare::pvalue(const std::string& v1, const std::string& v2, const std
                 }
             }
         }
+    }
+
+    // Avoids error: OverflowError: Error in function boost::math::tgamma<long double>(long double): Result of tgamma is too large to represent.
+    // of Boost, when statistic is very close to 0.
+    if (statistic < util::machine_tol) {
+        return 1;
     }
 
     auto df = (cardinality(0) - 1) * (cardinality(1) - 1) * evidence_configurations;

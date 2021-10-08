@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.4
+
+- Improvements on the code that checks that a matrix is positive definite.
+- A bug affecting the learning of conditional Bayesian networks with `MMHC` has been fixed. This bug also affected `DMMHC`.
+- Fixed a bug that affected the type of the parameter `bn_type` of `MMHC.estimate()`, `MMHC.estimate_conditional()` and `DMMHC.estimate()`.
+
 ## v0.3.3
 
 - Adds support for pyarrow 5.0.0 in the PyPi wheels.

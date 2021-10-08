@@ -22,8 +22,8 @@ copyright = '2021, David Atienza'
 author = 'David Atienza'
 
 # The full version, including alpha/beta/rc tags
-version = '0.3.3'
-release = '0.3.3'
+version = '0.3.4'
+release = '0.3.4'
 
 
 # -- General configuration ---------------------------------------------------

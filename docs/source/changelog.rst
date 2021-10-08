@@ -2,6 +2,13 @@
 Changelog
 *********
 
+v0.3.4
+======
+
+- Improvements on the code that checks that a matrix positive definite.
+- A bug affecting the learning of conditional Bayesian networks with :class:`MMHC <pybnesian.MMHC>` has been fixed. This bug also affected :class:`DMMHC <pybnesian.DMMHC>`.
+- Fixed a bug that affected the type of the parameter ``bn_type`` of :func:`MMHC.estimate <pybnesian.MMHC.estimate>`, :func:`MMHC.estimate_conditional <pybnesian.MMHC.estimate_conditional>` and :func:`DMMHC.estimate <pybnesian.DMMHC.estimate>`.
+
 v0.3.3
 ======
 

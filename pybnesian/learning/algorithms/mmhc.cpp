@@ -65,7 +65,7 @@ ArcStringVector create_conditional_hc_blacklist(ConditionalBayesianNetworkBase& 
             auto iindex = bn.index(inode);
 
             if (!cpcs[nindex].count(iindex)) {
-                blacklist.push_back({nodes[iindex], nodes[nindex]});
+                blacklist.push_back({inode, node});
             }
         }
     }

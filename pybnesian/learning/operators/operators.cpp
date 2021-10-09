@@ -2,6 +2,7 @@
 #include <models/SemiparametricBN.hpp>
 #include <learning/scores/scores.hpp>
 #include <learning/operators/operators.hpp>
+#include <util/validate_whitelists.hpp>
 
 using models::BayesianNetworkType, models::SemiparametricBNType;
 
@@ -27,11 +28,14 @@ void ArcOperatorSet::update_valid_ops(const BayesianNetworkBase& model) {
     auto val_ptr = valid_op.data();
     std::fill(val_ptr, val_ptr + num_nodes * num_nodes, true);
 
-    auto valid_ops = (num_nodes * num_nodes) - 2 * m_whitelist.size() - m_blacklist.size() - num_nodes;
+    auto restrictions = util::validate_restrictions(model, m_blacklist, m_whitelist);
 
-    for (const auto& whitelist_arc : m_whitelist) {
-        int source_index = model.collapsed_index(whitelist_arc.first);
-        int target_index = model.collapsed_index(whitelist_arc.second);
+    auto valid_ops =
+        (num_nodes * num_nodes) - 2 * restrictions.arc_whitelist.size() - restrictions.arc_blacklist.size() - num_nodes;
+
+    for (const auto& whitelist_arc : restrictions.arc_whitelist) {
+        int source_index = model.collapsed_from_index(whitelist_arc.first);
+        int target_index = model.collapsed_from_index(whitelist_arc.second);
 
         valid_op(source_index, target_index) = false;
         valid_op(target_index, source_index) = false;
@@ -39,9 +43,9 @@ void ArcOperatorSet::update_valid_ops(const BayesianNetworkBase& model) {
         delta(target_index, source_index) = std::numeric_limits<double>::lowest();
     }
 
-    for (const auto& blacklist_arc : m_blacklist) {
-        int source_index = model.collapsed_index(blacklist_arc.first);
-        int target_index = model.collapsed_index(blacklist_arc.second);
+    for (const auto& blacklist_arc : restrictions.arc_blacklist) {
+        int source_index = model.collapsed_from_index(blacklist_arc.first);
+        int target_index = model.collapsed_from_index(blacklist_arc.second);
 
         valid_op(source_index, target_index) = false;
         delta(source_index, target_index) = std::numeric_limits<double>::lowest();
@@ -159,27 +163,29 @@ void ArcOperatorSet::update_valid_ops(const ConditionalBayesianNetworkBase& mode
     auto val_ptr = valid_op.data();
     std::fill(val_ptr, val_ptr + total_nodes * num_nodes, true);
 
+    auto restrictions = util::validate_restrictions(model, m_blacklist, m_whitelist);
+
     auto valid_ops = total_nodes * num_nodes - num_nodes;
 
-    for (const auto& whitelist_arc : m_whitelist) {
-        int source_joint_collapsed = model.joint_collapsed_index(whitelist_arc.first);
-        int target_collapsed = model.collapsed_index(whitelist_arc.second);
+    for (const auto& whitelist_arc : restrictions.arc_whitelist) {
+        int source_joint_collapsed = model.joint_collapsed_from_index(whitelist_arc.first);
+        int target_collapsed = model.collapsed_from_index(whitelist_arc.second);
 
         valid_op(source_joint_collapsed, target_collapsed) = false;
         delta(source_joint_collapsed, target_collapsed) = std::numeric_limits<double>::lowest();
         --valid_ops;
-        if (!model.is_interface(whitelist_arc.first)) {
-            int target_joint_collapsed = model.joint_collapsed_index(whitelist_arc.second);
-            int source_collapsed = model.collapsed_index(whitelist_arc.first);
+        if (!model.is_interface(model.name(whitelist_arc.first))) {
+            int target_joint_collapsed = model.joint_collapsed_from_index(whitelist_arc.second);
+            int source_collapsed = model.collapsed_from_index(whitelist_arc.first);
             valid_op(target_joint_collapsed, source_collapsed) = false;
             delta(target_joint_collapsed, source_collapsed) = std::numeric_limits<double>::lowest();
             --valid_ops;
         }
     }
 
-    for (const auto& blacklist_arc : m_blacklist) {
-        int source_joint_collapsed = model.joint_collapsed_index(blacklist_arc.first);
-        int target_collapsed = model.collapsed_index(blacklist_arc.second);
+    for (const auto& blacklist_arc : restrictions.arc_blacklist) {
+        int source_joint_collapsed = model.joint_collapsed_from_index(blacklist_arc.first);
+        int target_collapsed = model.collapsed_from_index(blacklist_arc.second);
 
         valid_op(source_joint_collapsed, target_collapsed) = false;
         delta(source_joint_collapsed, target_collapsed) = std::numeric_limits<double>::lowest();
@@ -472,7 +478,7 @@ void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Sco
                 bool not_blacklisted =
                     m_type_blacklist.find(std::make_pair(collapsed_name, alt_node_types[k])) == m_type_blacklist.end();
 
-                if (bn_type->compatible_node_type(model, collapsed_name, alt_node_types[k]) && not_blacklisted) {
+                if (not_blacklisted && bn_type->compatible_node_type(model, collapsed_name, alt_node_types[k])) {
                     auto parents = model.parents(collapsed_name);
                     delta.back()(k) =
                         score.local_score(model, alt_node_types[k], collapsed_name, parents) - current_score;

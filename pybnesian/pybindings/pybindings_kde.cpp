@@ -100,7 +100,7 @@ public:
 };
 
 void pybindings_kde(py::module& root) {
-//     py::exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
+    //     py::exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
     py::register_exception<singular_covariance_data>(root, "SingularCovarianceData", PyExc_ValueError);
 
     py::class_<BandwidthSelector, PyBandwidthSelector, std::shared_ptr<BandwidthSelector>>(

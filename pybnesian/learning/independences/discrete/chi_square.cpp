@@ -125,8 +125,8 @@ double ChiSquare::pvalue(const std::string& v1, const std::string& v2, const std
         }
     }
 
-    // Avoids error: OverflowError: Error in function boost::math::tgamma<long double>(long double): Result of tgamma is too large to represent.
-    // of Boost, when statistic is very close to 0.
+    // Avoids error: OverflowError: Error in function boost::math::tgamma<long double>(long double): Result of tgamma is
+    // too large to represent. of Boost, when statistic is very close to 0.
     if (statistic < util::machine_tol) {
         return 1;
     }

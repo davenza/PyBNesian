@@ -141,6 +141,7 @@ public:
     virtual int num_joint_nodes() const = 0;
     virtual const std::vector<std::string>& interface_nodes() const = 0;
     virtual const std::vector<std::string>& joint_nodes() const = 0;
+    virtual ArcStringVector interface_arcs() const = 0;
     virtual int interface_collapsed_index(const std::string& name) const = 0;
     virtual int joint_collapsed_index(const std::string& name) const = 0;
     virtual const std::unordered_map<std::string, int>& interface_collapsed_indices() const = 0;
@@ -1178,6 +1179,8 @@ public:
     const std::vector<std::string>& interface_nodes() const override { return this->g.interface_nodes(); }
 
     const std::vector<std::string>& joint_nodes() const override { return this->g.joint_nodes(); }
+
+    ArcStringVector interface_arcs() const override { return this->g.interface_arcs(); }
 
     int interface_collapsed_index(const std::string& name) const override {
         return this->g.interface_collapsed_index(name);

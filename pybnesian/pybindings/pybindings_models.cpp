@@ -479,6 +479,8 @@ public:
         PYBIND11_OVERRIDE_PURE(const std::vector<std::string>&, Base, joint_nodes, );
     }
 
+    ArcStringVector interface_arcs() const override { PYBIND11_OVERRIDE_PURE(ArcStringVector, Base, interface_arcs, ); }
+
     int interface_collapsed_index(const std::string& name) const override {
         PYBIND11_OVERRIDE_PURE(int, Base, interface_collapsed_index, name);
     }
@@ -818,6 +820,8 @@ public:
     const std::vector<std::string>& joint_nodes() const override {
         PYBIND11_OVERRIDE(const std::vector<std::string>&, Base, joint_nodes, );
     }
+
+    ArcStringVector interface_arcs() const override { PYBIND11_OVERRIDE(ArcStringVector, Base, interface_arcs, ); }
 
     int interface_collapsed_index(const std::string& name) const override {
         PYBIND11_OVERRIDE(int, Base, interface_collapsed_index, name);
@@ -1411,6 +1415,11 @@ Gets the interface nodes of the Bayesian network.
 Gets the joint set of nodes of the Bayesian network.
 
 :returns: Joint set of nodes of the Bayesian network.
+)doc")
+        .def("interface_arcs", &CppClass::interface_arcs, py::return_value_policy::reference_internal, R"doc(
+Gets the arcs where the source node is an interface node.
+
+:returns: arcs with an interface node as source node.
 )doc")
         .def("interface_collapsed_indices",
              &CppClass::interface_collapsed_indices,

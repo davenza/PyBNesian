@@ -31,13 +31,13 @@ def test_lists():
 
     arc_op.set_arc_blacklist([("e", "a")])
 
-    with pytest.raises(IndexError) as ex:
+    with pytest.raises(ValueError) as ex:
         arc_op.cache_scores(gbn, bic)
     assert "not present in the graph" in str(ex.value)
 
     arc_op.set_arc_whitelist([("e", "a")])
 
-    with pytest.raises(IndexError) as ex:
+    with pytest.raises(ValueError) as ex:
         arc_op.cache_scores(gbn, bic)
     assert "not present in the graph" in str(ex.value)
 

@@ -4,6 +4,10 @@
 #include <pybind11/pybind11.h>
 #include <factors/factors.hpp>
 #include <util/hash_utils.hpp>
+#include <util/util_types.hpp>
+
+using util::FactorTypeHash, util::FactorTypeEqualTo, util::PairNameType, util::NameFactorTypeHash,
+    util::NameFactorTypeEqualTo;
 
 namespace py = pybind11;
 
@@ -130,32 +134,6 @@ private:
             "The provided arguments must be a 2-tuple (Args(...), Kwargs(...)),"
             " an Args(...) (or tuple) or a Kwargs(...) (or dict).");
     }
-
-    struct FactorTypeHash {
-        size_t operator()(const std::shared_ptr<FactorType>& ft) const { return ft->hash(); }
-    };
-
-    struct FactorTypeEqualTo {
-        bool operator()(const std::shared_ptr<FactorType>& lhs, const std::shared_ptr<FactorType>& rhs) const {
-            return *lhs == *rhs;
-        }
-    };
-
-    using PairNameType = std::pair<std::string, std::shared_ptr<FactorType>>;
-
-    struct NameFactorTypeHash {
-        size_t operator()(const PairNameType& p) const {
-            size_t h = std::hash<std::string>{}(p.first);
-            util::hash_combine(h, p.second->hash());
-            return h;
-        }
-    };
-
-    struct NameFactorTypeEqualTo {
-        bool operator()(const PairNameType& lhs, const PairNameType& rhs) const {
-            return lhs.first == rhs.first && *lhs.second == *rhs.second;
-        }
-    };
 
     std::unordered_map<std::string, std::pair<py::args, py::kwargs>> m_name_args;
     std::unordered_map<std::shared_ptr<FactorType>, std::pair<py::args, py::kwargs>, FactorTypeHash, FactorTypeEqualTo>

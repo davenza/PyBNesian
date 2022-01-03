@@ -6,7 +6,7 @@ MapDataToFactor keep_MapDataToFactor_alive(MapDataToFactor& m) {
     MapDataToFactor alive;
 
     for (auto& item : m) {
-        alive.insert({item.first, FactorType::keep_python_alive(item.second)});
+        alive.insert({item.first, FactorType::keep_vector_python_alive(item.second)});
     }
 
     return alive;

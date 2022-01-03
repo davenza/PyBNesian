@@ -32,15 +32,18 @@ public:
 
     bool is_homogeneous() const override { return false; }
 
-    std::shared_ptr<FactorType> default_node_type() const override { return LinearGaussianCPDType::get(); }
+    std::shared_ptr<FactorType> default_node_type() const override {
+        throw std::runtime_error("default_node_type() for CLGNetwork is not defined.");
+    }
 
-    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const override {
+    std::vector<std::shared_ptr<FactorType>> data_default_node_type(
+        const std::shared_ptr<DataType>& dt) const override {
         switch (dt->id()) {
             case Type::DOUBLE:
             case Type::FLOAT:
-                return LinearGaussianCPDType::get();
+                return {LinearGaussianCPDType::get()};
             case Type::DICTIONARY:
-                return DiscreteFactorType::get();
+                return {DiscreteFactorType::get()};
             default:
                 throw std::invalid_argument("Data type [" + dt->ToString() + "] not compatible with CLGNetworkType");
         }

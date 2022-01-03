@@ -19,8 +19,8 @@ public:
     }
 };
 
-using MapDataToFactor =
-    std::unordered_map<std::shared_ptr<DataType>, std::shared_ptr<FactorType>, DataTypeHash, DataTypeEqualTo>;
+using MapDataToFactor = std::
+    unordered_map<std::shared_ptr<DataType>, std::vector<std::shared_ptr<FactorType>>, DataTypeHash, DataTypeEqualTo>;
 
 MapDataToFactor keep_MapDataToFactor_alive(MapDataToFactor& m);
 
@@ -29,18 +29,34 @@ public:
     HeterogeneousBNType(const HeterogeneousBNType&) = delete;
     void operator=(const HeterogeneousBNType&) = delete;
 
-    HeterogeneousBNType(std::shared_ptr<FactorType> default_ft)
+    HeterogeneousBNType(std::vector<std::shared_ptr<FactorType>> default_ft)
         : m_default_ftype(default_ft), m_default_ftypes(), m_single_default(true) {
-        if (default_ft == nullptr) throw std::invalid_argument("Default factor_type cannot be null.");
-
+        if (default_ft.empty()) throw std::invalid_argument("Default factor_type cannot be empty.");
         auto obj = py::cast(this);
 
         m_hash = reinterpret_cast<std::uintptr_t>(obj.get_type().ptr());
-        util::hash_combine(m_hash, default_ft->hash());
+
+        for (const auto& f : m_default_ftype) {
+            if (f) {
+                util::hash_combine(m_hash, f->hash());
+            } else {
+                throw std::invalid_argument("Default factor_type cannot contain null FactorType.");
+            }
+        }
     }
 
     HeterogeneousBNType(MapDataToFactor default_fts)
         : m_default_ftype(), m_default_ftypes(default_fts), m_single_default(false) {
+        for (auto it = m_default_ftypes.begin(), end = m_default_ftypes.end(); it != end;) {
+            if (it->second.empty()) {
+                it = m_default_ftypes.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
+        if (m_default_ftypes.empty()) throw std::invalid_argument("Default factor_type cannot be empty.");
+
         auto obj = py::cast(this);
         m_hash = reinterpret_cast<std::uintptr_t>(obj.get_type().ptr());
 
@@ -48,11 +64,19 @@ public:
         // https://stackoverflow.com/questions/20832279/python-frozenset-hashing-algorithm-implementation
         // https://github.com/python/cpython/blob/main/Objects/setobject.c
         for (const auto& ft : m_default_ftypes) {
-            if (ft.first == nullptr) throw std::invalid_argument("Default factor_types cannot contain null.");
-            if (ft.second == nullptr) throw std::invalid_argument("Default factor_types cannot contain null.");
+            if (ft.first == nullptr) throw std::invalid_argument("Default factor_types cannot contain null DataType.");
+
+            auto nt_hash = ft.second.size();
+            for (const auto& f : ft.second) {
+                if (f) {
+                    util::hash_combine(nt_hash, f->hash());
+                } else {
+                    throw std::invalid_argument("Default factor_type cannot contain null FactorType.");
+                }
+            }
 
             auto partial_hash = ft.first->Hash();
-            util::hash_combine(partial_hash, ft.second->hash());
+            util::hash_combine(partial_hash, nt_hash);
 
             m_hash ^= ((partial_hash ^ 89869747UL) ^ (partial_hash << 16)) * 3644798167UL;
         }
@@ -64,13 +88,11 @@ public:
     bool is_homogeneous() const override { return false; }
 
     std::shared_ptr<FactorType> default_node_type() const override {
-        if (m_single_default) {
-            return m_default_ftype;
-        } else {
-            throw std::invalid_argument("There is no single default node type for HomogeneousBNType.");
-        }
+        throw std::runtime_error("default_node_type() for HeterogeneousBN is not defined.");
     }
-    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const override {
+
+    std::vector<std::shared_ptr<FactorType>> data_default_node_type(
+        const std::shared_ptr<DataType>& dt) const override {
         if (m_single_default) {
             return m_default_ftype;
         } else {
@@ -86,43 +108,94 @@ public:
 
     bool single_default() const { return m_single_default; }
 
-    MapDataToFactor default_node_types() const { return m_default_ftypes; }
+    MapDataToFactor default_node_types() const {
+        if (m_single_default) {
+            MapDataToFactor ret;
+            ret.insert({nullptr, m_default_ftype});
+            return ret;
+        } else {
+            return m_default_ftypes;
+        }
+    }
 
     std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const override;
     std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
         const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes) const override;
 
-    std::string ToString() const override { return "HeterogeneousBNType(" + m_default_ftype->ToString() + ")"; }
+    std::string ToString() const override {
+        std::stringstream ss;
+        ss << "HeterogeneousBNType(";
+        if (m_single_default) {
+            ss << "[" << m_default_ftype[0]->ToString();
 
-    py::tuple __getstate__() const override { return py::make_tuple(m_default_ftype); }
+            for (auto it = ++m_default_ftype.begin(), end = m_default_ftype.end(); it != end; ++it) {
+                ss << ", " << (*it)->ToString();
+            }
+
+            ss << "])";
+        } else {
+            ss << "{";
+
+            auto beg = m_default_ftypes.begin();
+            ss << beg->first->ToString() << ": [" << beg->second[0]->ToString();
+            for (auto it = ++beg->second.begin(), end = beg->second.end(); it != end; ++it) {
+                ss << ", " << (*it)->ToString();
+            }
+
+            ss << "]";
+
+            for (auto dt_it = ++m_default_ftypes.begin(), dt_end = m_default_ftypes.end(); dt_it != dt_end; ++dt_it) {
+                ss << ", " << dt_it->first->ToString() << ": [" << dt_it->second[0]->ToString();
+                for (auto it = ++dt_it->second.begin(), end = dt_it->second.end(); it != end; ++it) {
+                    ss << ", " << (*it)->ToString();
+                }
+                ss << "]";
+            }
+
+            ss << "})";
+        }
+
+        return ss.str();
+    }
+
+    py::tuple __getstate__() const override {
+        return py::make_tuple(m_default_ftype, m_default_ftypes, m_single_default);
+    }
 
     static std::shared_ptr<HeterogeneousBNType> __setstate__(py::tuple& t) {
-        auto default_ftype = t[0].cast<std::shared_ptr<FactorType>>();
-        return std::make_shared<HeterogeneousBNType>(default_ftype);
+        auto single_default = t[2].cast<bool>();
+
+        if (single_default) {
+            return std::make_shared<HeterogeneousBNType>(t[0].cast<std::vector<std::shared_ptr<FactorType>>>());
+        } else {
+            return std::make_shared<HeterogeneousBNType>(t[1].cast<MapDataToFactor>());
+        }
     }
 
     static std::shared_ptr<HeterogeneousBNType> __setstate__(py::tuple&& t) { return __setstate__(t); }
 
 private:
-    std::shared_ptr<FactorType> m_default_ftype;
+    std::vector<std::shared_ptr<FactorType>> m_default_ftype;
     MapDataToFactor m_default_ftypes;
     bool m_single_default;
 };
 
 class HeterogeneousBN : public clone_inherit<HeterogeneousBN, BayesianNetwork> {
 public:
-    HeterogeneousBN(std::shared_ptr<FactorType> ft, const std::vector<std::string>& nodes)
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const std::vector<std::string>& nodes)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes) {}
 
-    HeterogeneousBN(std::shared_ptr<FactorType> ft, const ArcStringVector& arcs)
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), arcs) {}
 
-    HeterogeneousBN(std::shared_ptr<FactorType> ft, const std::vector<std::string>& nodes, const ArcStringVector& arcs)
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                    const std::vector<std::string>& nodes,
+                    const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, arcs) {}
 
-    HeterogeneousBN(std::shared_ptr<FactorType> ft, const Dag& graph)
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const Dag& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), graph) {}
-    HeterogeneousBN(std::shared_ptr<FactorType> ft, Dag&& graph)
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, Dag&& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), std::move(graph)) {}
 
     HeterogeneousBN(MapDataToFactor fts, const std::vector<std::string>& nodes)
@@ -144,20 +217,20 @@ public:
 
 class ConditionalHeterogeneousBN : public clone_inherit<ConditionalHeterogeneousBN, ConditionalBayesianNetwork> {
 public:
-    ConditionalHeterogeneousBN(std::shared_ptr<FactorType> ft,
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
                                const std::vector<std::string>& nodes,
                                const std::vector<std::string>& interface_nodes)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, interface_nodes) {}
 
-    ConditionalHeterogeneousBN(std::shared_ptr<FactorType> ft,
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
                                const std::vector<std::string>& nodes,
                                const std::vector<std::string>& interface_nodes,
                                const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, interface_nodes, arcs) {}
 
-    ConditionalHeterogeneousBN(std::shared_ptr<FactorType> ft, const ConditionalDag& graph)
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const ConditionalDag& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), graph) {}
-    ConditionalHeterogeneousBN(std::shared_ptr<FactorType> ft, ConditionalDag&& graph)
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, ConditionalDag&& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), std::move(graph)) {}
 
     ConditionalHeterogeneousBN(MapDataToFactor fts,
@@ -181,7 +254,7 @@ public:
 
 class DynamicHeterogeneousBN : public clone_inherit<DynamicHeterogeneousBN, DynamicBayesianNetwork> {
 public:
-    DynamicHeterogeneousBN(std::shared_ptr<FactorType> ft,
+    DynamicHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
                            const std::vector<std::string>& variables,
                            int markovian_order)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), variables, markovian_order) {}
@@ -218,24 +291,31 @@ std::shared_ptr<DerivedBN> __heterogeneous_setstate__(py::tuple& t) {
 
     std::shared_ptr<DerivedBN> bn = [&node_types, &dwn_type, &dag]() {
         if (node_types.empty()) {
-            if (dwn_type->single_default())
-                return std::make_shared<DerivedBN>(dwn_type->default_node_type(), std::move(dag));
-            else
+            if (dwn_type->single_default()) {
+                auto nts = dwn_type->default_node_types();
+                auto nt = nts.find(nullptr);
+                return std::make_shared<DerivedBN>(nt->second, std::move(dag));
+            } else {
                 return std::make_shared<DerivedBN>(dwn_type->default_node_types(), std::move(dag));
+            }
         }
 
         if (dwn_type->single_default()) {
-            if constexpr (std::
-                              is_constructible_v<DerivedBN, std::shared_ptr<FactorType>, DagType&&, FactorTypeVector>) {
-                return std::make_shared<DerivedBN>(dwn_type->default_node_type(), std::move(dag), node_types);
+            if constexpr (std::is_constructible_v<DerivedBN,
+                                                  std::vector<std::shared_ptr<FactorType>>,
+                                                  DagType&&,
+                                                  FactorTypeVector>) {
+                auto nts = dwn_type->default_node_types();
+                auto nt = nts.find(nullptr);
+                return std::make_shared<DerivedBN>(nt->second, std::move(dag), node_types);
             } else {
-                throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
+                throw std::runtime_error("Invalid node types array for heterogeneous Bayesian network.");
             }
         } else {
             if constexpr (std::is_constructible_v<DerivedBN, const MapDataToFactor&, DagType&&, FactorTypeVector>) {
                 return std::make_shared<DerivedBN>(dwn_type->default_node_types(), std::move(dag), node_types);
             } else {
-                throw std::runtime_error("Invalid node types array for non-homogeneous Bayesian network.");
+                throw std::runtime_error("Invalid node types array for heterogeneous Bayesian network.");
             }
         }
     }();

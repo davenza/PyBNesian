@@ -47,6 +47,18 @@ public:
         return f;
     }
 
+    static std::vector<std::shared_ptr<FactorType>> keep_vector_python_alive(
+        std::vector<std::shared_ptr<FactorType>>& v) {
+        std::vector<std::shared_ptr<FactorType>> fv;
+        fv.reserve(v.size());
+
+        for (auto& f : v) {
+            fv.push_back(FactorType::keep_python_alive(f));
+        }
+
+        return fv;
+    }
+
     virtual std::shared_ptr<Factor> new_factor(const BayesianNetworkBase&,
                                                const std::string&,
                                                const std::vector<std::string>&,

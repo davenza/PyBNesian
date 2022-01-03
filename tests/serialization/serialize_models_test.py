@@ -74,7 +74,7 @@ class NonHomogeneousType(BayesianNetworkType):
 
     def data_default_node_type(self, dt):
         if dt.equals(pa.float64()) or dt.equals(pa.float32()):
-            return pbn.LinearGaussianCPDType()
+            return [pbn.LinearGaussianCPDType()]
         else:
             raise ValueError("Data type not compatible with NonHomogeneousType")
 

@@ -81,6 +81,7 @@ void pybindings_algorithms(py::module& root) {
              py::arg("operators") = std::nullopt,
              py::arg("arc_blacklist") = ArcStringVector(),
              py::arg("arc_whitelist") = ArcStringVector(),
+             py::arg("type_blacklist") = FactorTypeVector(),
              py::arg("type_whitelist") = FactorTypeVector(),
              py::arg("callback") = nullptr,
              py::arg("max_indegree") = 0,
@@ -106,7 +107,8 @@ Executes a greedy hill-climbing algorithm. This calls :func:`GreedyHillClimbing.
               :class:`ValidatedLikelihood <pybnesian.ValidatedLikelihood>`.
 :param operators: Set of operators in the search process.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
-:param arc_whitelist: List of arcs whitelist (forced arcs)
+:param arc_whitelist: List of arcs whitelist (forced arcs).
+:param type_blacklist: List of type blacklist (forbidden :class:`FactorType <pybnesian.FactorType>`).
 :param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration.
 :param max_indegree: Maximum indegree allowed in the graph.
@@ -155,17 +157,19 @@ Initializes a :class:`GreedyHillClimbing`.
                                  const ArcStringVector&,
                                  const ArcStringVector&,
                                  const FactorTypeVector&,
+                                 const FactorTypeVector&,
                                  const std::shared_ptr<Callback>,
                                  int,
                                  int,
                                  double,
                                  int,
-                                 int>(&GreedyHillClimbing::estimate),
+                                 int>(&GreedyHillClimbing::estimate<ConditionalBayesianNetworkBase>),
                py::arg("operators"),
                py::arg("score"),
                py::arg("start"),
                py::arg("arc_blacklist") = ArcStringVector(),
                py::arg("arc_whitelist") = ArcStringVector(),
+               py::arg("type_blacklist") = FactorTypeVector(),
                py::arg("type_whitelist") = FactorTypeVector(),
                py::arg("callback") = nullptr,
                py::arg("max_indegree") = 0,
@@ -180,17 +184,19 @@ Initializes a :class:`GreedyHillClimbing`.
                                    const ArcStringVector&,
                                    const ArcStringVector&,
                                    const FactorTypeVector&,
+                                   const FactorTypeVector&,
                                    const std::shared_ptr<Callback>,
                                    int,
                                    int,
                                    double,
                                    int,
-                                   int>(&GreedyHillClimbing::estimate),
+                                   int>(&GreedyHillClimbing::estimate<BayesianNetworkBase>),
                  py::arg("operators"),
                  py::arg("score"),
                  py::arg("start"),
                  py::arg("arc_blacklist") = ArcStringVector(),
                  py::arg("arc_whitelist") = ArcStringVector(),
+                 py::arg("type_blacklist") = FactorTypeVector(),
                  py::arg("type_whitelist") = FactorTypeVector(),
                  py::arg("callback") = nullptr,
                  py::arg("max_indegree") = 0,
@@ -199,7 +205,7 @@ Initializes a :class:`GreedyHillClimbing`.
                  py::arg("patience") = 0,
                  py::arg("verbose") = 0,
                  R"doc(
-estimate(self: pybnesian.GreedyHillClimbing, operators: pybnesian.OperatorSet, score: pybnesian.Score, start: BayesianNetworkBase or ConditionalBayesianNetworkBase, arc_blacklist: List[Tuple[str, str]] = [], arc_whitelist: List[Tuple[str, str]] = [], type_whitelist: List[Tuple[str, pybnesian.FactorType]] = [], callback: pybnesian.Callback = None, max_indegree: int = 0, max_iters: int = 2147483647, epsilon: float = 0, patience: int = 0, verbose: int = 0) -> type[start]
+estimate(self: pybnesian.GreedyHillClimbing, operators: pybnesian.OperatorSet, score: pybnesian.Score, start: BayesianNetworkBase or ConditionalBayesianNetworkBase, arc_blacklist: List[Tuple[str, str]] = [], arc_whitelist: List[Tuple[str, str]] = [], type_blacklist: List[Tuple[str, pybnesian.FactorType]] = [], type_whitelist: List[Tuple[str, pybnesian.FactorType]] = [], callback: pybnesian.Callback = None, max_indegree: int = 0, max_iters: int = 2147483647, epsilon: float = 0, patience: int = 0, verbose: int = 0) -> type[start]
 
 Estimates the structure of a Bayesian network. The estimated Bayesian network is of the same type as ``start``. The set
 of operators allowed in the search is ``operators``. The delta score of each operator is evaluated using the ``score``.
@@ -213,6 +219,7 @@ There are many optional parameters that restricts to the learning process.
               :class:`ConditionalBayesianNetworkBase <pybnesian.ConditionalBayesianNetworkBase>`
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).
 :param arc_whitelist: List of arcs whitelist (forced arcs)
+:param type_blacklist: List of type blacklist (forbidden :class:`FactorType <pybnesian.FactorType>`).
 :param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration.
 :param max_indegree: Maximum indegree allowed in the graph.
@@ -470,6 +477,7 @@ This class implements Max-Min Hill-Climbing (MMHC) [mmhc]_. The MMHC algorithm f
              py::arg("arc_whitelist") = ArcStringVector(),
              py::arg("edge_blacklist") = EdgeStringVector(),
              py::arg("edge_whitelist") = EdgeStringVector(),
+             py::arg("type_blacklist") = FactorTypeVector(),
              py::arg("type_whitelist") = FactorTypeVector(),
              py::arg("callback") = nullptr,
              py::arg("max_indegree") = 0,
@@ -494,6 +502,7 @@ with the set of parameters provided.
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
                        blacklist.
 :param edge_whitelist: List of edge whitelist (forced edges).
+:param type_blacklist: List of type blacklist (forbidden :class:`FactorType <pybnesian.FactorType>`).
 :param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration of :class:`GreedyHillClimbing`.
 :param max_indegree: Maximum indegree allowed in the graph (for :class:`GreedyHillClimbing`).
@@ -519,6 +528,7 @@ with the set of parameters provided.
              py::arg("arc_whitelist") = ArcStringVector(),
              py::arg("edge_blacklist") = EdgeStringVector(),
              py::arg("edge_whitelist") = EdgeStringVector(),
+             py::arg("type_blacklist") = FactorTypeVector(),
              py::arg("type_whitelist") = FactorTypeVector(),
              py::arg("callback") = nullptr,
              py::arg("max_indegree") = 0,
@@ -543,6 +553,7 @@ Estimates the structure of a conditional Bayesian network. This implementation c
 :param edge_blacklist: List of edge blacklist (forbidden edges). This also implicitly applies a double arc
                        blacklist.
 :param edge_whitelist: List of edge whitelist (forced edges).
+:param type_blacklist: List of type blacklist (forbidden :class:`FactorType <pybnesian.FactorType>`).
 :param type_whitelist: List of type whitelist (forced :class:`FactorType <pybnesian.FactorType>`).
 :param callback: Callback object that is called after each iteration of :class:`GreedyHillClimbing`.
 :param max_indegree: Maximum indegree allowed in the graph (for :class:`GreedyHillClimbing`).

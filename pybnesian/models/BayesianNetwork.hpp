@@ -97,7 +97,8 @@ public:
     virtual std::shared_ptr<FactorType> underlying_node_type(const DataFrame&, const std::string& node) const = 0;
     virtual bool has_unknown_node_types() const = 0;
     virtual void set_node_type(const std::string& node, const std::shared_ptr<FactorType>& new_type) = 0;
-    virtual void set_unknown_node_types(const DataFrame& df) = 0;
+    virtual void set_unknown_node_types(const DataFrame& df,
+                                        const FactorTypeVector& type_blacklist = FactorTypeVector()) = 0;
     virtual void force_type_whitelist(const FactorTypeVector& type_whitelist) = 0;
     virtual std::string ToString() const = 0;
 
@@ -221,7 +222,8 @@ public:
     virtual bool is_homogeneous() const = 0;
 
     virtual std::shared_ptr<FactorType> default_node_type() const = 0;
-    virtual std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const = 0;
+    virtual std::vector<std::shared_ptr<FactorType>> data_default_node_type(
+        const std::shared_ptr<DataType>& dt) const = 0;
 
     virtual bool compatible_node_type(const BayesianNetworkBase&,
                                       const std::string&,
@@ -632,7 +634,14 @@ public:
             if (*m_node_types[node_index] != UnknownFactorType::get_ref()) {
                 return m_node_types[node_index];
             } else {
-                return m_type->data_default_node_type(df.col(node)->type());
+                auto nt = m_type->data_default_node_type(df.col(node)->type());
+                if (nt.empty()) {
+                    throw std::invalid_argument("There is no underlying FactorType for node " + node +
+                                                " as there is no valid FactorType for DataType " +
+                                                df.col(node)->type()->ToString());
+                } else {
+                    return nt[0];
+                }
             }
         }
     }
@@ -674,12 +683,31 @@ public:
         }
     }
 
-    void set_unknown_node_types(const DataFrame& df) override {
+    void set_unknown_node_types(const DataFrame& df,
+                                const FactorTypeVector& type_blacklist = FactorTypeVector()) override {
         if (m_type->is_homogeneous()) return;
+
+        util::FactorTypeSet blacklist_set{type_blacklist.begin(), type_blacklist.end()};
 
         FactorTypeVector new_types;
         for (const auto& nn : nodes()) {
-            new_types.emplace_back(nn, m_type->data_default_node_type(df.col(nn)->type()));
+            if (*node_type(nn) == UnknownFactorType::get_ref()) {
+                auto default_node_types = m_type->data_default_node_type(df.col(nn)->type());
+
+                bool found_new_type = false;
+                for (const auto& type : default_node_types) {
+                    auto new_pair = std::make_pair(nn, type);
+                    if (blacklist_set.count(new_pair) == 0) {
+                        new_types.push_back(std::move(new_pair));
+                        found_new_type = true;
+                        break;
+                    }
+                }
+
+                if (!found_new_type) {
+                    throw std::invalid_argument("A valid FactorType for node " + nn + " could not be inferred.");
+                }
+            }
         }
 
         force_type_whitelist(new_types);
@@ -906,7 +934,7 @@ void BNGeneric<DagType>::fit(const DataFrame& df, const Arguments& construction_
             auto node_type_ = node_type(nn);
 
             if (*node_type_ == UnknownFactorType::get_ref()) {
-                new_factor_types.push_back({nn, m_type->data_default_node_type(df.col(nn)->type())});
+                new_factor_types.push_back({nn, underlying_node_type(df, nn)});
             }
         }
     }

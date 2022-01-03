@@ -109,8 +109,12 @@ public:
 
         if (override) {
             auto o = override(m.shared_from_this());
-            auto nn = o.cast<std::vector<std::string>>();
-            return nn;
+
+            try {
+                return o.cast<std::vector<std::string>>();
+            } catch (py::cast_error& e) {
+                throw std::runtime_error("The returned object of Operator::nodes_changed is not a list of str.");
+            }
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"Operator::nodes_changed\"");
@@ -122,8 +126,12 @@ public:
 
         if (override) {
             auto o = override(m.shared_from_this());
-            auto nn = o.cast<std::vector<std::string>>();
-            return nn;
+
+            try {
+                return o.cast<std::vector<std::string>>();
+            } catch (py::cast_error& e) {
+                throw std::runtime_error("The returned object of Operator::nodes_changed is not a list of str.");
+            }
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"Operator::nodes_changed\"");
@@ -151,8 +159,12 @@ public:
                     throw std::invalid_argument("Operator::opposite cannot return None.");
                 }
 
-                auto op = o.cast<std::shared_ptr<Operator>>();
-                return Operator::keep_python_alive(op);
+                try {
+                    auto op = o.cast<std::shared_ptr<Operator>>();
+                    return Operator::keep_python_alive(op);
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Operator::opposite is not a Operator.");
+                }
             }
         }
 
@@ -182,8 +194,12 @@ public:
                     throw std::invalid_argument("Operator::opposite cannot return None.");
                 }
 
-                auto op = o.cast<std::shared_ptr<Operator>>();
-                return Operator::keep_python_alive(op);
+                try {
+                    auto op = o.cast<std::shared_ptr<Operator>>();
+                    return Operator::keep_python_alive(op);
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Operator::opposite is not a Operator.");
+                }
             }
         }
 
@@ -303,8 +319,12 @@ public:
             py::function override = pybind11::get_override(static_cast<const OperatorSet*>(this), "find_max");
             if (override) {
                 auto o = override(model.shared_from_this());
-                auto op = o.cast<std::shared_ptr<Operator>>();
-                return Operator::keep_python_alive(op);
+                try {
+                    auto op = o.cast<std::shared_ptr<Operator>>();
+                    return Operator::keep_python_alive(op);
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Operator::find_max is not a Operator.");
+                }
             }
         }
 
@@ -332,8 +352,12 @@ public:
             py::function override = pybind11::get_override(static_cast<const OperatorSet*>(this), "find_max");
             if (override) {
                 auto o = override(model.shared_from_this());
-                auto op = o.cast<std::shared_ptr<Operator>>();
-                return Operator::keep_python_alive(op);
+                try {
+                    auto op = o.cast<std::shared_ptr<Operator>>();
+                    return Operator::keep_python_alive(op);
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Operator::find_max is not a Operator.");
+                }
             }
         }
 
@@ -363,8 +387,12 @@ public:
             py::function override = pybind11::get_override(static_cast<const OperatorSet*>(this), "find_max_tabu");
             if (override) {
                 auto o = override(model.shared_from_this(), &tabu);
-                auto op = o.cast<std::shared_ptr<Operator>>();
-                return Operator::keep_python_alive(op);
+                try {
+                    auto op = o.cast<std::shared_ptr<Operator>>();
+                    return Operator::keep_python_alive(op);
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Operator::find_max_tabu is not a Operator.");
+                }
             }
         }
 
@@ -395,8 +423,12 @@ public:
             py::function override = pybind11::get_override(static_cast<const OperatorSet*>(this), "find_max_tabu");
             if (override) {
                 auto o = override(model.shared_from_this(), &tabu);
-                auto op = o.cast<std::shared_ptr<Operator>>();
-                return Operator::keep_python_alive(op);
+                try {
+                    auto op = o.cast<std::shared_ptr<Operator>>();
+                    return Operator::keep_python_alive(op);
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Operator::find_max_tabu is not a Operator.");
+                }
             }
         }
 

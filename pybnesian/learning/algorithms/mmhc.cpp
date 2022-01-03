@@ -82,6 +82,7 @@ std::shared_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test
                                                     const ArcStringVector& varc_whitelist,
                                                     const EdgeStringVector& vedge_blacklist,
                                                     const EdgeStringVector& vedge_whitelist,
+                                                    const FactorTypeVector& type_blacklist,
                                                     const FactorTypeVector& type_whitelist,
                                                     const std::shared_ptr<Callback> callback,
                                                     int max_indegree,
@@ -111,6 +112,7 @@ std::shared_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test
 
     auto restrictions =
         util::validate_restrictions(skeleton, varc_blacklist, varc_whitelist, vedge_blacklist, vedge_whitelist);
+    util::validate_type_restrictions(skeleton, type_blacklist, type_whitelist);
 
     auto progress = util::progress_bar(verbose);
     auto cpcs = mmpc_all_variables(test,
@@ -132,23 +134,19 @@ std::shared_ptr<BayesianNetworkBase> MMHC::estimate(const IndependenceTest& test
         arc_whitelist.push_back({skeleton.name(p.first), skeleton.name(p.second)});
     }
 
-    if (auto validated_score = dynamic_cast<ValidatedScore*>(&score)) {
-        return learning::algorithms::estimate_validation_hc(op_set,
-                                                            *validated_score,
-                                                            *bn,
-                                                            hc_blacklist,
-                                                            arc_whitelist,
-                                                            type_whitelist,
-                                                            callback,
-                                                            max_indegree,
-                                                            max_iters,
-                                                            epsilon,
-                                                            patience,
-                                                            verbose);
-    } else {
-        return learning::algorithms::estimate_hc(
-            op_set, score, *bn, hc_blacklist, arc_whitelist, callback, max_indegree, max_iters, epsilon, verbose);
-    }
+    return learning::algorithms::estimate_downcast_score(op_set,
+                                                         score,
+                                                         *bn,
+                                                         hc_blacklist,
+                                                         arc_whitelist,
+                                                         type_blacklist,
+                                                         type_whitelist,
+                                                         callback,
+                                                         max_indegree,
+                                                         max_iters,
+                                                         epsilon,
+                                                         patience,
+                                                         verbose);
 }
 
 std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
@@ -162,6 +160,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
     const ArcStringVector& varc_whitelist,
     const EdgeStringVector& vedge_blacklist,
     const EdgeStringVector& vedge_whitelist,
+    const FactorTypeVector& type_blacklist,
     const FactorTypeVector& type_whitelist,
     const std::shared_ptr<Callback> callback,
     int max_indegree,
@@ -182,6 +181,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
                               varc_whitelist,
                               vedge_blacklist,
                               vedge_whitelist,
+                              type_blacklist,
                               type_whitelist,
                               callback,
                               max_indegree,
@@ -208,6 +208,7 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
 
     auto restrictions =
         util::validate_restrictions(skeleton, varc_blacklist, varc_whitelist, vedge_blacklist, vedge_whitelist);
+    util::validate_type_restrictions(skeleton, type_blacklist, type_whitelist);
 
     auto progress = util::progress_bar(verbose);
     auto cpcs = mmpc_all_variables(test,
@@ -228,23 +229,19 @@ std::shared_ptr<ConditionalBayesianNetworkBase> MMHC::estimate_conditional(
         arc_whitelist.push_back({skeleton.name(p.first), skeleton.name(p.second)});
     }
 
-    if (auto validated_score = dynamic_cast<ValidatedScore*>(&score)) {
-        return learning::algorithms::estimate_validation_hc(op_set,
-                                                            *validated_score,
-                                                            *bn,
-                                                            hc_blacklist,
-                                                            arc_whitelist,
-                                                            type_whitelist,
-                                                            callback,
-                                                            max_indegree,
-                                                            max_iters,
-                                                            epsilon,
-                                                            patience,
-                                                            verbose);
-    } else {
-        return learning::algorithms::estimate_hc(
-            op_set, score, *bn, hc_blacklist, arc_whitelist, callback, max_indegree, max_iters, epsilon, verbose);
-    }
+    return learning::algorithms::estimate_downcast_score(op_set,
+                                                         score,
+                                                         *bn,
+                                                         hc_blacklist,
+                                                         arc_whitelist,
+                                                         type_blacklist,
+                                                         type_whitelist,
+                                                         callback,
+                                                         max_indegree,
+                                                         max_iters,
+                                                         epsilon,
+                                                         patience,
+                                                         verbose);
 }
 
 }  // namespace learning::algorithms

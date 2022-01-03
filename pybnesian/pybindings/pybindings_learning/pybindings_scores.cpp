@@ -290,7 +290,11 @@ public:
             py::function override = pybind11::get_override(static_cast<const ScoreBase*>(this), "score");
             if (override) {
                 auto o = override(model.shared_from_this());
-                return std::move(o).cast<double>();
+                try {
+                    return std::move(o).cast<double>();
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of Score::score is not a double.");
+                }
             }
         }
 
@@ -373,7 +377,12 @@ public:
                 return DataFrame();
             }
 
-            return o.cast<DataFrame>();
+            try {
+                return o.cast<DataFrame>();
+            } catch (py::cast_error& e) {
+                throw std::runtime_error(
+                    "The returned object of Score::data is not a DataFrame (pandas.DataFrame or pyarrow.RecordBatch).");
+            }
         } else {
             return DataFrame();
         }
@@ -392,7 +401,11 @@ public:
             py::function override = pybind11::get_override(static_cast<const ValidatedScoreBase*>(this), "vscore");
             if (override) {
                 auto o = override(model.shared_from_this());
-                return std::move(o).cast<double>();
+                try {
+                    return std::move(o).cast<double>();
+                } catch (py::cast_error& e) {
+                    throw std::runtime_error("The returned object of ValidatedScore::vscore is not a double.");
+                }
             }
         }
 

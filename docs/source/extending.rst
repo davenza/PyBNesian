@@ -435,7 +435,7 @@ of a :class:`SemiparametricBN <pybnesian.SemiparametricBN>` using an
     >>> df = generate_sample_data(300)
     >>> df_test = generate_sample_data(20, seed=1)
     >>> # Create an heterogeneous with "MyLG" factors as default.
-    >>> het = HeterogeneousBN(MyLGType(),  ["a", "b", "c", "d"], [("a", "c")])
+    >>> het = HeterogeneousBN([MyLGType()],  ["a", "b", "c", "d"], [("a", "c")])
     >>> het.set_node_type("a", CKDEType())
     >>> het.fit(df)
     >>> # Create a SemiparametricBN
@@ -474,9 +474,9 @@ different default factor types for different data types. For example, we can mix
     >>> df = generate_hybrid_sample_data(20)
     >>> # Create an heterogeneous with "MyLG" factors as default for continuous data and
     >>> # "DiscreteFactorType" for categorical data.
-    >>> het = HeterogeneousBN({pa.float64(): MyLGType(),
-    ...                        pa.float32(): MyLGType(),
-    ...                        pa.dictionary(pa.int8(), pa.utf8()): DiscreteFactorType()},
+    >>> het = HeterogeneousBN({pa.float64(): [MyLGType()],
+    ...                        pa.float32(): [MyLGType()],
+    ...                        pa.dictionary(pa.int8(), pa.utf8()): [DiscreteFactorType()]},
     ...                        ["a", "b", "c", "d"],
     ...                        [("a", "c")])
     >>> het.set_node_type("a", CKDEType())

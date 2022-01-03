@@ -29,15 +29,20 @@ public:
         if (override) {
             auto o = override(df, variables);
 
-            auto m = o.cast<VectorXd>();
+            try {
+                auto m = o.cast<VectorXd>();
 
-            if (static_cast<size_t>(m.rows()) != variables.size())
-                throw std::invalid_argument(
-                    "BandwidthSelector::diag_bandwidth matrix must return a vector with shape "
-                    "(" +
-                    std::to_string(variables.size()) + ")");
+                if (static_cast<size_t>(m.rows()) != variables.size())
+                    throw std::invalid_argument(
+                        "BandwidthSelector::diag_bandwidth matrix must return a vector with shape "
+                        "(" +
+                        std::to_string(variables.size()) + ")");
 
-            return m;
+                return m;
+            } catch (py::cast_error& e) {
+                throw std::runtime_error(
+                    "The returned object of BandwidthSelector::diag_bandwidth is not a vector of doubles.");
+            }
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"BandwidthSelector::diag_bandwidth\"");
@@ -51,15 +56,20 @@ public:
         if (override) {
             auto o = override(df, variables);
 
-            auto m = o.cast<MatrixXd>();
+            try {
+                auto m = o.cast<MatrixXd>();
 
-            if (m.rows() != m.cols() || static_cast<size_t>(m.rows()) != variables.size())
-                throw std::invalid_argument(
-                    "BandwidthSelector::bandwidth matrix must return an square matrix with shape "
-                    "(" +
-                    std::to_string(variables.size()) + ", " + std::to_string(variables.size()) + ")");
+                if (m.rows() != m.cols() || static_cast<size_t>(m.rows()) != variables.size())
+                    throw std::invalid_argument(
+                        "BandwidthSelector::bandwidth matrix must return an square matrix with shape "
+                        "(" +
+                        std::to_string(variables.size()) + ", " + std::to_string(variables.size()) + ")");
 
-            return m;
+                return m;
+            } catch (py::cast_error& e) {
+                throw std::runtime_error(
+                    "The returned object of BandwidthSelector::bandwidth is not a matrix of doubles.");
+            }
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"BandwidthSelector::bandwidth\"");
@@ -263,7 +273,7 @@ It can return :func:`pyarrow.float64 <pyarrow.float64>` or :func:`pyarrow.float3
 
 :returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`KDE <pybnesian.KDE>`.
 )doc")
-        .def("fit", (void (KDE::*)(const DataFrame&)) & KDE::fit, py::arg("df"), R"doc(
+        .def("fit", (void(KDE::*)(const DataFrame&)) & KDE::fit, py::arg("df"), R"doc(
 Fits the :class:`KDE <pybnesian.KDE>` with the data in ``df``. It estimates the bandwidth :math:`\mathbf{H}` automatically using the
 provided bandwidth selector.
 
@@ -354,7 +364,7 @@ It can return :func:`pyarrow.float64 <pyarrow.float64>` or :func:`pyarrow.float3
 
 :returns: the :class:`pyarrow.DataType` physical data type representation of the :class:`ProductKDE <pybnesian.ProductKDE>`.
 )doc")
-        .def("fit", (void (ProductKDE::*)(const DataFrame&)) & ProductKDE::fit, py::arg("df"), R"doc(
+        .def("fit", (void(ProductKDE::*)(const DataFrame&)) & ProductKDE::fit, py::arg("df"), R"doc(
 Fits the :class:`ProductKDE <pybnesian.ProductKDE>` with the data in ``df``. It estimates the bandwidth vector :math:`h_{j}` automatically
 using the provided bandwidth selector.
 

@@ -181,6 +181,51 @@ ListRestrictions validate_restrictions(const Model& g,
     return r;
 }
 
+template <typename Model>
+void validate_type_restrictions(const Model& g,
+                                const FactorTypeVector& type_blacklist,
+                                const FactorTypeVector& type_whitelist) {
+    if (type_blacklist.empty() || type_whitelist.empty()) {
+        const auto& non_empty_list = (type_blacklist.empty()) ? type_whitelist : type_blacklist;
+        std::string name_list = (type_blacklist.empty()) ? "whitelist" : "blacklist";
+
+        for (const auto& [name, _] : non_empty_list) {
+            if (!g.contains_node(name)) {
+                throw std::invalid_argument("Node in the " + name_list + " (" + name + "), not present in the model.");
+            }
+        }
+
+        return;
+    }
+
+    std::unordered_map<std::string, std::shared_ptr<FactorType>> whitelist_set;
+
+    for (const auto& [name, type] : type_whitelist) {
+        if (!g.contains_node(name)) {
+            throw std::invalid_argument("Node in the whitelist (" + name + "), not present in the model.");
+        }
+
+        auto [it, inserted] = whitelist_set.insert({name, type});
+        if (!inserted && *it->second != *type) {
+            throw std::invalid_argument("Node " + name + " has two FactorType in the whitelist: " +
+                                        it->second->ToString() + " and " + type->ToString() + ".");
+        }
+    }
+
+    for (const auto& [name, type] : type_blacklist) {
+        if (!g.contains_node(name)) {
+            throw std::invalid_argument("Node in the blacklist (" + name + "), not present in the model.");
+        }
+
+        auto it = whitelist_set.find(name);
+
+        if (it != whitelist_set.end() && *it->second == *type) {
+            throw std::invalid_argument("Node " + name + " has a FactorType " + type->ToString() +
+                                        " in blacklist and whitelist.");
+        }
+    }
+}
+
 }  // namespace util
 
 #endif  // PYBNESIAN_UTIL_VALIDATE_WHITELISTS_HPP

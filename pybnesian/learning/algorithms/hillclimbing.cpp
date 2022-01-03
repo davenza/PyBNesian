@@ -1,5 +1,4 @@
 #include <learning/algorithms/hillclimbing.hpp>
-#include <util/validate_whitelists.hpp>
 #include <util/validate_options.hpp>
 #include <dataset/dataset.hpp>
 #include <models/BayesianNetwork.hpp>
@@ -31,6 +30,7 @@ std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
                                         const std::optional<std::vector<std::string>>& operators_str,
                                         const ArcStringVector& arc_blacklist,
                                         const ArcStringVector& arc_whitelist,
+                                        const FactorTypeVector& type_blacklist,
                                         const FactorTypeVector& type_whitelist,
                                         const std::shared_ptr<Callback> callback,
                                         int max_indegree,
@@ -79,6 +79,7 @@ std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
                        *start_model,
                        arc_blacklist,
                        arc_whitelist,
+                       type_blacklist,
                        type_whitelist,
                        callback,
                        max_indegree,
@@ -86,97 +87,6 @@ std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
                        epsilon,
                        patience,
                        verbose);
-}
-
-template <typename T>
-std::shared_ptr<T> estimate_checks(OperatorSet& op_set,
-                                   Score& score,
-                                   const T& start,
-                                   const ArcStringVector& arc_blacklist,
-                                   const ArcStringVector& arc_whitelist,
-                                   const FactorTypeVector& type_whitelist,
-                                   const std::shared_ptr<Callback> callback,
-                                   int max_indegree,
-                                   int max_iters,
-                                   double epsilon,
-                                   int patience,
-                                   int verbose) {
-    if (!score.compatible_bn(start)) {
-        throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
-    }
-
-    util::validate_restrictions(start, arc_blacklist, arc_whitelist);
-
-    if (auto validated_score = dynamic_cast<ValidatedScore*>(&score)) {
-        return estimate_validation_hc(op_set,
-                                      *validated_score,
-                                      start,
-                                      arc_blacklist,
-                                      arc_whitelist,
-                                      type_whitelist,
-                                      callback,
-                                      max_indegree,
-                                      max_iters,
-                                      epsilon,
-                                      patience,
-                                      verbose);
-    } else {
-        return estimate_hc(
-            op_set, score, start, arc_blacklist, arc_whitelist, callback, max_indegree, max_iters, epsilon, verbose);
-    }
-}
-
-std::shared_ptr<BayesianNetworkBase> GreedyHillClimbing::estimate(OperatorSet& op_set,
-                                                                  Score& score,
-                                                                  const BayesianNetworkBase& start,
-                                                                  const ArcStringVector& arc_blacklist,
-                                                                  const ArcStringVector& arc_whitelist,
-                                                                  const FactorTypeVector& type_whitelist,
-                                                                  const std::shared_ptr<Callback> callback,
-                                                                  int max_indegree,
-                                                                  int max_iters,
-                                                                  double epsilon,
-                                                                  int patience,
-                                                                  int verbose) {
-    return estimate_checks(op_set,
-                           score,
-                           start,
-                           arc_blacklist,
-                           arc_whitelist,
-                           type_whitelist,
-                           callback,
-                           max_indegree,
-                           max_iters,
-                           epsilon,
-                           patience,
-                           verbose);
-}
-
-std::shared_ptr<ConditionalBayesianNetworkBase> GreedyHillClimbing::estimate(
-    OperatorSet& op_set,
-    Score& score,
-    const ConditionalBayesianNetworkBase& start,
-    const ArcStringVector& arc_blacklist,
-    const ArcStringVector& arc_whitelist,
-    const FactorTypeVector& type_whitelist,
-    const std::shared_ptr<Callback> callback,
-    int max_indegree,
-    int max_iters,
-    double epsilon,
-    int patience,
-    int verbose) {
-    return estimate_checks(op_set,
-                           score,
-                           start,
-                           arc_blacklist,
-                           arc_whitelist,
-                           type_whitelist,
-                           callback,
-                           max_indegree,
-                           max_iters,
-                           epsilon,
-                           patience,
-                           verbose);
 }
 
 }  // namespace learning::algorithms

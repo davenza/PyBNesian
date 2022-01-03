@@ -13,7 +13,35 @@ namespace util {
 
 using ArcStringVector = std::vector<std::pair<std::string, std::string>>;
 using EdgeStringVector = std::vector<std::pair<std::string, std::string>>;
-using FactorTypeVector = std::vector<std::pair<std::string, std::shared_ptr<FactorType>>>;
+
+using PairNameType = std::pair<std::string, std::shared_ptr<FactorType>>;
+using FactorTypeVector = std::vector<PairNameType>;
+
+struct NameFactorTypeHash {
+    size_t operator()(const PairNameType& p) const {
+        size_t h = std::hash<std::string>{}(p.first);
+        util::hash_combine(h, p.second->hash());
+        return h;
+    }
+};
+
+struct NameFactorTypeEqualTo {
+    bool operator()(const PairNameType& lhs, const PairNameType& rhs) const {
+        return lhs.first == rhs.first && *lhs.second == *rhs.second;
+    }
+};
+
+using FactorTypeSet = std::unordered_set<PairNameType, NameFactorTypeHash, NameFactorTypeEqualTo>;
+
+struct FactorTypeHash {
+    size_t operator()(const std::shared_ptr<FactorType>& ft) const { return ft->hash(); }
+};
+
+struct FactorTypeEqualTo {
+    bool operator()(const std::shared_ptr<FactorType>& lhs, const std::shared_ptr<FactorType>& rhs) const {
+        return *lhs == *rhs;
+    }
+};
 
 using ArcSet = std::unordered_set<Arc, ArcHash>;
 using EdgeSet = std::unordered_set<Edge, EdgeHash, EdgeEqualTo>;

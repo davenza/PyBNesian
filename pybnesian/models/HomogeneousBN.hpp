@@ -24,8 +24,8 @@ public:
     bool is_homogeneous() const override { return true; }
 
     std::shared_ptr<FactorType> default_node_type() const override { return m_ftype; }
-    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>&) const override {
-        return m_ftype;
+    std::vector<std::shared_ptr<FactorType>> data_default_node_type(const std::shared_ptr<DataType>&) const override {
+        return {m_ftype};
     }
 
     std::shared_ptr<BayesianNetworkBase> new_bn(const std::vector<std::string>& nodes) const override;

@@ -34,10 +34,11 @@ public:
     bool is_homogeneous() const override { return true; }
 
     std::shared_ptr<FactorType> default_node_type() const override { return DiscreteFactorType::get(); }
-    std::shared_ptr<FactorType> data_default_node_type(const std::shared_ptr<DataType>& dt) const override {
+    std::vector<std::shared_ptr<FactorType>> data_default_node_type(
+        const std::shared_ptr<DataType>& dt) const override {
         switch (dt->id()) {
             case Type::DICTIONARY:
-                return DiscreteFactorType::get();
+                return {DiscreteFactorType::get()};
             default:
                 throw std::invalid_argument("Data type [" + dt->ToString() +
                                             "] not compatible with DiscreteFactorType");

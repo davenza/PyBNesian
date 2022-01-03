@@ -50,8 +50,12 @@ public:
                 throw std::invalid_argument("FactorType::new_factor cannot return None.");
             }
 
-            auto f = o.cast<std::shared_ptr<Factor>>();
-            return Factor::keep_python_alive(f);
+            try {
+                auto f = o.cast<std::shared_ptr<Factor>>();
+                return Factor::keep_python_alive(f);
+            } catch (py::cast_error& e) {
+                throw std::runtime_error("The returned object of FactorType::new_factor is not a Factor.");
+            }
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_factor\"");
@@ -72,8 +76,12 @@ public:
                 throw std::invalid_argument("FactorType::new_factor cannot return None.");
             }
 
-            auto f = o.cast<std::shared_ptr<Factor>>();
-            return Factor::keep_python_alive(f);
+            try {
+                auto f = o.cast<std::shared_ptr<Factor>>();
+                return Factor::keep_python_alive(f);
+            } catch (py::cast_error& e) {
+                throw std::runtime_error("The returned object of FactorType::new_factor is not a Factor.");
+            }
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"FactorType::new_factor\"");
@@ -149,14 +157,14 @@ public:
                 throw std::invalid_argument("Factor::type cannot return None.");
             }
 
-            auto type = o.get_type();
-            if (!is_factortype_subclass(type)) {
-                py::pybind11_fail("Returned object from \"Factor::type\" is not a subclass of \"FactorType\".");
+            try {
+                m_type = o.cast<std::shared_ptr<FactorType>>();
+                // Keep the type in the class member, so type_ref() can return a valid reference.
+                m_type = FactorType::keep_python_alive(m_type);
+                return m_type;
+            } catch (py::cast_error& e) {
+                throw std::runtime_error("The returned object of Factor::type is not a FactorType.");
             }
-
-            m_type = o.cast<std::shared_ptr<FactorType>>();
-            m_type = FactorType::keep_python_alive(m_type);
-            return m_type;
         }
 
         py::pybind11_fail("Tried to call pure virtual function \"Factor::type\"");

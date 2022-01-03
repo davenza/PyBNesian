@@ -687,25 +687,9 @@ public:
     void set_type_whitelist(const FactorTypeVector& whitelist) override { m_type_whitelist = whitelist; }
 
 private:
-    struct PairHash {
-        size_t operator()(const std::pair<std::string, std::shared_ptr<FactorType>>& p) const {
-            std::hash<std::string> str_hash;
-            size_t hh = str_hash(p.first);
-            util::hash_combine(hh, p.second->hash());
-            return hh;
-        }
-    };
-
-    struct PairEqual {
-        bool operator()(const std::pair<std::string, std::shared_ptr<FactorType>>& p1,
-                        const std::pair<std::string, std::shared_ptr<FactorType>>& p2) const {
-            return p1.first == p2.first && *p1.second == *p2.second;
-        }
-    };
-
     std::vector<VectorXd> delta;
     VectorXb m_is_whitelisted;
-    std::unordered_set<std::pair<std::string, std::shared_ptr<FactorType>>, PairHash, PairEqual> m_type_blacklist;
+    util::FactorTypeSet m_type_blacklist;
     FactorTypeVector m_type_whitelist;
 };
 

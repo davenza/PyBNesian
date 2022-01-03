@@ -68,6 +68,7 @@ std::shared_ptr<DynamicBayesianNetworkBase> DMMHC::estimate(const DynamicIndepen
     ArcStringVector arc_whitelist;
     EdgeStringVector edge_blacklist;
     EdgeStringVector edge_whitelist;
+    FactorTypeVector type_blacklist;
     FactorTypeVector type_whitelist;
 
     auto g0 = mmhc.estimate(static_tests,
@@ -79,6 +80,7 @@ std::shared_ptr<DynamicBayesianNetworkBase> DMMHC::estimate(const DynamicIndepen
                             arc_whitelist,
                             edge_blacklist,
                             edge_whitelist,
+                            type_blacklist,
                             type_whitelist,
                             static_callback,
                             max_indegree,
@@ -102,6 +104,7 @@ std::shared_ptr<DynamicBayesianNetworkBase> DMMHC::estimate(const DynamicIndepen
                                         arc_whitelist,
                                         edge_blacklist,
                                         edge_whitelist,
+                                        type_blacklist,
                                         type_whitelist,
                                         transition_callback,
                                         max_indegree,

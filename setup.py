@@ -213,7 +213,7 @@ class BuildExt(build_ext):
         import numpy as np
 
         c_opts = {
-            'msvc': ['/EHsc', "/std:c++17", "/experimental:external", "/external:W0",
+            'msvc': ['/EHsc', "/std:c++17", "/Zc:__cplusplus", "/experimental:external", "/external:W0",
                     "/external:I" + pa.get_include(),
                     "/external:I" + np.get_include(),
                     "/external:Ilib\\eigen-3.3.7",

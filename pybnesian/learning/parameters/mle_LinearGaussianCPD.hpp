@@ -99,7 +99,8 @@ typename LinearGaussianCPD::ParamsClass _fit_2parent(const DataFrame& df,
 
     auto cov_xx = (dx1 * dx2).sum() / (rows - 1);
 
-    auto singular2 = var_x2 < util::machine_tol || std::abs(cov_xx / (var_x1 * var_x2)) > (1 - util::machine_tol);
+    auto singular2 =
+        var_x2 < util::machine_tol || std::abs(cov_xx / std::sqrt(var_x1 * var_x2)) > (1 - util::machine_tol);
 
     auto mean_y = y->mean();
     auto dy = (y->array() - mean_y);

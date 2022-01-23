@@ -144,6 +144,7 @@ ext_modules = [
          'pybnesian/util/rpoly.cpp',
          'pybnesian/util/vech_ops.cpp',
          'pybnesian/util/pickle.cpp',
+         'pybnesian/util/util_types.cpp',
          'pybnesian/kdtree/kdtree.cpp',
          'pybnesian/learning/operators/operators.cpp',
          'pybnesian/learning/algorithms/hillclimbing.cpp',

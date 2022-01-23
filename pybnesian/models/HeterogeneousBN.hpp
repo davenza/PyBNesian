@@ -22,12 +22,16 @@ public:
 using MapDataToFactor = std::
     unordered_map<std::shared_ptr<DataType>, std::vector<std::shared_ptr<FactorType>>, DataTypeHash, DataTypeEqualTo>;
 
-MapDataToFactor keep_MapDataToFactor_alive(MapDataToFactor& m);
+MapDataToFactor& keep_MapDataToFactor_alive(MapDataToFactor& m);
+MapDataToFactor keep_MapDataToFactor_alive(const MapDataToFactor& m);
 
 class HeterogeneousBNType : public BayesianNetworkType {
 public:
     HeterogeneousBNType(const HeterogeneousBNType&) = delete;
     void operator=(const HeterogeneousBNType&) = delete;
+
+    HeterogeneousBNType(HeterogeneousBNType&&) = default;
+    HeterogeneousBNType& operator=(HeterogeneousBNType&&) = default;
 
     HeterogeneousBNType(std::vector<std::shared_ptr<FactorType>> default_ft)
         : m_default_ftype(default_ft), m_default_ftypes(), m_single_default(true) {

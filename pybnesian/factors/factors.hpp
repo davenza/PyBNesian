@@ -36,7 +36,18 @@ public:
 
     virtual bool is_python_derived() const { return false; }
 
-    static std::shared_ptr<FactorType> keep_python_alive(std::shared_ptr<FactorType>& f) {
+    static std::shared_ptr<FactorType>& keep_python_alive(std::shared_ptr<FactorType>& f) {
+        if (f && f->is_python_derived()) {
+            auto o = py::cast(f);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<FactorType*>();
+            f = std::shared_ptr<FactorType>(keep_python_state_alive, ptr);
+        }
+
+        return f;
+    }
+
+    static std::shared_ptr<FactorType> keep_python_alive(const std::shared_ptr<FactorType>& f) {
         if (f && f->is_python_derived()) {
             auto o = py::cast(f);
             auto keep_python_state_alive = std::make_shared<py::object>(o);
@@ -47,12 +58,21 @@ public:
         return f;
     }
 
-    static std::vector<std::shared_ptr<FactorType>> keep_vector_python_alive(
+    static std::vector<std::shared_ptr<FactorType>>& keep_vector_python_alive(
         std::vector<std::shared_ptr<FactorType>>& v) {
+        for (auto& f : v) {
+            FactorType::keep_python_alive(f);
+        }
+
+        return v;
+    }
+
+    static std::vector<std::shared_ptr<FactorType>> keep_vector_python_alive(
+        const std::vector<std::shared_ptr<FactorType>>& v) {
         std::vector<std::shared_ptr<FactorType>> fv;
         fv.reserve(v.size());
 
-        for (auto& f : v) {
+        for (const auto& f : v) {
             fv.push_back(FactorType::keep_python_alive(f));
         }
 
@@ -105,7 +125,18 @@ public:
 
     virtual bool is_python_derived() const { return false; }
 
-    static std::shared_ptr<Factor> keep_python_alive(std::shared_ptr<Factor>& f) {
+    static std::shared_ptr<Factor>& keep_python_alive(std::shared_ptr<Factor>& f) {
+        if (f && f->is_python_derived()) {
+            auto o = py::cast(f);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<Factor*>();
+            f = std::shared_ptr<Factor>(keep_python_state_alive, ptr);
+        }
+
+        return f;
+    }
+
+    static std::shared_ptr<Factor> keep_python_alive(const std::shared_ptr<Factor>& f) {
         if (f && f->is_python_derived()) {
             auto o = py::cast(f);
             auto keep_python_state_alive = std::make_shared<py::object>(o);
@@ -114,6 +145,26 @@ public:
         }
 
         return f;
+    }
+
+    static std::vector<std::shared_ptr<Factor>>& keep_vector_python_alive(std::vector<std::shared_ptr<Factor>>& v) {
+        for (auto& f : v) {
+            Factor::keep_python_alive(f);
+        }
+
+        return v;
+    }
+
+    static std::vector<std::shared_ptr<Factor>> keep_vector_python_alive(
+        const std::vector<std::shared_ptr<Factor>>& v) {
+        std::vector<std::shared_ptr<Factor>> fv;
+        fv.reserve(v.size());
+
+        for (const auto& f : v) {
+            fv.push_back(Factor::keep_python_alive(f));
+        }
+
+        return fv;
     }
 
     const std::string& variable() const { return m_variable; }

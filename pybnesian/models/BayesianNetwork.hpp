@@ -118,7 +118,18 @@ public:
         }
     }
 
-    static std::shared_ptr<BayesianNetworkBase> keep_python_alive(std::shared_ptr<BayesianNetworkBase>& m) {
+    static std::shared_ptr<BayesianNetworkBase>& keep_python_alive(std::shared_ptr<BayesianNetworkBase>& m) {
+        if (m && m->is_python_derived()) {
+            auto o = py::cast(m);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<BayesianNetworkBase*>();
+            m = std::shared_ptr<BayesianNetworkBase>(keep_python_state_alive, ptr);
+        }
+
+        return m;
+    }
+
+    static std::shared_ptr<BayesianNetworkBase> keep_python_alive(const std::shared_ptr<BayesianNetworkBase>& m) {
         if (m && m->is_python_derived()) {
             auto o = py::cast(m);
             auto keep_python_state_alive = std::make_shared<py::object>(o);
@@ -182,8 +193,20 @@ public:
         }
     }
 
-    static std::shared_ptr<ConditionalBayesianNetworkBase> keep_python_alive(
+    static std::shared_ptr<ConditionalBayesianNetworkBase>& keep_python_alive(
         std::shared_ptr<ConditionalBayesianNetworkBase>& m) {
+        if (m && m->is_python_derived()) {
+            auto o = py::cast(m);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<ConditionalBayesianNetworkBase*>();
+            m = std::shared_ptr<ConditionalBayesianNetworkBase>(keep_python_state_alive, ptr);
+        }
+
+        return m;
+    }
+
+    static std::shared_ptr<ConditionalBayesianNetworkBase> keep_python_alive(
+        const std::shared_ptr<ConditionalBayesianNetworkBase>& m) {
         if (m && m->is_python_derived()) {
             auto o = py::cast(m);
             auto keep_python_state_alive = std::make_shared<py::object>(o);
@@ -208,7 +231,18 @@ public:
     virtual std::shared_ptr<ConditionalBayesianNetworkBase> new_cbn(
         const std::vector<std::string>& nodes, const std::vector<std::string>& interface_nodes) const = 0;
 
-    static std::shared_ptr<BayesianNetworkType> keep_python_alive(std::shared_ptr<BayesianNetworkType>& s) {
+    static std::shared_ptr<BayesianNetworkType>& keep_python_alive(std::shared_ptr<BayesianNetworkType>& s) {
+        if (s && s->is_python_derived()) {
+            auto o = py::cast(s);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<BayesianNetworkType*>();
+            s = std::shared_ptr<BayesianNetworkType>(keep_python_state_alive, ptr);
+        }
+
+        return s;
+    }
+
+    static std::shared_ptr<BayesianNetworkType> keep_python_alive(const std::shared_ptr<BayesianNetworkType>& s) {
         if (s && s->is_python_derived()) {
             auto o = py::cast(s);
             auto keep_python_state_alive = std::make_shared<py::object>(o);

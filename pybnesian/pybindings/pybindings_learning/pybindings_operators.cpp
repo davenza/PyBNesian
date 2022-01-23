@@ -58,10 +58,13 @@ An :class:`OperatorTabuSet` that contains forbidden operators.
         .def(py::init<>(), R"doc(
 Creates an empty :class:`OperatorTabuSet`.
 )doc")
-        .def("insert",
-             py::overload_cast<const std::shared_ptr<Operator>&>(&OperatorTabuSet::insert),
-             py::arg("operator"),
-             R"doc(
+        .def(
+            "insert",
+            [](OperatorTabuSet& self, const std::shared_ptr<Operator>& op) {
+                self.insert(Operator::keep_python_alive(op));
+            },
+            py::arg("operator"),
+            R"doc(
 Inserts an operator into the tabu set.
 
 :param operator: Operator to insert.
@@ -161,7 +164,8 @@ public:
 
                 try {
                     auto op = o.cast<std::shared_ptr<Operator>>();
-                    return Operator::keep_python_alive(op);
+                    Operator::keep_python_alive(op);
+                    return op;
                 } catch (py::cast_error& e) {
                     throw std::runtime_error("The returned object of Operator::opposite is not a Operator.");
                 }
@@ -196,7 +200,8 @@ public:
 
                 try {
                     auto op = o.cast<std::shared_ptr<Operator>>();
-                    return Operator::keep_python_alive(op);
+                    Operator::keep_python_alive(op);
+                    return op;
                 } catch (py::cast_error& e) {
                     throw std::runtime_error("The returned object of Operator::opposite is not a Operator.");
                 }
@@ -260,6 +265,8 @@ class PyOperatorSet : public OperatorSet {
 public:
     PyOperatorSet(bool calculate_local_score = true) : m_calculate_local_score(calculate_local_score) {}
 
+    bool is_python_derived() const override { return true; }
+
     void cache_scores(const BayesianNetworkBase& model, const Score& score) override {
         pybind11::gil_scoped_acquire gil;
         pybind11::function override = pybind11::get_override(static_cast<const OperatorSet*>(this), "cache_scores");
@@ -321,7 +328,8 @@ public:
                 auto o = override(model.shared_from_this());
                 try {
                     auto op = o.cast<std::shared_ptr<Operator>>();
-                    return Operator::keep_python_alive(op);
+                    Operator::keep_python_alive(op);
+                    return op;
                 } catch (py::cast_error& e) {
                     throw std::runtime_error("The returned object of Operator::find_max is not a Operator.");
                 }
@@ -354,7 +362,8 @@ public:
                 auto o = override(model.shared_from_this());
                 try {
                     auto op = o.cast<std::shared_ptr<Operator>>();
-                    return Operator::keep_python_alive(op);
+                    Operator::keep_python_alive(op);
+                    return op;
                 } catch (py::cast_error& e) {
                     throw std::runtime_error("The returned object of Operator::find_max is not a Operator.");
                 }
@@ -389,7 +398,8 @@ public:
                 auto o = override(model.shared_from_this(), &tabu);
                 try {
                     auto op = o.cast<std::shared_ptr<Operator>>();
-                    return Operator::keep_python_alive(op);
+                    Operator::keep_python_alive(op);
+                    return op;
                 } catch (py::cast_error& e) {
                     throw std::runtime_error("The returned object of Operator::find_max_tabu is not a Operator.");
                 }
@@ -425,7 +435,8 @@ public:
                 auto o = override(model.shared_from_this(), &tabu);
                 try {
                     auto op = o.cast<std::shared_ptr<Operator>>();
-                    return Operator::keep_python_alive(op);
+                    Operator::keep_python_alive(op);
+                    return op;
                 } catch (py::cast_error& e) {
                     throw std::runtime_error("The returned object of Operator::find_max_tabu is not a Operator.");
                 }
@@ -630,7 +641,9 @@ Gets the target of the :class:`ArcOperator`.
     py::class_<ChangeNodeType, Operator, std::shared_ptr<ChangeNodeType>>(root, "ChangeNodeType", R"doc(
 This operator changes the :class:`FactorType` of a node.
 )doc")
-        .def(py::init<std::string, std::shared_ptr<FactorType>, double>(),
+        .def(py::init<>([](std::string node, std::shared_ptr<FactorType> node_type, double delta) {
+                 return ChangeNodeType(node, FactorType::keep_python_alive(node_type), delta);
+             }),
              py::arg("node"),
              py::arg("node_type"),
              py::arg("delta"),
@@ -817,12 +830,24 @@ Sets the max indegree allowed. This may change the set of valid operators.
 
 :param max_indegree: Max indegree allowed.
 )doc")
-        .def("set_type_blacklist", &OperatorSet::set_type_blacklist, py::arg("type_blacklist"), R"doc(
+        .def(
+            "set_type_blacklist",
+            [](OperatorSet& self, const FactorTypeVector& type_blacklist) {
+                self.set_type_blacklist(util::keep_FactorTypeVector_python_alive(type_blacklist));
+            },
+            py::arg("type_blacklist"),
+            R"doc(
 Sets the type blacklist (a list of :class:`FactorType` that are not allowed).
 
 :param type_blacklist: The list of blacklisted :class:`FactorType`.
 )doc")
-        .def("set_type_whitelist", &OperatorSet::set_type_whitelist, py::arg("type_whitelist"), R"doc(
+        .def(
+            "set_type_whitelist",
+            [](OperatorSet& self, const FactorTypeVector& type_whitelist) {
+                self.set_type_whitelist(util::keep_FactorTypeVector_python_alive(type_whitelist));
+            },
+            py::arg("type_whitelist"),
+            R"doc(
 Sets the type whitelist (a list of :class:`FactorType` that are forced).
 
 :param type_whitelist: The list of whitelisted :class:`FactorType`.
@@ -851,7 +876,10 @@ Initializes an :class:`ArcOperatorSet` with optional sets of arc blacklists/whit
     py::class_<ChangeNodeTypeSet, OperatorSet, std::shared_ptr<ChangeNodeTypeSet>>(root, "ChangeNodeTypeSet", R"doc(
 This set of operators contains all the possible operators of type :class:`ChangeNodeType`.
 )doc")
-        .def(py::init<FactorTypeVector, FactorTypeVector>(),
+        .def(py::init<>([](FactorTypeVector type_blacklist, FactorTypeVector type_whitelist) {
+                 return ChangeNodeTypeSet(util::keep_FactorTypeVector_python_alive(type_blacklist),
+                                          util::keep_FactorTypeVector_python_alive(type_whitelist));
+             }),
              py::arg("type_blacklist") = FactorTypeVector(),
              py::arg("type_whitelist") = FactorTypeVector(),
              R"doc(
@@ -864,7 +892,11 @@ Initializes a :class:`ChangeNodeTypeSet` with blacklisted and whitelisted :class
     py::class_<OperatorPool, OperatorSet, std::shared_ptr<OperatorPool>>(root, "OperatorPool", R"doc(
 This set of operators can join a list of :class:`OperatorSet`, so that they can act as a single :class:`OperatorSet`.
 )doc")
-        .def(py::init<std::vector<std::shared_ptr<OperatorSet>>>(), py::arg("opsets"), R"doc(
+        .def(py::init<>([](std::vector<std::shared_ptr<OperatorSet>> opsets) {
+                 return OperatorPool(OperatorSet::keep_vector_python_alive(opsets));
+             }),
+             py::arg("opsets"),
+             R"doc(
 Initializes an :class:`OperatorPool` with a list of :class:`OperatorSet`.
 
 :param opsets: List of :class:`OperatorSet`.

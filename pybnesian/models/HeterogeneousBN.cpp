@@ -2,7 +2,15 @@
 
 namespace models {
 
-MapDataToFactor keep_MapDataToFactor_alive(MapDataToFactor& m) {
+MapDataToFactor& keep_MapDataToFactor_alive(MapDataToFactor& m) {
+    for (auto& item : m) {
+        FactorType::keep_vector_python_alive(item.second);
+    }
+
+    return m;
+}
+
+MapDataToFactor keep_MapDataToFactor_alive(const MapDataToFactor& m) {
     MapDataToFactor alive;
 
     for (auto& item : m) {

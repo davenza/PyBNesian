@@ -12,6 +12,9 @@ public:
     HomogeneousBNType(const HomogeneousBNType&) = delete;
     void operator=(const HomogeneousBNType&) = delete;
 
+    HomogeneousBNType(HomogeneousBNType&&) = default; 
+    HomogeneousBNType& operator=(HomogeneousBNType&&) = default;
+
     HomogeneousBNType(std::shared_ptr<FactorType> ft) : m_ftype(ft) {
         if (ft == nullptr) throw std::invalid_argument("factor_type cannot be null.");
 

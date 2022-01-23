@@ -15,7 +15,18 @@ public:
 
     virtual bool is_python_derived() const { return false; }
 
-    static std::shared_ptr<BandwidthSelector> keep_python_alive(std::shared_ptr<BandwidthSelector>& b) {
+    static std::shared_ptr<BandwidthSelector>& keep_python_alive(std::shared_ptr<BandwidthSelector>& b) {
+        if (b && b->is_python_derived()) {
+            auto o = py::cast(b);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<BandwidthSelector*>();
+            b = std::shared_ptr<BandwidthSelector>(keep_python_state_alive, ptr);
+        }
+
+        return b;
+    }
+
+    static std::shared_ptr<BandwidthSelector> keep_python_alive(const std::shared_ptr<BandwidthSelector>& b) {
         if (b && b->is_python_derived()) {
             auto o = py::cast(b);
             auto keep_python_state_alive = std::make_shared<py::object>(o);

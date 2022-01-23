@@ -38,7 +38,18 @@ public:
     virtual bool operator==(const Operator& a) const = 0;
     bool operator!=(const Operator& a) const { return !(*this == a); }
 
-    static std::shared_ptr<Operator> keep_python_alive(std::shared_ptr<Operator>& op) {
+    static std::shared_ptr<Operator>& keep_python_alive(std::shared_ptr<Operator>& op) {
+        if (op && op->is_python_derived()) {
+            auto o = py::cast(op);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<Operator*>();
+            op = std::shared_ptr<Operator>(keep_python_state_alive, ptr);
+        }
+
+        return op;
+    }
+
+    static std::shared_ptr<Operator> keep_python_alive(const std::shared_ptr<Operator>& op) {
         if (op && op->is_python_derived()) {
             auto o = py::cast(op);
             auto keep_python_state_alive = std::make_shared<py::object>(o);
@@ -330,6 +341,7 @@ class OperatorSet {
 public:
     OperatorSet() : m_local_cache(nullptr), m_owns_local_cache(false) {}
     virtual ~OperatorSet() {}
+    virtual bool is_python_derived() const { return false; }
     virtual void cache_scores(const BayesianNetworkBase&, const Score&) = 0;
     virtual std::shared_ptr<Operator> find_max(const BayesianNetworkBase&) const = 0;
     virtual std::shared_ptr<Operator> find_max(const BayesianNetworkBase&, const OperatorTabuSet&) const = 0;
@@ -355,6 +367,49 @@ public:
     virtual void set_type_blacklist(const FactorTypeVector&){};
     virtual void set_type_whitelist(const FactorTypeVector&){};
     virtual void finished() { m_local_cache = nullptr; }
+
+    static std::shared_ptr<OperatorSet>& keep_python_alive(std::shared_ptr<OperatorSet>& op_set) {
+        if (op_set && op_set->is_python_derived()) {
+            auto o = py::cast(op_set);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<OperatorSet*>();
+            op_set = std::shared_ptr<OperatorSet>(keep_python_state_alive, ptr);
+        }
+
+        return op_set;
+    }
+
+    static std::shared_ptr<OperatorSet> keep_python_alive(const std::shared_ptr<OperatorSet>& op_set) {
+        if (op_set && op_set->is_python_derived()) {
+            auto o = py::cast(op_set);
+            auto keep_python_state_alive = std::make_shared<py::object>(o);
+            auto ptr = o.cast<OperatorSet*>();
+            return std::shared_ptr<OperatorSet>(keep_python_state_alive, ptr);
+        }
+
+        return op_set;
+    }
+
+    static std::vector<std::shared_ptr<OperatorSet>>& keep_vector_python_alive(
+        std::vector<std::shared_ptr<OperatorSet>>& v) {
+        for (auto& op_set : v) {
+            OperatorSet::keep_python_alive(op_set);
+        }
+
+        return v;
+    }
+
+    static std::vector<std::shared_ptr<OperatorSet>> keep_vector_python_alive(
+        const std::vector<std::shared_ptr<OperatorSet>>& v) {
+        std::vector<std::shared_ptr<OperatorSet>> fv;
+        fv.reserve(v.size());
+
+        for (const auto& op_set : v) {
+            fv.push_back(OperatorSet::keep_python_alive(op_set));
+        }
+
+        return fv;
+    }
 
 protected:
     bool owns_local_cache() const { return m_owns_local_cache; }

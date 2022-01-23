@@ -52,7 +52,8 @@ public:
 
             try {
                 auto f = o.cast<std::shared_ptr<Factor>>();
-                return Factor::keep_python_alive(f);
+                Factor::keep_python_alive(f);
+                return f;
             } catch (py::cast_error& e) {
                 throw std::runtime_error("The returned object of FactorType::new_factor is not a Factor.");
             }
@@ -78,7 +79,8 @@ public:
 
             try {
                 auto f = o.cast<std::shared_ptr<Factor>>();
-                return Factor::keep_python_alive(f);
+                Factor::keep_python_alive(f);
+                return f;
             } catch (py::cast_error& e) {
                 throw std::runtime_error("The returned object of FactorType::new_factor is not a Factor.");
             }
@@ -160,7 +162,7 @@ public:
             try {
                 m_type = o.cast<std::shared_ptr<FactorType>>();
                 // Keep the type in the class member, so type_ref() can return a valid reference.
-                m_type = FactorType::keep_python_alive(m_type);
+                FactorType::keep_python_alive(m_type);
                 return m_type;
             } catch (py::cast_error& e) {
                 throw std::runtime_error("The returned object of Factor::type is not a FactorType.");
@@ -735,10 +737,20 @@ Removes the assignment for the ``variable``.
 
     py::class_<HCKDE, Factor, std::shared_ptr<HCKDE>>(root, "HCKDE")
         .def(py::init<std::string, std::vector<std::string>>())
-        .def(py::init<std::string, std::vector<std::string>, std::shared_ptr<BandwidthSelector>>())
-        .def(py::init<std::string,
-                      std::vector<std::string>,
-                      std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash>>())
+        .def(py::init<>([](std::string variable,
+                std::vector<std::string> evidence,
+                std::shared_ptr<BandwidthSelector> bandwidth_selector) {
+            return HCKDE(variable, evidence, BandwidthSelector::keep_python_alive(bandwidth_selector));
+        }), py::arg("variable"), py::arg("evidence"), py::arg("bandwidth_selector"))
+        .def(py::init<>([](std::string variable,
+                std::vector<std::string> evidence,
+                std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash> args) {
+            for (auto& arg : args) {
+                BandwidthSelector::keep_python_alive(std::get<0>(arg.second));
+            }
+
+            return HCKDE(variable, evidence, args);
+        }), py::arg("variable"), py::arg("evidence"), py::arg("bandwidth_selector"))
         .def("conditional_factor", &HCKDE::conditional_factor, py::return_value_policy::reference_internal)
         .def(py::pickle([](const HCKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return HCKDE::__setstate__(t); }));

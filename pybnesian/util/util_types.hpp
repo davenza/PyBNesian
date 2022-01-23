@@ -17,6 +17,9 @@ using EdgeStringVector = std::vector<std::pair<std::string, std::string>>;
 using PairNameType = std::pair<std::string, std::shared_ptr<FactorType>>;
 using FactorTypeVector = std::vector<PairNameType>;
 
+FactorTypeVector& keep_FactorTypeVector_python_alive(FactorTypeVector& v);
+FactorTypeVector keep_FactorTypeVector_python_alive(const FactorTypeVector& v);
+
 struct NameFactorTypeHash {
     size_t operator()(const PairNameType& p) const {
         size_t h = std::hash<std::string>{}(p.first);

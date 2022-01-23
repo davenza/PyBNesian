@@ -51,7 +51,8 @@ public:
 
             try {
                 auto m = o.cast<std::shared_ptr<BayesianNetworkBase>>();
-                return BayesianNetworkBase::keep_python_alive(m);
+                BayesianNetworkBase::keep_python_alive(m);
+                return m;
             } catch (py::cast_error& e) {
                 throw std::runtime_error(
                     "The returned object of BayesianNetworkType::new_bn is not a BayesianNetworkBase.");
@@ -74,7 +75,8 @@ public:
 
             try {
                 auto m = o.cast<std::shared_ptr<ConditionalBayesianNetworkBase>>();
-                return ConditionalBayesianNetworkBase::keep_python_alive(m);
+                ConditionalBayesianNetworkBase::keep_python_alive(m);
+                return m;
             } catch (py::cast_error& e) {
                 throw std::runtime_error(
                     "The returned object of BayesianNetworkType::new_cbn is not a ConditionalBayesianNetworkBase.");
@@ -99,7 +101,8 @@ public:
 
             try {
                 auto f = o.cast<std::shared_ptr<FactorType>>();
-                return FactorType::keep_python_alive(f);
+                FactorType::keep_python_alive(f);
+                return f;
             } catch (py::cast_error& e) {
                 throw std::runtime_error(
                     "The returned object of BayesianNetworkType::default_node_type is not a FactorType.");
@@ -127,7 +130,7 @@ public:
 
                 for (auto& f : v) {
                     if (f) {
-                        f = FactorType::keep_python_alive(f);
+                        FactorType::keep_python_alive(f);
                     } else {
                         throw std::invalid_argument("BayesianNetworkType::data_default_node_type cannot contain None.");
                     }
@@ -235,7 +238,7 @@ public:
 
                 for (auto& f : v) {
                     if (f) {
-                        f = FactorType::keep_python_alive(f);
+                        FactorType::keep_python_alive(f);
                     } else {
                         throw std::invalid_argument("BayesianNetworkType::alternative_node_type cannot contain None.");
                     }
@@ -269,7 +272,7 @@ public:
 
                 for (auto& f : v) {
                     if (f) {
-                        f = FactorType::keep_python_alive(f);
+                        FactorType::keep_python_alive(f);
                     } else {
                         throw std::invalid_argument("BayesianNetworkType::alternative_node_type cannot contain None.");
                     }
@@ -1301,7 +1304,13 @@ Returns the conditional probability distribution (CPD) associated to ``node``. T
 :returns: The :class:`Factor <pybnesian.Factor>` associated to ``node``
 :raises ValueError: If ``node`` do not have an associated :class:`Factor <pybnesian.Factor>` yet.
 )doc")
-        .def("add_cpds", &CppClass::add_cpds, py::arg("cpds"), R"doc(
+        .def(
+            "add_cpds",
+            [](CppClass& self, const std::vector<std::shared_ptr<Factor>>& cpds) {
+                self.add_cpds(Factor::keep_vector_python_alive(cpds));
+            },
+            py::arg("cpds"),
+            R"doc(
 Adds a list of CPDs to the Bayesian network. The list may be complete (for all the nodes all the Bayesian network) or
 partial (just some a subset of the nodes).
 
@@ -1435,13 +1444,26 @@ the default node types specified by the :class:`BayesianNetworkType`. If a :clas
 :param df: DataFrame to get the default node type for each unknown node type.
 :param type_blacklist: List of type blacklist (forbidden :class:`FactorType <pybnesian.FactorType>`).
 )doc")
-        .def("set_node_type", &CppClass::set_node_type, py::arg("node"), py::arg("new_type"), R"doc(
+        .def(
+            "set_node_type",
+            [](CppClass& self, const std::string& node, const std::shared_ptr<FactorType>& new_type) {
+                self.set_node_type(node, FactorType::keep_python_alive(new_type));
+            },
+            py::arg("node"),
+            py::arg("new_type"),
+            R"doc(
 Sets the ``new_type`` :class:`FactorType <pybnesian.FactorType>` for ``node``.
 
 :param node: A node name.
 :param new_type: The new :class:`FactorType <pybnesian.FactorType>` for ``node``.
 )doc")
-        .def("force_type_whitelist", &CppClass::force_type_whitelist, py::arg("type_whitelist"), R"doc(
+        .def(
+            "force_type_whitelist",
+            [](CppClass& self, const FactorTypeVector& type_whitelist) {
+                self.force_type_whitelist(util::keep_FactorTypeVector_python_alive(type_whitelist));
+            },
+            py::arg("type_whitelist"),
+            R"doc(
 Forces the Bayesian network to have the given whitelisted node types.
 
 :param type_whitelist: List of node type tuples (``node``, :class:`FactorType <pybnesian.FactorType>`) that
@@ -2089,7 +2111,9 @@ This :class:`BayesianNetworkType` represents a discrete Bayesian network: homoge
                         [](py::tuple&) { return DiscreteBNType::get(); }));
 
     py::class_<HomogeneousBNType, BayesianNetworkType, std::shared_ptr<HomogeneousBNType>>(root, "HomogeneousBNType")
-        .def(py::init<std::shared_ptr<FactorType>>(), py::arg("default_factor_type"), R"doc(
+        .def(py::init<>([](std::shared_ptr<FactorType> default_node_type) {
+            return HomogeneousBNType(FactorType::keep_python_alive(default_node_type));
+        }), py::arg("default_factor_type"), R"doc(
 Initializes an :class:`HomogeneousBNType` with a default node type.
 
 :param default_factor_type: Default factor type for all the nodes in the Bayesian network.
@@ -2099,12 +2123,20 @@ Initializes an :class:`HomogeneousBNType` with a default node type.
 
     py::class_<HeterogeneousBNType, BayesianNetworkType, std::shared_ptr<HeterogeneousBNType>>(root,
                                                                                                "HeterogeneousBNType")
-        .def(py::init<std::vector<std::shared_ptr<FactorType>>>(), py::arg("default_factor_type"), R"doc(
+        .def(py::init<>([](std::vector<std::shared_ptr<FactorType>> default_factor_type) {
+                 return HeterogeneousBNType(FactorType::keep_vector_python_alive(default_factor_type));
+             }),
+             py::arg("default_factor_type"),
+             R"doc(
 Initializes an :class:`HeterogeneousBNType` with a list of default node types for all the data types.
 
 :param default_factor_type: Default factor type for all the nodes in the Bayesian network.
 )doc")
-        .def(py::init<const models::MapDataToFactor&>(), py::arg("default_factor_types"), R"doc(
+        .def(py::init<>([](const models::MapDataToFactor& default_factor_types) {
+                 return HeterogeneousBNType(models::keep_MapDataToFactor_alive(default_factor_types));
+             }),
+             py::arg("default_factor_types"),
+             R"doc(
 Initializes an :class:`HeterogeneousBNType` with a default node type for a set of data types.
 
 :param default_factor_type: Default factor type depending on the factor type.
@@ -2194,13 +2226,17 @@ Initializes the :class:`BayesianNetwork` with a given ``type`` and ``nodes``.
                     const std::vector<std::string>& nodes,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<BayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t,
                     const std::vector<std::string>& nodes,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<PyBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("nodes"),
@@ -2234,13 +2270,17 @@ Initializes the :class:`BayesianNetwork` with a given ``type`` and ``arcs`` (the
                     const ArcStringVector& arcs,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<BayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), arcs, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         arcs,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t,
                     const ArcStringVector& arcs,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<PyBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), arcs, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         arcs,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("arcs"),
@@ -2282,14 +2322,20 @@ Initializes the :class:`BayesianNetwork` with a given ``type``, ``nodes`` and ``
                     const ArcStringVector& arcs,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<BayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, arcs, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         arcs,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t,
                     const std::vector<std::string>& nodes,
                     const ArcStringVector& arcs,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<PyBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, arcs, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         arcs,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("nodes"),
@@ -2323,11 +2369,15 @@ Initializes the :class:`BayesianNetwork` with a given ``type``, and ``graph``
         .def(py::init(
                  [](std::shared_ptr<BayesianNetworkType> t, const Dag& graph, const FactorTypeVector& node_types) {
                      return std::make_shared<BayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), graph, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         graph,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t, const Dag& graph, const FactorTypeVector& node_types) {
                      return std::make_shared<PyBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), graph, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         graph,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("graph"),
@@ -2387,14 +2437,20 @@ Initializes the :class:`ConditionalBayesianNetwork` with a given ``type``, ``nod
                     const std::vector<std::string>& interface_nodes,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<ConditionalBayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, interface_nodes, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         interface_nodes,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t,
                     const std::vector<std::string>& nodes,
                     const std::vector<std::string>& interface_nodes,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<PyConditionalBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, interface_nodes, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         interface_nodes,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("nodes"),
@@ -2444,7 +2500,11 @@ Initializes the :class:`ConditionalBayesianNetwork` with a given ``type``, ``nod
                     const ArcStringVector& arcs,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<ConditionalBayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, interface_nodes, arcs, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         interface_nodes,
+                         arcs,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t,
                     const std::vector<std::string>& nodes,
@@ -2452,7 +2512,11 @@ Initializes the :class:`ConditionalBayesianNetwork` with a given ``type``, ``nod
                     const ArcStringVector& arcs,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<PyConditionalBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), nodes, interface_nodes, arcs, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         nodes,
+                         interface_nodes,
+                         arcs,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("nodes"),
@@ -2492,13 +2556,17 @@ Initializes the :class:`ConditionalBayesianNetwork` with a given ``type``, and `
                     const ConditionalDag& graph,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<ConditionalBayesianNetwork>(
-                         BayesianNetworkType::keep_python_alive(t), graph, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         graph,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  },
                  [](std::shared_ptr<BayesianNetworkType> t,
                     const ConditionalDag& graph,
                     const FactorTypeVector& node_types) {
                      return std::make_shared<PyConditionalBayesianNetwork<>>(
-                         BayesianNetworkType::keep_python_alive(t), graph, node_types);
+                         BayesianNetworkType::keep_python_alive(t),
+                         graph,
+                         util::keep_FactorTypeVector_python_alive(node_types));
                  }),
              py::arg("type"),
              py::arg("graph"),
@@ -2552,10 +2620,15 @@ empty the static and transition Bayesian networks with the given ``type``.
 :param variables: List of node names.
 :param markovian_order: Markovian order of the dynamic Bayesian network.
 )doc")
-        .def(py::init<const std::vector<std::string>&,
-                      int,
-                      std::shared_ptr<BayesianNetworkBase>,
-                      std::shared_ptr<ConditionalBayesianNetworkBase>>(),
+        .def(py::init<>([](const std::vector<std::string>& variables,
+                           int markovian_order,
+                           std::shared_ptr<BayesianNetworkBase> static_bn,
+                           std::shared_ptr<ConditionalBayesianNetworkBase> transition_bn) {
+                 return DynamicBayesianNetwork(variables,
+                                               markovian_order,
+                                               BayesianNetworkBase::keep_python_alive(static_bn),
+                                               ConditionalBayesianNetworkBase::keep_python_alive(transition_bn));
+             }),
              py::arg("variables"),
              py::arg("markovian_order"),
              py::arg("static_bn"),
@@ -2596,7 +2669,7 @@ This class implements a :class:`BayesianNetwork` with the type :class:`Semiparam
 )doc");
     spbn.def(py::init<const std::vector<std::string>&, FactorTypeVector&>(),
              py::arg("nodes"),
-             py::arg("node_Types"),
+             py::arg("node_types"),
              R"doc(
 Initializes the :class:`SemiparametricBN` with the given ``nodes``. It specifies the ``node_types``
 for the nodes.
@@ -3061,7 +3134,10 @@ It creates empty static and transition Bayesian networks.
                          int markovian_order,
                          std::shared_ptr<BayesianNetworkBase> static_bn,
                          std::shared_ptr<ConditionalBayesianNetworkBase> transition_bn) {
-                 return DynamicHomogeneousBN(variables, markovian_order, static_bn, transition_bn);
+                 return DynamicHomogeneousBN(variables,
+                                             markovian_order,
+                                             BayesianNetworkBase::keep_python_alive(static_bn),
+                                             ConditionalBayesianNetworkBase::keep_python_alive(transition_bn));
              }),
              py::arg("variables"),
              py::arg("markovian_order"),
@@ -3129,7 +3205,10 @@ Initializes the :class:`DynamicHeterogeneousBN` of different default ``factor_ty
                          int markovian_order,
                          std::shared_ptr<BayesianNetworkBase> static_bn,
                          std::shared_ptr<ConditionalBayesianNetworkBase> transition_bn) {
-                 return DynamicHeterogeneousBN(variables, markovian_order, static_bn, transition_bn);
+                 return DynamicHeterogeneousBN(variables,
+                                               markovian_order,
+                                               BayesianNetworkBase::keep_python_alive(static_bn),
+                                               ConditionalBayesianNetworkBase::keep_python_alive(transition_bn));
              }),
              py::arg("variables"),
              py::arg("markovian_order"),

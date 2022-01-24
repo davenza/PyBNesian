@@ -122,6 +122,7 @@ KDE KDE::__setstate__(py::tuple& t) {
 
     kde.m_fitted = t[1].cast<bool>();
     kde.m_bselector = t[2].cast<std::shared_ptr<BandwidthSelector>>();
+    BandwidthSelector::keep_python_alive(kde.m_bselector);
 
     if (kde.m_fitted) {
         kde.m_bandwidth = t[3].cast<MatrixXd>();

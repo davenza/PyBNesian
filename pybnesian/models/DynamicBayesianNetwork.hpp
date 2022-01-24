@@ -163,6 +163,7 @@ std::shared_ptr<DerivedBN> __derived_dbn_setstate__(py::tuple& t) {
 
     auto variables = t[0].cast<std::vector<std::string>>();
     auto markovian_order = t[1].cast<int>();
+    // These BNs are C++ BNs, so no need to keep the Python objects alive.
     auto static_bn = t[2].cast<std::shared_ptr<BayesianNetworkBase>>();
     auto transition_bn = t[3].cast<std::shared_ptr<ConditionalBayesianNetworkBase>>();
 

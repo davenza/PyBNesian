@@ -110,13 +110,29 @@ class CLGNetwork : public clone_inherit<CLGNetwork, BayesianNetwork> {
 public:
     CLGNetwork(const std::vector<std::string>& nodes) : clone_inherit(CLGNetworkType::get(), nodes) {}
 
+    CLGNetwork(const std::vector<std::string>& nodes, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), nodes, node_types) {}
+
     CLGNetwork(const ArcStringVector& arcs) : clone_inherit(CLGNetworkType::get(), arcs) {}
+
+    CLGNetwork(const ArcStringVector& arcs, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), arcs, node_types) {}
 
     CLGNetwork(const std::vector<std::string>& nodes, const ArcStringVector& arcs)
         : clone_inherit(CLGNetworkType::get(), nodes, arcs) {}
 
+    CLGNetwork(const std::vector<std::string>& nodes, const ArcStringVector& arcs, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), nodes, arcs, node_types) {}
+
     CLGNetwork(const Dag& graph) : clone_inherit(CLGNetworkType::get(), graph) {}
+
+    CLGNetwork(const Dag& graph, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), graph, node_types) {}
+
     CLGNetwork(Dag&& graph) : clone_inherit(CLGNetworkType::get(), std::move(graph)) {}
+
+    CLGNetwork(Dag&& graph, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), std::move(graph), node_types) {}
 
     std::string ToString() const override { return "CLGNetwork"; }
 };
@@ -128,11 +144,29 @@ public:
 
     ConditionalCLGNetwork(const std::vector<std::string>& nodes,
                           const std::vector<std::string>& interface_nodes,
+                          const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), nodes, interface_nodes, node_types) {}
+
+    ConditionalCLGNetwork(const std::vector<std::string>& nodes,
+                          const std::vector<std::string>& interface_nodes,
                           const ArcStringVector& arcs)
         : clone_inherit(CLGNetworkType::get(), nodes, interface_nodes, arcs) {}
 
+    ConditionalCLGNetwork(const std::vector<std::string>& nodes,
+                          const std::vector<std::string>& interface_nodes,
+                          const ArcStringVector& arcs,
+                          const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), nodes, interface_nodes, arcs, node_types) {}
+
     ConditionalCLGNetwork(const ConditionalDag& graph) : clone_inherit(CLGNetworkType::get(), graph) {}
+
+    ConditionalCLGNetwork(const ConditionalDag& graph, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), graph, node_types) {}
+
     ConditionalCLGNetwork(ConditionalDag&& graph) : clone_inherit(CLGNetworkType::get(), std::move(graph)) {}
+
+    ConditionalCLGNetwork(ConditionalDag&& graph, const FactorTypeVector& node_types)
+        : clone_inherit(CLGNetworkType::get(), std::move(graph), node_types) {}
 
     std::string ToString() const override { return "ConditionalCLGNetwork"; }
 };

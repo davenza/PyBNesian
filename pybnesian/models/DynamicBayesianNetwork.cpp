@@ -472,8 +472,11 @@ void __nonderived_dbn_setstate__(py::object& self, py::tuple& t) {
 
     auto variables = t[0].cast<std::vector<std::string>>();
     auto markovian_order = t[1].cast<int>();
+    // The BNs could be Python BNs, so ensure the Python objects are kept alive.
     auto static_bn = t[2].cast<std::shared_ptr<BayesianNetworkBase>>();
+    BayesianNetworkBase::keep_python_alive(static_bn);
     auto transition_bn = t[3].cast<std::shared_ptr<ConditionalBayesianNetworkBase>>();
+    ConditionalBayesianNetworkBase::keep_python_alive(transition_bn);
 
     auto pydbntype = py::type::of<DynamicBayesianNetwork>();
     pydbntype.attr("__init__")(self, variables, markovian_order, static_bn, transition_bn);

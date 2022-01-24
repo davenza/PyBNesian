@@ -12,7 +12,7 @@ public:
     HomogeneousBNType(const HomogeneousBNType&) = delete;
     void operator=(const HomogeneousBNType&) = delete;
 
-    HomogeneousBNType(HomogeneousBNType&&) = default; 
+    HomogeneousBNType(HomogeneousBNType&&) = default;
     HomogeneousBNType& operator=(HomogeneousBNType&&) = default;
 
     HomogeneousBNType(std::shared_ptr<FactorType> ft) : m_ftype(ft) {
@@ -41,6 +41,7 @@ public:
 
     static std::shared_ptr<HomogeneousBNType> __setstate__(py::tuple& t) {
         auto ft = t[0].cast<std::shared_ptr<FactorType>>();
+        FactorType::keep_python_alive(ft);
         return std::make_shared<HomogeneousBNType>(ft);
     }
 
@@ -124,7 +125,7 @@ std::shared_ptr<DerivedBN> __homogeneous_setstate__(py::tuple& t) {
 
     if (t[3].cast<bool>()) {
         auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
-
+        Factor::keep_vector_python_alive(cpds);
         bn->add_cpds(cpds);
     }
 

@@ -544,6 +544,7 @@ DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::__setstate__(py::tuple& t
         res.m_continuous_evidence = t[6].cast<std::vector<std::string>>();
         res.m_cardinality = t[7].cast<VectorXi>();
         res.m_strides = t[8].cast<VectorXi>();
+        // All the base factors are C++, so no need to keep Python object alive
         res.m_factors = t[9].cast<std::vector<std::shared_ptr<Factor>>>();
     }
 

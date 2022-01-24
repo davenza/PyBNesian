@@ -1177,6 +1177,7 @@ void __nonderived_bn_setstate__(py::object& self, py::tuple& t) {
     auto type = t[1].cast<std::shared_ptr<BayesianNetworkType>>();
 
     // Initialize the C++ side:
+    // The Python constructor ensures that the python objects are kept alive.
     if (type->is_homogeneous()) {
         pybntype.attr("__init__")(self, type, std::move(dag));
     } else {
@@ -1191,7 +1192,7 @@ void __nonderived_bn_setstate__(py::object& self, py::tuple& t) {
 
     if (t[3].cast<bool>()) {
         auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
-
+        Factor::keep_vector_python_alive(cpds);
         cpp_self->add_cpds(cpds);
     }
 }
@@ -1208,6 +1209,7 @@ std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t) {
         if (type->is_homogeneous()) {
             return std::make_shared<DerivedBN>(std::move(dag));
         } else {
+            // Only C++ FactorType are allowed in these Bayesian networks, so no need to keep Python alive.
             auto node_types = t[2].cast<FactorTypeVector>();
             if (node_types.empty()) return std::make_shared<DerivedBN>(std::move(dag));
 
@@ -1223,7 +1225,9 @@ std::shared_ptr<DerivedBN> __derived_bn_setstate__(py::tuple& t) {
 
     if (t[3].cast<bool>()) {
         auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
-
+        // Keep Python factors alive. Only needed because someone could create a Python Factor which
+        // implements a C++-implemented FactorType.
+        Factor::keep_vector_python_alive(cpds);
         bn->add_cpds(cpds);
     }
 

@@ -738,19 +738,27 @@ Removes the assignment for the ``variable``.
     py::class_<HCKDE, Factor, std::shared_ptr<HCKDE>>(root, "HCKDE")
         .def(py::init<std::string, std::vector<std::string>>())
         .def(py::init<>([](std::string variable,
-                std::vector<std::string> evidence,
-                std::shared_ptr<BandwidthSelector> bandwidth_selector) {
-            return HCKDE(variable, evidence, BandwidthSelector::keep_python_alive(bandwidth_selector));
-        }), py::arg("variable"), py::arg("evidence"), py::arg("bandwidth_selector"))
-        .def(py::init<>([](std::string variable,
-                std::vector<std::string> evidence,
-                std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash> args) {
-            for (auto& arg : args) {
-                BandwidthSelector::keep_python_alive(std::get<0>(arg.second));
-            }
+                           std::vector<std::string> evidence,
+                           std::shared_ptr<BandwidthSelector> bandwidth_selector) {
+                 return HCKDE(variable, evidence, BandwidthSelector::keep_python_alive(bandwidth_selector));
+             }),
+             py::arg("variable"),
+             py::arg("evidence"),
+             py::arg("bandwidth_selector"))
+        .def(
+            py::init<>([](std::string variable,
+                          std::vector<std::string> evidence,
+                          std::unordered_map<Assignment, std::tuple<std::shared_ptr<BandwidthSelector>>, AssignmentHash>
+                              args) {
+                for (auto& arg : args) {
+                    BandwidthSelector::keep_python_alive(std::get<0>(arg.second));
+                }
 
-            return HCKDE(variable, evidence, args);
-        }), py::arg("variable"), py::arg("evidence"), py::arg("bandwidth_selector"))
+                return HCKDE(variable, evidence, args);
+            }),
+            py::arg("variable"),
+            py::arg("evidence"),
+            py::arg("bandwidth_selector"))
         .def("conditional_factor", &HCKDE::conditional_factor, py::return_value_policy::reference_internal)
         .def(py::pickle([](const HCKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return HCKDE::__setstate__(t); }));

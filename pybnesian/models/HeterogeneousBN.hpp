@@ -170,9 +170,13 @@ public:
         auto single_default = t[2].cast<bool>();
 
         if (single_default) {
-            return std::make_shared<HeterogeneousBNType>(t[0].cast<std::vector<std::shared_ptr<FactorType>>>());
+            auto node_types = t[0].cast<std::vector<std::shared_ptr<FactorType>>>();
+            FactorType::keep_vector_python_alive(node_types);
+            return std::make_shared<HeterogeneousBNType>(node_types);
         } else {
-            return std::make_shared<HeterogeneousBNType>(t[1].cast<MapDataToFactor>());
+            auto node_types = t[1].cast<MapDataToFactor>();
+            models::keep_MapDataToFactor_alive(node_types);
+            return std::make_shared<HeterogeneousBNType>(node_types);
         }
     }
 
@@ -189,32 +193,74 @@ public:
     HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const std::vector<std::string>& nodes)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes) {}
 
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                    const std::vector<std::string>& nodes,
+                    const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, node_types) {}
+
     HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), arcs) {}
+
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                    const ArcStringVector& arcs,
+                    const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), arcs, node_types) {}
 
     HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
                     const std::vector<std::string>& nodes,
                     const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, arcs) {}
 
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                    const std::vector<std::string>& nodes,
+                    const ArcStringVector& arcs,
+                    const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, arcs, node_types) {}
+
     HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const Dag& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), graph) {}
+
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const Dag& graph, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), graph, node_types) {}
+
     HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, Dag&& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), std::move(graph)) {}
+
+    HeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, Dag&& graph, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), std::move(graph), node_types) {}
 
     HeterogeneousBN(MapDataToFactor fts, const std::vector<std::string>& nodes)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes) {}
 
+    HeterogeneousBN(MapDataToFactor fts, const std::vector<std::string>& nodes, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes, node_types) {}
+
     HeterogeneousBN(MapDataToFactor fts, const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), arcs) {}
+
+    HeterogeneousBN(MapDataToFactor fts, const ArcStringVector& arcs, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), arcs, node_types) {}
 
     HeterogeneousBN(MapDataToFactor fts, const std::vector<std::string>& nodes, const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes, arcs) {}
 
+    HeterogeneousBN(MapDataToFactor fts,
+                    const std::vector<std::string>& nodes,
+                    const ArcStringVector& arcs,
+                    const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes, arcs, node_types) {}
+
     HeterogeneousBN(MapDataToFactor fts, const Dag& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), graph) {}
+
+    HeterogeneousBN(MapDataToFactor fts, const Dag& graph, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), graph, node_types) {}
+
     HeterogeneousBN(MapDataToFactor fts, Dag&& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), std::move(graph)) {}
+
+    HeterogeneousBN(MapDataToFactor fts, Dag&& graph, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), std::move(graph), node_types) {}
 
     std::string ToString() const override { return "HeterogeneousBN"; }
 };
@@ -229,13 +275,37 @@ public:
     ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
                                const std::vector<std::string>& nodes,
                                const std::vector<std::string>& interface_nodes,
+                               const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, interface_nodes, node_types) {}
+
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                               const std::vector<std::string>& nodes,
+                               const std::vector<std::string>& interface_nodes,
                                const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, interface_nodes, arcs) {}
 
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                               const std::vector<std::string>& nodes,
+                               const std::vector<std::string>& interface_nodes,
+                               const ArcStringVector& arcs,
+                               const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), nodes, interface_nodes, arcs, node_types) {}
+
     ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, const ConditionalDag& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), graph) {}
+
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                               const ConditionalDag& graph,
+                               const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), graph, node_types) {}
+
     ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft, ConditionalDag&& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), std::move(graph)) {}
+
+    ConditionalHeterogeneousBN(std::vector<std::shared_ptr<FactorType>> ft,
+                               ConditionalDag&& graph,
+                               const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(ft), std::move(graph), node_types) {}
 
     ConditionalHeterogeneousBN(MapDataToFactor fts,
                                const std::vector<std::string>& nodes,
@@ -245,13 +315,33 @@ public:
     ConditionalHeterogeneousBN(MapDataToFactor fts,
                                const std::vector<std::string>& nodes,
                                const std::vector<std::string>& interface_nodes,
+                               const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes, interface_nodes, node_types) {}
+
+    ConditionalHeterogeneousBN(MapDataToFactor fts,
+                               const std::vector<std::string>& nodes,
+                               const std::vector<std::string>& interface_nodes,
                                const ArcStringVector& arcs)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes, interface_nodes, arcs) {}
 
+    ConditionalHeterogeneousBN(MapDataToFactor fts,
+                               const std::vector<std::string>& nodes,
+                               const std::vector<std::string>& interface_nodes,
+                               const ArcStringVector& arcs,
+                               const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), nodes, interface_nodes, arcs, node_types) {}
+
     ConditionalHeterogeneousBN(MapDataToFactor fts, const ConditionalDag& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), graph) {}
+
+    ConditionalHeterogeneousBN(MapDataToFactor fts, const ConditionalDag& graph, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), graph, node_types) {}
+
     ConditionalHeterogeneousBN(MapDataToFactor fts, ConditionalDag&& graph)
         : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), std::move(graph)) {}
+
+    ConditionalHeterogeneousBN(MapDataToFactor fts, ConditionalDag&& graph, const FactorTypeVector& node_types)
+        : clone_inherit(std::make_shared<HeterogeneousBNType>(fts), std::move(graph), node_types) {}
 
     std::string ToString() const override { return "ConditionalHeterogeneousBN"; }
 };
@@ -291,6 +381,7 @@ std::shared_ptr<DerivedBN> __heterogeneous_setstate__(py::tuple& t) {
     auto type = t[1].cast<std::shared_ptr<BayesianNetworkType>>();
 
     auto node_types = t[2].cast<FactorTypeVector>();
+    util::keep_FactorTypeVector_python_alive(node_types);
     auto dwn_type = std::static_pointer_cast<HeterogeneousBNType>(type);
 
     std::shared_ptr<DerivedBN> bn = [&node_types, &dwn_type, &dag]() {
@@ -326,7 +417,7 @@ std::shared_ptr<DerivedBN> __heterogeneous_setstate__(py::tuple& t) {
 
     if (t[3].cast<bool>()) {
         auto cpds = t[4].cast<std::vector<std::shared_ptr<Factor>>>();
-
+        Factor::keep_vector_python_alive(cpds);
         bn->add_cpds(cpds);
     }
 

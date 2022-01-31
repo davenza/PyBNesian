@@ -2,26 +2,71 @@
 Changelog
 *********
 
+v0.4.0
+======
+
+- Added method
+  :func:`ConditionalBayesianNetworkBase.interface_arcs <pybnesian.ConditionalBayesianNetworkBase.interface_arcs>`.
+- :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` and :class:`MMHC <pybnesian.MMHC>` now accepts a blacklist
+  of :class:`FactorType <pybnesian.FactorType>`.
+- :func:`BayesianNetworkType.data_default_node_type <pybnesian.BayesianNetworkType.data_default_node_type>` now returns
+  a list of :class:`FactorType <pybnesian.FactorType>` indicating the priority of each
+  :class:`FactorType <pybnesian.FactorType>` for each data type.
+- :func:`BayesianNetworkBase.set_unknown_node_types <pybnesian.BayesianNetworkBase.set_unknown_node_types>` now accepts
+  an argument of :class:`FactorType <pybnesian.FactorType>` blacklist.
+- Change :class:`HeterogeneousBN <pybnesian.HeterogeneousBN>` constructor and
+  :func:`HeterogeneousBNType.default_node_types <pybnesian.HeterogeneousBNType.default_node_types>` to accept lists of
+  default :class:`FactorType <pybnesian.FactorType>`.
+- Adds constructors for :class:`HeterogeneousBN <pybnesian.HeterogeneousBN>` and
+  :class:`CLGNetwork <pybnesian.CLGNetwork>` that can set the :class:`FactorType <pybnesian.FactorType>` for each node.
+
+- Bug Fixes:
+
+  - An overflow error in :class:`ChiSquare <pybnesian.ChiSquare>` hypothesis test was raised when the statistic were
+    close to 0.
+  - Arc blacklists/whitelists with repeated arcs were not correctly processed.
+  - Fixed an error in the use of the patience parameter. Previously, the algorithm was executed as with a
+    ``patience - 1`` value.
+  - Improve the validation of objects returned from Python class extensions, so it errors when the extensions are not
+    correctly implemented.
+  - Fixed many serialization bugs. In particular, there were multiple bugs related with the serialization of models with
+    Python extensions.
+  - Included a fix for the Windows build (by setting a correct ``__cplusplus`` value).
+  - Fixed a bug in :func:`LinearGaussianCPD.fit <pybnesian.Factor.fit>` with 2 parents. In some cases, it was
+    detecting a linear dependence between the parents that did not exist.
+  - Fixes a bug which causes that the Python-class extension functionality is removed.
+    Related to: https://github.com/pybind/pybind11/issues/1333.
+
+
 v0.3.4
 ======
 
 - Improvements on the code that checks that a matrix positive definite.
-- A bug affecting the learning of conditional Bayesian networks with :class:`MMHC <pybnesian.MMHC>` has been fixed. This bug also affected :class:`DMMHC <pybnesian.DMMHC>`.
-- Fixed a bug that affected the type of the parameter ``bn_type`` of :func:`MMHC.estimate <pybnesian.MMHC.estimate>`, :func:`MMHC.estimate_conditional <pybnesian.MMHC.estimate_conditional>` and :func:`DMMHC.estimate <pybnesian.DMMHC.estimate>`.
+- A bug affecting the learning of conditional Bayesian networks with :class:`MMHC <pybnesian.MMHC>` has been fixed. This
+  bug also affected :class:`DMMHC <pybnesian.DMMHC>`.
+- Fixed a bug that affected the type of the parameter ``bn_type`` of :func:`MMHC.estimate <pybnesian.MMHC.estimate>`,
+  :func:`MMHC.estimate_conditional <pybnesian.MMHC.estimate_conditional>` and
+  :func:`DMMHC.estimate <pybnesian.DMMHC.estimate>`.
 
 v0.3.3
 ======
 
 - Adds support for pyarrow 5.0.0 in the PyPi wheels.
 - Added :func:`Arguments.args <pybnesian.Arguments.args>` to access the ``args`` and ``kwargs`` for a node.
-- Added :func:`BayesianNetworkBase.underlying_node_type <pybnesian.BayesianNetworkBase.underlying_node_type>` to get the underlying node type of a node given some data.
-- Improves the fitting of hybrid factors. Now, an specific discrete configuration can be left unfitted if the base continuous factor raises :class:`SingularCovarianceData <pybnesian.SingularCovarianceData>`.
-- Improves the :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` fit when the covariance matrix of the data is singular.
-- Improves the :class:`NormalReferenceRule <pybnesian.NormalReferenceRule>`, :class:`ScottsBandwidth <pybnesian.ScottsBandwidth>`, and :class:`UCV <pybnesian.UCV>` estimation when the covariance of the data is singular.
+- Added :func:`BayesianNetworkBase.underlying_node_type <pybnesian.BayesianNetworkBase.underlying_node_type>` to get the
+  underlying node type of a node given some data.
+- Improves the fitting of hybrid factors. Now, an specific discrete configuration can be left unfitted if the base
+  continuous factor raises :class:`SingularCovarianceData <pybnesian.SingularCovarianceData>`.
+- Improves the :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` fit when the covariance matrix of the data is
+  singular.
+- Improves the :class:`NormalReferenceRule <pybnesian.NormalReferenceRule>`,
+  :class:`ScottsBandwidth <pybnesian.ScottsBandwidth>`, and :class:`UCV <pybnesian.UCV>` estimation when the covariance
+  of the data is singular.
 - Fixes a bug loading an heterogeneous Bayesian network from a file.
 - Introduces a check that a needed category exists in discrete data.
 - :class:`Assignment <pybnesian.Assignment>` now supports integer numbers converting them automatically to float.
-- Fix a bug in :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` that caused the return of Bayesian networks with :class:`UnknownFactorType <pybnesian.UnknownFactorType>`.
+- Fix a bug in :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>` that caused the return of Bayesian networks
+  with :class:`UnknownFactorType <pybnesian.UnknownFactorType>`.
 - Reduces memory usage when fitting and printing an hybrid :class:`Factor <pybnesian.Factor>`.
 - Fixes a precision bug in :class:`GreedyHillClimbing <pybnesian.GreedyHillClimbing>`.
 - Improves :class:`CrossValidation <pybnesian.CrossValidation>` parameter checking.

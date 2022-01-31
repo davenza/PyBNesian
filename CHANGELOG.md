@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.4.0
+
+- Added method `ConditionalBayesianNetworkBase.interface_arcs()`.
+- `GreedyHillClimbing` and `MMHC` now accepts a blacklist of `FactorType`.
+- `BayesianNetworkType.data_default_node_type()` now returns a list of `FactorType` indicating the priority of each `FactorType` for each data type.
+- `BayesianNetworkBase.set_unknown_node_types()` now accepts an argument of `FactorType` blacklist.
+- Change `HeterogeneousBN` constructor and `HeterogeneousBNType.default_node_types()` to accept lists of default
+  `FactorType`.
+- Adds constructors for `HeterogeneousBN` and `CLGNetwork` that can set the `FactorType` for each node.
+
+- Bug Fixes:
+
+  - An overflow error in `ChiSquare` hypothesis test was raised when the statistic were close to 0.
+  - Arc blacklists/whitelists with repeated arcs were not correctly processed.
+  - Fixed an error in the use of the patience parameter. Previously, the algorithm was executed as with a `patience - 1` value.
+  - Improve the validation of objects returned from Python class extensions, so it errors when the extensions are not correctly implemented.
+  - Fixed many serialization bugs. In particular, there were multiple bugs related with the serialization of models with Python extensions.
+  - Included a fix for the Windows build (by setting a correct `__cplusplus` value).
+  - Fixed a bug in `LinearGaussianCPD.fit()` with 2 parents. In some cases, it was detecting a linear dependence between the parents that did not exist.
+  - Fixes a bug which causes that the Python-class extension functionality is removed. 
+    Related to: [https://github.com/pybind/pybind11/issues/1333](https://github.com/pybind/pybind11/issues/1333).
+
 ## v0.3.4
 
 - Improvements on the code that checks that a matrix is positive definite.

@@ -35,6 +35,12 @@ Buffer_ptr combined_bitmap_with_null(std::vector<Array_ptr> columns);
 int next_power2(int value);
 int previous_power2(int value);
 
+#if ARROW_VERSION_MAJOR >= 7
+using arrow::bit_util::GetBit;
+#else
+using arrow::BitUtil::GetBit;
+#endif
+
 }  // namespace util::bit_util
 
 #endif  // PYBNESIAN_UTIL_BIT_UTIL_HPP

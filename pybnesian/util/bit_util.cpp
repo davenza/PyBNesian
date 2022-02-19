@@ -3,8 +3,6 @@
 
 namespace util::bit_util {
 
-using arrow::BitUtil::GetBit;
-
 typedef std::shared_ptr<arrow::Array> Array_ptr;
 typedef std::shared_ptr<arrow::Buffer> Buffer_ptr;
 

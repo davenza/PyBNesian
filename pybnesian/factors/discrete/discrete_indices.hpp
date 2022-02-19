@@ -24,7 +24,7 @@ void sum_to_discrete_indices_null(VectorXi& accum_indices,
 
     auto raw_combined_bitmap = combined_bitmap->data();
     for (auto i = 0, j = 0; i < indices->length(); ++i) {
-        if (arrow::BitUtil::GetBit(raw_combined_bitmap, i)) {
+        if (util::bit_util::GetBit(raw_combined_bitmap, i)) {
             accum_indices(j++) += dwn_indices->Value(i) * stride;
         }
     }

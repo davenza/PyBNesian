@@ -37,7 +37,7 @@ public:
 
             auto bitmap_data = combined_bitmap->data();
             for (auto i = 0; i < total_rows; ++i) {
-                if (arrow::BitUtil::GetBit(bitmap_data, i)) indices.push_back(i);
+                if (util::bit_util::GetBit(bitmap_data, i)) indices.push_back(i);
             }
         }
 

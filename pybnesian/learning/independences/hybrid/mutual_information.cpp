@@ -158,7 +158,7 @@ void calculate_xcolumn_mean(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -179,7 +179,7 @@ void calculate_ycolumn_mean(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -205,7 +205,7 @@ void calculate_zcolumn_mean(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -342,7 +342,7 @@ void calculate_xvariance(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -390,7 +390,7 @@ void calculate_yvariance(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -443,7 +443,7 @@ void calculate_zvariance(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -503,7 +503,7 @@ void calculate_xycovariance(const Array_ptr& x_column,
 
     for (int64_t i = 0, j = 0, i_end = x_column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         auto dx_xyz = cont_datax[i] - cm.means_xyz[dcond.discrete_indices(j)](dcond.x_continuous_pos);
@@ -559,7 +559,7 @@ void calculate_xzcovariance(const Array_ptr& x_column,
 
     for (int64_t i = 0, j = 0, i_end = x_column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -627,7 +627,7 @@ void calculate_yzcovariance(const Array_ptr& y_column,
 
     for (int64_t i = 0, j = 0, i_end = y_column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -701,7 +701,7 @@ void calculate_zcovariance(const Array_ptr& column,
 
     for (int64_t i = 0, j = 0, i_end = column->length(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         int index_xz, index_yz, index_z;
@@ -978,7 +978,7 @@ double MutualInformation::mi_mixed_impl(const std::string& discrete, const std::
     // Estimate the mean and variance of each discrete configuration
     for (int64_t i = 0, i_end = m_df->num_rows(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         mean(discrete_data[i]) += cont_data[i];
@@ -1001,7 +1001,7 @@ double MutualInformation::mi_mixed_impl(const std::string& discrete, const std::
     double total_variance = 0;
     for (int64_t i = 0, i_end = m_df->num_rows(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         auto d = cont_data[i] - mean(discrete_data[i]);
@@ -1181,7 +1181,7 @@ double MutualInformation::cmi_discrete_continuous_impl(const std::string& x,
     // Estimate the mean and variance of each discrete configuration
     for (int64_t i = 0, i_end = m_df->num_rows(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         means_xy(discrete_indices(i)) += cont_data[i];
@@ -1213,7 +1213,7 @@ double MutualInformation::cmi_discrete_continuous_impl(const std::string& x,
 
     for (int64_t i = 0, i_end = m_df->num_rows(); i < i_end; ++i) {
         if constexpr (contains_null) {
-            if (!arrow::BitUtil::GetBit(bitmap_data, i)) continue;
+            if (!util::bit_util::GetBit(bitmap_data, i)) continue;
         }
 
         auto d_xy = cont_data[i] - means_xy(discrete_indices(i));

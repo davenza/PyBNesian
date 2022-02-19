@@ -92,7 +92,7 @@ VectorXd DiscreteFactor::_logl_null(const DataFrame& df) const {
 
     VectorXd res(df->num_rows());
     for (auto i = 0, j = 0; i < indices.rows(); ++i) {
-        if (arrow::BitUtil::GetBit(bitmap_data, i))
+        if (util::bit_util::GetBit(bitmap_data, i))
             res(i) = m_logprob(indices(j++));
         else
             res(i) = util::nan<double>;
@@ -134,7 +134,7 @@ double DiscreteFactor::_slogl_null(const DataFrame& df) const {
 
     double res = 0;
     for (auto i = 0, j = 0; i < indices.rows(); ++i) {
-        if (arrow::BitUtil::GetBit(bitmap_data, i)) res += m_logprob(indices(j++));
+        if (util::bit_util::GetBit(bitmap_data, i)) res += m_logprob(indices(j++));
     }
 
     return res;

@@ -92,7 +92,7 @@ typename ArrowType::c_type* fill_data_bitmap(typename ArrowType::c_type* ptr,
 
     auto k = 0;
     for (auto j = 0; j < total_rows; ++j) {
-        if (arrow::BitUtil::GetBit(bitmap_data, j)) ptr[k++] = raw_values[j];
+        if (util::bit_util::GetBit(bitmap_data, j)) ptr[k++] = raw_values[j];
     }
     return ptr + k;
 }
@@ -114,7 +114,7 @@ typename ArrowType::c_type min(Array_ptr& a) {
         auto bitmap = a->null_bitmap_data();
         auto res = std::numeric_limits<CType>::infinity();
         for (auto i = 0; i < a->length(); ++i) {
-            if (arrow::BitUtil::GetBit(bitmap, i) && raw[i] < res) res = raw[i];
+            if (util::bit_util::GetBit(bitmap, i) && raw[i] < res) res = raw[i];
         }
         return res;
     }
@@ -140,7 +140,7 @@ typename ArrowType::c_type max(Array_ptr& a) {
         auto bitmap = a->null_bitmap_data();
         auto res = -std::numeric_limits<CType>::infinity();
         for (auto i = 0; i < a->length(); ++i) {
-            if (arrow::BitUtil::GetBit(bitmap, i) && raw[i] > res) res = raw[i];
+            if (util::bit_util::GetBit(bitmap, i) && raw[i] > res) res = raw[i];
         }
         return res;
     }
@@ -169,7 +169,7 @@ typename ArrowType::c_type mean(const Buffer_ptr& bitmap, Array_ptr& a) {
     auto bitmap_data = bitmap->data();
     CType res = 0;
     for (auto i = 0; i < a->length(); ++i) {
-        if (arrow::BitUtil::GetBit(bitmap_data, i)) res += raw[i];
+        if (util::bit_util::GetBit(bitmap_data, i)) res += raw[i];
     }
 
     return res / static_cast<CType>(util::bit_util::non_null_count(bitmap, a->length()));
@@ -2052,7 +2052,7 @@ public:
             RAISE_STATUS_ERROR(builder.Reserve(valid_rows));
 
             for (auto i = 0; i < total_rows; ++i) {
-                if (arrow::BitUtil::GetBit(bitmap_data, i)) RAISE_STATUS_ERROR(builder.Append(i));
+                if (util::bit_util::GetBit(bitmap_data, i)) RAISE_STATUS_ERROR(builder.Append(i));
             }
 
             Array_ptr take_ind;

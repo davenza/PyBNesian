@@ -297,7 +297,7 @@ VectorXd DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::logl(const DataF
         if (auto combined_bitmap = df.combined_bitmap(m_discrete_evidence)) {
             auto bitmap_data = combined_bitmap->data();
             for (auto i = 0; i < df->num_rows(); ++i) {
-                if (!arrow::BitUtil::GetBit(bitmap_data, i)) res(i) = util::nan<double>;
+                if (!util::bit_util::GetBit(bitmap_data, i)) res(i) = util::nan<double>;
             }
         }
 

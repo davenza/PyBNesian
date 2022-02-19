@@ -214,7 +214,7 @@ VectorXd ProductKDE::_logl(const DataFrame& df) const {
         VectorXd res(df->num_rows());
 
         for (int i = 0, k = 0; i < df->num_rows(); ++i) {
-            if (arrow::BitUtil::GetBit(bitmap_data, i)) {
+            if (util::bit_util::GetBit(bitmap_data, i)) {
                 res(i) = static_cast<double>(read_data[k++]);
             } else {
                 res(i) = util::nan<double>;

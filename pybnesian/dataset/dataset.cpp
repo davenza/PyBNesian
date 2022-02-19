@@ -341,7 +341,7 @@ Array_ptr normalize_column(const Array_ptr& array, EigenArray& eig) {
     } else {
         auto bitmap_data = array->null_bitmap_data();
         for (int i = 0, j = 0; i < array->length(); ++i) {
-            if (arrow::BitUtil::GetBit(bitmap_data, i)) {
+            if (util::bit_util::GetBit(bitmap_data, i)) {
                 builder.UnsafeAppend(eig(j++));
             } else {
                 builder.UnsafeAppendNull();

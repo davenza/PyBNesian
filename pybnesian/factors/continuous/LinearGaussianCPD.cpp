@@ -135,7 +135,7 @@ Matrix<typename ArrowType::c_type, Dynamic, 1> logl_impl_null(const DataFrame& d
     auto logl_ptr = logl.data();
 
     for (int i = 0; i < df->num_rows(); ++i) {
-        if (!arrow::BitUtil::GetBit(bitmap_data, i)) logl_ptr[i] = util::nan<CType>;
+        if (!util::bit_util::GetBit(bitmap_data, i)) logl_ptr[i] = util::nan<CType>;
     }
 
     return logl;
@@ -164,7 +164,7 @@ double slogl_impl_null(const DataFrame& df,
 
     double accum = 0;
     for (int i = 0; i < df->num_rows(); ++i) {
-        if (arrow::BitUtil::GetBit(bitmap_data, i)) accum += logl_ptr[i];
+        if (util::bit_util::GetBit(bitmap_data, i)) accum += logl_ptr[i];
     }
 
     return accum;
@@ -224,7 +224,7 @@ Matrix<typename ArrowType::c_type, Dynamic, 1> cdf_impl_null(const DataFrame& df
     ArrayVecType t(df->num_rows());
     if (evidence.empty()) {
         for (int64_t i = 0, end = df->num_rows(); i < end; ++i) {
-            if (arrow::BitUtil::GetBit(bitmap_data, i))
+            if (util::bit_util::GetBit(bitmap_data, i))
                 t(i) = std::erfc((beta(0) - var_array(i)) * inv_std * one_div_root_two<CType>);
             else
                 t(i) = util::nan<CType>;
@@ -240,7 +240,7 @@ Matrix<typename ArrowType::c_type, Dynamic, 1> cdf_impl_null(const DataFrame& df
         }
 
         for (int64_t i = 0, k = 0, end = df->num_rows(); i < end; ++i) {
-            if (arrow::BitUtil::GetBit(bitmap_data, i))
+            if (util::bit_util::GetBit(bitmap_data, i))
                 t(i) = std::erfc((means(k++) - var_array(i)) * inv_std * one_div_root_two<CType>);
             else
                 t(i) = util::nan<CType>;

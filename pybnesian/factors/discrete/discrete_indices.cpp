@@ -185,7 +185,7 @@ std::vector<Array_ptr> discrete_slice_indices(const DataFrame& df,
         auto bitmap_data = bitmap->data();
 
         for (auto i = 0, j = 0; i < df->num_rows(); ++i) {
-            if (arrow::BitUtil::GetBit(bitmap_data, i)) {
+            if (util::bit_util::GetBit(bitmap_data, i)) {
                 slice_indices[indices(j++)].push_back(i);
             }
         }

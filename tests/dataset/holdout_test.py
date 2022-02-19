@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pybnesian as pbn
 
 import util_test
@@ -17,7 +18,7 @@ def test_holdout_disjoint():
     assert train_df.num_rows == round((1-0.2) * df.shape[0]), "Train DataFrame do not have the expected number of instances"
     assert test_df.num_rows == round(0.2 * df.shape[0]), "Test DataFrame do not have the expected number of instances"
 
-    combination = train_df.to_pandas().append(test_df.to_pandas())
+    combination = pd.concat([train_df.to_pandas(), test_df.to_pandas()])
 
     assert df.sort_values("a", axis=0).reset_index(drop=True)\
                 .equals(combination.sort_values("a", axis=0).reset_index(drop=True)),\
@@ -31,7 +32,7 @@ def test_holdout_disjoint():
     assert train_df.num_rows == round((1-0.3) * df.shape[0]), "Train DataFrame do not have the expected number of instances"
     assert test_df.num_rows == round(0.3 * df.shape[0]), "Test DataFrame do not have the expected number of instances"
 
-    combination = train_df.to_pandas().append(test_df.to_pandas())
+    combination = pd.concat([train_df.to_pandas(), test_df.to_pandas()])
 
     assert df.sort_values("a", axis=0).reset_index(drop=True)\
                 .equals(combination.sort_values("a", axis=0).reset_index(drop=True)),\
@@ -75,7 +76,7 @@ def test_holdout_null():
     assert train_df.num_rows == round((1-0.2) * non_null.shape[0]), "Train DataFrame do not have the expected number of instances"
     assert test_df.num_rows == round(0.2 * non_null.shape[0]), "Test DataFrame do not have the expected number of instances"
 
-    combination = train_df.to_pandas().append(test_df.to_pandas())
+    combination = pd.concat([train_df.to_pandas(), test_df.to_pandas()])
 
     assert combination.sort_values("a", axis=0).reset_index(drop=True)\
                 .equals(non_null.sort_values("a", axis=0).reset_index(drop=True)),\
@@ -87,7 +88,7 @@ def test_holdout_null():
     assert train_df.num_rows == round((1-0.2) * SIZE), "Train DataFrame do not have the expected number of instances"
     assert test_df.num_rows == round(0.2 * SIZE), "Test DataFrame do not have the expected number of instances"
 
-    combination = train_df.to_pandas().append(test_df.to_pandas())
+    combination = pd.concat([train_df.to_pandas(), test_df.to_pandas()])
 
     assert combination.sort_values(["a", "b", "c", "d"], axis=0).reset_index(drop=True)\
                 .equals(df.sort_values(["a", "b", "c", "d"], axis=0).reset_index(drop=True)),\

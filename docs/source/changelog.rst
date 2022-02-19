@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.4.1
+======
+
+- Added support for Apache Arrow 7.0.0.
+
 v0.4.0
 ======
 

@@ -172,10 +172,6 @@ public:
         return output;
     }
 
-    template <typename ArrowType>
-    void sum1d(cl::Buffer& input_vec, int input_length, cl::Buffer& output_buffer, int output_offset) {
-        reduction1d<ArrowType, SumReduction<ArrowType>>(input_vec, input_length, output_buffer, output_offset);
-    }
 
     template <typename ArrowType, typename Reduction>
     cl::Buffer reduction_cols(const cl::Buffer& input_mat, int input_rows, int input_cols);

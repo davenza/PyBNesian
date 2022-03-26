@@ -19,12 +19,11 @@
  * #operation_macro = MAX_ASSIGN, SUM_ASSIGN#
  */
 
-__kernel void @operation@1d_@dt@(__constant @dt@ *input,
-                                      __private uint input_length,
-                                      __local @dt@ *localMaxs,
-                                      __global @dt@ *output,
-                                      __private uint output_offset)
-{
+__kernel void @operation@1d_@dt@(__global @dt@ *restrict input,
+                                 __private uint input_length,
+                                 __local @dt@ *localMaxs,
+                                 __global @dt@ *restrict output,
+                                 __private uint output_offset) {
     uint global_id = get_global_id(0);
     uint local_id = get_local_id(0);
     uint group_size = get_local_size(0);
@@ -65,12 +64,11 @@ __kernel void @operation@1d_@dt@(__constant @dt@ *input,
     }
 }
 
-__kernel void @operation@_mat_cols_@dt@(__constant @dt@ *mat,
-                                             __private uint mat_rows,
-                                             __local @dt@ *localMaxs,
-                                             __global @dt@ *output,
-                                             __private uint output_offset)
-{
+__kernel void @operation@_mat_cols_@dt@(__global @dt@ *restrict mat,
+                                        __private uint mat_rows,
+                                        __local @dt@ *localMaxs,
+                                        __global @dt@ *restrict output,
+                                        __private uint output_offset) {
     uint global_id_row = get_global_id(0);
     uint global_id_col = get_global_id(1);
     uint local_id = get_local_id(0);
@@ -114,18 +112,18 @@ __kernel void @operation@_mat_cols_@dt@(__constant @dt@ *mat,
 
 /**end repeat1**/
 
-__kernel void logsumexp_coeffs_@dt@(__global @dt@ *input,
-                                        __private uint input_rows,
-                                        __constant @dt@ *max) {
+__kernel void logsumexp_coeffs_@dt@(__global @dt@ *restrict input,
+                                    __private uint input_rows,
+                                    __global @dt@ *restrict max) {
     uint idx = get_global_id(0);
     uint col = COL(idx, input_rows);
     input[idx] = exp(input[idx] - max[col]);
 }
 
-__kernel void solve_@dt@(__global @dt@ *diff_matrix, 
+__kernel void solve_@dt@(__global @dt@ *restrict diff_matrix,
                         __private uint diff_matrix_rows, 
                         __private uint matrices_cols,
-                        __constant @dt@ *cholesky_matrix) {
+                        __global @dt@ *restrict cholesky_matrix) {
     uint r = get_global_id(0);
     
     for (uint c = 0; c < matrices_cols; c++) {
@@ -136,20 +134,19 @@ __kernel void solve_@dt@(__global @dt@ *diff_matrix,
     }
 }
 
-__kernel void square_@dt@(__global @dt@ *m) {
+__kernel void square_@dt@(__global @dt@ *restrict m) {
     uint idx = get_global_id(0);
     double d = m[idx];
     m[idx] = d * d;
 }
 
-__kernel void logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
-                                           __private uint train_rows,
-                                           __constant @dt@ *test_vector,
-                                           __private uint test_offset,
-                                           __constant @dt@ *standard_deviation,
-                                           __private @dt@ lognorm_factor,
-                                           __global @dt@ *result) 
-{
+__kernel void logl_values_1d_mat_@dt@(__global @dt@ *restrict train_vector,
+                                      __private uint train_rows,
+                                      __global @dt@ *restrict test_vector,
+                                      __private uint test_offset,
+                                      __constant @dt@ *standard_deviation,
+                                      __private @dt@ lognorm_factor,
+                                      __global @dt@ *restrict result) {
     int i = get_global_id(0);
     int train_idx = ROW(i, train_rows);
     int test_idx = COL(i, train_rows);
@@ -158,13 +155,12 @@ __kernel void logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
     result[i] = (-0.5*d*d) + lognorm_factor;
 }
 
-__kernel void add_logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
-                                           __private uint train_rows,
-                                           __constant @dt@ *test_vector,
-                                           __private uint test_offset,
-                                           __constant @dt@ *standard_deviation,
-                                           __global @dt@ *result)
-{
+__kernel void add_logl_values_1d_mat_@dt@(__global @dt@ *restrict train_vector,
+                                          __private uint train_rows,
+                                          __global @dt@ *restrict test_vector,
+                                          __private uint test_offset,
+                                          __constant @dt@ *standard_deviation,
+                                          __global @dt@ *restrict result) {
     int i = get_global_id(0);
     int train_idx = ROW(i, train_rows);
     int test_idx = COL(i, train_rows);
@@ -174,17 +170,15 @@ __kernel void add_logl_values_1d_mat_@dt@(__constant @dt@ *train_vector,
 }
 
 
-__kernel void substract_@dt@(__constant @dt@ *training_matrix,
-                                     __private uint training_physical_rows,
-                                     __private uint training_offset,
-                                     __private uint training_rows,
-                                     __constant @dt@ *test_matrix,
-                                     __private uint test_physical_rows,
-                                     __private uint test_offset,
-                                     __private uint test_row_idx,
-                                     __global @dt@ *res
-                                )
-{
+__kernel void substract_@dt@(__global @dt@ *restrict training_matrix,
+                             __private uint training_physical_rows,
+                             __private uint training_offset,
+                             __private uint training_rows,
+                             __global @dt@ *restrict test_matrix,
+                             __private uint test_physical_rows,
+                             __private uint test_offset,
+                             __private uint test_row_idx,
+                             __global @dt@ *restrict res) {
     uint i = get_global_id(0);
     uint r = ROW(i, training_rows) + training_offset;
     uint c = COL(i, training_rows);
@@ -193,12 +187,12 @@ __kernel void substract_@dt@(__constant @dt@ *training_matrix,
 }
 
 
-__kernel void logl_values_mat_column_@dt@(__constant @dt@ *square_data,
-                                                    __private uint square_cols,
-                                                    __global @dt@ *sol_mat,
-                                                    __private uint sol_rows,
-                                                    __private uint sol_col_idx,
-                                                    __private @dt@ lognorm_factor) {
+__kernel void logl_values_mat_column_@dt@(__global @dt@ *restrict square_data,
+                                          __private uint square_cols,
+                                          __global @dt@ *restrict sol_mat,
+                                          __private uint sol_rows,
+                                          __private uint sol_col_idx,
+                                          __private @dt@ lognorm_factor) {
     uint test_idx = get_global_id(0);
     uint square_rows = get_global_size(0);
     
@@ -212,12 +206,12 @@ __kernel void logl_values_mat_column_@dt@(__constant @dt@ *square_data,
     sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
 }
 
-__kernel void logl_values_mat_row_@dt@(__constant @dt@ *square_data,
-                                                    __private uint square_cols,
-                                                    __global @dt@ *sol_mat,
-                                                    __private uint sol_rows,
-                                                    __private uint sol_row_idx,
-                                                    __private @dt@ lognorm_factor) {
+__kernel void logl_values_mat_row_@dt@(__global @dt@ *restrict square_data,
+                                       __private uint square_cols,
+                                       __global @dt@ *restrict sol_mat,
+                                       __private uint sol_rows,
+                                       __private uint sol_row_idx,
+                                       __private @dt@ lognorm_factor) {
     uint test_idx = get_global_id(0);
     uint square_rows = get_global_size(0);
     
@@ -231,18 +225,20 @@ __kernel void logl_values_mat_row_@dt@(__constant @dt@ *square_data,
     sol_mat[sol_idx] = (-0.5 * summation) + lognorm_factor;
 }
 
-__kernel void finish_lse_offset_@dt@(__global @dt@ *res, __private uint res_offset, __constant @dt@ *max_vec) {
+__kernel void finish_lse_offset_@dt@(__global @dt@ *restrict res,
+                                     __private uint res_offset,
+                                     __global @dt@ *restrict max_vec) {
     uint idx = get_global_id(0);
     res[idx + res_offset] = log(res[idx + res_offset]) + max_vec[idx];
 }
 
 
-__kernel void substract_vectors_@dt@(__global @dt@ *v1, __constant @dt@ *v2) {
+__kernel void substract_vectors_@dt@(__global @dt@ *restrict v1, __global @dt@ *restrict v2) {
     uint idx = get_global_id(0);
     v1[idx] -= v2[idx];
 }
 
-__kernel void exp_elementwise_@dt@(__global @dt@ *mat) {
+__kernel void exp_elementwise_@dt@(__global @dt@ *restrict mat) {
     uint idx = get_global_id(0);
 
     mat[idx] = exp(mat[idx]);
@@ -254,11 +250,10 @@ __kernel void exp_elementwise_@dt@(__global @dt@ *mat) {
 // It is best explained in Blelloch, 1990 "Prefix Sums and Their Applications":
 //  https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf.
 // See also https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
-__kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat, 
+__kernel void accum_sum_mat_cols_@dt@(__global @dt@ *restrict mat,
                                       __private uint mat_rows,
                                       __local @dt@ *local_block,
-                                      __global @dt@ *sums)
-{
+                                      __global @dt@ *restrict sums) {
     uint row_id = get_global_id(0);
     uint col_id = get_global_id(1);
     uint local_id = get_local_id(0);
@@ -339,12 +334,12 @@ __kernel void accum_sum_mat_cols_@dt@(__global @dt@ *mat,
     }
 }
 
-__kernel void add_accum_sum_mat_cols_@dt@(__global @dt@ *mat, 
-                                             __private uint mat_rows,
-                                             __private uint mat_offset,
-                                             __private uint size_per_group,
-                                             __private uint num_groups,
-                                             __global @dt@ *sums) {
+__kernel void add_accum_sum_mat_cols_@dt@(__global @dt@ *restrict mat,
+                                          __private uint mat_rows,
+                                          __private uint mat_offset,
+                                          __private uint size_per_group,
+                                          __private uint num_groups,
+                                          __global @dt@ *restrict sums) {
     
 
     uint row_id = get_global_id(0);
@@ -353,24 +348,22 @@ __kernel void add_accum_sum_mat_cols_@dt@(__global @dt@ *mat,
     mat[IDX(row_id + mat_offset, col_id, mat_rows)] += sums[IDX((row_id / size_per_group)+1, col_id, num_groups)];
 }
 
-__kernel void normalize_accum_sum_mat_cols_@dt@(__global @dt@ *mat, 
-                                                   __private uint mat_rows,
-                                                   __global @dt@ *sums) {
-    
+__kernel void normalize_accum_sum_mat_cols_@dt@(__global @dt@ *restrict mat,
+                                                __private uint mat_rows,
+                                                __global @dt@ *restrict sums) {
 
     uint row_id = get_global_id(0);
     uint col_id = get_global_id(1);
-
 
     mat[IDX(row_id + 1, col_id, mat_rows)] /= sums[col_id];
 }
 
 
-__kernel void find_random_indices_@dt@(__global @dt@ *mat,
+__kernel void find_random_indices_@dt@(__global @dt@ *restrict mat,
                                        __private uint mat_rows,
                                        __private uint mat_offset,
-                                       __global @dt@ *random_numbers,
-                                       __global int *indices) {
+                                       __global @dt@ *restrict random_numbers,
+                                       __global int *restrict indices) {
     
     int row_id = get_global_id(0);
     int col_id = get_global_id(1);
@@ -380,14 +373,13 @@ __kernel void find_random_indices_@dt@(__global @dt@ *mat,
         indices[mat_offset + col_id] = row_id;
 }
 
-__kernel void conditional_means_1d_@dt@(__constant @dt@ *train_mat,
-                                           __private uint train_physical_rows,
-                                           __constant @dt@ *test_vector,
-                                           __private uint test_physical_rows,
-                                           __private uint test_offset,
-                                           __constant @dt@ *transform_mean,
-                                           __global @dt@ *result) 
-{
+__kernel void conditional_means_1d_@dt@(__global @dt@ *restrict train_mat,
+                                        __private uint train_physical_rows,
+                                        __global @dt@ *restrict test_vector,
+                                        __private uint test_physical_rows,
+                                        __private uint test_offset,
+                                        __constant @dt@ *transform_mean,
+                                        __global @dt@ *restrict result) {
     int i = get_global_id(0);
     int train_idx = ROW(i, train_physical_rows);
     int test_idx = COL(i, train_physical_rows);
@@ -399,13 +391,13 @@ __kernel void conditional_means_1d_@dt@(__constant @dt@ *train_mat,
                                             );
 }
 
-__kernel void conditional_means_column_@dt@(__global @dt@ *training_data,
+__kernel void conditional_means_column_@dt@(__global @dt@ *restrict training_data,
                                             __private uint training_data_physical_rows,
-                                            __constant @dt@ *substract_evidence,
+                                            __global @dt@ *restrict substract_evidence,
                                             __private uint substract_evidence_physical_rows,
-                                            __constant @dt@ *transform_vector,
+                                            __global @dt@ *restrict transform_vector,
                                             __private uint evidence_columns,
-                                            __global @dt@ *res,
+                                            __global @dt@ *restrict res,
                                             __private uint res_col_idx,
                                             __private uint res_physical_rows) {
     uint i = get_global_id(0);
@@ -418,15 +410,15 @@ __kernel void conditional_means_column_@dt@(__global @dt@ *training_data,
     res[IDX(i, res_col_idx, res_physical_rows)] = mean;
 }
 
-__kernel void conditional_means_row_@dt@(__global @dt@ *training_data,
-                                            __private uint training_data_physical_rows,
-                                            __constant @dt@ *substract_evidence,
-                                            __private uint substract_evidence_physical_rows,
-                                            __constant @dt@ *transform_vector,
-                                            __private uint evidence_columns,
-                                            __global @dt@ *res,
-                                            __private uint res_row_idx,
-                                            __private uint res_physical_rows) {
+__kernel void conditional_means_row_@dt@(__global @dt@ *restrict training_data,
+                                         __private uint training_data_physical_rows,
+                                         __global @dt@ *restrict substract_evidence,
+                                         __private uint substract_evidence_physical_rows,
+                                         __global @dt@ *restrict transform_vector,
+                                         __private uint evidence_columns,
+                                         __global @dt@ *restrict res,
+                                         __private uint res_row_idx,
+                                         __private uint res_physical_rows) {
     uint i = get_global_id(0);
     @dt@ mean = training_data[IDX(res_row_idx, 0, training_data_physical_rows)];
 
@@ -437,13 +429,13 @@ __kernel void conditional_means_row_@dt@(__global @dt@ *training_data,
     res[IDX(res_row_idx, i, res_physical_rows)] = mean;
 }
 
-__kernel void univariate_normal_cdf_@dt@(__constant @dt@ *means,
+__kernel void univariate_normal_cdf_@dt@(__global @dt@ *restrict means,
                                          __private uint means_physical_rows,
-                                         __constant @dt@ *x,
+                                         __global @dt@ *restrict x,
                                          __private uint x_offset,
-                                        __private @dt@ inv_std,
-                                        __private @dt@ inv_N,
-                                        __global @dt@ *cdf_mat) {
+                                         __private @dt@ inv_std,
+                                         __private @dt@ inv_N,
+                                         __global @dt@ *restrict cdf_mat) {
     uint i = get_global_id(0);
 
     int means_idx = ROW(i, means_physical_rows);
@@ -452,35 +444,37 @@ __kernel void univariate_normal_cdf_@dt@(__constant @dt@ *means,
     cdf_mat[i] = inv_N*(0.5*erfc(@SQRT1_2@ * inv_std * -(x[x_offset + x_idx] - means[means_idx])));
 }
 
-__kernel void normal_cdf_@dt@(__global @dt@ *means,
-                         __private uint means_physical_rows,
-                         __constant @dt@ *x,
-                         __private uint x_offset,
-                         __private @dt@ inv_std) {
+__kernel void normal_cdf_@dt@(__global @dt@ *restrict means,
+                              __private uint means_physical_rows,
+                              __global @dt@ *restrict x,
+                              __private uint x_offset,
+                              __private @dt@ inv_std) {
     uint i = get_global_id(0);
     int col_idx = COL(i, means_physical_rows);
 
     means[i] = 0.5*erfc(@SQRT1_2@ * inv_std * (means[i] - x[x_offset + col_idx]));
 }
 
-__kernel void product_elementwise_@dt@(__global @dt@ *mat1, __constant @dt@ *mat2) {
+__kernel void product_elementwise_@dt@(__global @dt@ *restrict mat1, __global @dt@ *restrict mat2) {
     uint i = get_global_id(0);
     mat1[i] *= mat2[i];
 }
 
-__kernel void division_elementwise_@dt@(__global @dt@ *mat1, __private uint mat1_offset,  __constant @dt@ *mat2) {
+__kernel void division_elementwise_@dt@(__global @dt@ *restrict mat1,
+                                        __private uint mat1_offset,
+                                        __global @dt@ *restrict mat2) {
     uint i = get_global_id(0);
     mat1[mat1_offset + i] /= mat2[i];
 }
 
 // https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
-__kernel void sum_ucv_1d_@dt@(__constant @dt@ *data,
+__kernel void sum_ucv_1d_@dt@(__global @dt@ *restrict data,
                               __private uint index_offset,
-                              __constant @dt@ *h,
+                              __global @dt@ *restrict h,
                               __private @dt@ lognorm_2h,
                               __private @dt@ lognorm_h,
-                              __global @dt@ *sum2h,
-                              __global @dt@ *sumh) {
+                              __global @dt@ *restrict sum2h,
+                              __global @dt@ *restrict sumh) {
     unsigned int i = get_global_id(0);
     double ii = get_global_id(0) + index_offset + 1;
 
@@ -495,12 +489,12 @@ __kernel void sum_ucv_1d_@dt@(__constant @dt@ *data,
 }
 
 // https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
-__kernel void triangular_substract_mat_@dt@(__constant @dt@ *data,
+__kernel void triangular_substract_mat_@dt@(__global @dt@ *restrict data,
                                             __private uint data_physical_rows,
                                             __private uint data_cols,
                                             __private uint index_offset,
                                             __private uint res_num_rows,
-                                            __global @dt@ *res) {
+                                            __global @dt@ *restrict res) {
 
     uint i = get_global_id(0);
 
@@ -513,12 +507,12 @@ __kernel void triangular_substract_mat_@dt@(__constant @dt@ *data,
     res[i] = data[IDX(r1, c, data_physical_rows)] - data[IDX(r2, c, data_physical_rows)];
 }
 
-__kernel void sum_ucv_mat_@dt@(__constant @dt@ *square_mat,
+__kernel void sum_ucv_mat_@dt@(__global @dt@ *restrict square_mat,
                                __private uint square_cols,
                                __private @dt@ lognorm_2H,
                                __private @dt@ lognorm_H,
-                               __global @dt@ *sum2H,
-                               __global @dt@ *sumH) {
+                               __global @dt@ *restrict sum2H,
+                               __global @dt@ *restrict sumH) {
     uint r = get_global_id(0);
     uint square_rows = get_global_size(0);
 
@@ -532,10 +526,10 @@ __kernel void sum_ucv_mat_@dt@(__constant @dt@ *square_mat,
 }
 
 // https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
-__kernel void ucv_diag_@dt@(__constant @dt@ *data,
-                                __private uint index_offset,
-                                __constant @dt@ *h,
-                                __global @dt@ *tmph) {
+__kernel void ucv_diag_@dt@(__global @dt@ *restrict data,
+                            __private uint index_offset,
+                            __global @dt@ *restrict h,
+                            __global @dt@ *restrict tmph) {
     unsigned int i = get_global_id(0);
     double ii = get_global_id(0) + index_offset + 1;
 
@@ -549,12 +543,12 @@ __kernel void ucv_diag_@dt@(__constant @dt@ *data,
 }
 
 // https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
-__kernel void sum_ucv_diag_@dt@(__constant @dt@ *data,
+__kernel void sum_ucv_diag_@dt@(__global @dt@ *restrict data,
                                 __private uint data_physical_rows,
                                 __private uint index_offset,
-                                __constant @dt@ *h,
+                                __global @dt@ *restrict h,
                                 __private uint h_index,
-                                __global @dt@ *tmph) {
+                                __global @dt@ *restrict tmph) {
     unsigned int i = get_global_id(0);
     double ii = get_global_id(0) + index_offset + 1;
 
@@ -568,11 +562,11 @@ __kernel void sum_ucv_diag_@dt@(__constant @dt@ *data,
 }
 
 // https://stackoverflow.com/questions/40950460/how-to-convert-triangular-matrix-indexes-in-to-row-column-coordinates
-__kernel void copy_ucv_diag_@dt@(__constant @dt@ *tmph,
+__kernel void copy_ucv_diag_@dt@(__global @dt@ *restrict tmph,
                                  __private @dt@ lognorm_2H,
                                  __private @dt@ lognorm_H,
-                                 __global @dt@ *sum2H,
-                                 __global @dt@ *sumH) {
+                                 __global @dt@ *restrict sum2H,
+                                 __global @dt@ *restrict sumH) {
     unsigned int i = get_global_id(0);
 
     sum2H[i] += exp(-0.25*tmph[i] + lognorm_2H);

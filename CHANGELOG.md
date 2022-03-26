@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.2
+
+- Fixed important bug in OpenCL for NVIDIA GPUs, as they define small OpenCL constant memory. See [https://stackoverflow.com/questions/63080816/opencl-small-constant-memory-size-on-nvidia-gpu](https://stackoverflow.com/questions/63080816/opencl-small-constant-memory-size-on-nvidia-gpu).
+
 ## v0.4.1
 
 - Added support for Apache Arrow 7.0.0.

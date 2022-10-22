@@ -145,10 +145,10 @@ public:
 
 private:
     void check_fitted() const;
-    void check_equal_domain(const DataFrame& df) const;
-    void run_checks(const DataFrame& df) const {
+    void check_equal_domain(const DataFrame& df, bool check_variable) const;
+    void run_checks(const DataFrame& df, bool check_variable) const {
         check_fitted();
-        check_equal_domain(df);
+        check_equal_domain(df, check_variable);
     }
 
     std::unique_ptr<BaseFactorParameters> m_args;
@@ -167,7 +167,20 @@ void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::check_fitted() const
 }
 
 template <typename BaseFactor, typename BaseFitter, typename FactorName>
-void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::check_equal_domain(const DataFrame& df) const {
+void DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::check_equal_domain(const DataFrame& df,
+                                                                               bool check_variable) const {
+    if (check_variable) {
+        df.raise_has_column(variable());
+
+        switch (df.col(variable())->type_id()) {
+            case Type::DOUBLE:
+            case Type::FLOAT:
+                break;
+            default:
+                throw std::invalid_argument("Variable " + variable() + " must have \"double\" or \"float\" data type.");
+        }
+    }
+
     df.raise_has_columns(evidence());
 
     for (const auto& e : m_continuous_evidence) {
@@ -284,7 +297,7 @@ void logl_impl(const std::shared_ptr<Factor>& f, const DataFrame& df, const Arra
 
 template <typename BaseFactor, typename BaseFitter, typename FactorName>
 VectorXd DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::logl(const DataFrame& df) const {
-    run_checks(df);
+    run_checks(df, true);
 
     if (m_discrete_evidence.empty()) {
         return m_factors[0]->logl(df);
@@ -313,7 +326,7 @@ VectorXd DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::logl(const DataF
 
 template <typename BaseFactor, typename BaseFitter, typename FactorName>
 double DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::slogl(const DataFrame& df) const {
-    run_checks(df);
+    run_checks(df, true);
 
     if (m_discrete_evidence.empty()) {
         return m_factors[0]->slogl(df);
@@ -466,7 +479,7 @@ Array_ptr DiscreteAdaptator<BaseFactor, BaseFitter, FactorName>::sample(int n,
         throw std::invalid_argument("n should be a non-negative number");
     }
 
-    run_checks(evidence_values);
+    run_checks(evidence_values, false);
 
     if (evidence_values->num_rows() != n)
         throw std::domain_error("Evidence values do not have " + std::to_string(n) + " rows to sample.");

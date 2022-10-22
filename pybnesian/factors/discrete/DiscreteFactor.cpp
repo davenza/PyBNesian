@@ -75,8 +75,13 @@ void DiscreteFactor::fit(const DataFrame& df) {
     m_fitted = true;
 }
 
-void DiscreteFactor::check_equal_domain(const DataFrame& df) const {
-    check_domain_variable(df, variable(), m_variable_values);
+void DiscreteFactor::check_equal_domain(const DataFrame& df, bool check_variable) const {
+    if (check_variable) {
+        df.raise_has_column(variable());
+        check_domain_variable(df, variable(), m_variable_values);
+    }
+
+    df.raise_has_columns(evidence());
     int i = 0;
     for (auto it = evidence().begin(); it != evidence().end(); ++it, ++i) {
         check_domain_variable(df, *it, m_evidence_values[i]);
@@ -114,7 +119,7 @@ VectorXd DiscreteFactor::_logl(const DataFrame& df) const {
 }
 
 VectorXd DiscreteFactor::logl(const DataFrame& df) const {
-    check_fitted();
+    run_checks(df, true);
     auto evidence_pair = std::make_pair(evidence().begin(), evidence().end());
     bool contains_null = df.null_count(variable(), evidence_pair) > 0;
 
@@ -153,7 +158,8 @@ double DiscreteFactor::_slogl(const DataFrame& df) const {
 }
 
 double DiscreteFactor::slogl(const DataFrame& df) const {
-    check_fitted();
+    run_checks(df, true);
+
     auto evidence_pair = std::make_pair(evidence().begin(), evidence().end());
     bool contains_null = df.null_count(variable(), evidence_pair) > 0;
 
@@ -169,7 +175,8 @@ Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, unsign
         throw std::invalid_argument("n should be a non-negative number");
     }
 
-    check_fitted();
+    run_checks(evidence_values, false);
+
     arrow::StringBuilder dict_builder;
     RAISE_STATUS_ERROR(dict_builder.AppendValues(m_variable_values));
 

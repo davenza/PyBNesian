@@ -100,13 +100,7 @@ public:
     VectorXd logl(const DataFrame& df) const override;
     double slogl(const DataFrame& df) const override;
 
-    void check_equal_domain(const DataFrame& df) const;
-
     std::string ToString() const override;
-
-    VectorXi discrete_indices(const DataFrame& df) const {
-        return factors::discrete::discrete_indices(df, variable(), evidence(), m_strides);
-    }
 
     template <bool contains_null>
     VectorXi discrete_indices(const DataFrame& df) const {
@@ -124,6 +118,11 @@ public:
 private:
     void check_fitted() const {
         if (!fitted()) throw std::invalid_argument("DiscreteFactor factor not fitted.");
+    }
+    void check_equal_domain(const DataFrame& df, bool check_variable) const;
+    void run_checks(const DataFrame& df, bool check_variable) const {
+        check_fitted();
+        check_equal_domain(df, check_variable);
     }
 
     VectorXd _logl(const DataFrame& df) const;

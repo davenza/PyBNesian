@@ -317,10 +317,10 @@ python setup.py install
 Testing
 =========================
 
-The library contains tests that can be executed using `pytest`. They also require `scipy` installed.
+The library contains tests that can be executed using `pytest`. They also require `scipy` and `pandas` installed.
 
 ``
-pip install pytest scipy
+pip install pytest scipy pandas
 ``
 
 Run the tests with:

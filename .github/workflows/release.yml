@@ -15,19 +15,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, 3.10]
         
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
     
     - name: Download OpenCL SDK
       if: matrix.os == 'windows-latest'
-      uses: suisei-cn/actions-download-file@v1
+      uses: suisei-cn/actions-download-file@v1.0.1
       with:
         url: "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip"
         target: "."
@@ -51,7 +51,7 @@ jobs:
         python setup.py bdist_wheel
 
     - name: Cache wheel
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.os }}_${{ matrix.python-version }}_wheel
         path: dist/*
@@ -65,13 +65,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
+        python-version: [cp37-cp37m, cp38-cp38, cp39-cp39, cp310-cp310]
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
     - name: Build (manylinux2010)
-      uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2010_x86_64
+      uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2010_x86_64
       with:
         python-versions: ${{ matrix.python-version }}
         build-requirements: 'pybind11 numpy pyarrow'
@@ -83,7 +83,7 @@ jobs:
         echo "PYVERSION=$(echo ${{ matrix.python-version }} | sed -r 's/.*cp([0-9])([0-9]+).*/\1.\2/')" >> $GITHUB_ENV
 
     - name: Cache wheel
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ubuntu-latest_${{ env.PYVERSION }}_wheel
         path: dist/*manylinux2010*.whl
@@ -94,10 +94,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
 
@@ -106,7 +106,7 @@ jobs:
         python setup.py sdist
 
     - name: Cache source distribution
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: source_distribution
         path: dist/*
@@ -120,7 +120,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, 3.10]
         source: [false]
         include:
           - os: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
 
     steps:
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
     
@@ -141,7 +141,7 @@ jobs:
     
     - name: Download source distribution
       if: ${{ matrix.source == true }}
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: source_distribution
 
@@ -155,7 +155,7 @@ jobs:
 
     - name: Download wheel
       if: ${{ matrix.source == false }}
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: ${{ matrix.os }}_${{ matrix.python-version }}_wheel
 

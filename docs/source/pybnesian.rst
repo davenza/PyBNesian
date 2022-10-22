@@ -7,7 +7,7 @@ PyBNesian
 Dependencies
 ============
 
-- Python 3.6, 3.7, 3.8 and 3.9.
+- Python 3.7, 3.8, 3.9 and 3.10.
 
 The library has been tested on Ubuntu 16.04/20.04 and Windows 10, but should be compatible with other operating systems.
 
@@ -22,13 +22,18 @@ Building PyBNesian requires linking to `Apache Arrow`_. Therefore, even though t
 compiled binaries for all the major operating systems (Linux, Windows, Mac OS X) targeting the last ``pyarrow`` version.
 
 If you need a different version of ``pyarrow`` you will have to build PyBNesian from source. For example, if you need to
-use a ``pyarrow==3.0`` with PyBNesian, first install the required version of ``pyarrow``:
+use a ``pyarrow==8.0`` with PyBNesian, first install the required version of ``pyarrow``:
 
 .. code-block:: bash
 
-    pip install pyarrow==3.0.0
+    pip install pyarrow==8.0.0
 
 Then, proceed with the `Building`_ steps.
+
+.. note::
+
+    Before building PyBNesian with a different version of ``pyarrow``, you should check that your Python version is compatible with ``pyarrow``.
+
 
 Installation
 ============

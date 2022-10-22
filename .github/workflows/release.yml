@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
-        python-version: [3.7, 3.8, 3.9, 3.10]
+        python-version: ['3.7', '3.8', '3.9', '3.10']
         
     steps:
     - uses: actions/checkout@v3
@@ -57,8 +57,8 @@ jobs:
         path: dist/*
     
           
-  build_manylinux2010:
-    name: Create manylinux2010 wheels.
+  build_manylinux2014:
+    name: Create manylinux2014 wheels.
     
     runs-on: ubuntu-latest
 
@@ -70,8 +70,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Build (manylinux2010)
-      uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2010_x86_64
+    - name: Build (manylinux2014)
+      uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_x86_64
       with:
         python-versions: ${{ matrix.python-version }}
         build-requirements: 'pybind11 numpy pyarrow'
@@ -86,7 +86,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ubuntu-latest_${{ env.PYVERSION }}_wheel
-        path: dist/*manylinux2010*.whl
+        path: dist/*manylinux2014*.whl
         
   sdist:
     name: Create source release
@@ -99,7 +99,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: '3.8'
 
     - name: Create source distribution
       run: |
@@ -113,25 +113,25 @@ jobs:
         
   publish:
     name: Publish the package to PyPi
-    needs: [build_win_macos, build_manylinux2010, sdist]
+    needs: [build_win_macos, build_manylinux2014, sdist]
 
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.7, 3.8, 3.9, 3.10]
+        python-version: ['3.7', '3.8', '3.9', '3.10']
         source: [false]
         include:
           - os: ubuntu-latest
-            python-version: 3.8
+            python-version: '3.8'
             source: true
 
     steps:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: '3.8'
     
     - name: Install python dependencies
       run: |

@@ -196,16 +196,6 @@ def has_flag(compiler, flagname):
             return False
     return True
 
-def path_to_build_folder():
-    """Returns the name of a distutils build directory"""
-    import sysconfig
-    import sys
-    f = "{dirname}.{platform}-{version[0]}.{version[1]}"
-    dir_name = f.format(dirname='lib',
-                    platform=sysconfig.get_platform(),
-                    version=sys.version_info)
-    return os.path.join('build', dir_name, 'pybnesian')
-
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
 
@@ -249,6 +239,10 @@ class BuildExt(build_ext):
             l_opts['unix'].extend(opencl_opts)
 
         return (c_opts, l_opts)
+
+    def path_to_build_folder(self):
+        """Returns the name of a distutils build directory"""
+        return os.path.join(self.build_lib, 'pybnesian')
 
     # Include libraries from https://stackoverflow.com/questions/54117786/add-numpy-get-include-argument-to-setuptools-without-preinstalled-numpy
     def finalize_options(self):
@@ -370,7 +364,7 @@ namespace opencl {
 
                 new_file = pathlib.Path(os.path.splitext(p.parts[-1])[0] + ".o")
 
-                output = pathlib.Path(path_to_build_folder(), relative_path, new_file)
+                output = pathlib.Path(self.path_to_build_folder(), relative_path, new_file)
                 conf_files.append(
                     template.format(os.getcwd(), s, str(output), __version__, py_include, pybind_include,
                                     pyarrow_include, numpy_include)
@@ -461,7 +455,7 @@ namespace opencl {
             for lib in pa.get_libraries():
                 import shutil
                 shutil.copyfile(pa.get_library_dirs()[0] + '/' + lib + '.dll',
-                                path_to_build_folder() + '/' + lib + '.dll')
+                                self.path_to_build_folder() + '/' + lib + '.dll')
 
 
 with open("README.md", "r", encoding="utf-8") as fh:

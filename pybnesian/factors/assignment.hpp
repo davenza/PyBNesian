@@ -17,6 +17,8 @@ public:
     AssignmentValue(const AssignmentValue&) = default;
     AssignmentValue(std::variant<std::string, double> v) : m_value(v) {}
 
+    AssignmentValue& operator=(const AssignmentValue&) = default;
+    
     bool operator==(const std::string& other) const {
         if (const auto* v = std::get_if<std::string>(&m_value)) {
             return *v == other;

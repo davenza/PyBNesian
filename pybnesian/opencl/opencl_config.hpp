@@ -172,7 +172,6 @@ public:
         return output;
     }
 
-
     template <typename ArrowType, typename Reduction>
     cl::Buffer reduction_cols(const cl::Buffer& input_mat, int input_rows, int input_cols);
 

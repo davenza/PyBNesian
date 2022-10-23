@@ -581,7 +581,7 @@ Instantiates a :class:`CKDEType`.
                         [](py::tuple&) { return CKDEType::get(); }));
 
     py::class_<CKDE, Factor, std::shared_ptr<CKDE>>(root, "CKDE", R"doc(
-A conditional kernel density estimator (CKDE) is the ratio of two KDE models:
+A conditional kernel density estimator (CKDE) is the ratio of two KDE models [Semiparametric]_:
 
 .. math::
 
@@ -725,18 +725,80 @@ Removes the assignment for the ``variable``.
         .def(py::pickle([](const Assignment& self) { return self.__getstate__(); },
                         [](py::object& o) { return Assignment::__setstate__(o); }));
 
-    py::class_<CLinearGaussianCPD, Factor, std::shared_ptr<CLinearGaussianCPD>>(root, "CLinearGaussianCPD")
-        .def(py::init<std::string, std::vector<std::string>>())
-        .def(py::init<std::string, std::vector<std::string>, VectorXd, double>())
+    py::class_<CLinearGaussianCPD, Factor, std::shared_ptr<CLinearGaussianCPD>>(root, "CLinearGaussianCPD", R"doc(
+A conditional linear Gaussian CPD defines a :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` for each discrete
+configuration of its parents.
+)doc")
+        .def(py::init<std::string, std::vector<std::string>>(), py::arg("variable"), py::arg("evidence"), R"doc(
+Initializes a new :class:`CLinearGaussianCPD` with a given ``variable`` and ``evidence``.
+
+The :class:`CLinearGaussianCPD` is left unfitted.
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+)doc")
+        .def(py::init<std::string, std::vector<std::string>, VectorXd, double>(),
+             py::arg("variable"),
+             py::arg("evidence"),
+             py::arg("beta"),
+             py::arg("variance"),
+             R"doc(
+Initializes a new :class:`CLinearGaussianCPD` with a given ``variable`` and ``evidence``. Each 
+:class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` will be constructed using the provided ``beta`` and
+``variance``.
+
+Note that :class:`CLinearGaussianCPD` is left unfitted because some data is needed to extract the categories of the
+discrete variables. You should call :func:`fit <pybnesian.Factor.fit>`.
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+:param beta: Vector of parameters for each :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
+:param variance: Variance for each :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>`.
+)doc")
         .def(py::init<std::string,
                       std::vector<std::string>,
-                      std::unordered_map<Assignment, std::tuple<VectorXd, double>, AssignmentHash>>())
-        .def("conditional_factor", &CLinearGaussianCPD::conditional_factor, py::return_value_policy::reference_internal)
+                      std::unordered_map<Assignment, std::tuple<VectorXd, double>, AssignmentHash>>(),
+             py::arg("variable"),
+             py::arg("evidence"),
+             py::arg("args"),
+             R"doc(
+Initializes a new :class:`CLinearGaussianCPD` with a given ``variable`` and ``evidence``. The
+:class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` of each discrete configuration can be constructed using
+different ``beta`` and ``variance``.
+
+Note that :class:`CLinearGaussianCPD` is left unfitted because some data is needed to extract the categories of the
+discrete variables. You should call :func:`fit <pybnesian.Factor.fit>`. If some discrete
+configuration is not provided, the :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` will be fitted with 
+:func:`LinearGaussianCPD.fit <pybnesian.Factor.fit>`
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+:param args: Dict of of ``beta`` and ``variance`` for each discrete :class:`Assignment <pybnesian.Assignment>`.
+)doc")
+        .def("conditional_factor",
+             &CLinearGaussianCPD::conditional_factor,
+             py::return_value_policy::reference_internal,
+             py::arg("assignment"),
+             R"doc(
+Return the corresponding :class:`LinearGaussianCPD <pybnesian.LinearGaussianCPD>` for the given discrete ``assignment``
+
+:param assignment: A discrete :class:`Assignment <pybnesian.Assignment>`.
+)doc")
         .def(py::pickle([](const CLinearGaussianCPD& self) { return self.__getstate__(); },
                         [](py::tuple t) { return CLinearGaussianCPD::__setstate__(t); }));
 
-    py::class_<HCKDE, Factor, std::shared_ptr<HCKDE>>(root, "HCKDE")
-        .def(py::init<std::string, std::vector<std::string>>())
+    py::class_<HCKDE, Factor, std::shared_ptr<HCKDE>>(root, "HCKDE", R"doc(
+The hybrid conditional kernel density estimation (HCKDE) [HybridSemiparametric]_ defines a
+:class:`CKDE <pybnesian.CKDE>` for each discrete configuration of its parents.
+)doc")
+        .def(py::init<std::string, std::vector<std::string>>(), py::arg("variable"), py::arg("evidence"), R"doc(
+Initializes a new :class:`HCKDE` with a given ``variable`` and ``evidence``.
+
+The :class:`HCKDE` is left unfitted.
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+)doc")
         .def(py::init<>([](std::string variable,
                            std::vector<std::string> evidence,
                            std::shared_ptr<BandwidthSelector> bandwidth_selector) {
@@ -744,7 +806,18 @@ Removes the assignment for the ``variable``.
              }),
              py::arg("variable"),
              py::arg("evidence"),
-             py::arg("bandwidth_selector"))
+             py::arg("bandwidth_selector"),
+             R"doc(
+Initializes a new :class:`HCKDE` with a given ``variable`` and ``evidence``. Each :class:`HCKDE` will be constructed
+using the provided ``bandwidth_selector``.
+
+Note that :class:`HCKDE` is left unfitted because some data is needed to extract the categories of the discrete
+variables and to fit each :class:`CKDE <pybnesian.CKDE>`. You should call :func:`HCKDE.fit <pybnesian.Factor.fit>`.
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+:param bandwidth_selector: A :class:`BandwidthSelector <pybnesian.BandwidthSelector>` to use for each :class:`CKDE <pybnesian.CKDE>`.
+)doc")
         .def(
             py::init<>([](std::string variable,
                           std::vector<std::string> evidence,
@@ -758,8 +831,29 @@ Removes the assignment for the ``variable``.
             }),
             py::arg("variable"),
             py::arg("evidence"),
-            py::arg("bandwidth_selector"))
-        .def("conditional_factor", &HCKDE::conditional_factor, py::return_value_policy::reference_internal)
+            py::arg("bandwidth_selector"),
+            R"doc(
+Initializes a new :class:`HCKDE` with a given ``variable`` and ``evidence``. The :class:`CKDE <pybnesian.CKDE>` of each
+discrete configuration can be constructed using different ``bandwidth_selector``.
+
+Note that :class:`HCKDE` is left unfitted because some data is needed to extract the categories of the discrete
+variables and to fit each :class:`CKDE <pybnesian.CKDE>`. You should call :func:`HCKDE.fit <pybnesian.Factor.fit>`. If
+some discrete configuration is not provided, the :class:`CKDE <pybnesian.CKDE>` will be fitted with the
+:class:`NormalRereferenceRule <pybnesian.NormalReferenceRule>`.
+
+:param variable: Variable name.
+:param evidence: List of evidence variable names.
+:param args: Dict of ``bandwidth_selectors`` for each discrete :class:`Assignment <pybnesian.Assignment>`.
+)doc")
+        .def("conditional_factor",
+             &HCKDE::conditional_factor,
+             py::return_value_policy::reference_internal,
+             py::arg("assignment"),
+             R"doc(
+Return the corresponding :class:`CKDE <pybnesian.CKDE>` for the given discrete ``assignment``
+
+:param assignment: A discrete :class:`Assignment <pybnesian.Assignment>`.
+)doc")
         .def(py::pickle([](const HCKDE& self) { return self.__getstate__(); },
                         [](py::tuple t) { return HCKDE::__setstate__(t); }));
 }

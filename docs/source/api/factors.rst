@@ -55,6 +55,20 @@ Discrete Factors
     :special-members: __init__, __str__
 
 
+Hybrid Factors
+==============
+
+.. autoclass:: pybnesian.CLinearGaussianCPD
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+.. autoclass:: pybnesian.HCKDE
+    :show-inheritance:
+    :members:
+    :special-members: __init__, __str__
+
+
+
 Other Types
 ===========
 This types are not factors, but are auxiliary types for other factors.
@@ -122,3 +136,7 @@ Bibliography
 .. [Scott] Scott, D. W. (2015). Multivariate Density Estimation: Theory, Practice and Visualization. 2nd Edition.
            Wiley
 .. [MVKSA] José E. Chacón and Tarn Duong. (2018). Multivariate Kernel Smoothing and Its Applications. CRC Press.
+.. [Semiparametric] David Atienza and Concha Bielza and Pedro Larrañaga. Semiparametric Bayesian networks. Information
+                    Sciences, vol. 584, pp. 564-582, 2022.
+.. [HybridSemiparametric] David Atienza and Pedro Larrañaga and Concha Bielza. Hybrid semiparametric Bayesian networks.
+                          TEST, vol. 31, pp. 299-327, 2022.

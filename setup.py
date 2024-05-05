@@ -100,7 +100,7 @@ sources = ['fort.c']
 ext_libraries = [('fort', {
                'sources': [os.path.join(ext_lib_path, src) for src in sources],
                'include_dirs': [ext_lib_path],
-               'cflags': ['-D_GLIBCXX_USE_CXX11_ABI=0'] + darwin_opts
+               'cflags': darwin_opts
                }),
                ('nlopt', {
                    'sources': [],
@@ -336,13 +336,18 @@ namespace opencl {
             f.write(cpp_code)
 
     def create_clang_tidy_compilation_db(self, extensions):
+        import pyarrow as pa
+        version = pa.__version__.split(".")
+        major_version = int(version[0])
+        cxx_abi = "1" if major_version >= 13 else "0"
+
         db = "[{}\n]"
         template = """
         {{
             "directory": "{0}",
             "file": "{1}",
             "output": "{2}",
-            "arguments": ["/usr/lib/llvm-11/bin/clang", "-xc++", "{1}", "-Wno-unused-result", "-Wsign-compare", "-D", "NDEBUG", "-g", "-fwrapv", "-O2", "-Wall", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-g", "-fwrapv", "-O2", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-Wdate-time", "-D", "_FORTIFY_SOURCE=2", "-fPIC", "-D", "VERSION_INFO={3}", "-I", "{4}", "-I", "pybnesian/", "-I", "lib/libfort", "-I", "{5}", "-c", "-o", "{6}", "-std=c++17", "-isystem", "{6}", "-isystem", "{7}", "-isystem", "lib/eigen-3.3.7", "-isystem", "lib/OpenCL", "-isystem", "lib/boost", "-isystem", "lib/indicators", "-D", "_GLIBCXX_USE_CXX11_ABI=0", "-fdiagnostics-color=always", "-Wall", "-Wextra", "-fvisibility=hidden", "--target=x86_64-pc-linux-gnu"]
+            "arguments": ["/usr/lib/llvm-11/bin/clang", "-xc++", "{1}", "-Wno-unused-result", "-Wsign-compare", "-D", "NDEBUG", "-g", "-fwrapv", "-O2", "-Wall", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-g", "-fwrapv", "-O2", "-g", "-fstack-protector-strong", "-Wformat", "-Werror=format-security", "-Wdate-time", "-D", "_FORTIFY_SOURCE=2", "-fPIC", "-D", "VERSION_INFO={3}", "-I", "{4}", "-I", "pybnesian/", "-I", "lib/libfort", "-I", "{5}", "-c", "-o", "{6}", "-std=c++17", "-isystem", "{6}", "-isystem", "{7}", "-isystem", "lib/eigen-3.3.7", "-isystem", "lib/OpenCL", "-isystem", "lib/boost", "-isystem", "lib/indicators", "-D", "_GLIBCXX_USE_CXX11_ABI={8}", "-fdiagnostics-color=always", "-Wall", "-Wextra", "-fvisibility=hidden", "--target=x86_64-pc-linux-gnu"]
         }}"""
         conf_files = []
 
@@ -367,7 +372,7 @@ namespace opencl {
                 output = pathlib.Path(self.path_to_build_folder(), relative_path, new_file)
                 conf_files.append(
                     template.format(os.getcwd(), s, str(output), __version__, py_include, pybind_include,
-                                    pyarrow_include, numpy_include)
+                                    pyarrow_include, numpy_include, cxx_abi)
                 )
 
         json = db.format(','.join(conf_files))
@@ -400,8 +405,13 @@ namespace opencl {
 
             opts.append("/external:I" + cl_include_path)
 
+        import pyarrow as pa
+        version = pa.__version__.split(".")
+        major_version = int(version[0])
+        cxx_abi = "1" if major_version >= 13 else "0"
+
         # Include this because the name mangling affects to find the pyarrow functions.
-        opts.append("-D_GLIBCXX_USE_CXX11_ABI=0")
+        opts.append(f"-D_GLIBCXX_USE_CXX11_ABI={cxx_abi}")
 
         for ext in self.extensions:
             ext.define_macros.append(("PYARROW_VERSION_INFO", pa.__version__))

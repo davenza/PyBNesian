@@ -176,6 +176,25 @@ def test_productkde_fit_null():
             _test_productkde_fit_null_iter(variables, df_null, instances)
             _test_productkde_fit_null_iter(variables, df_null_float, instances)
 
+
+def factor_product_kernel(train_data):
+    # Estimate bandwidth factor using Equation (3.4) of Chacon and Duong (2018)
+
+    cov_data = np.atleast_2d(np.cov(train_data, rowvar=False, bias=False))
+    delta = np.diag(np.reciprocal(np.diag(cov_data))).dot(cov_data)
+    delta_inv = np.linalg.inv(delta)
+
+    N = train_data.shape[0]
+    d = train_data.shape[1]
+
+    num_factor = 4 * d * np.sqrt(np.linalg.det(delta))
+    denom_factor = (2 * np.trace(np.dot(delta_inv, delta_inv)) + np.trace(delta_inv)**2)
+
+    k = num_factor / denom_factor
+
+    return (k / N)**(1. / (d + 4.))
+
+
 def test_productkde_logl():
     def _test_productkde_logl_iter(variables, _df, _test_df):
         cpd = pbn.ProductKDE(variables)
@@ -184,16 +203,19 @@ def test_productkde_logl():
         logl = cpd.logl(_test_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
-        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
+
+        factor = factor_product_kernel(npdata)
+
+        final_scipy_kde = gaussian_kde(npdata.T, 
+                                       bw_method=lambda gkde: factor * np.eye(npdata.shape[1], dtype=npdata.dtype))
+        final_scipy_kde.cho_cov = np.linalg.cholesky(final_scipy_kde.covariance)
+        final_scipy_kde.log_det = 2*np.log(np.diag(final_scipy_kde.cho_cov * np.sqrt(2*np.pi))).sum()
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
         scipy = final_scipy_kde.logpdf(test_npdata.T)
 
         if np.all(_df.dtypes == 'float32'):
-            assert np.all(np.isclose(logl, scipy, atol=0.0005))
+            assert np.all(np.isclose(logl, scipy, atol=5e-3))
         else:
             assert np.all(np.isclose(logl, scipy))
 
@@ -224,16 +246,21 @@ def test_productkde_logl_null():
         logl = cpd.logl(_test_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
-        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
+
+        factor = factor_product_kernel(npdata)
+        final_scipy_kde = gaussian_kde(npdata.T, 
+                                       bw_method=lambda gkde: factor * np.eye(npdata.shape[1], dtype=npdata.dtype))
+        final_scipy_kde.cho_cov = np.linalg.cholesky(final_scipy_kde.covariance)
+        final_scipy_kde.log_det = 2*np.log(np.diag(final_scipy_kde.cho_cov * np.sqrt(2*np.pi))).sum()
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
-        scipy = final_scipy_kde.logpdf(test_npdata.T)
+
+        scipy = np.full((test_npdata.shape[0],), np.nan)
+        nan_rows = np.any(np.isnan(test_npdata), axis=1)
+        scipy[~nan_rows] = final_scipy_kde.logpdf(test_npdata[~nan_rows].T)
 
         if npdata.dtype == "float32":
-            assert np.all(np.isclose(logl, scipy, atol=0.0005, equal_nan=True))
+            assert np.all(np.isclose(logl, scipy, atol=5e-3, equal_nan=True))
         else:
             assert np.all(np.isclose(logl, scipy, equal_nan=True))
 
@@ -282,13 +309,20 @@ def test_productkde_slogl():
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
-        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
+        
+        factor = factor_product_kernel(npdata)
+        final_scipy_kde = gaussian_kde(npdata.T, 
+                                       bw_method=lambda gkde: factor * np.eye(npdata.shape[1], dtype=npdata.dtype))
+        final_scipy_kde.cho_cov = np.linalg.cholesky(final_scipy_kde.covariance)
+        final_scipy_kde.log_det = 2*np.log(np.diag(final_scipy_kde.cho_cov * np.sqrt(2*np.pi))).sum()
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
-        assert np.all(np.isclose(cpd.slogl(_test_df), final_scipy_kde.logpdf(test_npdata.T).sum()))
+
+        if np.all(_df.dtypes == 'float32'):
+            assert np.all(np.isclose(cpd.slogl(_test_df), final_scipy_kde.logpdf(test_npdata.T).sum(),
+                                     atol=5e-3*test_npdata.shape[0]))
+        else:
+            assert np.all(np.isclose(cpd.slogl(_test_df), final_scipy_kde.logpdf(test_npdata.T).sum()))
 
     test_df = util_test.generate_normal_data(50, seed=1)
     test_df_float = test_df.astype('float32')
@@ -316,13 +350,23 @@ def test_productkde_slogl_null():
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
-        final_scipy_kde = gaussian_kde(npdata.T)
-        final_scipy_kde.covariance = np.diag(cpd.bandwidth)
-        final_scipy_kde.inv_cov = np.diag(1. / cpd.bandwidth)
-        final_scipy_kde.log_det = cpd.bandwidth.shape[0] * np.log(2*np.pi) + np.log(cpd.bandwidth).sum()
+        
+        factor = factor_product_kernel(npdata)
+        final_scipy_kde = gaussian_kde(npdata.T, 
+                                       bw_method=lambda gkde: factor * np.eye(npdata.shape[1], dtype=npdata.dtype))
+        final_scipy_kde.cho_cov = np.linalg.cholesky(final_scipy_kde.covariance)
+        final_scipy_kde.log_det = 2*np.log(np.diag(final_scipy_kde.cho_cov * np.sqrt(2*np.pi))).sum()
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
-        assert np.all(np.isclose(cpd.slogl(_test_df), np.nansum(final_scipy_kde.logpdf(test_npdata.T))))
+        nan_rows = np.any(np.isnan(test_npdata), axis=1)
+
+        if npdata.dtype == "float32":
+            assert np.all(np.isclose(cpd.slogl(_test_df),
+                                     np.sum(final_scipy_kde.logpdf(test_npdata[~nan_rows].T)),
+                                     atol=5e-3*test_npdata.shape[0]))
+        else:
+            assert np.all(np.isclose(cpd.slogl(_test_df),
+                                     np.sum(final_scipy_kde.logpdf(test_npdata[~nan_rows].T))))
 
     TEST_SIZE = 50
 

@@ -214,12 +214,15 @@ def test_kde_logl_null():
         test_npdata = _test_df.loc[:, variables].to_numpy()
 
         logl = cpd.logl(_test_df)
-        scipy = scipy_kde.logpdf(test_npdata.T)
+
+        scipy_result = np.full((test_npdata.shape[0],), np.nan)
+        nan_rows = np.any(np.isnan(test_npdata), axis=1)
+        scipy_result[~nan_rows] = scipy_kde.logpdf(test_npdata[~nan_rows].T)
 
         if npdata.dtype == "float32":
-            assert np.all(np.isclose(logl, scipy, atol=0.0005, equal_nan=True))
+            assert np.all(np.isclose(logl, scipy_result, atol=0.0005, equal_nan=True))
         else:
-            assert np.all(np.isclose(logl, scipy, equal_nan=True))
+            assert np.all(np.isclose(logl, scipy_result, equal_nan=True))
 
     TEST_SIZE = 50
 
@@ -305,7 +308,9 @@ def test_kde_slogl_null():
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
 
-        assert np.all(np.isclose(cpd.slogl(_test_df), np.nansum(scipy_kde.logpdf(test_npdata.T))))
+        nan_rows = np.any(np.isnan(test_npdata), axis=1)
+
+        assert np.all(np.isclose(cpd.slogl(_test_df), scipy_kde.logpdf(test_npdata[~nan_rows].T).sum()))
 
     TEST_SIZE = 50
 

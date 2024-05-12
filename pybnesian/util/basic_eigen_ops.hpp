@@ -1,5 +1,5 @@
-#ifndef PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
-#define PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
+#ifndef PYBNESIAN_UTIL_BASIC_EIGEN_OPS_HPP
+#define PYBNESIAN_UTIL_BASIC_EIGEN_OPS_HPP
 
 #include <util/math_constants.hpp>
 
@@ -148,4 +148,4 @@ bool is_psd(const M& m) {
 
 }  // namespace util
 
-#endif  // PYBNESIAN_UTIL_ARROW_BASIC_EIGEN_OPS_HPP
+#endif  // PYBNESIAN_UTIL_BASIC_EIGEN_OPS_HPP

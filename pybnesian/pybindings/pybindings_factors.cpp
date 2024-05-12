@@ -700,9 +700,7 @@ Gets the number of assignments in the :class:`Assignment <pybnesian.Assignment>`
 )doc")
         .def(
             "insert",
-            [](Assignment& self, const std::string& key, const AssignmentValue value) {
-                self.insert({key, value});
-            },
+            [](Assignment& self, const std::string& key, const AssignmentValue value) { self.insert({key, value}); },
             py::arg("variable"),
             py::arg("value"),
             R"doc(

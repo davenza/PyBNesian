@@ -1,5 +1,5 @@
 #include <kde/KDE.hpp>
-#include <arrow/python/helpers.h>
+#include <util/arrow_types.hpp>
 
 namespace kde {
 
@@ -128,7 +128,7 @@ KDE KDE::__setstate__(py::tuple& t) {
         kde.m_bandwidth = t[3].cast<MatrixXd>();
         kde.m_lognorm_const = t[5].cast<double>();
         kde.N = static_cast<size_t>(t[6].cast<int>());
-        kde.m_training_type = pyarrow::GetPrimitiveType(static_cast<arrow::Type::type>(t[7].cast<int>()));
+        kde.m_training_type = util::GetPrimitiveType(static_cast<arrow::Type::type>(t[7].cast<int>()));
 
         auto llt_cov = kde.m_bandwidth.llt();
         auto llt_matrix = llt_cov.matrixLLT();

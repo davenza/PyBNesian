@@ -2,8 +2,7 @@
 #define PYBNESIAN_DATASET_DATASET_HPP
 
 #include <Eigen/Dense>
-#include <arrow/python/pyarrow.h>
-#include <arrow/python/platform.h>
+#include <arrow/c/bridge.h>
 #include <arrow/api.h>
 #include <arrow/compute/api.h>
 #include <pybind11/pybind11.h>
@@ -11,7 +10,6 @@
 #include <util/bit_util.hpp>
 #include <util/arrow_macros.hpp>
 
-namespace pyarrow = arrow::py;
 namespace py = pybind11;
 
 using arrow::Type, arrow::Buffer, arrow::DoubleType, arrow::FloatType, arrow::RecordBatch;
@@ -27,12 +25,22 @@ using RecordBatch_ptr = std::shared_ptr<RecordBatch>;
 
 namespace dataset {
 
+struct ArrowCAPIObjects {
+    struct ArrowSchema* arrow_schema;
+    struct ArrowArray* arrow_array;
+};
+
+bool is_pyarrow_instance(py::handle pyobject, const char* class_name);
 bool is_pandas_dataframe(py::handle pyobject);
 bool is_pandas_series(py::handle pyobject);
 
-std::shared_ptr<RecordBatch> to_record_batch(py::handle pyobject);
 py::object pandas_to_pyarrow_record_batch(py::handle pyobject);
 py::object pandas_to_pyarrow_array(py::handle pyobject);
+
+struct ArrowSchema* extract_pycapsule_schema(py::handle pyobject);
+ArrowCAPIObjects extract_pycapsule_array(py::handle pyobject);
+void ReleaseArrowSchemaPyCapsule(PyObject* capsule);
+void ReleaseArrowArrayPyCapsule(PyObject* capsule);
 
 Array_ptr copy_array(const Array_ptr& array);
 Array_ptr copy_array_dictionary(const Array_ptr& array);
@@ -2094,25 +2102,15 @@ public:
      * indicates whether implicit conversions should be applied.
      */
     bool load(handle src, bool) {
-        PyObject* py_ptr = src.ptr();
-
-        if (pyarrow::is_batch(py_ptr)) {
-            auto result = pyarrow::unwrap_batch(py_ptr);
-            if (result.ok()) {
-                value = result.ValueOrDie();
-                return true;
-            } else {
-                return false;
-            }
+        if (dataset::is_pyarrow_instance(src, "RecordBatch")) {
+            dataset::ArrowCAPIObjects capi = dataset::extract_pycapsule_array(src);
+            RAISE_RESULT_ERROR(value, arrow::ImportRecordBatch(capi.arrow_array, capi.arrow_schema))
+            return true;
         } else if (dataset::is_pandas_dataframe(src)) {
             auto a = dataset::pandas_to_pyarrow_record_batch(src);
-            auto result = pyarrow::unwrap_batch(a.ptr());
-            if (result.ok()) {
-                value = result.ValueOrDie();
-                return true;
-            } else {
-                return false;
-            }
+            dataset::ArrowCAPIObjects capi = dataset::extract_pycapsule_array(a);
+            RAISE_RESULT_ERROR(value, arrow::ImportRecordBatch(capi.arrow_array, capi.arrow_schema))
+            return true;
         }
 
         return false;
@@ -2126,8 +2124,21 @@ public:
      * ignored by implicit casters.
      */
     static handle cast(dataset::DataFrame src, return_value_policy /* policy */, handle /* parent */) {
-        PyObject* wrapped_rb = pyarrow::wrap_batch(src.record_batch());
-        return wrapped_rb;
+        struct ArrowSchema* c_schema = (struct ArrowSchema*)malloc(sizeof(struct ArrowSchema));
+        struct ArrowArray* c_array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+        RAISE_STATUS_ERROR(arrow::ExportRecordBatch(*src.record_batch(), c_array, c_schema));
+
+        PyObject* schema_capsule = PyCapsule_New(c_schema, "arrow_schema", dataset::ReleaseArrowSchemaPyCapsule);
+        PyObject* array_capsule = PyCapsule_New(c_array, "arrow_array", dataset::ReleaseArrowArrayPyCapsule);
+        PyObject* args = PyTuple_Pack(2, schema_capsule, array_capsule);
+
+        py::handle method = py::module::import("pyarrow").attr("RecordBatch").attr("_import_from_c_capsule");
+
+        PyObject* method_py = method.ptr();
+        py::handle casted = PyObject_Call(method_py, args, NULL);
+
+        Py_DECREF(args);
+        return casted;
     }
 };
 }  // namespace pybind11::detail
@@ -2149,26 +2160,15 @@ public:
      * indicates whether implicit conversions should be applied.
      */
     bool load(handle src, bool) {
-        PyObject* py_ptr = src.ptr();
-
-        if (pyarrow::is_array(py_ptr)) {
-            auto result = pyarrow::unwrap_array(py_ptr);
-            if (result.ok()) {
-                value = result.ValueOrDie();
-                return true;
-            } else {
-                return false;
-            }
+        if (dataset::is_pyarrow_instance(src, "Array")) {
+            dataset::ArrowCAPIObjects capi = dataset::extract_pycapsule_array(src);
+            RAISE_RESULT_ERROR(value, arrow::ImportArray(capi.arrow_array, capi.arrow_schema))
+            return true;
         } else if (dataset::is_pandas_series(src)) {
             auto a = dataset::pandas_to_pyarrow_array(src);
-            auto result = pyarrow::unwrap_array(a.ptr());
-
-            if (result.ok()) {
-                value = result.ValueOrDie();
-                return true;
-            } else {
-                return false;
-            }
+            dataset::ArrowCAPIObjects capi = dataset::extract_pycapsule_array(a);
+            RAISE_RESULT_ERROR(value, arrow::ImportArray(capi.arrow_array, capi.arrow_schema))
+            return true;
         }
 
         return false;
@@ -2182,8 +2182,21 @@ public:
      * ignored by implicit casters.
      */
     static handle cast(Array_ptr src, return_value_policy /* policy */, handle /* parent */) {
-        PyObject* wrapped_rb = pyarrow::wrap_array(src);
-        return wrapped_rb;
+        struct ArrowSchema* c_schema = (struct ArrowSchema*)malloc(sizeof(struct ArrowSchema));
+        struct ArrowArray* c_array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+        RAISE_STATUS_ERROR(arrow::ExportArray(*src, c_array, c_schema));
+
+        PyObject* schema_capsule = PyCapsule_New(c_schema, "arrow_schema", dataset::ReleaseArrowSchemaPyCapsule);
+        PyObject* array_capsule = PyCapsule_New(c_array, "arrow_array", dataset::ReleaseArrowArrayPyCapsule);
+        PyObject* args = PyTuple_Pack(2, schema_capsule, array_capsule);
+
+        py::handle method = py::module::import("pyarrow").attr("Array").attr("_import_from_c_capsule");
+
+        PyObject* method_py = method.ptr();
+        py::handle casted = PyObject_Call(method_py, args, NULL);
+
+        Py_DECREF(args);
+        return casted;
     }
 };
 }  // namespace pybind11::detail
@@ -2205,16 +2218,13 @@ public:
      * indicates whether implicit conversions should be applied.
      */
     bool load(handle src, bool) {
-        PyObject* py_ptr = src.ptr();
-
-        auto result = pyarrow::unwrap_data_type(py_ptr);
-
-        if (result.ok()) {
-            value = result.ValueOrDie();
+        if (dataset::is_pyarrow_instance(src, "DataType")) {
+            struct ArrowSchema* capi = dataset::extract_pycapsule_schema(src);
+            RAISE_RESULT_ERROR(value, arrow::ImportType(capi))
             return true;
-        } else {
-            throw std::invalid_argument("Object could not be converted to Arrow DataType.");
         }
+
+        return false;
     }
 
     /**
@@ -2225,8 +2235,16 @@ public:
      * ignored by implicit casters.
      */
     static handle cast(std::shared_ptr<arrow::DataType> src, return_value_policy /* policy */, handle /* parent */) {
-        PyObject* wrapped_rb = pyarrow::wrap_data_type(src);
-        return wrapped_rb;
+        struct ArrowSchema* c_schema = (struct ArrowSchema*)malloc(sizeof(struct ArrowSchema));
+        RAISE_STATUS_ERROR(arrow::ExportType(*src, c_schema));
+
+        PyObject* schema_capsule = PyCapsule_New(c_schema, "arrow_schema", dataset::ReleaseArrowSchemaPyCapsule);
+
+        py::handle method = py::module::import("pyarrow").attr("DataType").attr("_import_from_c_capsule");
+
+        PyObject* method_py = method.ptr();
+        py::handle casted = PyObject_CallOneArg(method_py, schema_capsule);
+        return casted;
     }
 };
 

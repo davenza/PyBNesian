@@ -1,7 +1,6 @@
 #include <arrow/api.h>
 #include <arrow/util/align_util.h>
 #include <arrow/util/bitmap_ops.h>
-#include <arrow/python/pyarrow.h>
 #include <dataset/dataset.hpp>
 #include <Eigen/Dense>
 #include <util/parameter_traits.hpp>
@@ -9,12 +8,23 @@
 
 using Eigen::MatrixXd;
 
-namespace pyarrow = arrow::py;
 namespace py = pybind11;
 using arrow::Array, arrow::RecordBatch, arrow::Result, arrow::Buffer, arrow::NumericBuilder, arrow::DataType,
     arrow::Type, arrow::NumericBuilder;
 
 namespace dataset {
+
+bool is_pyarrow_instance(py::handle pyobject, const char* class_name) {
+    PyObject* pyobj_ptr = pyobject.ptr();
+
+    PyObject* module = PyImport_ImportModule("pyarrow");
+    PyObject* moduleDict = PyModule_GetDict(module);
+    PyObject* protocolClass = PyDict_GetItemString(moduleDict, class_name);
+
+    bool is_instance = PyObject_IsInstance(pyobj_ptr, protocolClass);
+    Py_DECREF(module);
+    return is_instance;
+}
 
 bool is_pandas_dataframe(py::handle pyobject) {
     PyObject* pyobj_ptr = pyobject.ptr();
@@ -23,7 +33,9 @@ bool is_pandas_dataframe(py::handle pyobject) {
     PyObject* moduleDict = PyModule_GetDict(module);
     PyObject* protocolClass = PyDict_GetItemString(moduleDict, "DataFrame");
 
-    return PyObject_IsInstance(pyobj_ptr, protocolClass);
+    bool is_instance = PyObject_IsInstance(pyobj_ptr, protocolClass);
+    Py_DECREF(module);
+    return is_instance;
 }
 
 bool is_pandas_series(py::handle pyobject) {
@@ -33,7 +45,9 @@ bool is_pandas_series(py::handle pyobject) {
     PyObject* moduleDict = PyModule_GetDict(module);
     PyObject* protocolClass = PyDict_GetItemString(moduleDict, "Series");
 
-    return PyObject_IsInstance(pyobj_ptr, protocolClass);
+    bool is_instance = PyObject_IsInstance(pyobj_ptr, protocolClass);
+    Py_DECREF(module);
+    return is_instance;
 }
 
 py::object pandas_to_pyarrow_record_batch(py::handle pyobject) {
@@ -46,30 +60,61 @@ py::object pandas_to_pyarrow_array(py::handle pyobject) {
     return d;
 }
 
-std::shared_ptr<RecordBatch> to_record_batch(py::handle data) {
-    PyObject* py_ptr = data.ptr();
+struct ArrowSchema* extract_pycapsule_schema(py::handle pyobject) {
+    PyObject* py_ptr = pyobject.ptr();
+    // call the method and get the tuple
+    PyObject* arrow_c_method = PyObject_GetAttrString(py_ptr, "__arrow_c_schema__");
 
-    if (pyarrow::is_batch(py_ptr)) {
-        auto result = pyarrow::unwrap_batch(py_ptr);
-        if (result.ok()) {
-            return result.ValueOrDie();
-        } else {
-            throw std::runtime_error("pyarrow's RecordBatch could not be converted.");
-        }
-    } else if (is_pandas_dataframe(data)) {
-        auto a = pandas_to_pyarrow_record_batch(data);
-        auto result = pyarrow::unwrap_batch(a.ptr());
-
-        if (result.ok()) {
-            return result.ValueOrDie();
-        } else {
-            throw std::runtime_error("pyarrow's RecordBatch could not be converted.");
-        }
-    } else {
-        throw std::invalid_argument("\'data\' parameter should be a pyarrow's RecordBatch or a pandas DataFrame. ");
+    if (arrow_c_method == NULL) {
+        throw pybind11::attribute_error("Method __arrow_c_schema__ not found.");
     }
 
-    return nullptr;
+    PyObject* schema_capsule_obj = PyObject_CallNoArgs(arrow_c_method);
+    Py_DECREF(arrow_c_method);
+
+    // extract the capsule
+    struct ArrowSchema* c_schema = (struct ArrowSchema*)PyCapsule_GetPointer(schema_capsule_obj, "arrow_schema");
+
+    return c_schema;
+}
+
+struct ArrowCAPIObjects extract_pycapsule_array(py::handle pyobject) {
+    PyObject* py_ptr = pyobject.ptr();
+    // call the method and get the tuple
+
+    PyObject* arrow_c_method = PyObject_GetAttrString(py_ptr, "__arrow_c_array__");
+
+    if (arrow_c_method == NULL) {
+        throw pybind11::attribute_error("Method __arrow_c_array__ not found.");
+    }
+
+    PyObject* array_capsule_tuple = PyObject_CallNoArgs(arrow_c_method);
+    Py_DECREF(arrow_c_method);
+
+    PyObject* schema_capsule_obj = PyTuple_GetItem(array_capsule_tuple, 0);
+    PyObject* array_capsule_obj = PyTuple_GetItem(array_capsule_tuple, 1);
+
+    // extract the capsule
+    struct ArrowSchema* c_schema = (struct ArrowSchema*)PyCapsule_GetPointer(schema_capsule_obj, "arrow_schema");
+    struct ArrowArray* c_array = (struct ArrowArray*)PyCapsule_GetPointer(array_capsule_obj, "arrow_array");
+
+    return ArrowCAPIObjects{c_schema, c_array};
+}
+
+void ReleaseArrowSchemaPyCapsule(PyObject* capsule) {
+    struct ArrowSchema* schema = (struct ArrowSchema*)PyCapsule_GetPointer(capsule, "arrow_schema");
+    if (schema->release != NULL) {
+        schema->release(schema);
+    }
+    free(schema);
+}
+
+void ReleaseArrowArrayPyCapsule(PyObject* capsule) {
+    struct ArrowArray* array = (struct ArrowArray*)PyCapsule_GetPointer(capsule, "arrow_array");
+    if (array->release != NULL) {
+        array->release(array);
+    }
+    free(array);
 }
 
 Array_ptr copy_array(const Array_ptr& array) {

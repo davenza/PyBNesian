@@ -1,0 +1,11 @@
+{
+    "name": "main",
+    "version-string": "latest",
+    "dependencies": [
+        "arrow",
+        "nlopt",
+        "libfort",
+        "boost-math",
+        "boost-dynamic-bitset"
+    ]
+}

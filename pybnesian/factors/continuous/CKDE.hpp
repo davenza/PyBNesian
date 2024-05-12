@@ -14,7 +14,7 @@
 #include <util/math_constants.hpp>
 
 namespace py = pybind11;
-namespace pyarrow = arrow::py;
+
 using dataset::DataFrame;
 using Eigen::VectorXd, Eigen::VectorXi;
 using factors::FactorType, factors::discrete::DiscreteAdaptator;

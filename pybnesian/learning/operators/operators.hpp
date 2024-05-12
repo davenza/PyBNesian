@@ -361,11 +361,11 @@ public:
 
     std::shared_ptr<LocalScoreCache> local_score_cache() { return m_local_cache; }
 
-    virtual void set_arc_blacklist(const ArcStringVector&){};
-    virtual void set_arc_whitelist(const ArcStringVector&){};
-    virtual void set_max_indegree(int){};
-    virtual void set_type_blacklist(const FactorTypeVector&){};
-    virtual void set_type_whitelist(const FactorTypeVector&){};
+    virtual void set_arc_blacklist(const ArcStringVector&) {};
+    virtual void set_arc_whitelist(const ArcStringVector&) {};
+    virtual void set_max_indegree(int) {};
+    virtual void set_type_blacklist(const FactorTypeVector&) {};
+    virtual void set_type_whitelist(const FactorTypeVector&) {};
     virtual void finished() { m_local_cache = nullptr; }
 
     static std::shared_ptr<OperatorSet>& keep_python_alive(std::shared_ptr<OperatorSet>& op_set) {

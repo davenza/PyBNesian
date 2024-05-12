@@ -804,8 +804,7 @@ Gets the edges where one of the nodes is an interface node.
 
 template <typename CppClass, typename PyClass>
 void add_pdag_methods(PyClass& c, std::string class_name) {
-    c.def(
-        "to_dag", [](const CppClass& self) { return self.to_dag(); }, R"doc(
+    c.def("to_dag", [](const CppClass& self) { return self.to_dag(); }, R"doc(
 Gets a :class:`Dag` which belongs to the equivalence class of ``self``.
 
 It implements the algorithm in [pdag2dag]_.

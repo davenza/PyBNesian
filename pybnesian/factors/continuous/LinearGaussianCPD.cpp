@@ -1,8 +1,6 @@
 #include <Python.h>
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
-#include <arrow/python/pyarrow.h>
-#include <arrow/python/platform.h>
 #include <arrow/api.h>
 #include <factors/continuous/LinearGaussianCPD.hpp>
 #include <factors/continuous/CKDE.hpp>

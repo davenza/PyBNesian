@@ -1,0 +1,35 @@
+[build-system]
+requires = ["cmake", "ninja", "scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+cmake.verbose = true
+logging.level = "INFO"
+
+[project]
+name = "pybnesian"
+authors = [{name = "David Atienza", email = "datienza@fi.upm.es"}]
+# url.repository = "https://github.com/davenza/PyBNesian"
+description="PyBNesian is a Python package that implements Bayesian networks."
+version = "0.4.3"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+keywords = []
+dependencies = [
+    "pybind11>=2.6",
+    "pyarrow>=14",
+    "numpy"
+]
+
+[project.urls]
+homepage = "https://github.com/davenza/PyBNesian"  # FIXME not shown by pip
+documentation = "https://pybnesian.readthedocs.io/en/latest/?badge=latest"
+changelog = "https://pybnesian.readthedocs.io/en/latest/changelog.html"

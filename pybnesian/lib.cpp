@@ -1,6 +1,4 @@
 #include <pybind11/pybind11.h>
-#include <arrow/python/pyarrow.h>
-#include <arrow/python/platform.h>
 #include <arrow/api.h>
 #include <util/pickle.hpp>
 
@@ -8,7 +6,6 @@
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
 namespace py = pybind11;
-namespace pyarrow = arrow::py;
 
 void pybindings_dataset(py::module& root);
 void pybindings_kde(py::module& root);
@@ -23,26 +20,6 @@ PYBIND11_MODULE(__init__, m) {}
 #endif
 
 PYBIND11_MODULE(pybnesian, m) {
-    auto pa_version = py::module_::import("pyarrow").attr("__version__").cast<std::string>();
-
-    std::string lib_pa_version{MACRO_STRINGIFY(PYARROW_VERSION_INFO)};
-    if (pa_version != lib_pa_version) {
-        throw std::runtime_error("PyBNesian was compiled with pyarrow " + lib_pa_version +
-                                 ". To fix this error you can:\n"
-                                 "1) Install pyarrow " +
-                                 lib_pa_version +
-                                 "."
-                                 " Run \"pip install pyarrow==" +
-                                 lib_pa_version +
-                                 "\".\n"
-                                 "2) If you want to keep pyarrow " +
-                                 pa_version +
-                                 " you"
-                                 " must compile PyBNesian from source.");
-    }
-
-    pyarrow::import_pyarrow();
-
     m.doc() = R"doc(
 - **PyBNesian** is a Python package that implements Bayesian networks. Currently, it is mainly dedicated to learning Bayesian networks.
 

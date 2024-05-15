@@ -151,3 +151,4 @@ docs/source/_build
 *.synctex.gz
 tmp/
 vcpkg_installed/*
+.vscode

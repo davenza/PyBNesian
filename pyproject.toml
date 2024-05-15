@@ -2,15 +2,18 @@
 requires = ["scikit-build-core", "pybind11"]
 build-backend = "scikit_build_core.build"
 
+
 [tool.scikit-build]
 cmake.verbose = true
 logging.level = "INFO"
 cmake.args = ["-DBUILD_SHARED_LIBS=OFF", "-DVCPKG_OVERLAY_PORTS=overlay_ports"]
 
+sdist.include = ["/conv_template.py", "/expand_sources.py"]
+sdist.exclude = ["vcpkg/*", "docs/"]
+
 [project]
 name = "pybnesian"
 authors = [{name = "David Atienza", email = "datienza@fi.upm.es"}]
-# url.repository = "https://github.com/davenza/PyBNesian"
 description="PyBNesian is a Python package that implements Bayesian networks."
 version = "0.4.3"
 readme = {file = "README.md", content-type = "text/markdown"}

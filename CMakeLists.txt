@@ -7,11 +7,28 @@ ENDIF()
 find_package(Git QUIET)
 message("Git executable: ${GIT_EXECUTABLE}")
 
-execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
+IF(EXISTS ".git")
+    SET(GIT_COMMAND_EXECUTED "{GIT_EXECUTABLE} submodule update --init --recursive")
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
+ELSE()
+    SET(GIT_COMMIT_HASH "a1212c93c")
+    SET(GIT_COMMAND_EXECUTED "${GIT_EXECUTABLE} clone https://github.com/Microsoft/vcpkg.git")
+    execute_process(COMMAND ${GIT_EXECUTABLE} clone https://github.com/Microsoft/vcpkg.git
+                    WORKING_DIRECTORY "." RESULT_VARIABLE GIT_SUBMOD_RESULT)
+
+    IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
+        message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}.")
+    ENDIF()
+
+    SET(GIT_COMMAND_EXECUTED "${GIT_EXECUTABLE} checkout ${GIT_COMMIT_HASH}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${GIT_COMMIT_HASH}
+                    WORKING_DIRECTORY "vcpkg" RESULT_VARIABLE GIT_SUBMOD_RESULT)
+
+ENDIF()
 
 IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
-    message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}, please checkout submodules.")
 ENDIF()
 
 set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")

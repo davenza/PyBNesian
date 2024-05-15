@@ -5,6 +5,7 @@ build-backend = "scikit_build_core.build"
 [tool.scikit-build]
 cmake.verbose = true
 logging.level = "INFO"
+cmake.args = ["-DBUILD_SHARED_LIBS=OFF", "-DVCPKG_OVERLAY_PORTS=overlay_ports"]
 
 [project]
 name = "pybnesian"

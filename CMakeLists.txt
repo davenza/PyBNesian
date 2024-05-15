@@ -1,17 +1,11 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")
-
-project(pybnesian VERSION "0.4.3")
-
-set(CMAKE_CXX_STANDARD 17)
-
-set(PYBIND11_NEWPYTHON ON)
-find_package(pybind11 CONFIG REQUIRED)
+IF(WIN32)
+    set(VCPKG_TARGET_TRIPLET x64-windows-static)
+ENDIF()
 
 find_package(Git QUIET)
 message("Git executable: ${GIT_EXECUTABLE}")
-
 
 execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
@@ -20,6 +14,19 @@ IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
     message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
 ENDIF()
 
+set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")
+
+project(pybnesian VERSION "0.4.3")
+
+set(CMAKE_CXX_STANDARD 17)
+
+IF(MSVC)
+    SET(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    ADD_DEFINITIONS("-DNOGDI")
+ENDIF()
+
+set(PYBIND11_NEWPYTHON ON)
+find_package(pybind11 CONFIG REQUIRED)
 
 IF(WIN32)
     SET(SCRIPT_PREFIX "")
@@ -131,7 +138,7 @@ pybind11_add_module(__init__ "pybnesian/lib.cpp"
 
 
 target_include_directories(__init__ PRIVATE "pybnesian")
-target_include_directories(__init__ SYSTEM PRIVATE "lib/eigen-3.3.7" "lib/indicators")
+target_include_directories(__init__ SYSTEM PRIVATE "lib/eigen-3.3.7" "lib/indicators" "lib/OpenCL")
 
 target_link_libraries(__init__ PRIVATE Arrow::arrow_static OpenCL::OpenCL NLopt::nlopt libfort::fort Boost::dynamic_bitset Boost::math)
 

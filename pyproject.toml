@@ -48,3 +48,11 @@ skip=["pp*",
 
 [tool.cibuildwheel.linux]
 before-all = "yum install -y zip unzip kernel-headers perl-IPC-Cmd flex opencl-headers ocl-icd ocl-icd-devel"
+
+[tool.cibuildwheel.macos]
+before-all = ["sudo xcodebuild -runFirstLaunch",
+              "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
+              "brew install bison ninja",
+              "export CMAKE_GENERATOR=Xcode",
+              "export MACOSX_DEPLOYMENT_TARGET=10.14",
+              "export VCPKG_ENV_PASSTHROUGH=MACOSX_DEPLOYMENT_TARGET"]

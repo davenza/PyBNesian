@@ -4,6 +4,11 @@ IF(WIN32)
     set(VCPKG_TARGET_TRIPLET x64-windows-static)
 ENDIF()
 
+IF(APPLE)
+    SET(CMAKE_C_COMPILER "clang")
+    SET(CMAKE_CXX_COMPILER "clang++")
+ENDIF()
+
 find_package(Git REQUIRED)
 message("Git executable: ${GIT_EXECUTABLE}")
 

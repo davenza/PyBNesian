@@ -3,106 +3,71 @@ name: Create release wheels / Do not publish!
 on: workflow_dispatch
 
 jobs:
-  build_win_macos:
-    name: Create Windows and MacOS wheels.
-    
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
-        python-version: ['3.7', '3.8', '3.9', '3.10']
-        
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+
     steps:
-    - uses: actions/checkout@v3
-      
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Download OpenCL SDK
-      if: matrix.os == 'windows-latest'
-      uses: suisei-cn/actions-download-file@v1.0.1
-      with:
-        url: "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip"
-        target: "."
-        
-    - name: Unzip OpenCL SDK
-      if: matrix.os == 'windows-latest'
-      run: |
-        mkdir OCLSDK
-        7z x lightOCLSDK.zip -oOCLSDK
-        
-    - name: Install python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools
-        python -m pip install wheel
+      - uses: actions/checkout@v4
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v5
+
+      - name: Download OpenCL SDK
+        if: matrix.os == 'windows-latest'
+        uses: suisei-cn/actions-download-file@818d6b7dc8fe73f2f924b6241f2b1134ca1377d9
+        with:
+          url: "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip"
+          target: "."
+          retry-times: 3
           
-    - name: Build wheel
-      env:
-        OCL_ROOT: OCLSDK
-      run: |
-        python setup.py bdist_wheel
+      - name: Unzip OpenCL SDK
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir OCLSDK
+          7z x lightOCLSDK.zip -oOCLSDK
 
-    - name: Cache wheel
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ matrix.os }}_${{ matrix.python-version }}_wheel
-        path: dist/*
-    
-          
-  build_manylinux2014:
-    name: Create manylinux2014 wheels.
-    
-    runs-on: ubuntu-latest
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.18.0
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [cp37-cp37m, cp38-cp38, cp39-cp39, cp310-cp310]
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Build (manylinux2014)
-      uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_x86_64
-      with:
-        python-versions: ${{ matrix.python-version }}
-        build-requirements: 'pybind11 numpy pyarrow'
-        system-packages: 'opencl-headers ocl-icd ocl-icd-devel'
-        pip-wheel-args: '-w ./dist --no-deps'
+      - name: Build wheels
+        if: runner.os != 'macOS'
+        run: python -m cibuildwheel --output-dir wheelhouse
 
-    - name: Retrieve Python version
-      run: |
-        echo "PYVERSION=$(echo ${{ matrix.python-version }} | sed -r 's/.*cp([0-9])([0-9]+).*/\1.\2/')" >> $GITHUB_ENV
+      - name: Build wheels
+        if: runner.os == 'macOS'
+        env:
+          CMAKE_GENERATOR: Xcode
+          MACOSX_DEPLOYMENT_TARGET: 10.14
+          VCPKG_ENV_PASSTHROUGH: MACOSX_DEPLOYMENT_TARGET
+        run: python -m cibuildwheel --output-dir wheelhouse
 
-    - name: Cache wheel
-      uses: actions/upload-artifact@v3
-      with:
-        name: ubuntu-latest_${{ env.PYVERSION }}_wheel
-        path: dist/*manylinux2014*.whl
-        
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
   sdist:
     name: Create source release
     
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.8'
+      uses: actions/setup-python@v5
+
+    - name: Install build package
+      run: python -m pip install build
 
     - name: Create source distribution
-      run: |
-        python setup.py sdist
+      run: python -m build -s
 
-    - name: Cache source distribution
-      uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: source_distribution
-        path: dist/*
+        name: cibw-sdist
+        path: ./dist/*

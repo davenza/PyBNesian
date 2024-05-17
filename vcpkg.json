@@ -6,6 +6,7 @@
         "nlopt",
         "libfort",
         "boost-math",
-        "boost-dynamic-bitset"
+        "boost-dynamic-bitset",
+        "opencl"
     ]
 }

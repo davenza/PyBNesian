@@ -37,3 +37,14 @@ dependencies = [
 homepage = "https://github.com/davenza/PyBNesian"  # FIXME not shown by pip
 documentation = "https://pybnesian.readthedocs.io/en/latest/?badge=latest"
 changelog = "https://pybnesian.readthedocs.io/en/latest/changelog.html"
+
+[tool.cibuildwheel]
+skip=["pp*",
+      "*-win32",
+      "*-musllinux*",
+      "*i686*",
+      "*ppc64le*",
+      "*s390x*"]
+
+[tool.cibuildwheel.linux]
+before-all = "yum install -y zip unzip kernel-headers perl-IPC-Cmd flex opencl-headers ocl-icd ocl-icd-devel"

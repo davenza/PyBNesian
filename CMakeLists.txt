@@ -4,7 +4,7 @@ IF(WIN32)
     set(VCPKG_TARGET_TRIPLET x64-windows-static)
 ENDIF()
 
-find_package(Git QUIET)
+find_package(Git REQUIRED)
 message("Git executable: ${GIT_EXECUTABLE}")
 
 IF(EXISTS ".git")
@@ -33,7 +33,7 @@ ENDIF()
 
 set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")
 
-project(pybnesian VERSION "0.4.3")
+project(pybnesian VERSION "0.4.3" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -43,7 +43,13 @@ IF(MSVC)
 ENDIF()
 
 set(PYBIND11_NEWPYTHON ON)
+find_package(Python COMPONENTS Interpreter Development)
 find_package(pybind11 CONFIG REQUIRED)
+
+message("Major version: ${Python_VERSION_MAJOR}")
+message("Minor version: ${Python_VERSION_MINOR}")
+
+add_definitions(-DPYTHON_VERSION_MAJOR=${Python_VERSION_MAJOR} -DPYTHON_VERSION_MINOR=${Python_VERSION_MINOR})
 
 IF(WIN32)
     SET(SCRIPT_PREFIX "")

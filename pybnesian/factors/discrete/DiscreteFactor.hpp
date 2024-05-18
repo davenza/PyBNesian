@@ -156,7 +156,7 @@ Array_ptr DiscreteFactor::sample_indices(int n, const DataFrame& evidence_values
     }
 
     std::mt19937 rng{seed};
-    std::uniform_int_distribution<> uniform(0, 1);
+    std::uniform_real_distribution<> uniform(0, 1);
 
     using CType = typename ArrowType::c_type;
     arrow::NumericBuilder<ArrowType> builder;

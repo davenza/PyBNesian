@@ -2,6 +2,17 @@
 Changelog
 *********
 
+
+v0.5.0
+======
+
+- Changed the build process to statically link Apache Arrow. With this change and using the `PyCapsule interface <https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html>`_, PyBNesian can interoperate with different versions of ``pyarrow>=14.0.0``. You can now upgrade pyarrow (``pip install --upgrade pyarrow``) without breaking PyBNesian. The dependencies are also managed by `vcpkg <https://vcpkg.io>`_, so the build process is simpler and orchestrated by scikit-build-core and a CMakeLists.txt.
+
+- Some tests failed because ``pandas`` and ``scipy`` were updated. These issues have been fixed.
+
+- A bug in the :func:`DiscreteFactor.sample <pybnesian.DiscreteFactor.sample>` function has been fixed. The previous implementation sampled equally from the first and last category of the :class:`DiscreteFactor <pybnesian.DiscreteFactor>`.
+
+
 v0.4.3
 ======
 

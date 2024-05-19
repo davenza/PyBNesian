@@ -7,32 +7,34 @@ PyBNesian
 Dependencies
 ============
 
-- Python 3.7, 3.8, 3.9 and 3.10.
+- Python 3.8, 3.9, 3.10, 3.11 and 3.12.
 
-The library has been tested on Ubuntu 16.04/20.04 and Windows 10, but should be compatible with other operating systems.
+The library has been tested on Ubuntu 16.04/20.04/22.04 and Windows 10/11, but should be compatible with other operating systems.
 
 Libraries
 ---------
 
-The library depends on `NumPy <https://numpy.org/>`_, `Apache Arrow`_, and
-`pybind11 <https://github.com/pybind/pybind11>`_.
+The library depends on `NumPy <https://numpy.org/>`_, `Apache Arrow`_, `pybind11 <https://github.com/pybind/pybind11>`_, `NLopt <https://nlopt.readthedocs.io/en/latest/>`_, `libfort <https://github.com/seleznevae/libfort>`_ and
+`Boost <https://www.boost.org/>`_.
 
-Building PyBNesian requires linking to `Apache Arrow`_. Therefore, even though the library is compatible with
-``pyarrow>=3.0`` each compiled binary is compatible with a specific ``pyarrow`` version. The pip repository provides
-compiled binaries for all the major operating systems (Linux, Windows, Mac OS X) targeting the last ``pyarrow`` version.
+For PyBNesian v0.4.3 and earlier, the library had to be compiled with pyarrow, so the version of pyarrow could not be changed without recompiling PyBNesian. **This restriction has been removed from PyBNesian v0.5.0**, so you could install any version of ``pyarrow>=14.0.0``.
 
-If you need a different version of ``pyarrow`` you will have to build PyBNesian from source. For example, if you need to
-use a ``pyarrow==8.0`` with PyBNesian, first install the required version of ``pyarrow``:
+.. warning::
 
-.. code-block:: bash
+    *For PyBNesian <= 0.4.3*:
 
-    pip install pyarrow==8.0.0
+    Building PyBNesian requires linking to `Apache Arrow`_. Therefore, even though the library is compatible with
+    ``pyarrow>=3.0`` each compiled binary is compatible with a specific ``pyarrow`` version. The pip repository provides
+    compiled binaries for all the major operating systems (Linux, Windows, Mac OS X) targeting the last ``pyarrow`` version.
 
-Then, proceed with the `Building`_ steps.
+    If you need a different version of ``pyarrow`` you will have to build PyBNesian from source. For example, if you need to
+    use a ``pyarrow==8.0`` with PyBNesian, first install the required version of ``pyarrow``:
 
-.. note::
+    .. code-block:: bash
 
-    Before building PyBNesian with a different version of ``pyarrow``, you should check that your Python version is compatible with ``pyarrow``.
+        pip install pyarrow==8.0.0
+
+    Then, proceed with the `Building`_ steps.
 
 
 Installation
@@ -50,17 +52,11 @@ Build from Source
 Prerequisites
 -------------
 
-- Python 3.6, 3.7, 3.8 or 3.9.
+- Python 3.8, 3.9, 3.10, 3.11 or 3.12.
 - C++17 compatible compiler.
-- CMake (it is needed to compile `NLopt <https://github.com/stevengj/nlopt>`).
-- OpenCL 1.2 headers/library available.
-
-If needed you can select a C++ compiler by setting the environment variable `CC`. For example, in Ubuntu, we can use
-Clang 11 with the following command before installing PyBNesian:
-
-.. code-block:: bash
-
-    export CC=clang-11
+- CMake.
+- Git.
+- OpenCL drivers installed.
 
 Building
 --------
@@ -71,8 +67,8 @@ Clone the repository:
 
     git clone https://github.com/davenza/PyBNesian.git
     cd PyBNesian
-    git checkout v0.1.0 # You can checkout a specific version if you want
-    python setup.py install
+    git checkout v0.5.0 # You can checkout a specific version if you want
+    pip install .
 
 Testing
 =======

@@ -38,7 +38,9 @@ ENDIF()
 
 set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")
 
-project(pybnesian VERSION "0.4.3" LANGUAGES CXX)
+project(pybnesian VERSION ${SKBUILD_PROJECT_VERSION} LANGUAGES CXX)
+ADD_DEFINITIONS("-DVERSION_INFO=${SKBUILD_PROJECT_VERSION}")
+
 
 set(CMAKE_CXX_STANDARD 17)
 

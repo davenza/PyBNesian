@@ -1,4 +1,4 @@
-![build](https://img.shields.io/github/workflow/status/davenza/pybnesian/Create%20release)
+![build](https://img.shields.io/github/actions/workflow/status/davenza/PyBNesian/release.yml?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/pybnesian/badge/?version=latest)](https://pybnesian.readthedocs.io/en/latest/?badge=latest)
 ![PyPI](https://img.shields.io/pypi/v/pybnesian?color=blue)
 
@@ -266,15 +266,15 @@ Node 2: c
 Dependencies
 ============
 
-- Python 3.6, 3.7, 3.8 and 3.9.
+- Python 3.8, 3.9, 3.10, 3.11 and 3.12.
 
-The library has been tested on Ubuntu 16.04/20.04 and Windows 10, but should be compatible with other operating systems.
+The library has been tested on Ubuntu 16.04/20.04/22.04 and Windows 10/11, but should be compatible with other operating systems.
 
 Libraries
 ---------
 
-The library depends on [NumPy](https://numpy.org/), [Apache Arrow](https://arrow.apache.org/), and
-[pybind11](https://github.com/pybind/pybind11).
+The library depends on [NumPy](https://numpy.org/), [Apache Arrow](https://arrow.apache.org/), [pybind11](https://github.com/pybind/pybind11), [NLopt](https://nlopt.readthedocs.io/en/latest/), [libfort](https://github.com/seleznevae/libfort) and [Boost](https://www.boost.org/).
+
 
 Installation
 ============
@@ -290,17 +290,12 @@ Build from Source
 Prerequisites
 -------------
 
-- Python 3.6, 3.7, 3.8 or 3.9.
+- Python 3.8, 3.9, 3.10, 3.11 or 3.12.
 - C++17 compatible compiler.
-- CMake (it is needed to compile [NLopt](https://github.com/stevengj/nlopt)).
-- OpenCL 1.2 headers/library available.
+- CMake.
+- Git.
+- OpenCL drivers installed.
 
-If needed you can select a C++ compiler by setting the environment variable `CC`. For example, in Ubuntu, we can use
-Clang 11 with the following command before installing PyBNesian:
-
-```
-export CC=clang-11
-```
 
 Building
 --------
@@ -310,8 +305,8 @@ Clone the repository:
 ```
 git clone https://github.com/davenza/PyBNesian.git
 cd PyBNesian
-git checkout v0.1.0 # You can checkout a specific version if you want
-python setup.py install
+git checkout v0.5.0 # You can checkout a specific version if you want
+pip install .
 ```
 
 Testing

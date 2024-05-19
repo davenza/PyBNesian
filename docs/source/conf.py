@@ -18,12 +18,12 @@
 # -- Project information -----------------------------------------------------
 
 project = 'PyBNesian'
-copyright = '2021, David Atienza'
+copyright = '2024, David Atienza'
 author = 'David Atienza'
 
 # The full version, including alpha/beta/rc tags
-version = '0.4.3'
-release = '0.4.3'
+version = '0.5.0'
+release = '0.5.0'
 
 
 # -- General configuration ---------------------------------------------------

@@ -1,4 +1,4 @@
-![build](https://img.shields.io/github/actions/workflow/status/davenza/PyBNesian/release.yml?branch=master)
+![build](https://img.shields.io/github/actions/workflow/status/davenza/pybnesian/release.yml)
 [![Documentation Status](https://readthedocs.org/projects/pybnesian/badge/?version=latest)](https://pybnesian.readthedocs.io/en/latest/?badge=latest)
 ![PyPI](https://img.shields.io/pypi/v/pybnesian?color=blue)
 

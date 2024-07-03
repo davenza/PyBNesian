@@ -21,7 +21,7 @@ Models
 
 - [x] Bayesian networks.
 
-- [x] Conditional Bayesian networks (see section 5.6 of [1]).
+- [x] Conditional Bayesian networks (see section 5.6 of [4]).
 
 - [x] Dynamic Bayesian networks.
 
@@ -39,9 +39,9 @@ with this combinations of CPDs, we implement the following types of networks (wh
 
 - [x] Gaussian networks.
 
-- [x] Semiparametric networks.
+- [x] Semiparametric networks [2].
 
-- [x] Hybrid networks (conditional linear Gaussian networks and semiparametric networks).
+- [x] Hybrid networks (conditional linear Gaussian networks and semiparametric networks) [3].
 
 Graphs
 -----------------
@@ -99,9 +99,9 @@ The following independence tests are implemented for the constraint-based algori
 
 - [x] A likelihood-ratio test based on mutual information assuming a Gaussian distribution for the continuous data.
 
-- [x] CMIknn [2].
+- [x] CMIknn [5].
 
-- [x] RCoT [3].
+- [x] RCoT [6].
 
 It also implements the parameter learning:
 
@@ -324,15 +324,39 @@ Run the tests with:
 pytest
 ``
 
+How to cite?
+================
+
+```
+@article{Atienza2022Pybnesian,
+    author = {David Atienza and Concha Bielza and Pedro Larrañaga},
+    title = {PyBNesian: An extensible Python package for Bayesian networks},
+    journal = {Neurocomputing},
+    volume = {504},
+    pages = {204-209},
+    year = {2022}
+}
+```
+
 ## References
+
 <a id="1">[1]</a> 
+D. Atienza and C. Bielza and P. Larrañaga. PyBNesian: An extensible python package for Bayesian networks. Neurocomputing, 504, 2022, pp 204-209.
+
+<a id="2">[2]</a>
+D. Atienza and C. Bielza and P. Larrañaga. Semiparametric Bayesian networks. Information Sciences, 584, 2022, pp 564-582.
+
+<a id="3">[3]</a>
+D. Atienza and P. Larrañaga and C. Bielza. Hybrid Semiparametric Bayesian networks. TEST, 31(2), 2022, pp 299-327.
+
+<a id="4">[4]</a>
 D. Koller and N. Friedman, 
 Probabilistic Graphical Models: Principles and Techniques,
 The MIT Press, 2009.
 
-<a id="2">[2]</a> 
+<a id="5">[5]</a>
 J. Runge, 
 Conditional independence testing based on a nearest-neighbor estimator of conditional mutual information. International Conference on Artificial Intelligence and Statistics, AISTATS 2018, 84, 2018, pp. 938–947.
 
-<a id="3">[3]</a> 
+<a id="6">[6]</a>
 E. V. Strobl and K. Zhang and S., Visweswaran. Approximate kernel-based conditional independence tests for fast non-parametric causal discovery. Journal of Causal Inference, 7(1), 2019, pp 1-24.

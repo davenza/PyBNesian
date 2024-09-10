@@ -16,8 +16,11 @@ IF(EXISTS ".git")
     SET(GIT_COMMAND_EXECUTED "{GIT_EXECUTABLE} submodule update --init --recursive")
     execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
                     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
+
+    IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
+        message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}.")
+    ENDIF()
 ELSE()
-    SET(GIT_COMMIT_HASH "a1212c93c")
     SET(GIT_COMMAND_EXECUTED "${GIT_EXECUTABLE} clone https://github.com/Microsoft/vcpkg.git")
     execute_process(COMMAND ${GIT_EXECUTABLE} clone https://github.com/Microsoft/vcpkg.git
                     WORKING_DIRECTORY "." RESULT_VARIABLE GIT_SUBMOD_RESULT)
@@ -25,16 +28,27 @@ ELSE()
     IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
         message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}.")
     ENDIF()
-
-    SET(GIT_COMMAND_EXECUTED "${GIT_EXECUTABLE} checkout ${GIT_COMMIT_HASH}")
-    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${GIT_COMMIT_HASH}
-                    WORKING_DIRECTORY "vcpkg" RESULT_VARIABLE GIT_SUBMOD_RESULT)
-
 ENDIF()
+
+SET(GIT_COMMIT_HASH "2024.08.23")
+
+SET(GIT_COMMAND_EXECUTED "${GIT_EXECUTABLE} checkout ${GIT_COMMIT_HASH}")
+execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${GIT_COMMIT_HASH}
+                WORKING_DIRECTORY "vcpkg" RESULT_VARIABLE GIT_SUBMOD_RESULT)
 
 IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
-    message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}, please checkout submodules.")
+    message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}.")
 ENDIF()
+
+SET(GIT_COMMAND_EXECUTED "${GIT_EXECUTABLE} rev-parse HEAD")
+execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+                                WORKING_DIRECTORY "vcpkg" RESULT_VARIABLE GIT_SUBMOD_RESULT OUTPUT_VARIABLE GIT_STDOUT)
+
+IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
+    message(FATAL_ERROR "${GIT_COMMAND_EXECUTED} failed with ${GIT_SUBMOD_RESULT}.")
+ENDIF()
+
+message("Git commit in vcpkg: ${GIT_STDOUT}")
 
 set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")
 

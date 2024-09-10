@@ -67,7 +67,7 @@ Clone the repository:
 
     git clone https://github.com/davenza/PyBNesian.git
     cd PyBNesian
-    git checkout v0.5.0 # You can checkout a specific version if you want
+    git checkout v0.5.1 # You can checkout a specific version if you want
     pip install .
 
 Testing

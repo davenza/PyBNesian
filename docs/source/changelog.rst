@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.5.1
+======
+
+- Fixes vcpkg bad hashes for boost-core (`vcpkg/#38974 <https://github.com/microsoft/vcpkg/issues/38974>`_).
+- Updates arrow to 17.0.0.
 
 v0.5.0
 ======

@@ -36,7 +36,7 @@ jobs:
           7z x lightOCLSDK.zip -oOCLSDK
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.18.0
+        run: python -m pip install cibuildwheel
 
       - name: Build wheels
         if: runner.os != 'macOS'

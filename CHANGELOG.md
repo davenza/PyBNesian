@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.1
+
+- Fixes vcpkg bad hashes ([vcpkg/#38974](https://github.com/microsoft/vcpkg/issues/38974)).
+- Updates arrow to 17.0.0.
+
 ## v0.5.0
 
 - Changed the build process to statically link Apache Arrow. With this change and using the

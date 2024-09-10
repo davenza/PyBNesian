@@ -5,6 +5,7 @@ import util_test
 SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
 
+
 def test_create():
     arcs = pbn.ArcOperatorSet()
     node_type = pbn.ChangeNodeTypeSet()
@@ -14,16 +15,17 @@ def test_create():
         pool = pbn.OperatorPool([])
     assert "cannot be empty" in str(ex.value)
 
+
 def test_find_max():
-    spbn = pbn.SemiparametricBN(['a', 'b', 'c', 'd'])
+    spbn = pbn.SemiparametricBN(["a", "b", "c", "d"])
     cv = pbn.CVLikelihood(df)
     arcs = pbn.ArcOperatorSet()
     node_type = pbn.ChangeNodeTypeSet()
-    
+
     arcs.cache_scores(spbn, cv)
     spbn.set_unknown_node_types(df)
     node_type.cache_scores(spbn, cv)
-    
+
     arcs_max = arcs.find_max(spbn)
     node_max = node_type.find_max(spbn)
 
@@ -36,5 +38,3 @@ def test_find_max():
         assert op_combined == arcs_max
     else:
         assert op_combined == node_max
-
-    

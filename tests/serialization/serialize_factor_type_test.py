@@ -3,40 +3,54 @@ import pybnesian as pbn
 from pybnesian import FactorType
 import pickle
 
+
 @pytest.fixture
 def lg_type_bytes():
     lg = pbn.LinearGaussianCPDType()
     return pickle.dumps(lg)
+
 
 @pytest.fixture
 def ckde_type_bytes():
     ckde = pbn.CKDEType()
     return pickle.dumps(ckde)
 
+
 @pytest.fixture
 def discrete_type_bytes():
     discrete = pbn.DiscreteFactorType()
     return pickle.dumps(discrete)
 
+
 class NewType(FactorType):
     def __init__(self):
         FactorType.__init__(self)
 
+
 class OtherType(FactorType):
     def __init__(self):
         FactorType.__init__(self)
+
 
 @pytest.fixture
 def new_type_bytes():
     n = NewType()
     return pickle.dumps(n)
 
+
 @pytest.fixture
 def other_type_bytes():
     o = OtherType()
     return pickle.dumps(o)
 
-def test_serialization_factor_type(lg_type_bytes, ckde_type_bytes, discrete_type_bytes, new_type_bytes, other_type_bytes):
+
+def test_serialization_factor_type(
+    lg_type_bytes,
+    ckde_type_bytes,
+    discrete_type_bytes,
+    new_type_bytes,
+    other_type_bytes,
+):
     loaded_lg = pickle.loads(lg_type_bytes)
     new_lg = pbn.LinearGaussianCPDType()
     assert new_lg == loaded_lg

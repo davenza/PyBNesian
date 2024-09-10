@@ -2,6 +2,7 @@ import pytest
 import pybnesian as pbn
 from pybnesian import FactorType, Factor
 
+
 def test_factor_type():
     lg1 = pbn.LinearGaussianCPD("a", [])
     lg2 = pbn.LinearGaussianCPD("b", ["a"])
@@ -34,6 +35,7 @@ def test_factor_type():
     assert lg1.type() != d1.type()
     assert c1.type() != d1.type()
 
+
 def test_new_factor_type():
     class A(FactorType):
         def __init__(self):
@@ -60,6 +62,7 @@ def test_new_factor_type():
     assert b2 == b3
 
     assert a1 != b1
+
 
 def test_factor_defined_factor_type():
     class F_type(FactorType):
@@ -89,12 +92,14 @@ def test_factor_defined_factor_type():
     dummy_network = pbn.GaussianNetwork(["a", "b", "c", "d"])
     with pytest.raises(RuntimeError) as ex:
         f4 = f1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
-    assert 'Tried to call pure virtual function "FactorType::new_factor"' in str(ex.value)
+    assert 'Tried to call pure virtual function "FactorType::new_factor"' in str(
+        ex.value
+    )
 
     class G_type(FactorType):
         def __init__(self):
             FactorType.__init__(self)
-            
+
         def new_factor(self, model, variable, evidence):
             return G(variable, evidence)
 

@@ -1,8 +1,9 @@
-import pytest
 import numpy as np
-import pybnesian as pbn
-from pybnesian import SemiparametricBN, LinearGaussianCPD, CKDE
+import pytest
 import util_test
+
+import pybnesian as pbn
+from pybnesian import CKDE, LinearGaussianCPD, SemiparametricBN
 
 df = util_test.generate_normal_data(10000)
 
@@ -261,11 +262,11 @@ def test_logl():
 
     for n in spbn.nodes():
         cpd = spbn.cpd(n)
-        l = cpd.logl(test_df)
-        s = cpd.slogl(test_df)
-        assert np.all(np.isclose(s, l.sum()))
-        sum_ll += l
-        sum_sll += s
+        log_likelihood = cpd.logl(test_df)
+        sum_log_likelihood = cpd.slogl(test_df)
+        assert np.all(np.isclose(sum_log_likelihood, log_likelihood.sum()))
+        sum_ll += log_likelihood
+        sum_sll += sum_log_likelihood
 
     assert np.all(np.isclose(ll, sum_ll))
     assert np.isclose(sll, ll.sum())

@@ -1,8 +1,9 @@
-import pytest
 import numpy as np
+import pytest
+import util_test
+
 import pybnesian as pbn
 from pybnesian import BayesianNetwork, GaussianNetwork
-import util_test
 
 df = util_test.generate_normal_data(10000)
 
@@ -296,21 +297,21 @@ def test_add_cpds():
     assert cpd_b.variance == 4
 
     with pytest.raises(ValueError) as ex:
-        cpd_a = gbn.cpd("a")
+        gbn.cpd("a")
     assert (
         'CPD of variable "a" not added. Call add_cpds() or fit() to add the CPD.'
         in str(ex.value)
     )
 
     with pytest.raises(ValueError) as ex:
-        cpd_c = gbn.cpd("c")
+        gbn.cpd("c")
     assert (
         'CPD of variable "c" not added. Call add_cpds() or fit() to add the CPD.'
         in str(ex.value)
     )
 
     with pytest.raises(ValueError) as ex:
-        cpd_d = gbn.cpd("d")
+        gbn.cpd("d")
     assert (
         'CPD of variable "d" not added. Call add_cpds() or fit() to add the CPD.'
         in str(ex.value)
@@ -337,11 +338,11 @@ def test_bn_logl():
 
     for n in gbn.nodes():
         cpd = gbn.cpd(n)
-        l = cpd.logl(test_df)
-        s = cpd.slogl(test_df)
-        assert np.all(np.isclose(s, l.sum()))
-        sum_ll += l
-        sum_sll += s
+        log_likelihood = cpd.logl(test_df)
+        sum_log_likelihood = cpd.slogl(test_df)
+        assert np.all(np.isclose(sum_log_likelihood, log_likelihood.sum()))
+        sum_ll += log_likelihood
+        sum_sll += sum_log_likelihood
 
     assert np.all(np.isclose(ll, sum_ll))
     assert np.isclose(sll, ll.sum())

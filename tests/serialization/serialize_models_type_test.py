@@ -1,7 +1,9 @@
-import pytest
-import pybnesian as pbn
-import pickle
 import itertools
+import pickle
+
+import pytest
+
+import pybnesian as pbn
 
 
 @pytest.fixture

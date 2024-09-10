@@ -1,7 +1,9 @@
+import pickle
+
 import pytest
+
 import pybnesian as pbn
 from pybnesian import FactorType
-import pickle
 
 
 @pytest.fixture

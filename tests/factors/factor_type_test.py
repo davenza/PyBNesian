@@ -1,6 +1,7 @@
 import pytest
+
 import pybnesian as pbn
-from pybnesian import FactorType, Factor
+from pybnesian import Factor, FactorType
 
 
 def test_factor_type():
@@ -91,7 +92,7 @@ def test_factor_defined_factor_type():
 
     dummy_network = pbn.GaussianNetwork(["a", "b", "c", "d"])
     with pytest.raises(RuntimeError) as ex:
-        f4 = f1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
+        f1.type().new_factor(dummy_network, "d", ["a", "b", "c"])
     assert 'Tried to call pure virtual function "FactorType::new_factor"' in str(
         ex.value
     )

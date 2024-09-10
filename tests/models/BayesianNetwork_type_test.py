@@ -1,14 +1,15 @@
+import util_test
+
 import pybnesian as pbn
 from pybnesian import (
-    BayesianNetworkType,
     BayesianNetwork,
+    BayesianNetworkType,
     ConditionalBayesianNetwork,
-    GaussianNetwork,
-    SemiparametricBN,
-    KDENetwork,
     DiscreteBN,
+    GaussianNetwork,
+    KDENetwork,
+    SemiparametricBN,
 )
-import util_test
 
 
 def test_bn_type():

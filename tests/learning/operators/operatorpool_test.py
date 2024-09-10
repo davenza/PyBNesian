@@ -1,6 +1,7 @@
 import pytest
-import pybnesian as pbn
 import util_test
+
+import pybnesian as pbn
 
 SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
@@ -10,9 +11,11 @@ def test_create():
     arcs = pbn.ArcOperatorSet()
     node_type = pbn.ChangeNodeTypeSet()
     pool = pbn.OperatorPool([arcs, node_type])
+    # Checks if pool is created
+    assert pool is not None
 
     with pytest.raises(ValueError) as ex:
-        pool = pbn.OperatorPool([])
+        pbn.OperatorPool([])
     assert "cannot be empty" in str(ex.value)
 
 

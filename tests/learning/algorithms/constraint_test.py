@@ -1,4 +1,4 @@
-from pybnesian import PartiallyDirectedGraph, MeekRules
+from pybnesian import MeekRules, PartiallyDirectedGraph
 
 
 def test_meek_rule1():

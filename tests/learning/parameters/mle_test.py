@@ -1,7 +1,8 @@
-import pytest
 import numpy as np
-import pybnesian as pbn
+import pytest
 import util_test
+
+import pybnesian as pbn
 
 SIZE = 10000
 df = util_test.generate_normal_data(SIZE)
@@ -30,10 +31,11 @@ def numpy_fit_mle_lg(data, variable, evidence):
 
 def test_mle_create():
     with pytest.raises(ValueError) as ex:
-        mle = pbn.MLE(pbn.CKDEType())
+        pbn.MLE(pbn.CKDEType())
     assert "MLE not available" in str(ex.value)
 
     mle = pbn.MLE(pbn.LinearGaussianCPDType())
+    assert mle is not None
 
 
 def test_mle_lg():

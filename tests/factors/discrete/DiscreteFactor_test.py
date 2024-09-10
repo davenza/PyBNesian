@@ -1,9 +1,10 @@
-import pytest
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import pybnesian as pbn
+import pytest
 import util_test
+
+import pybnesian as pbn
 
 df = util_test.generate_discrete_data_dependent(10000)
 
@@ -12,7 +13,7 @@ def test_data_type():
     a = pbn.DiscreteFactor("A", [])
     with pytest.raises(ValueError) as ex:
         a.data_type()
-    "DiscreteFactor factor not fitted." in str(ex.value)
+    assert "DiscreteFactor factor not fitted." in str(ex.value)
 
     categories = np.asarray(["a1", "a2"])
     a_values = pd.Categorical(

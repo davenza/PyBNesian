@@ -1,15 +1,17 @@
-import pytest
 import re
+
 import numpy as np
 import pandas as pd
+import pytest
+import util_test
 from scipy.stats import norm
+
 import pybnesian as pbn
 from pybnesian import (
-    GaussianNetwork,
     ConditionalGaussianNetwork,
     DynamicGaussianNetwork,
+    GaussianNetwork,
 )
-import util_test
 
 df = util_test.generate_normal_data(1000)
 
@@ -34,20 +36,22 @@ def test_create_dbn():
     transition_bn = ConditionalGaussianNetwork(transition_nodes, static_nodes)
 
     gbn2 = DynamicGaussianNetwork(variables, 2, static_bn, transition_bn)
+    assert gbn2.markovian_order() == 2
+    assert gbn2.variables() == ["a", "b", "c", "d"]
+    assert gbn2.num_variables() == 4
+    assert gbn2.type() == pbn.GaussianNetworkType()
 
     wrong_transition_bn = pbn.ConditionalDiscreteBN(transition_nodes, static_nodes)
 
     with pytest.raises(ValueError) as ex:
-        gbn3 = DynamicGaussianNetwork(variables, 2, static_bn, wrong_transition_bn)
+        DynamicGaussianNetwork(variables, 2, static_bn, wrong_transition_bn)
     assert "Static and transition Bayesian networks do not have the same type" in str(
         ex.value
     )
 
     wrong_static_bn = pbn.DiscreteBN(static_nodes)
     with pytest.raises(ValueError) as ex:
-        gbn4 = DynamicGaussianNetwork(
-            variables, 2, wrong_static_bn, wrong_transition_bn
-        )
+        DynamicGaussianNetwork(variables, 2, wrong_static_bn, wrong_transition_bn)
     assert "Bayesian networks are not Gaussian." in str(ex.value)
 
 
@@ -123,10 +127,11 @@ def static_logl(dbn, test_data, index, variable):
     row_values = [sl.loc[index, variable]]
     for e in evidence:
         m = re.search("(.*)_t_(\\d+)", e)
-        e_var = m[1]
-        t = int(m[2])
+        if m:
+            e_var = m.group(1)
+            t = int(m.group(2))
 
-        row_values.append(sl.loc[dbn.markovian_order() - t, e_var])
+            row_values.append(sl.loc[dbn.markovian_order() - t, e_var])
 
     r = pd.Series(data=row_values, index=[node_name] + evidence)
 
@@ -141,10 +146,11 @@ def transition_logl(dbn, test_data, index, variable):
     row_values = [test_data.loc[index, variable]]
     for e in evidence:
         m = re.search("(.*)_t_(\\d+)", e)
-        e_var = m[1]
-        t = int(m[2])
+        if m:
+            e_var = m.group(1)
+            t = int(m.group(2))
 
-        row_values.append(test_data.loc[index - t, e_var])
+            row_values.append(test_data.loc[index - t, e_var])
 
     r = pd.Series(data=row_values, index=[node_name] + evidence)
     return lg_logl_row(r, node_name, evidence, cpd.beta, cpd.variance)

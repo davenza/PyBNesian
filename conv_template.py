@@ -4,6 +4,9 @@
 # This code is extracted from numpy distutils.
 #
 # This code has been extracted to avoid loading numpy.distutils
+#
+# It is used to generate the C source files from a template.
+# PyBNesian uses this code to generate OpenCL code for float and double variables so that there is no dependency on numpy and the OpenCL code.
 ###############################################################
 
 """
@@ -65,8 +68,8 @@ Example:
 __all__ = ["process_str", "process_file"]
 
 import os
-import sys
 import re
+import sys
 
 # names for replacement that are already global.
 global_names = {}

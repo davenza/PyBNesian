@@ -1,4 +1,5 @@
 import pytest
+
 import pybnesian as pbn
 
 

@@ -1,7 +1,8 @@
 import numpy as np
-from scipy.stats import norm
-import pybnesian as pbn
 import util_test
+from scipy.stats import norm
+
+import pybnesian as pbn
 
 SIZE = 10000
 

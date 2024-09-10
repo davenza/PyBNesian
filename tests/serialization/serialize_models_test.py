@@ -1,20 +1,22 @@
-import pytest
+import pickle
+
 import pyarrow as pa
+import pytest
+import util_test
+
 import pybnesian as pbn
 from pybnesian import (
-    BayesianNetworkType,
-    BayesianNetwork,
-    ConditionalBayesianNetwork,
-    GaussianNetwork,
-    SemiparametricBN,
-    KDENetwork,
-    DiscreteBN,
-    LinearGaussianCPD,
     CKDE,
+    BayesianNetwork,
+    BayesianNetworkType,
+    ConditionalBayesianNetwork,
+    DiscreteBN,
     DiscreteFactor,
+    GaussianNetwork,
+    KDENetwork,
+    LinearGaussianCPD,
+    SemiparametricBN,
 )
-import pickle
-import util_test
 
 
 @pytest.fixture

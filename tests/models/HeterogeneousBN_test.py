@@ -1,5 +1,6 @@
-import pybnesian as pbn
 import pyarrow as pa
+
+import pybnesian as pbn
 
 
 def test_type_equality():

@@ -1,7 +1,7 @@
 import numpy as np
-import pybnesian as pbn
-
 import util_test
+
+import pybnesian as pbn
 
 SIZE = 10000
 

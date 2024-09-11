@@ -89,7 +89,7 @@ void UnivariateKDE::execute_logl_mat(const cl::Buffer& training_vec,
                                      cl::Buffer&,
                                      cl::Buffer& output_mat) {
     auto& opencl = OpenCLConfig::get();
-// TODO: This is the kernel that is executed, might be wrong?
+    // TODO: This is the kernel that is executed, might be wrong?
     // OpenCL kernel for calculating the log-likelihood values for each test instance
     //     __kernel void logl_values_1d_mat_double(__global double *restrict train_vector,
     //                                       __private uint train_rows,
@@ -658,7 +658,6 @@ VectorXd KDE::_logl(const DataFrame& df) const {
 
     auto logl_buff = logl_buffer<ArrowType>(df);
     auto& opencl = OpenCLConfig::get();
-    // TODO I don't understand how the log-likelihood is calculated
     if (df.null_count(m_variables) == 0) {  // No null variables -> Returns the data?
         VectorType read_data(df->num_rows());
         opencl.read_from_buffer(read_data.data(), logl_buff, df->num_rows());
@@ -745,7 +744,6 @@ cl::Buffer KDE::logl_buffer(const DataFrame& df, Buffer_ptr& bitmap) const {
         return _logl_impl<ArrowType, MultivariateKDE>(test_buffer, m);
 }
 
-// TODO Check here the interesting part?
 /**
  * @brief Function where the log-likelihood are calculated with OpenCL?.
  *

@@ -1,14 +1,14 @@
 import numpy as np
 import pyarrow as pa
 import pytest
-import util_test
 from scipy.stats import gaussian_kde
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 from pybnesian import BandwidthSelector
 
 SIZE = 500
-df = util_test.generate_normal_data(SIZE, seed=0)
+df = generate_normal_data(SIZE, seed=0)
 df_float = df.astype("float32")
 
 
@@ -291,7 +291,7 @@ def test_productkde_logl():
         else:
             assert np.all(np.isclose(logl, scipy))
 
-    test_df = util_test.generate_normal_data(50, seed=1)
+    test_df = generate_normal_data(50, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variables in [["a"], ["b", "a"], ["c", "a", "b"], ["d", "a", "b", "c"]]:
@@ -357,7 +357,7 @@ def test_productkde_logl_null():
 
     TEST_SIZE = 50
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)
@@ -447,7 +447,7 @@ def test_productkde_slogl():
                 )
             )
 
-    test_df = util_test.generate_normal_data(50, seed=1)
+    test_df = generate_normal_data(50, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variables in [["a"], ["b", "a"], ["c", "a", "b"], ["d", "a", "b", "c"]]:
@@ -516,7 +516,7 @@ def test_productkde_slogl_null():
 
     TEST_SIZE = 50
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)

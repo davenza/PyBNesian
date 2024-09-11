@@ -2,18 +2,18 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
-import util_test
 from scipy.stats import gaussian_kde
 from scipy.stats import multivariate_normal as mvn
 from scipy.stats import norm
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 
 SIZE = 10000
 SMALL_SIZE = 10
 TEST_SIZE = 50
-df = util_test.generate_normal_data(SIZE, seed=0)
-df_small = util_test.generate_normal_data(SMALL_SIZE, seed=0)
+df = generate_normal_data(SIZE, seed=0)
+df_small = generate_normal_data(SMALL_SIZE, seed=0)
 df_float = df.astype("float32")
 df_small_float = df_small.astype("float32")
 
@@ -207,7 +207,7 @@ def train_scipy_ckde(data, variable, evidence):
     )
     if evidence:
         scipy_kde_marg = gaussian_kde(
-            npdata_marg[~nan_rows, :].T, bw_method=scipy_kde_joint.covariance_factor()
+            npdata_marg[~nan_rows, :].T, bw_method=scipy_kde_joint.factor
         )
     else:
         scipy_kde_marg = None
@@ -311,7 +311,7 @@ def test_ckde_logl():
         else:
             assert np.all(np.isclose(logl, scipy))
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variable, evidence in [
@@ -359,7 +359,7 @@ def test_ckde_logl_null():
         else:
             assert np.all(np.isclose(logl, scipy, equal_nan=True))
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)
@@ -432,7 +432,7 @@ def test_ckde_slogl():
         else:
             assert np.isclose(cpd.slogl(_test_df), scipy_logl.sum())
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variable, evidence in [
@@ -481,7 +481,7 @@ def test_ckde_slogl_null():
         else:
             assert np.isclose(cpd.slogl(_test_df), np.nansum(scipy_logl))
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)
@@ -546,7 +546,7 @@ def test_ckde_cdf():
         else:
             assert np.all(np.isclose(cdf, scipy))
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variable, evidence in [
@@ -594,7 +594,7 @@ def test_ckde_cdf_null():
         else:
             assert np.all(np.isclose(cdf, scipy, equal_nan=True))
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)

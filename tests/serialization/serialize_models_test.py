@@ -2,7 +2,7 @@ import pickle
 
 import pyarrow as pa
 import pytest
-import util_test
+from util_test import generate_discrete_data_dependent, generate_normal_data_indep
 
 import pybnesian as pbn
 from pybnesian import (
@@ -265,11 +265,11 @@ def other_fit_bytes():
     cpd_a = LinearGaussianCPD("a", [], [0], 0.5)
     cpd_b = LinearGaussianCPD("b", ["a"], [1, 2], 2)
 
-    df_continuous = util_test.generate_normal_data_indep(100)
+    df_continuous = generate_normal_data_indep(100)
     cpd_c = CKDE("c", [])
     cpd_c.fit(df_continuous)
 
-    df_discrete = util_test.generate_discrete_data_dependent(100)
+    df_discrete = generate_discrete_data_dependent(100)
     df_discrete.columns = df_discrete.columns.str.lower()
     cpd_d = DiscreteFactor("d", [])
     cpd_d.fit(df_discrete)
@@ -583,10 +583,10 @@ def cond_other_fit_bytes():
     cpd_c = CKDE("c", ["a"])
     cpd_d = DiscreteFactor("d", [])
 
-    df_continuous = util_test.generate_normal_data_indep(100)
+    df_continuous = generate_normal_data_indep(100)
     cpd_c.fit(df_continuous)
 
-    df_discrete = util_test.generate_discrete_data_dependent(100)
+    df_discrete = generate_discrete_data_dependent(100)
     df_discrete.columns = df_discrete.columns.str.lower()
     cpd_d = DiscreteFactor("d", [])
     cpd_d.fit(df_discrete)
@@ -838,7 +838,7 @@ def dyn_gaussian_fit_bytes():
     gaussian = pbn.DynamicGaussianNetwork(["a", "b", "c", "d"], 2)
     gaussian.static_bn().add_arc("a_t_2", "d_t_1")
     gaussian.transition_bn().add_arc("c_t_2", "b_t_0")
-    df = util_test.generate_normal_data_indep(1000)
+    df = generate_normal_data_indep(1000)
     gaussian.fit(df)
     gaussian.include_cpd = True
     return pickle.dumps(gaussian)
@@ -917,8 +917,8 @@ def dyn_other_fit_bytes():
     assert other_static.type() == other_transition.type()
 
     dyn_other = DynamicOtherBN(variables, 2, other_static, other_transition)
-    df_continuous = util_test.generate_normal_data_indep(1000)
-    df_discrete = util_test.generate_discrete_data_dependent(1000)
+    df_continuous = generate_normal_data_indep(1000)
+    df_discrete = generate_discrete_data_dependent(1000)
     df = df_continuous
     df["b"] = df_discrete["B"]
     dyn_other.fit(df)

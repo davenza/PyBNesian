@@ -47,7 +47,7 @@ def numpy_local_score(
         )
         if evidence:
             k_marg = gaussian_kde(
-                evidence_data.to_numpy().T, bw_method=k_joint.covariance_factor()
+                evidence_data.to_numpy().T, bw_method=k_joint.factor
             )
             loglik = np.sum(
                 k_joint.logpdf(test_node_data.to_numpy().T)

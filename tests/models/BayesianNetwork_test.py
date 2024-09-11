@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
-import util_test
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 from pybnesian import BayesianNetwork, GaussianNetwork
 
-df = util_test.generate_normal_data(10000)
+df = generate_normal_data(10000)
 
 
 def test_create_bn():
@@ -329,7 +329,7 @@ def test_bn_logl():
 
     gbn.fit(df)
 
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
     ll = gbn.logl(test_df)
     sll = gbn.slogl(test_df)
 

@@ -3,8 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 import pytest
-import util_test
 from scipy.stats import norm
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 from pybnesian import (
@@ -13,7 +13,7 @@ from pybnesian import (
     GaussianNetwork,
 )
 
-df = util_test.generate_normal_data(1000)
+df = generate_normal_data(1000)
 
 
 def test_create_dbn():
@@ -201,8 +201,8 @@ def test_logl_dbn():
 
     gbn.fit(df)
 
-    test_df = util_test.generate_normal_data(100)
-    ground_truth_ll = numpy_logl(gbn, util_test.generate_normal_data(100))
+    test_df = generate_normal_data(100)
+    ground_truth_ll = numpy_logl(gbn, generate_normal_data(100))
     ll = gbn.logl(test_df)
     assert np.all(np.isclose(ground_truth_ll, ll))
 
@@ -237,6 +237,6 @@ def test_slogl_dbn():
     transition_bn.add_arc("d_t_1", "d_t_0")
 
     gbn.fit(df)
-    test_df = util_test.generate_normal_data(100)
+    test_df = generate_normal_data(100)
     ll = numpy_logl(gbn, test_df)
     assert np.isclose(gbn.slogl(test_df), ll.sum())

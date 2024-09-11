@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import util_test
 from scipy.stats import norm
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 
 SIZE = 10000
 
-df = util_test.generate_normal_data(SIZE)
+df = generate_normal_data(SIZE)
 
 
 def test_lg_variable():
@@ -135,7 +135,7 @@ def numpy_cdf(test_df, variable, evidence, beta, variance):
 
 
 def test_lg_logl():
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
 
     for variable, evidence in [
         ("a", []),
@@ -173,7 +173,7 @@ def test_lg_logl():
 
 
 def test_lg_logl_null():
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
 
     np.random.seed(0)
     a_null = np.random.randint(0, 5000, size=100)
@@ -224,7 +224,7 @@ def test_lg_logl_null():
 
 
 def test_lg_slogl():
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
 
     for variable, evidence in [
         ("a", []),
@@ -262,7 +262,7 @@ def test_lg_slogl():
 
 
 def test_lg_slogl_null():
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
 
     np.random.seed(0)
     a_null = np.random.randint(0, 5000, size=100)
@@ -312,7 +312,7 @@ def test_lg_slogl_null():
 
 
 def test_lg_cdf():
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
 
     for variable, evidence in [
         ("a", []),
@@ -349,7 +349,7 @@ def test_lg_cdf():
 
 
 def test_lg_cdf_null():
-    test_df = util_test.generate_normal_data(5000)
+    test_df = generate_normal_data(5000)
 
     np.random.seed(0)
     a_null = np.random.randint(0, 5000, size=100)

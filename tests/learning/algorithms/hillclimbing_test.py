@@ -1,12 +1,12 @@
 import numpy as np
-import util_test
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 from pybnesian import BayesianNetwork, BayesianNetworkType
 
-df = util_test.generate_normal_data(1000)
+df = generate_normal_data(1000)
 # TODO: Add tests for normal data with dependencies
-# dep_df = util_test.generate_normal_data_dep(1000)
+# dep_df = generate_normal_data_dep(1000)
 
 
 def test_hc_estimate():

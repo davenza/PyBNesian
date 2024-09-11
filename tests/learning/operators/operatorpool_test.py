@@ -1,10 +1,10 @@
 import pytest
-import util_test
+from util_test import generate_normal_data
 
 import pybnesian as pbn
 
 SIZE = 10000
-df = util_test.generate_normal_data(SIZE)
+df = generate_normal_data(SIZE)
 
 
 def test_create():

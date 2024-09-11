@@ -132,6 +132,14 @@ Matrix<typename M::Scalar, Dynamic, Dynamic> sqrt_matrix(const M& m) {
 }
 
 // Checks whether M is positive definite.
+/**
+ * @brief Checks whether a matrix M is positive definite.
+ *
+ * @tparam M Matrix type.
+ * @param m Matrix to check.
+ * @return true If M is positive definite.
+ * @return false If M is not positive definite.
+ */
 template <typename M>
 bool is_psd(const M& m) {
     using MatrixType = Matrix<typename M::Scalar, Dynamic, Dynamic>;

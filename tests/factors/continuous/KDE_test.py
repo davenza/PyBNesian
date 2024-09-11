@@ -2,10 +2,10 @@ import numpy as np
 import pyarrow as pa
 import pytest
 from scipy.stats import gaussian_kde
-from util_test import generate_normal_data
 
 import pybnesian as pbn
 from pybnesian import BandwidthSelector
+from util_test import generate_normal_data
 
 SIZE = 500
 df = generate_normal_data(SIZE, seed=0)
@@ -286,7 +286,7 @@ def test_kde_logl_null():
             * s.scotts_factor(),
         )
         # We initialize the logl and scipy_logl columns with NaN
-        _test_df.loc["logl"] = np.nan
+        _test_df["logl"] = np.nan
         _test_df["scipy_logl"] = np.nan
 
         # We calculate the logl with the KDE factor

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.2
+
+- Python code is now formatted with `black` and `isort`, and has been refactored according to `PEP 8` style guides.
+- Python code partially commented with `google` docstring format.
+- C++ code partially commented with `doxygen` docstring format.
+- Scott's and Normal Reference Rule's `bandwidth` calculation have been reordered and commented.
+- `ArcOperatorSet::update_incoming_arcs_scores` formulas have been reordered and commented.
+
 ## v0.5.1
 
 - Fixes vcpkg bad hashes ([vcpkg/#38974](https://github.com/microsoft/vcpkg/issues/38974)).
@@ -101,7 +109,7 @@ build process is simpler and orchestrated by scikit-build-core and a CMakeLists.
 - Added a `ProductKDE` class that implements `KDE` with diagonal bandwidth matrix.
 - Added an abstract class `BandwidthSelector` to implement bandwidth selection for `KDE` and `ProductKDE`. Three
   concrete implementations of bandwidth selection are included: `ScottsBandwidth`, `NormalReferenceRule` and `UCV`.
-- Added `Arguments`, `Args` and `Kwargs` to store a set of arguments to be used to create new factors through
+- Added `arguments`, `args` and `kwargs` to store a set of arguments to be used to create new factors through
   `FactorType::new_factor()`. The `Arguments` are accepted by `BayesianNetworkBase::fit()` and the constructors of
   `CVLikelihood`, `HoldoutLikelihood` and `ValidatedLikelihood`.
 
@@ -113,8 +121,8 @@ build process is simpler and orchestrated by scikit-build-core and a CMakeLists.
 ## v0.2.0
 
 - Added conditional linear Gaussian networks (`CLGNetworkType`, `CLGNetwork`, `ConditionalCLGNetwork` and `DynamicCLGNetwork`).
-- Implemented `ChiSquare` (and `DynamicChiSquare`) indepencence test.
-- Implemented `MutualInformation` (and `DynamicMutualInformation`) indepencence test. This is valid for hybrid data.
+- Implemented `ChiSquare` (and `DynamicChiSquare`) independence test.
+- Implemented `MutualInformation` (and `DynamicMutualInformation`) independence test. This is valid for hybrid data.
 - Implemented `BDe` (Bayesian Dirichlet equivalent) score (and `DynamicBDe`).
 - Added `UnknownFactorType` as default `FactorType` for Bayesian networks when the node type could not be deduced.
 - Added `Assignment` class to represent the assignment of values to variables.

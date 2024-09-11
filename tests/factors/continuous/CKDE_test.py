@@ -1,14 +1,13 @@
-import pytest
 import numpy as np
-import pyarrow as pa
 import pandas as pd
-import pybnesian as pbn
-from scipy.stats import gaussian_kde
-from scipy.stats import norm
-from scipy.stats import multivariate_normal as mvn
-from scipy.special import logsumexp
-
+import pyarrow as pa
+import pytest
 import util_test
+from scipy.stats import gaussian_kde
+from scipy.stats import multivariate_normal as mvn
+from scipy.stats import norm
+
+import pybnesian as pbn
 
 SIZE = 10000
 SMALL_SIZE = 10
@@ -46,7 +45,7 @@ def test_kde_data_type():
 
     with pytest.raises(ValueError) as ex:
         k.data_type()
-    "CKDE factor not fitted" in str(ex.value)
+    assert "CKDE factor not fitted" in str(ex.value)
 
     k.fit(df)
     assert k.data_type() == pa.float64()

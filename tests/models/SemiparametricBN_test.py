@@ -228,7 +228,7 @@ def test_add_cpds():
 
     spbn.set_node_type("a", pbn.UnknownFactorType())
     with pytest.raises(ValueError) as ex:
-        not spbn.cpd("a").fitted()
+        spbn.cpd("a").fitted()
     assert (
         'CPD of variable "a" not added. Call add_cpds() or fit() to add the CPD.'
         in str(ex.value)
@@ -237,7 +237,7 @@ def test_add_cpds():
     assert spbn.cpd("b").fitted()
 
     with pytest.raises(ValueError) as ex:
-        not spbn.cpd("c").fitted()
+        spbn.cpd("c").fitted()
     assert (
         'CPD of variable "c" not added. Call add_cpds() or fit() to add the CPD.'
         in str(ex.value)

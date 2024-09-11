@@ -1,9 +1,12 @@
 import numpy as np
-import pybnesian as pbn
-from pybnesian import BayesianNetworkType, BayesianNetwork
 import util_test
 
+import pybnesian as pbn
+from pybnesian import BayesianNetwork, BayesianNetworkType
+
 df = util_test.generate_normal_data(1000)
+# TODO: Add tests for normal data with dependencies
+# dep_df = util_test.generate_normal_data_dep(1000)
 
 
 def test_hc_estimate():
@@ -205,6 +208,56 @@ def test_hc_shortcut_function():
         df, bn_type=MyRestrictedGaussianNetworkType(), score="bic", operators=["arcs"]
     )
     assert type(model) == NewBN
+
+
+# # NOTE: Deprecated test for PyBNesian with full covariance matrices
+# def test_hc_arc_singular_covariance():
+#     """Function to test if with the GBN, KDE and SPBN, the HC algorithm raises an exception when the covariance matrix is singular. Then we check if the learnt model is valid."""
+#     column_names = list(dep_df.columns.values)
+#     # GBN
+#     gbn = pbn.GaussianNetwork(nodes=column_names)
+#     gbn = pbn.hc(
+#         dep_df,
+#         start=gbn,
+#         max_iters=int(1e4),
+#         verbose=True,
+#     )
+#     gbn.fit(dep_df)
+#     assert gbn.num_arcs() == 0
+#     assert np.count_nonzero(np.isnan(gbn.logl(dep_df))) == 0
+#     for c in column_names:
+#         print(f"{gbn.cpd(c)}")
+
+#     # KDE
+#     kde = pbn.KDENetwork(nodes=column_names)
+#     kde = pbn.hc(
+#         dep_df,
+#         start=kde,
+#         max_iters=int(1e4),
+#         verbose=True,
+#     )
+#     kde.fit(dep_df)
+#     assert kde.num_arcs() == 0
+#     assert np.count_nonzero(np.isnan(kde.logl(dep_df))) == 0
+#     for c in column_names:
+#         print(f"{kde.cpd(c)}")
+
+#     # SPBN
+#     spbn = pbn.SemiparametricBN(nodes=column_names)
+#     spbn = pbn.hc(
+#         dep_df,
+#         start=spbn,
+#         max_iters=int(1e4),
+#         verbose=True,
+#     )
+#     spbn.fit(dep_df)
+#     assert spbn.num_arcs() == 0
+#     assert np.count_nonzero(np.isnan(spbn.logl(dep_df))) == 0
+#     for c in column_names:
+#         print(f"{spbn.cpd(c)}")
+
+
+# TODO: Test for when one variable has 0 variance in k-fold cross-validation for CKDEType
 
 
 class MyRestrictedGaussianNetworkType(BayesianNetworkType):

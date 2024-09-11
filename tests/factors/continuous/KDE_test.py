@@ -1,14 +1,14 @@
-import pytest
 import numpy as np
 import pyarrow as pa
+import pytest
+from scipy.stats import gaussian_kde
+from util_test import generate_normal_data
+
 import pybnesian as pbn
 from pybnesian import BandwidthSelector
-from scipy.stats import gaussian_kde
-
-import util_test
 
 SIZE = 500
-df = util_test.generate_normal_data(SIZE, seed=0)
+df = generate_normal_data(SIZE, seed=0)
 df_float = df.astype("float32")
 
 
@@ -111,7 +111,7 @@ def test_kde_data_type():
 
     with pytest.raises(ValueError) as ex:
         k.data_type()
-    "KDE factor not fitted" in str(ex.value)
+    assert "KDE factor not fitted" in str(ex.value)
 
     k.fit(df)
     assert k.data_type() == pa.float64()
@@ -195,28 +195,52 @@ def test_kde_fit_null():
 
 
 def test_kde_logl():
+    """Tests the logl() method of the KDE factor. It compares the results with the ones obtained with scipy's product_kde.
+    Both for float64 and float32 data types."""
+
     def _test_kde_logl_iter(variables, _df, _test_df):
-        cpd = pbn.KDE(variables)
+        """Tests that the logl() method of the KDE factor returns the same results as scipy's product_kde.
+        It trains _df and tests it with _test_df.
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
+        npdata = _df.loc[:, variables].to_numpy()
+        cpd = pbn.KDE(
+            variables,
+            # bandwidth_selector=pbn.ScottsBandwidth(),
+            bandwidth_selector=pbn.NormalReferenceRule(),
+        )
         cpd.fit(_df)
 
-        npdata = _df.loc[:, variables].to_numpy()
         scipy_kde = gaussian_kde(
-            npdata.T,
+            dataset=npdata.T,
+            # bw_method="scott",
             bw_method=lambda s: np.power(4 / (s.d + 2), 1 / (s.d + 4))
-            * s.scotts_factor(),
+            * s.scotts_factor(),  # Normal Reference Rule multiplies Scott's factor and then standard deviation
         )
+
+        # TODO: Add tests to check this
+        # NOTE
+        # scipy_kde.factor == scipy_kde.covariance_factor() <-- coefficient (kde.factor) that squared, multiplies the data covariance matrix to obtain the kernel covariance matrix.
+        # scipy_kde.covariance == scipy_kde.factor ** 2 * npdata.var()
+        # scipy_kde.inv_cov == 1 / scipy_kde.covariance
+        # We check that the bandwidth is the same
+        # TODO: Add tests to check "scott" bandwidth selectors
+        assert np.all(np.isclose(cpd.bandwidth, scipy_kde.covariance))
 
         test_npdata = _test_df.loc[:, variables].to_numpy()
 
         logl = cpd.logl(_test_df)
-        scipy = scipy_kde.logpdf(test_npdata.T)
+        scipy_logl = scipy_kde.logpdf(test_npdata.T)
 
         if np.all(_df.dtypes == "float32"):
-            assert np.all(np.isclose(logl, scipy, atol=0.0005))
+            assert np.all(np.isclose(logl, scipy_logl, atol=0.0005))
         else:
-            assert np.all(np.isclose(logl, scipy))
+            assert np.all(np.isclose(logl, scipy_logl))
 
-    test_df = util_test.generate_normal_data(50, seed=1)
+    test_df = generate_normal_data(50, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variables in [["a"], ["b", "a"], ["c", "a", "b"], ["d", "a", "b", "c"]]:
@@ -241,7 +265,17 @@ def test_kde_logl():
 
 
 def test_kde_logl_null():
+    """Tests the logl() method of the KDE factor with null values. It compares the results with the ones obtained with scipy's product_kde.
+    Both for float64 and float32 data types."""
+
     def _test_kde_logl_null_iter(variables, _df, _test_df):
+        """Tests that the logl() method of the KDE factor with null values returns the same results as scipy's product_kde.
+        It trains _df and tests it with _test_df.
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
         cpd = pbn.KDE(variables)
         cpd.fit(_df)
 
@@ -251,23 +285,36 @@ def test_kde_logl_null():
             bw_method=lambda s: np.power(4 / (s.d + 2), 1 / (s.d + 4))
             * s.scotts_factor(),
         )
+        # We initialize the logl and scipy_logl columns with NaN
+        _test_df.loc["logl"] = np.nan
+        _test_df["scipy_logl"] = np.nan
 
-        test_npdata = _test_df.loc[:, variables].to_numpy()
+        # We calculate the logl with the KDE factor
+        _test_df["logl"] = cpd.logl(_test_df)
 
-        logl = cpd.logl(_test_df)
-
-        scipy_result = np.full((test_npdata.shape[0],), np.nan)
-        nan_rows = np.any(np.isnan(test_npdata), axis=1)
-        scipy_result[~nan_rows] = scipy_kde.logpdf(test_npdata[~nan_rows].T)
+        # We calculate the logl with scipy (we have to avoid NaN values)
+        non_nan_index = _test_df[variables].notna().all(1)
+        _test_df.loc[non_nan_index, "scipy_logl"] = scipy_kde.logpdf(
+            _test_df.loc[non_nan_index, variables].T.to_numpy()
+        )
 
         if npdata.dtype == "float32":
-            assert np.all(np.isclose(logl, scipy_result, atol=0.0005, equal_nan=True))
+            assert np.all(
+                np.isclose(
+                    _test_df["logl"],
+                    _test_df["scipy_logl"],
+                    atol=0.0005,
+                    equal_nan=True,
+                )
+            )
         else:
-            assert np.all(np.isclose(logl, scipy_result, equal_nan=True))
+            assert np.all(
+                np.isclose(_test_df["logl"], _test_df["scipy_logl"], equal_nan=True)
+            )
 
     TEST_SIZE = 50
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)
@@ -315,7 +362,17 @@ def test_kde_logl_null():
 
 
 def test_kde_slogl():
+    """Tests the slogl() method of the KDE factor. It compares the results with the ones obtained with scipy's product_kde.
+    Both for float64 and float32 data types."""
+
     def _test_kde_slogl_iter(variables, _df, _test_df):
+        """Tests that the logl() method of the KDE factor returns the same results as scipy's product_kde.
+        It trains _df and tests it with _test_df.
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
         cpd = pbn.KDE(variables)
         cpd.fit(_df)
 
@@ -331,7 +388,7 @@ def test_kde_slogl():
             np.isclose(cpd.slogl(_test_df), scipy_kde.logpdf(test_npdata.T).sum())
         )
 
-    test_df = util_test.generate_normal_data(50, seed=1)
+    test_df = generate_normal_data(50, seed=1)
     test_df_float = test_df.astype("float32")
 
     for variables in [["a"], ["b", "a"], ["c", "a", "b"], ["d", "a", "b", "c"]]:
@@ -356,7 +413,17 @@ def test_kde_slogl():
 
 
 def test_kde_slogl_null():
+    """Tests the slogl() method of the KDE factor with null values. It compares the results with the ones obtained with scipy's product_kde.
+    Both for float64 and float32 data types."""
+
     def _test_kde_slogl_null_iter(variables, _df, _test_df):
+        """Tests that the slogl() method of the KDE factor with null values returns the same results as scipy's product_kde.
+        It trains _df and tests it with _test_df.
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
         cpd = pbn.KDE(variables)
         cpd.fit(_df)
 
@@ -366,20 +433,20 @@ def test_kde_slogl_null():
             bw_method=lambda s: np.power(4 / (s.d + 2), 1 / (s.d + 4))
             * s.scotts_factor(),
         )
+        # We initialize the logl and scipy_logl columns with NaN
+        _test_df["scipy_logl"] = np.nan
+        slogl = cpd.slogl(_test_df)
+        # We calculate the logl with scipy (we have to avoid NaN values)
+        non_nan_index = _test_df[variables].notna().all(1)
+        scipy_slogl = scipy_kde.logpdf(
+            _test_df.loc[non_nan_index, variables].T.to_numpy()
+        ).sum()
 
-        test_npdata = _test_df.loc[:, variables].to_numpy()
-
-        nan_rows = np.any(np.isnan(test_npdata), axis=1)
-
-        assert np.all(
-            np.isclose(
-                cpd.slogl(_test_df), scipy_kde.logpdf(test_npdata[~nan_rows].T).sum()
-            )
-        )
+        assert np.all(np.isclose(slogl, scipy_slogl))
 
     TEST_SIZE = 50
 
-    test_df = util_test.generate_normal_data(TEST_SIZE, seed=1)
+    test_df = generate_normal_data(TEST_SIZE, seed=1)
     test_df_float = test_df.astype("float32")
 
     np.random.seed(0)

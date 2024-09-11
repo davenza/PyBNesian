@@ -1,12 +1,11 @@
-import pytest
 import numpy as np
 import pyarrow as pa
+import pytest
+import util_test
+from scipy.stats import gaussian_kde
+
 import pybnesian as pbn
 from pybnesian import BandwidthSelector
-from scipy.stats import gaussian_kde
-from functools import reduce
-
-import util_test
 
 SIZE = 500
 df = util_test.generate_normal_data(SIZE, seed=0)
@@ -135,7 +134,7 @@ def test_productkde_data_type():
 
     with pytest.raises(ValueError) as ex:
         k.data_type()
-    "KDE factor not fitted" in str(ex.value)
+    assert "KDE factor not fitted" in str(ex.value)
 
     k.fit(df)
     assert k.data_type() == pa.float64()
@@ -255,7 +254,17 @@ def factor_product_kernel(train_data):
 
 
 def test_productkde_logl():
+    """Tests the logl() method of the ProductKDE factor. It compares the results with the ones obtained with scipy's gaussian_kde.
+    Both for float64 and float32 data types."""
+
     def _test_productkde_logl_iter(variables, _df, _test_df):
+        """Tests that the logl() method of the ProductKDE factor returns the same results as scipy's gaussian_kde.
+        It trains _df and tests it with _test_df.
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
         cpd = pbn.ProductKDE(variables)
         cpd.fit(_df)
 
@@ -307,8 +316,18 @@ def test_productkde_logl():
 
 
 def test_productkde_logl_null():
+    """Tests the logl() method of the ProductKDE factor with null values. It compares the results with the ones obtained with scipy's gaussian_kde.
+    Both for float64 and float32 data types."""
+
     def _test_productkde_logl_null_iter(variables, _df, _test_df):
-        cpd = pbn.ProductKDE(variables)
+        """Tests that the logl() method of the ProductKDE factor with null values returns the same results as scipy's gaussian_kde.
+        It trains _df and tests it with _test_df.
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
+        cpd = pbn.ProductKDE(variables, bandwidth_selector=pbn.NormalReferenceRule())
         cpd.fit(_df)
 
         logl = cpd.logl(_test_df)
@@ -386,8 +405,17 @@ def test_productkde_logl_null():
 
 
 def test_productkde_slogl():
+    """Tests the slogl() method of the ProductKDE factor. It compares the results with the ones obtained with scipy's gaussian_kde."""
+
     def _test_productkde_slogl_iter(variables, _df, _test_df):
-        cpd = pbn.ProductKDE(variables)
+        """Tests that the slogl() method of the ProductKDE factor returns the same results as scipy's gaussian_kde.
+
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
+        cpd = pbn.ProductKDE(variables, bandwidth_selector=pbn.NormalReferenceRule())
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()
@@ -445,7 +473,14 @@ def test_productkde_slogl():
 
 def test_productkde_slogl_null():
     def _test_productkde_slogl_null_iter(variables, _df, _test_df):
-        cpd = pbn.ProductKDE(variables)
+        """Tests that the slogl() method of the ProductKDE factor with null values returns the same results as scipy's gaussian_kde.
+
+        Args:
+            variables (list[str]): Dataset variables to use.
+            _df (pd.DataFrame): Training dataset.
+            _test_df (pd.DataFrame): Test dataset.
+        """
+        cpd = pbn.ProductKDE(variables, bandwidth_selector=pbn.NormalReferenceRule())
         cpd.fit(_df)
 
         npdata = _df.loc[:, variables].to_numpy()

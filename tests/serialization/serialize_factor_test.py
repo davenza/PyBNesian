@@ -1,9 +1,11 @@
+import pickle
+
 import numpy as np
 import pandas as pd
 import pytest
+
 import pybnesian as pbn
-from pybnesian import FactorType, Factor, LinearGaussianCPD, CKDE, DiscreteFactor
-import pickle
+from pybnesian import CKDE, DiscreteFactor, Factor, FactorType, LinearGaussianCPD
 
 
 @pytest.fixture
@@ -265,11 +267,11 @@ def test_serialization_fitted_factor(
     assert loaded_newbis.variable() == "c"
     assert set(loaded_newbis.evidence()) == set(["a", "b"])
     assert loaded_newbis.fitted()
-    assert type(loaded_newbis.type()) == NewType
+    assert isinstance(loaded_newbis.type(), NewType)
     nn = NewFactorBis("a", [])
     assert loaded_newbis.type() == nn.type()
     assert loaded_newbis.some_fit_data == "fitted"
-    assert type(loaded_newbis.type()) == type(loaded_new.type())
+    assert isinstance(loaded_newbis.type(), type(loaded_new.type()))
 
     assert loaded_lg.type() != loaded_ckde.type()
     assert loaded_lg.type() != loaded_discrete.type()

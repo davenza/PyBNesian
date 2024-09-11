@@ -197,6 +197,13 @@ std::vector<std::string> DataFrame::column_names() const {
     return names;
 }
 
+/**
+ * @brief Returns the number of null elements in the array.
+ *
+ * @param begin Iterator to the first element of the array.
+ * @param end Iterator to the last element of the array.
+ * @return int64_t Number of null elements.
+ */
 int64_t null_count(Array_iterator begin, Array_iterator end) {
     int64_t r = 0;
     for (auto it = begin; it != end; it++) {
@@ -204,7 +211,13 @@ int64_t null_count(Array_iterator begin, Array_iterator end) {
     }
     return r;
 }
-
+/**
+ * @brief Returns the combined bitmap of the columns.
+ *
+ * @param begin Iterator to the first element of the array.
+ * @param end Iterator to the last element of the array.
+ * @return Buffer_ptr Combined bitmap.
+ */
 Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end) {
     if (null_count(begin, end) > 0) {
         Array_iterator first_null_col = end;
@@ -233,7 +246,13 @@ Buffer_ptr combined_bitmap(Array_iterator begin, Array_iterator end) {
         return nullptr;
     }
 }
-
+/**
+ * @brief Returns the number of valid rows in the columns (The dataframe may have non-valid rows?).
+ *
+ * @param begin Iterator to the first element of the array.
+ * @param end Iterator to the last element of the array.
+ * @return int64_t Number of valid rows.
+ */
 int64_t valid_rows(Array_iterator begin, Array_iterator end) {
     if (std::distance(begin, end) == 0) {
         return 0;

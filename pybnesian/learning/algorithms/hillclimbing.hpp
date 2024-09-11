@@ -143,12 +143,12 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
 
     spinner->update_status("Caching scores...");
 
-    LocalScoreCache local_validation = [&]() {
-        if constexpr (std::is_base_of_v<ValidatedScore, S>) {
-            LocalScoreCache lc(*current_model);
-            lc.cache_vlocal_scores(*current_model, score);
+        LocalScoreCache local_validation = [&]() {                 // Local validation scores (lambda expression)
+            if constexpr (std::is_base_of_v<ValidatedScore, S>) {  // If the score is a ValidatedScore
+                LocalScoreCache lc(*current_model);                // Local score cache
+                lc.cache_vlocal_scores(*current_model, score);     // Cache the local scores
             return lc;
-        } else if constexpr (std::is_base_of_v<Score, S>) {
+            } else if constexpr (std::is_base_of_v<Score, S>) {  // If the score is a generic Score
             return LocalScoreCache{};
         } else {
             static_assert(util::always_false<S>, "Wrong Score class for hill-climbing.");
@@ -220,7 +220,8 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
         op_set.update_scores(*current_model, score, nodes_changed);
 
         if constexpr (std::is_base_of_v<ValidatedScore, S>) {
-            spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
+                spinner->update_status(best_op->ToString() +
+                                       " | Validation delta: " + std::to_string(validation_delta));
         } else if constexpr (std::is_base_of_v<Score, S>) {
             spinner->update_status(best_op->ToString());
         } else {

@@ -127,9 +127,9 @@ private:
     MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
         using CType = typename ArrowType::c_type;
 
-        auto cov = df.cov<ArrowType>(variables);
-
-        if (!util::is_psd(*cov)) {
+        auto cov_ptr = df.cov<ArrowType>(variables);
+        auto& cov = *cov_ptr;
+        if (!util::is_psd(cov)) {
             std::stringstream ss;
             ss << "Covariance matrix for variables [" << variables[0];
             for (size_t i = 1; i < variables.size(); ++i) {
@@ -146,9 +146,9 @@ private:
         auto k = std::pow(N, -2. / (d + 4));
 
         if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
-            return k * (*cov);
+            return k * cov;
         } else {
-            return k * cov->template cast<double>();
+            return (k * cov).template cast<double>();
         }
     }
 };

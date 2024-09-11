@@ -130,12 +130,12 @@ private:
         // [4*d*sqrt(det(delta))] /
         // / [(2*trace(delta^(-1)*delta^(-1)) + trace(delta^(-1))^2) * N]
         auto k = 4 * d * std::sqrt(delta.determinant()) /
-                 (2 * (delta_inv * delta_inv).trace() + delta_inv_trace * delta_inv_trace);
-
+                 ((2 * (delta_inv * delta_inv).trace() + delta_inv_trace * delta_inv_trace) * N);
+        auto k2 = std::pow(k, 2. / (d + 4.));
         if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
-            return std::pow(k / N, 2. / (d + 4.)) * diag;
+            return k2 * diag;
         } else {
-            return (std::pow(k / N, 2. / (d + 4.)) * diag).template cast<double>();
+            return (k2 * diag).template cast<double>();
         }
     }
     /**
@@ -151,9 +151,9 @@ private:
     MatrixXd bandwidth(const DataFrame& df, const std::vector<std::string>& variables) const {
         using CType = typename ArrowType::c_type;
 
-        auto cov = df.cov<ArrowType>(variables);
-
-        if (!util::is_psd(*cov)) {
+        auto cov_ptr = df.cov<ArrowType>(variables);
+        auto& cov = *cov_ptr;
+        if (!util::is_psd(cov)) {
             std::stringstream ss;
             ss << "Covariance matrix for variables [" << variables[0];
             for (size_t i = 1; i < variables.size(); ++i) {
@@ -169,9 +169,9 @@ private:
         auto k = std::pow(4. / (N * (d + 2.)), 2. / (d + 4));
 
         if constexpr (std::is_same_v<ArrowType, arrow::DoubleType>) {
-            return k * (*cov);
+            return k * cov;
         } else {
-            return k * cov->template cast<double>();
+            return (k * cov).template cast<double>();
         }
     }
 };

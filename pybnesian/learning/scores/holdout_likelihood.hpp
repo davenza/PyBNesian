@@ -12,6 +12,11 @@ using models::GaussianNetwork, models::SemiparametricBN;
 
 namespace learning::scores {
 
+/**
+ * @brief This class implements an estimation of the log-likelihood on unseen data using a holdout dataset. Thus, the
+ * parameters are estimated using training data, and the score is estimated in the holdout data.
+ *
+ */
 class HoldoutLikelihood : public Score {
 public:
     HoldoutLikelihood(const DataFrame& df,

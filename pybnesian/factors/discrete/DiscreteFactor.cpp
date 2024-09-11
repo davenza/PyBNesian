@@ -210,6 +210,7 @@ Array_ptr DiscreteFactor::sample(int n, const DataFrame& evidence_values, unsign
 std::string DiscreteFactor::ToString() const {
     std::stringstream stream;
     stream << std::setprecision(3);
+    // Evidence refers to the parents
     if (!evidence().empty()) {
         const auto& e = evidence();
         stream << "[DiscreteFactor] P(" << variable() << " | " << e[0];

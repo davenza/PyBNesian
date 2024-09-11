@@ -573,9 +573,9 @@ void KDE::_fit(const DataFrame& df) {
     using CType = typename ArrowType::c_type;
 
     auto d = m_variables.size();
-
+    // NOTE: Here the positive definiteness of the bandwidth is checked
     m_bandwidth = m_bselector->bandwidth(df, m_variables);
-
+    // Calculates the LLT decomposition matrix of the bandwidth matrix
     auto llt_cov = m_bandwidth.llt();
     auto cholesky = llt_cov.matrixLLT();
 

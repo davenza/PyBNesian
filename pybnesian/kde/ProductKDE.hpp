@@ -5,7 +5,6 @@
 #include <kde/NormalReferenceRule.hpp>
 #include <opencl/opencl_config.hpp>
 #include <util/math_constants.hpp>
-
 #include <util/pickle.hpp>
 
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;

@@ -39,7 +39,11 @@ DataFrame KDE::training_data() const {
             throw std::invalid_argument("Unreachable code.");
     }
 }
-
+/**
+ * @brief Learns the KDE parameters from the given data.
+ *
+ * @param df Data.
+ */
 void KDE::fit(const DataFrame& df) {
     m_training_type = df.same_type(m_variables);
 

@@ -9,6 +9,11 @@ IF(APPLE)
     SET(CMAKE_CXX_COMPILER "clang++")
 ENDIF()
 
+IF(UNIX)
+    SET(CMAKE_C_COMPILER "gcc")
+    SET(CMAKE_CXX_COMPILER "g++")
+ENDIF()
+
 find_package(Git REQUIRED)
 message("Git executable: ${GIT_EXECUTABLE}")
 
@@ -187,4 +192,3 @@ target_include_directories(__init__ SYSTEM PRIVATE "lib/eigen-3.3.7" "lib/indica
 target_link_libraries(__init__ PRIVATE Arrow::arrow_static OpenCL::OpenCL NLopt::nlopt libfort::fort Boost::dynamic_bitset Boost::math)
 
 install(TARGETS __init__ LIBRARY DESTINATION ./pybnesian)
-

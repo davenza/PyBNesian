@@ -69,13 +69,13 @@ struct ArrowSchema* extract_pycapsule_schema(py::handle pyobject) {
         throw pybind11::attribute_error("Method __arrow_c_schema__ not found.");
     }
 
-    #ifdef Python_MAJOR_VERSION == 3 && Python_MINOR_VERSION >= 9
+#if Python_MAJOR_VERSION == 3 && Python_MINOR_VERSION >= 9
     PyObject* schema_capsule_obj = PyObject_CallNoArgs(arrow_c_method);
-    #else
+#else
     PyObject* args = PyTuple_New(0);
     PyObject* schema_capsule_obj = PyObject_Call(arrow_c_method, args, NULL);
     Py_DECREF(args);
-    #endif
+#endif
     Py_DECREF(arrow_c_method);
 
     // extract the capsule
@@ -94,13 +94,13 @@ struct ArrowCAPIObjects extract_pycapsule_array(py::handle pyobject) {
         throw pybind11::attribute_error("Method __arrow_c_array__ not found.");
     }
 
-    #ifdef Python_MAJOR_VERSION == 3 && Python_MINOR_VERSION >= 9
+#if Python_MAJOR_VERSION == 3 && Python_MINOR_VERSION >= 9
     PyObject* array_capsule_tuple = PyObject_CallNoArgs(arrow_c_method);
-    #else
+#else
     PyObject* args = PyTuple_New(0);
     PyObject* array_capsule_tuple = PyObject_Call(arrow_c_method, args, NULL);
     Py_DECREF(args);
-    #endif
+#endif
 
     Py_DECREF(arrow_c_method);
 

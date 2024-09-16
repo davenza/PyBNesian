@@ -85,10 +85,14 @@ ELSEIF(UNIX)
     SET(SCRIPT_EXTENSION "sh")
 ENDIF()
 
-execute_process(COMMAND python expand_sources.py RESULT_VARIABLE EXPAND_SOURCES_RESULT)
+# Find the Python interpreter
+find_package(PythonInterp 3 REQUIRED)
+
+# Use the found Python interpreter in the execute_process command
+execute_process(COMMAND ${PYTHON_EXECUTABLE} expand_sources.py RESULT_VARIABLE EXPAND_SOURCES_RESULT)
 
 IF(NOT EXPAND_SOURCES_RESULT EQUAL "0")
-    message(FATAL_ERROR "$python expand_sources.py failed with ${EXPAND_SOURCES_RESULT}")
+    message(FATAL_ERROR "${PYTHON_EXECUTABLE} expand_sources.py failed with ${EXPAND_SOURCES_RESULT}")
 ENDIF()
 
 execute_process(COMMAND ${SCRIPT_PREFIX}bootstrap-vcpkg.${SCRIPT_EXTENSION} WORKING_DIRECTORY "vcpkg" RESULT_VARIABLE VCPKG_BOOTSTRAP_RESULT)

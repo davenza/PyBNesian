@@ -62,6 +62,12 @@ public:
     virtual bool can_add_arc(const std::string& source, const std::string& target) const = 0;
     virtual bool can_flip_arc(const std::string& source, const std::string& target) const = 0;
 
+    /**
+     * @brief Checks if the arcs in the blacklist are present in the Bayesian Network.
+     * Throws an exception if any of the arcs are present.
+     *
+     * @param arc_blacklist List of arcs to check.
+     */
     virtual void check_blacklist(const ArcStringVector& arc_blacklist) const {
         for (const auto& arc : arc_blacklist) {
             if (has_arc(arc.first, arc.second)) {
@@ -575,20 +581,24 @@ public:
     bool can_flip_arc(const std::string& source, const std::string& target) const override {
         return g.can_flip_arc(source, target) && m_type->can_have_arc(*this, target, source);
     }
-
+    /**
+     * @brief Include the given whitelisted arcs. It checks the validity of the graph after including the arc whitelist.
+     *
+     * @param arc_whitelist List of arcs to add.
+     */
     void force_whitelist(const ArcStringVector& arc_whitelist) override {
         for (const auto& arc : arc_whitelist) {
             if (!has_arc(arc.first, arc.second)) {
-                if (has_arc(arc.second, arc.first)) {
+                if (has_arc(arc.second, arc.first)) {  // Check if the reverse arc is present
                     throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second +
                                                 " in whitelist,"
                                                 " but arc " +
                                                 arc.second + " -> " + arc.first +
                                                 " is present"
                                                 " in the Bayesian Network.");
-                } else if (can_add_arc(arc.first, arc.second)) {
+                } else if (can_add_arc(arc.first, arc.second)) {  // Check if the arc can be added
                     add_arc_unsafe(arc.first, arc.second);
-                } else {
+                } else {  // Check if the arc can be flipped
                     throw std::invalid_argument("Arc " + arc.first + " -> " + arc.second +
                                                 " not allowed in this Bayesian network.");
                 }

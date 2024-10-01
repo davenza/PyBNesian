@@ -2,6 +2,15 @@
 Changelog
 *********
 
+v0.5.2
+======
+
+- Python code is now formatted with ``black`` and ``isort``, and has been refactored according to ``PEP 8`` style guides.
+- Python code partially commented with ``google`` docstring format.
+- C++ code partially commented with ``doxygen`` docstring format.
+- Scott's and Normal Reference Rule's ``bandwidth`` calculation have been reordered and commented.
+- ``ArcOperatorSet::update_incoming_arcs_scores`` formulas have been reordered and commented.
+
 v0.5.1
 ======
 

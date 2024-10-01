@@ -1,11 +1,11 @@
 #ifndef PYBNESIAN_KDE_PRODUCTKDE_HPP
 #define PYBNESIAN_KDE_PRODUCTKDE_HPP
 
-#include <util/pickle.hpp>
 #include <kde/BandwidthSelector.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <opencl/opencl_config.hpp>
 #include <util/math_constants.hpp>
+#include <util/pickle.hpp>
 
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
@@ -184,7 +184,7 @@ void ProductKDE::_fit(const DataFrame& df) {
             m_training.push_back(opencl.copy_to_buffer(column->data(), N));
         }
     }
-
+    // -1/2 * d * log(2 * pi) - 1/2 * log(|h|) - log(N)
     m_lognorm_const = -0.5 * static_cast<double>(m_variables.size()) * std::log(2 * util::pi<double>) -
                       0.5 * m_bandwidth.array().log().sum() - std::log(N);
 }

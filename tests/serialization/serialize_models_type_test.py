@@ -1,27 +1,34 @@
-import pytest
-import pybnesian as pbn
-import pickle
 import itertools
+import pickle
+
+import pytest
+
+import pybnesian as pbn
+
 
 @pytest.fixture
 def gaussian_type_bytes():
     g = pbn.GaussianNetworkType()
     return pickle.dumps(g)
 
+
 @pytest.fixture
 def spbn_type_bytes():
     s = pbn.SemiparametricBNType()
     return pickle.dumps(s)
+
 
 @pytest.fixture
 def kde_type_bytes():
     k = pbn.KDENetworkType()
     return pickle.dumps(k)
 
+
 @pytest.fixture
 def discrete_type_bytes():
     d = pbn.DiscreteBNType()
     return pickle.dumps(d)
+
 
 class NewBNType(pbn.BayesianNetworkType):
     def __init__(self):
@@ -30,10 +37,12 @@ class NewBNType(pbn.BayesianNetworkType):
     def __str__(self):
         return "NewType"
 
+
 @pytest.fixture
 def new_type_bytes():
     nn = NewBNType()
     return pickle.dumps(nn)
+
 
 class OtherBNType(pbn.BayesianNetworkType):
     def __init__(self):
@@ -45,9 +54,10 @@ class OtherBNType(pbn.BayesianNetworkType):
 
     def __getstate_extra__(self):
         return self.some_useful_info
-    
+
     def __setstate_extra__(self, extra):
         self.some_useful_info = extra
+
 
 @pytest.fixture
 def other_type_bytes():
@@ -55,8 +65,14 @@ def other_type_bytes():
     return pickle.dumps(o)
 
 
-def test_serialization_bn_type(gaussian_type_bytes, spbn_type_bytes, kde_type_bytes,
-                               discrete_type_bytes, new_type_bytes, other_type_bytes):
+def test_serialization_bn_type(
+    gaussian_type_bytes,
+    spbn_type_bytes,
+    kde_type_bytes,
+    discrete_type_bytes,
+    new_type_bytes,
+    other_type_bytes,
+):
     loaded_g = pickle.loads(gaussian_type_bytes)
     new_g = pbn.GaussianNetworkType()
     assert loaded_g == new_g

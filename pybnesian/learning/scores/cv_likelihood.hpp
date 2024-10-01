@@ -11,6 +11,11 @@ using models::BayesianNetworkBase, models::BayesianNetworkType;
 
 namespace learning::scores {
 
+/**
+ * @brief This class implements an estimation of the log-likelihood on unseen data using k-fold cross validation over
+ * the data.
+ *
+ */
 class CVLikelihood : public Score {
 public:
     CVLikelihood(const DataFrame& df,

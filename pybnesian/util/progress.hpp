@@ -65,6 +65,14 @@ private:
     indicators::ProgressSpinner m_spinner;
 };
 
+/**
+ * @brief Creates a spinner based on the verbose level.
+ *
+ * @tparam Args Arguments to pass to the spinner.
+ * @param verbose_level 0: no spinner, 1: indeterminate spinner
+ * @param additional_args Additional arguments to pass to the spinner.
+ * @return std::unique_ptr<BaseIndeterminateSpinner> Pointer to the spinner.
+ */
 template <typename... Args>
 std::unique_ptr<BaseIndeterminateSpinner> indeterminate_spinner(int verbose_level, Args&&... additional_args) {
     switch (verbose_level) {

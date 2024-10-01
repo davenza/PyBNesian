@@ -151,6 +151,15 @@ ListRestrictions validate_restrictions(const Model& g,
     return r;
 }
 
+/**
+ * @brief Validate the arc restrictions for a model.
+ *
+ * @tparam Model
+ * @param g
+ * @param varc_blacklist
+ * @param varc_whitelist
+ * @return ListRestrictions
+ */
 template <typename Model>
 ListRestrictions validate_restrictions(const Model& g,
                                        const ArcStringVector& varc_blacklist,
@@ -181,6 +190,14 @@ ListRestrictions validate_restrictions(const Model& g,
     return r;
 }
 
+/**
+ * @brief Validates the type restrictions for a model.
+ *
+ * @tparam Model
+ * @param g
+ * @param type_blacklist
+ * @param type_whitelist
+ */
 template <typename Model>
 void validate_type_restrictions(const Model& g,
                                 const FactorTypeVector& type_blacklist,

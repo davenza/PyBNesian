@@ -42,7 +42,16 @@ std::shared_ptr<BayesianNetworkBase> hc(const DataFrame& df,
                                         int num_folds,
                                         double test_holdout_ratio,
                                         int verbose = 0);
-
+/**
+ * @brief Calculates the validation delta score for each of the variables.
+ *
+ * @tparam T Type of the Bayesian network.
+ * @param model Bayesian network.
+ * @param val_score Validated score.
+ * @param variables List of variables.
+ * @param current_local_scores Local score cache.
+ * @return double The validation delta score.
+ */
 template <typename T>
 double validation_delta_score(const T& model,
                               const ValidatedScore& val_score,
@@ -58,7 +67,28 @@ double validation_delta_score(const T& model,
 
     return nnew - prev;
 }
-
+/**
+ * @brief Executes a greedy hill-climbing algorithm for Bayesian network structure learning.
+ *
+ * @tparam zero_patience True if patience == 0, False otherwise.
+ * @tparam S Type of the score.
+ * @tparam T Type of the Bayesian network.
+ * @param op_set Set of operators in the search process.
+ * @param score Score that drives the search.
+ * @param start Initial structure. A BayesianNetworkBase or ConditionalBayesianNetworkBase.
+ * @param arc_blacklist List of arcs blacklist (forbidden arcs).
+ * @param arc_whitelist List of arcs whitelist (forced arcs).
+ * @param type_blacklist List of type blacklist (forbidden pbn.FactorType).
+ * @param type_whitelist List of type whitelist (forced pbn.FactorType).
+ * @param callback Callback object that is called after each iteration.
+ * @param max_indegree Maximum indegree allowed in the graph.
+ * @param max_iters Maximum number of search iterations.
+ * @param epsilon Minimum delta score allowed for each operator. If (best_op->delta() - epsilon) < util::machine_tol,
+ * then the search process is stopped.
+ * @param patience The patience parameter (only used with ValidatedScore).
+ * @param verbose If True the progress will be displayed, otherwise nothing will be displayed.
+ * @return std::shared_ptr<T> The estimated Bayesian network structure of the same type as start.
+ */
 template <bool zero_patience, typename S, typename T>
 std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
                                S& score,
@@ -73,45 +103,52 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
                                double epsilon,
                                int patience,
                                int verbose) {
+        // Spinner for the progress bar
     auto spinner = util::indeterminate_spinner(verbose);
     spinner->update_status("Checking dataset...");
 
+        // Model initialization
     auto current_model = start.clone();
+        // Model type validation
     current_model->force_type_whitelist(type_whitelist);
-
     if (current_model->has_unknown_node_types()) {
         auto score_data = score.data();
 
         if (score_data->num_columns() == 0) {
             throw std::invalid_argument(
                 "The score does not have data to detect the node types. Set the node types for"
-                " all the nodes in the Bayesian network or use an score that uses data (it implements Score::data).");
+                    " all the nodes in the Bayesian network or use an score that uses data (it implements "
+                    "Score::data).");
         }
 
         score_data.raise_has_columns(current_model->nodes());
         current_model->set_unknown_node_types(score_data, type_blacklist);
     }
+// Model arc validation
+        current_model->check_blacklist(
+            arc_blacklist);  // Checks whether the arc_blacklist is valid for the current_model
+        current_model->force_whitelist(arc_whitelist);  // Include the given whitelisted arcs. It checks the validity of
+                                                        // the graph after including the arc whitelist.
 
-    current_model->check_blacklist(arc_blacklist);
-    current_model->force_whitelist(arc_whitelist);
-
+    // OperatorSet initialization
     op_set.set_arc_blacklist(arc_blacklist);
     op_set.set_arc_whitelist(arc_whitelist);
     op_set.set_type_blacklist(type_blacklist);
     op_set.set_type_whitelist(type_whitelist);
     op_set.set_max_indegree(max_indegree);
 
+        // Search model initialization
     auto prev_current_model = current_model->clone();
     auto best_model = current_model;
 
     spinner->update_status("Caching scores...");
 
-    LocalScoreCache local_validation = [&]() {
-        if constexpr (std::is_base_of_v<ValidatedScore, S>) {
-            LocalScoreCache lc(*current_model);
-            lc.cache_vlocal_scores(*current_model, score);
+        LocalScoreCache local_validation = [&]() {                 // Local validation scores (lambda expression)
+            if constexpr (std::is_base_of_v<ValidatedScore, S>) {  // If the score is a ValidatedScore
+                LocalScoreCache lc(*current_model);                // Local score cache
+                lc.cache_vlocal_scores(*current_model, score);     // Cache the local scores
             return lc;
-        } else if constexpr (std::is_base_of_v<Score, S>) {
+            } else if constexpr (std::is_base_of_v<Score, S>) {  // If the score is a generic Score
             return LocalScoreCache{};
         } else {
             static_assert(util::always_false<S>, "Wrong Score class for hill-climbing.");
@@ -171,10 +208,11 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
                 if (p == 0) best_model = prev_current_model->clone();
                 if (++p > patience) break;
                 accumulated_offset += validation_delta;
-                tabu_set.insert(best_op->opposite(*current_model));
+                    tabu_set.insert(best_op->opposite(*current_model));  // Add the opposite operator to the tabu set
             }
         }
 
+            // Updates the previous current model
         best_op->apply(*prev_current_model);
 
         if (callback) callback->call(*current_model, best_op.get(), score, iter);
@@ -182,13 +220,15 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
         op_set.update_scores(*current_model, score, nodes_changed);
 
         if constexpr (std::is_base_of_v<ValidatedScore, S>) {
-            spinner->update_status(best_op->ToString() + " | Validation delta: " + std::to_string(validation_delta));
+                spinner->update_status(best_op->ToString() +
+                                       " | Validation delta: " + std::to_string(validation_delta));
         } else if constexpr (std::is_base_of_v<Score, S>) {
             spinner->update_status(best_op->ToString());
         } else {
             static_assert(util::always_false<S>, "Wrong Score class for hill-climbing.");
         }
-    }
+
+        }  // End of Hill climbing iterations
 
     op_set.finished();
 
@@ -197,7 +237,26 @@ std::shared_ptr<T> estimate_hc(OperatorSet& op_set,
     spinner->mark_as_completed("Finished Hill-climbing!");
     return best_model;
 }
-
+/**
+ * @brief Depending on the validated_score and the patience of the hill climbing algorithm it estimates the
+ * structure of the Bayesian network.
+ *
+ * @tparam T
+ * @param op_set
+ * @param score
+ * @param start
+ * @param arc_blacklist
+ * @param arc_whitelist
+ * @param type_blacklist
+ * @param type_whitelist
+ * @param callback
+ * @param max_indegree
+ * @param max_iters
+ * @param epsilon
+ * @param patience
+ * @param verbose
+ * @return std::shared_ptr<T>
+ */
 template <typename T>
 std::shared_ptr<T> estimate_downcast_score(OperatorSet& op_set,
                                            Score& score,
@@ -274,7 +333,25 @@ std::shared_ptr<T> estimate_downcast_score(OperatorSet& op_set,
         }
     }
 }
-
+/**
+ * @brief Checks the parameters of the hill climbing algorithm and estimates the structure of a Bayesian network.
+ *
+ * @tparam T
+ * @param op_set
+ * @param score
+ * @param start
+ * @param arc_blacklist
+ * @param arc_whitelist
+ * @param type_blacklist
+ * @param type_whitelist
+ * @param callback
+ * @param max_indegree
+ * @param max_iters
+ * @param epsilon
+ * @param patience
+ * @param verbose
+ * @return std::shared_ptr<T>
+ */
 template <typename T>
 std::shared_ptr<T> estimate_checks(OperatorSet& op_set,
                                    Score& score,
@@ -313,6 +390,28 @@ std::shared_ptr<T> estimate_checks(OperatorSet& op_set,
 
 class GreedyHillClimbing {
 public:
+    /**
+     * @brief Estimates the structure of a Bayesian network. The estimated Bayesian network is of the same type as
+     * start. The set of operators allowed in the search is operators. The delta score of each operator is evaluated
+     * using the score. The initial structure of the algorithm is the model start.
+     *
+     * @tparam T Type of the Bayesian network.
+     * @param op_set Set of operators in the search process.
+     * @param score pbn.core that drives the search.
+     * @param start Initial structure. A BayesianNetworkBase or ConditionalBayesianNetworkBase.
+     * @param arc_blacklist List of arcs blacklist (forbidden arcs).
+     * @param arc_whitelist List of arcs whitelist (forced arcs).
+     * @param type_blacklist List of type blacklist (forbidden pbn.FactorType).
+     * @param type_whitelist List of type whitelist (forced pbn.FactorType).
+     * @param callback Callback object that is called after each iteration.
+     * @param max_indegree Maximum indegree allowed in the graph.
+     * @param max_iters Maximum number of search iterations.
+     * @param epsilon Minimum delta score allowed for each operator. If the new operator is less than epsilon, the
+     * search process is stopped.
+     * @param patience he patience parameter (only used with pbn.ValidatedScore).
+     * @param verbose If True the progress will be displayed, otherwise nothing will be displayed.
+     * @return std::shared_ptr<T> The estimated Bayesian network structure of the same type as start.
+     */
     template <typename T>
     std::shared_ptr<T> estimate(OperatorSet& op_set,
                                 Score& score,

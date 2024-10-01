@@ -9,6 +9,11 @@ IF(APPLE)
     SET(CMAKE_CXX_COMPILER "clang++")
 ENDIF()
 
+IF(UNIX)
+    SET(CMAKE_C_COMPILER "gcc")
+    SET(CMAKE_CXX_COMPILER "g++")
+ENDIF()
+
 find_package(Git REQUIRED)
 message("Git executable: ${GIT_EXECUTABLE}")
 
@@ -80,10 +85,14 @@ ELSEIF(UNIX)
     SET(SCRIPT_EXTENSION "sh")
 ENDIF()
 
-execute_process(COMMAND python expand_sources.py RESULT_VARIABLE EXPAND_SOURCES_RESULT)
+# Find the Python interpreter
+find_package(PythonInterp 3 REQUIRED)
+
+# Use the found Python interpreter in the execute_process command
+execute_process(COMMAND ${PYTHON_EXECUTABLE} expand_sources.py RESULT_VARIABLE EXPAND_SOURCES_RESULT)
 
 IF(NOT EXPAND_SOURCES_RESULT EQUAL "0")
-    message(FATAL_ERROR "$python expand_sources.py failed with ${EXPAND_SOURCES_RESULT}")
+    message(FATAL_ERROR "${PYTHON_EXECUTABLE} expand_sources.py failed with ${EXPAND_SOURCES_RESULT}")
 ENDIF()
 
 execute_process(COMMAND ${SCRIPT_PREFIX}bootstrap-vcpkg.${SCRIPT_EXTENSION} WORKING_DIRECTORY "vcpkg" RESULT_VARIABLE VCPKG_BOOTSTRAP_RESULT)
@@ -187,4 +196,3 @@ target_include_directories(__init__ SYSTEM PRIVATE "lib/eigen-3.3.7" "lib/indica
 target_link_libraries(__init__ PRIVATE Arrow::arrow_static OpenCL::OpenCL NLopt::nlopt libfort::fort Boost::dynamic_bitset Boost::math)
 
 install(TARGETS __init__ LIBRARY DESTINATION ./pybnesian)
-

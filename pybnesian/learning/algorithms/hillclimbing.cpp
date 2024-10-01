@@ -34,7 +34,7 @@ namespace learning::algorithms {
  * to None.
  * @param score_str A string representing the score used to drive the search.
             The possible options are: “bic” for BIC, “bge” for BGe, “cv-lik” for CVLikelihood, “holdout-lik” for
- HoldoutLikelihood, “validated-lik for ValidatedLikelihood. Defaults to "validated-lik".
+ HoldoutLikelihood, “validated-lik" for ValidatedLikelihood. Defaults to "validated-lik".
  * @param operators_str Set of operators in the search process. Defaults to ["arcs", "node_type"].
  * @param arc_blacklist List of arcs blacklist (forbidden arcs). Defaults to [].
  * @param arc_whitelist List of arcs whitelist (forced  arcs). Defaults to [].

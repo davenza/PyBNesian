@@ -103,7 +103,7 @@ Executes a greedy hill-climbing algorithm. This calls :func:`GreedyHillClimbing.
               "bic" for :class:`BIC <pybnesian.BIC>`, "bge" for
               :class:`BGe <pybnesian.BGe>`, "cv-lik" for
               :class:`CVLikelihood <pybnesian.CVLikelihood>`, "holdout-lik" for
-              :class:`HoldoutLikelihood <pybnesian.HoldoutLikelihood>`, "validated-lik for
+              :class:`HoldoutLikelihood <pybnesian.HoldoutLikelihood>`, "validated-lik" for
               :class:`ValidatedLikelihood <pybnesian.ValidatedLikelihood>`.
 :param operators: Set of operators in the search process.
 :param arc_blacklist: List of arcs blacklist (forbidden arcs).

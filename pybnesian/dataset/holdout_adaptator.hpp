@@ -49,7 +49,7 @@ public:
 
         if (test_rows == 0 || train_rows == 0) {
             throw std::invalid_argument("Wrong test_ratio (" + std::to_string(test_ratio) +
-                                        "selected for HoldOut.\n"
+                                        ") selected for HoldOut.\n"
                                         "Generated train instances: " +
                                         std::to_string(train_rows) +
                                         "\n"

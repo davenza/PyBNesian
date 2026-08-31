@@ -1,4 +1,5 @@
-/* This code assumes column major data for matrices. */
+/* This file contains opencl code for matrix operations.
+It assumes column major data for matrices. */
 
 #define IDX(i, j, rows) (i) + ((j)*(rows))
 #define ROW(idx, rows) (idx) % (rows)

@@ -36,6 +36,11 @@ jobs:
 
       - name: Build wheels
         if: runner.os != 'macOS'
+        env:
+          CIBW_BEFORE_BUILD: |
+            mkdir -p /io/vcpkg-logs || true
+            cp -r /project/vcpkg/buildtrees /io/vcpkg-logs/ || true
+            cp /project/vcpkg-manifest-install.log /io/vcpkg-logs/ || true
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build wheels
@@ -45,6 +50,17 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: 10.14
           VCPKG_ENV_PASSTHROUGH: MACOSX_DEPLOYMENT_TARGET
         run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Upload vcpkg logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-logs-${{ matrix.os }}
+          path: |
+            vcpkg-logs/**
+            vcpkg/buildtrees/**/*.log
+            vcpkg/buildtrees/**/config-*-out.log
+            vcpkg-manifest-install.log
 
       - uses: actions/upload-artifact@v4
         with:

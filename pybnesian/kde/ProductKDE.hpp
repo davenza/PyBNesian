@@ -1,11 +1,11 @@
 #ifndef PYBNESIAN_KDE_PRODUCTKDE_HPP
 #define PYBNESIAN_KDE_PRODUCTKDE_HPP
 
-#include <util/pickle.hpp>
 #include <kde/BandwidthSelector.hpp>
 #include <kde/NormalReferenceRule.hpp>
 #include <opencl/opencl_config.hpp>
 #include <util/math_constants.hpp>
+#include <util/pickle.hpp>
 
 using opencl::OpenCLConfig, opencl::OpenCL_kernel_traits;
 
@@ -165,6 +165,12 @@ void ProductKDE::_fit(const DataFrame& df) {
 
     auto& opencl = OpenCLConfig::get();
 
+    // NOTE: Here the positive definiteness of the bandwidth is checked
+    // if bandwidth is not positive definite,
+    // - try to add a small value to the diagonal?
+    // m_bandwidth = m_bandwidth + VectorXd::Constant(m_variables.size(), 1e-6);
+
+    // - Add to blacklist and ignore this iteration?
     m_bandwidth = m_bselector->diag_bandwidth(df, m_variables);
 
     for (size_t i = 0; i < m_variables.size(); ++i) {
@@ -184,7 +190,7 @@ void ProductKDE::_fit(const DataFrame& df) {
             m_training.push_back(opencl.copy_to_buffer(column->data(), N));
         }
     }
-
+    // -1/2 * d * log(2 * pi) - 1/2 * log(|h|) - log(N)
     m_lognorm_const = -0.5 * static_cast<double>(m_variables.size()) * std::log(2 * util::pi<double>) -
                       0.5 * m_bandwidth.array().log().sum() - std::log(N);
 }

@@ -12,7 +12,7 @@ namespace util {
 std::unique_ptr<Score> check_valid_score(const DataFrame& df,
                                          const BayesianNetworkType& bn_type,
                                          const std::optional<std::string>& score,
-                                         int seed,
+                                         unsigned int seed,
                                          int num_folds,
                                          double test_holdout_ratio);
 

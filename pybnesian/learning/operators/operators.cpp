@@ -16,6 +16,12 @@ std::shared_ptr<Operator> AddArc::opposite(const ConditionalBayesianNetworkBase&
     return opposite(static_cast<const BayesianNetworkBase&>(m));
 }
 
+/**
+ * @brief Updates the valid operations matrix and the delta matrix.
+ * The idea is that arc_whitelist and arc_blacklist are operations that have to be ignored.
+ *
+ * @param model BayesianNetwork.
+ */
 void ArcOperatorSet::update_valid_ops(const BayesianNetworkBase& model) {
     int num_nodes = model.num_nodes();
 
@@ -96,6 +102,12 @@ double cache_score_operation(const BayesianNetworkBase& model,
         return d;
     }
 }
+/**
+ * @brief Cache scores for the given BayesianNetwork and ArcOperator score.
+ *
+ * @param model BayesianNetwork.
+ * @param score Score.
+ */
 
 void ArcOperatorSet::cache_scores(const BayesianNetworkBase& model, const Score& score) {
     if (!score.compatible_bn(model)) {
@@ -108,16 +120,18 @@ void ArcOperatorSet::cache_scores(const BayesianNetworkBase& model, const Score&
         this->m_local_cache->cache_local_scores(model, score);
     }
 
-    update_valid_ops(model);
+    update_valid_ops(model);  // Updates a matrix of valid operations and a matrix of delta scores.
 
     auto bn_type = model.type();
-    for (const auto& target_node : model.nodes()) {
+    for (const auto& target_node : model.nodes()) {  // Iterates over all target_node in the model.
         std::vector<std::string> new_parents_target = model.parents(target_node);
         int target_collapsed = model.collapsed_index(target_node);
-        for (const auto& source_node : model.nodes()) {
+        for (const auto& source_node : model.nodes()) {  // Iterates over all source_node in the model.
             int source_collapsed = model.collapsed_index(source_node);
             if (valid_op(source_collapsed, target_collapsed) &&
-                bn_type->can_have_arc(model, source_node, target_node)) {
+                bn_type->can_have_arc(
+                    model, source_node, target_node)) {  // If the arc operation (source_node, target_node) is valid.
+                // NOTE: FIXED Here the score is calculated and may fail if the covariance matrix is singular.
                 delta(source_collapsed, target_collapsed) =
                     cache_score_operation(model,
                                           score,
@@ -209,7 +223,13 @@ void ArcOperatorSet::update_valid_ops(const ConditionalBayesianNetworkBase& mode
         }
     }
 }
-
+/**
+ * @brief Cache scores for the given ConditionalBayesianNetwork and ArcOperator score.
+ *
+ * @param model BayesianNetwork.
+ * @param score Score.
+ */
+// TODO: Update ConditionalBayesianNetworkBase for singular covariance?
 void ArcOperatorSet::cache_scores(const ConditionalBayesianNetworkBase& model, const Score& score) {
     if (!score.compatible_bn(model)) {
         throw std::invalid_argument("BayesianNetwork is not compatible with the score.");
@@ -292,53 +312,83 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max(const ConditionalBayesianNetw
     else
         return find_max_indegree<false>(model, tabu_set);
 }
-
+/**
+ * @brief Find the maximum operation for the given BayesianNetwork and ArcOperatorSet score.
+ *
+ * @param model
+ * @param score
+ * @param target_node
+ */
 void ArcOperatorSet::update_incoming_arcs_scores(const BayesianNetworkBase& model,
                                                  const Score& score,
                                                  const std::string& target_node) {
     auto target_collapsed = model.collapsed_index(target_node);
-    auto parents = model.parents(target_node);
+    auto parents = model.parents(target_node);  // The parents of the target_node
 
     auto bn_type = model.type();
     for (const auto& source_node : model.nodes()) {
         auto source_collapsed = model.collapsed_index(source_node);
 
         if (valid_op(source_collapsed, target_collapsed)) {
-            if (model.has_arc(source_node, target_node)) {
-                // Update remove arc: source_node -> target_node
-                util::swap_remove_v(parents, source_node);
-                double d = score.local_score(model, target_node, parents) -
-                           this->m_local_cache->local_score(model, target_node);
-                parents.push_back(source_node);
-                delta(source_collapsed, target_collapsed) = d;
+            // ARC FLIPPING source_node -> target_node to target_node -> source_node:
+            if (model.has_arc(source_node,
+                              target_node)) {  // If the arc source_node -> target_node already exists, remove it and
+                                               // then put the reverse arc if possible.
+                util::swap_remove_v(parents, source_node);  // Remove source_node from the parents of target_node
+                // score of removing (source_collapsed -> target_node)
+                double d = score.local_score(model, target_node, parents) -       // New score with the removed arc
+                           this->m_local_cache->local_score(model, target_node);  // Old score with the arc
+                parents.push_back(source_node);                 // Readd source_node to the parents of target_node
+                delta(source_collapsed, target_collapsed) = d;  // score of removing (source_collapsed -> target_node)
 
-                // Update flip arc: source_node -> target_node
+                // Update flip arc: source_node -> target_node to target_node -> source_node
                 if (valid_op(target_collapsed, source_collapsed) &&
-                    bn_type->can_have_arc(model, target_node, source_node)) {
+                    bn_type->can_have_arc(
+                        model, target_node, source_node)) {  // If the reverse arc (target_node -> source_node) is
+                                                             // possible, then put the reverse arc
                     auto parents_source = model.parents(source_node);
                     parents_source.push_back(target_node);
-                    delta(target_collapsed, source_collapsed) = d +
-                                                                score.local_score(model, source_node, parents_source) -
-                                                                this->m_local_cache->local_score(model, source_node);
+                    double d2;
+                    // score of adding (target_node -> source_collapsed)
+                    d2 = d + score.local_score(model, source_node, parents_source) -  // New score with the added arc
+                         this->m_local_cache->local_score(model, source_node);        // Old score without the arc
+                    delta(target_collapsed, source_collapsed) =
+                        d2;  // score of reversing (source_collapsed -> target_node) to (target_node ->
+                             // source_collapsed)
                 }
             } else if (model.has_arc(target_node, source_node) &&
-                       bn_type->can_have_arc(model, source_node, target_node)) {
-                // Update flip arc: target_node -> source_node
+                       bn_type->can_have_arc(
+                           model,
+                           source_node,
+                           target_node)) {  // ARC FLIPPING target_node -> source_node to source_node -> target_node:
+                                            // If the arc target_node -> source_node already exists and the reverse arc
+                                            // is possible, then put the flip the arc to source_node -> target_node.
                 auto parents_source = model.parents(source_node);
-                util::swap_remove_v(parents_source, target_node);
+                util::swap_remove_v(parents_source, target_node);  // Remove target_node from the parents of source_node
 
                 parents.push_back(source_node);
-                double d = score.local_score(model, source_node, parents_source) +
-                           score.local_score(model, target_node, parents) -
-                           this->m_local_cache->local_score(model, source_node) -
-                           this->m_local_cache->local_score(model, target_node);
+
+                // Update flip arc score: target_node -> source_node to source_node -> target_node
+                double d;
+                d = score.local_score(model,
+                                      target_node,
+                                      parents) +  // New score after adding source_node as parent of target_node
+                    score.local_score(
+                        model,
+                        source_node,
+                        parents_source) -  // New score after removing target_node as parent of source_node
+                    this->m_local_cache->local_score(model, target_node) -
+                    this->m_local_cache->local_score(model, source_node);
+
                 parents.pop_back();
+                // TODO: Is necessary parents_source.push_back(target_node);?
                 delta(source_collapsed, target_collapsed) = d;
             } else if (bn_type->can_have_arc(model, source_node, target_node)) {
                 // Update add arc: source_node -> target_node
                 parents.push_back(source_node);
-                double d = score.local_score(model, target_node, parents) -
-                           this->m_local_cache->local_score(model, target_node);
+                double d;
+                d = score.local_score(model, target_node, parents) -
+                    this->m_local_cache->local_score(model, target_node);
                 parents.pop_back();
                 delta(source_collapsed, target_collapsed) = d;
             }
@@ -366,7 +416,7 @@ void ArcOperatorSet::update_incoming_arcs_scores(const ConditionalBayesianNetwor
                                                  const Score& score,
                                                  const std::string& target_node) {
     auto target_collapsed = model.collapsed_index(target_node);
-    auto parents = model.parents(target_node);
+    auto parents = model.parents(target_node);  // The parents of the target_node
 
     auto bn_type = model.type();
     for (const auto& source_node : model.joint_nodes()) {
@@ -435,7 +485,12 @@ void ArcOperatorSet::update_scores(const ConditionalBayesianNetworkBase& model,
         update_incoming_arcs_scores(model, score, n);
     }
 }
-
+/**
+ * @brief Cache scores for the given BayesianNetwork and ChangeNodeTypeSet score.
+ *
+ * @param model BayesianNetwork.
+ * @param score Score.
+ */
 void ChangeNodeTypeSet::cache_scores(const BayesianNetworkBase& model, const Score& score) {
     if (model.type_ref().is_homogeneous()) {
         throw std::invalid_argument("ChangeNodeTypeSet can only be used with non-homogeneous Bayesian networks.");

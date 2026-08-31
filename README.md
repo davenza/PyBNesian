@@ -1,4 +1,4 @@
-![build](https://img.shields.io/github/actions/workflow/status/davenza/pybnesian/release.yml)
+![build](https://img.shields.io/github/actions/workflow/status/carloslihu/pybnesian/release.yml)
 [![Documentation Status](https://readthedocs.org/projects/pybnesian/badge/?version=latest)](https://pybnesian.readthedocs.io/en/latest/?badge=latest)
 ![PyPI](https://img.shields.io/pypi/v/pybnesian?color=blue)
 
@@ -10,14 +10,11 @@
 
 - `PyBNesian` allows extending its functionality using Python code, so new research can be easily developed.
 
-
-Implementation
-=====================
+# Implementation
 
 Currently `PyBNesian` implements the following features:
 
-Models
------------
+## Models
 
 - [x] Bayesian networks.
 
@@ -43,8 +40,7 @@ with this combinations of CPDs, we implement the following types of networks (wh
 
 - [x] Hybrid networks (conditional linear Gaussian networks and semiparametric networks) [3].
 
-Graphs
------------------
+## Graphs
 
 - [x] DAGs.
 
@@ -56,8 +52,7 @@ Graphs
 
 Graph classes implement useful functionalities for probabilistic graphical models, such as moving between DAG-PDAG representation or fast access to root and leaves.
 
-Learning
----------------
+## Learning
 
 It implements different structure learning algorithms:
 
@@ -107,18 +102,15 @@ It also implements the parameter learning:
 
 - [x] Maximum Likelihood Estimator.
 
-Inference
------------------------
+## Inference
 
 Not implemented right now, as the priority is the learning algorithms. However, all the CPDs and models have a `sample()` method, which can be used to create easily an approximate inference engine based on sampling.
 
-Serialization
------------------------
+## Serialization
 
 All relevant objects (graphs, CPDs, Bayesian networks, etc) can be saved/loaded using the pickle format.
 
-Other implementations
------------------
+## Other implementations
 
 `PyBNesian` exposes the implementation of other models or techniques used within the library.
 
@@ -136,8 +128,7 @@ Weighted sums of chi-squared random variables:
 
 - [ ] Lindsay-Pilla-Basak approximation. (implemented but not exposed yet).
 
-Usage example
-===========================
+# Usage example
 
 ```python
 >>> from pybnesian import GaussianNetwork, LinearGaussianCPD
@@ -263,32 +254,27 @@ Node 2: c
 2
 ```
 
-Dependencies
-============
+# Dependencies
 
 - Python 3.8, 3.9, 3.10, 3.11 and 3.12.
 
 The library has been tested on Ubuntu 16.04/20.04/22.04 and Windows 10/11, but should be compatible with other operating systems.
 
-Libraries
----------
+## Libraries
 
 The library depends on [NumPy](https://numpy.org/), [Apache Arrow](https://arrow.apache.org/), [pybind11](https://github.com/pybind/pybind11), [NLopt](https://nlopt.readthedocs.io/en/latest/), [libfort](https://github.com/seleznevae/libfort) and [Boost](https://www.boost.org/).
 
-
-Installation
-============
+# Installation
 
 PyBNesian can be installed with pip:
 
 ```
 pip install pybnesian
 ```
-Build from Source
-=================
 
-Prerequisites
--------------
+# Build from Source
+
+## Prerequisites
 
 - Python 3.8, 3.9, 3.10, 3.11 or 3.12.
 - C++17 compatible compiler.
@@ -296,36 +282,29 @@ Prerequisites
 - Git.
 - OpenCL drivers installed.
 
+We provide a detailed [installation guide](INSTALLATION.md) for these prerequisites of PyBNesian.
 
-Building
---------
+## Building
 
 Clone the repository:
 
 ```
-git clone https://github.com/davenza/PyBNesian.git
+git clone https://github.com/carloslihu/PyBNesian.git
 cd PyBNesian
-git checkout v0.5.1 # You can checkout a specific version if you want
 pip install .
 ```
 
-Testing
-=========================
+# Testing
 
 The library contains tests that can be executed using `pytest`. They also require `scipy` and `pandas` installed.
 
-``
-pip install pytest scipy pandas
-``
+`pip install pytest scipy pandas`
 
 Run the tests with:
 
-``
-pytest
-``
+`pytest`
 
-How to cite?
-================
+# How to cite?
 
 ```
 @article{Atienza2022Pybnesian,
@@ -340,7 +319,7 @@ How to cite?
 
 ## References
 
-<a id="1">[1]</a> 
+<a id="1">[1]</a>
 D. Atienza and C. Bielza and P. Larrañaga. PyBNesian: An extensible python package for Bayesian networks. Neurocomputing, 504, 2022, pp 204-209.
 
 <a id="2">[2]</a>
@@ -350,12 +329,12 @@ D. Atienza and C. Bielza and P. Larrañaga. Semiparametric Bayesian networks. In
 D. Atienza and P. Larrañaga and C. Bielza. Hybrid Semiparametric Bayesian networks. TEST, 31(2), 2022, pp 299-327.
 
 <a id="4">[4]</a>
-D. Koller and N. Friedman, 
+D. Koller and N. Friedman,
 Probabilistic Graphical Models: Principles and Techniques,
 The MIT Press, 2009.
 
 <a id="5">[5]</a>
-J. Runge, 
+J. Runge,
 Conditional independence testing based on a nearest-neighbor estimator of conditional mutual information. International Conference on Artificial Intelligence and Statistics, AISTATS 2018, 84, 2018, pp. 938–947.
 
 <a id="6">[6]</a>

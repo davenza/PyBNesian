@@ -59,13 +59,13 @@ std::shared_ptr<Factor> LinearGaussianCPDType::new_factor(const ConditionalBayes
 }
 
 LinearGaussianCPD::LinearGaussianCPD(std::string variable, std::vector<std::string> evidence)
-    : Factor(variable, evidence), m_fitted(false), m_beta(), m_variance(-1){};
+    : Factor(variable, evidence), m_fitted(false), m_beta(), m_variance(-1), m_training_type(arrow::float64()){};
 
 LinearGaussianCPD::LinearGaussianCPD(std::string variable,
                                      std::vector<std::string> evidence,
                                      VectorXd beta,
                                      double variance)
-    : Factor(variable, evidence), m_fitted(true), m_variance(variance) {
+    : Factor(variable, evidence), m_fitted(true), m_variance(variance), m_training_type(arrow::float64()) {
     if (static_cast<size_t>(beta.rows()) != (evidence.size() + 1)) {
         throw std::invalid_argument(
             "Wrong number of beta parameters. Beta vector size: " + std::to_string(beta.size()) +
@@ -80,6 +80,8 @@ LinearGaussianCPD::LinearGaussianCPD(std::string variable,
 };
 
 void LinearGaussianCPD::fit(const DataFrame& df) {
+    m_training_type = df.same_type(this->variable(), this->evidence());
+
     MLE<LinearGaussianCPD> mle;
 
     auto params = mle.estimate(df, this->variable(), this->evidence());
@@ -320,56 +322,71 @@ Array_ptr LinearGaussianCPD::sample(int n, const DataFrame& evidence_values, uns
     }
 
     check_fitted();
-    arrow::NumericBuilder<arrow::DoubleType> builder;
-    RAISE_STATUS_ERROR(builder.Resize(n));
+    const auto sample_impl = [&](auto arrow_type_tag) -> Array_ptr {
+        using ArrowType = decltype(arrow_type_tag);
+        using CType = typename ArrowType::c_type;
+        using ArrayType = typename arrow::TypeTraits<ArrowType>::ArrayType;
 
-    std::mt19937 rng{seed};
-    std::normal_distribution<> normal(m_beta(0), std::sqrt(m_variance));
+        arrow::NumericBuilder<ArrowType> builder;
+        RAISE_STATUS_ERROR(builder.Resize(n));
 
-    for (auto i = 0; i < n; ++i) {
-        builder.UnsafeAppend(normal(rng));
-    }
+        std::mt19937 rng{seed};
+        std::normal_distribution<> normal(m_beta(0), std::sqrt(m_variance));
 
-    std::shared_ptr<arrow::DoubleArray> out;
-    RAISE_STATUS_ERROR(builder.Finish(&out));
+        for (auto i = 0; i < n; ++i) {
+            builder.UnsafeAppend(static_cast<CType>(normal(rng)));
+        }
 
-    if (!this->evidence().empty()) {
-        if (!evidence_values.has_columns(this->evidence()))
-            throw std::domain_error("Evidence values not present for sampling.");
+        std::shared_ptr<ArrayType> out;
+        RAISE_STATUS_ERROR(builder.Finish(&out));
 
-        auto out_values = reinterpret_cast<double*>(out->values()->mutable_data());
-        const auto& e = this->evidence();
-        for (size_t j = 0; j < e.size(); ++j) {
-            auto evidence = evidence_values->GetColumnByName(e[j]);
+        if (!this->evidence().empty()) {
+            if (!evidence_values.has_columns(this->evidence()))
+                throw std::domain_error("Evidence values not present for sampling.");
 
-            switch (evidence->type_id()) {
-                case Type::DOUBLE: {
-                    auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence);
-                    auto raw_evidence = dwn_evidence->raw_values();
+            auto out_values = reinterpret_cast<CType*>(out->values()->mutable_data());
+            const auto& e = this->evidence();
+            for (size_t j = 0; j < e.size(); ++j) {
+                auto evidence = evidence_values->GetColumnByName(e[j]);
 
-                    for (auto i = 0; i < n; ++i) {
-                        out_values[i] += m_beta(j + 1) * raw_evidence[i];
+                switch (evidence->type_id()) {
+                    case Type::DOUBLE: {
+                        auto dwn_evidence = std::static_pointer_cast<arrow::DoubleArray>(evidence);
+                        auto raw_evidence = dwn_evidence->raw_values();
+
+                        for (auto i = 0; i < n; ++i) {
+                            out_values[i] += static_cast<CType>(m_beta(j + 1) * raw_evidence[i]);
+                        }
+                        break;
                     }
-                    break;
-                }
-                case Type::FLOAT: {
-                    auto dwn_evidence = std::static_pointer_cast<arrow::FloatArray>(evidence);
-                    auto raw_evidence = dwn_evidence->raw_values();
+                    case Type::FLOAT: {
+                        auto dwn_evidence = std::static_pointer_cast<arrow::FloatArray>(evidence);
+                        auto raw_evidence = dwn_evidence->raw_values();
 
-                    for (auto i = 0; i < n; ++i) {
-                        out_values[i] += m_beta(j + 1) * raw_evidence[i];
+                        for (auto i = 0; i < n; ++i) {
+                            out_values[i] += static_cast<CType>(m_beta(j + 1) * raw_evidence[i]);
+                        }
+                        break;
                     }
-                    break;
-                }
-                default: {
-                    throw std::invalid_argument("Wrong data type \"" + evidence->type()->ToString() +
-                                                "\" for LinearGaussianCPD parent data.");
+                    default: {
+                        throw std::invalid_argument("Wrong data type \"" + evidence->type()->ToString() +
+                                                    "\" for LinearGaussianCPD parent data.");
+                    }
                 }
             }
         }
-    }
 
-    return out;
+        return out;
+    };
+
+    switch (m_training_type->id()) {
+        case Type::FLOAT:
+            return sample_impl(arrow::FloatType());
+        case Type::DOUBLE:
+            return sample_impl(arrow::DoubleType());
+        default:
+            return sample_impl(arrow::DoubleType());
+    }
 }
 
 std::string LinearGaussianCPD::ToString() const {
@@ -402,17 +419,22 @@ std::string LinearGaussianCPD::ToString() const {
 }
 
 py::tuple LinearGaussianCPD::__getstate__() const {
-    return py::make_tuple(this->variable(), this->evidence(), m_fitted, m_beta, m_variance);
+    return py::make_tuple(this->variable(), this->evidence(), m_fitted, m_beta, m_variance, m_training_type);
 }
 
 LinearGaussianCPD LinearGaussianCPD::__setstate__(py::tuple& t) {
-    if (t.size() != 5) throw std::runtime_error("Not valid LinearGaussianCPD.");
+    if (t.size() != 5 && t.size() != 6) throw std::runtime_error("Not valid LinearGaussianCPD.");
 
     LinearGaussianCPD cpd(t[0].cast<std::string>(), t[1].cast<std::vector<std::string>>());
 
     cpd.m_fitted = t[2].cast<bool>();
     cpd.m_beta = t[3].cast<VectorXd>();
     cpd.m_variance = t[4].cast<double>();
+    if (t.size() == 6) {
+        cpd.m_training_type = t[5].cast<std::shared_ptr<arrow::DataType>>();
+    } else {
+        cpd.m_training_type = arrow::float64();
+    }
 
     return cpd;
 }

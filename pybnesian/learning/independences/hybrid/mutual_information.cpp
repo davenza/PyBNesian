@@ -920,6 +920,7 @@ std::pair<ConditionalCovariance, DiscreteConditions> conditional_covariance(
 
 double entropy_mvn(int dimensionality, double cov_det) {
     auto d = static_cast<double>(dimensionality);
+
     return 0.5 * d + 0.5 * d * std::log(2 * util::pi<double>) + 0.5 * std::log(cov_det);
 }
 
@@ -951,7 +952,7 @@ double MutualInformation::mi_discrete(const std::string& x, const std::string& y
         }
     }
 
-    return mi;
+    return std::max(mi, util::machine_tol);
 }
 
 template <bool contains_null, typename IndicesArrowType, typename ContinuousArrowType>
@@ -1020,6 +1021,7 @@ double MutualInformation::mi_mixed_impl(const std::string& discrete, const std::
 
     // Add H(Y_C)
     double mi = 0.5 + 0.5 * std::log(2 * util::pi<double> * total_variance);
+
     for (auto j = 0; j < num_categories; ++j) {
         if (counts(j) > 0) {
             auto pj = static_cast<double>(counts(j)) / total_counts;
@@ -1029,7 +1031,7 @@ double MutualInformation::mi_mixed_impl(const std::string& discrete, const std::
         }
     }
 
-    return std::max(mi, 0.);
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::mi_mixed(const std::string& discrete, const std::string& continuous) const {
@@ -1056,9 +1058,10 @@ template <typename ArrowType>
 double MutualInformation::mi_continuous_impl(const std::string& x, const std::string& y) const {
     auto pcov = m_df.cov<ArrowType>(x, y);
     auto& cov = *pcov;
-
     auto cor = cov(0, 1) / sqrt(cov(0, 0) * cov(1, 1));
-    return -0.5 * std::log(1 - cor * cor);
+
+    auto mi = -0.5 * std::log(1 - cor * cor);
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::mi_continuous(const std::string& x, const std::string& y) const {
@@ -1124,8 +1127,14 @@ double MutualInformation::calculate_df(const std::string& x, const std::string& 
 
 double MutualInformation::pvalue(const std::string& x, const std::string& y) const {
     auto mi_value = mi(x, y);
+
     // Multiply by 2*N to obtain 2*N*MI(X; Y). This follows a X^2 distribution.
     mi_value *= 2 * m_df.valid_rows(x, y);
+
+    if (std::isinf(mi_value) || std::isnan(mi_value)) {
+        return 1;
+    }
+
     auto df = calculate_df(x, y);
 
     boost::math::chi_squared_distribution chidist(static_cast<double>(df));
@@ -1250,7 +1259,8 @@ double MutualInformation::cmi_discrete_continuous_impl(const std::string& x,
                 double pi = static_cast<double>(ni) / total_counts;
                 double pj = static_cast<double>(nj) / total_counts;
 
-                auto h_xy = 0.5 + 0.5 * std::log(2 * util::pi<double> * variance_xy(k));
+                double h_xy = 0.5 + 0.5 * std::log(2 * util::pi<double> * variance_xy(k));
+
                 mi += pij * (-h_xy + std::log(pij / (pi * pj)));
             }
         }
@@ -1276,7 +1286,7 @@ double MutualInformation::cmi_discrete_continuous_impl(const std::string& x,
 
     // Sum - H(Z)
     mi -= 0.5 + 0.5 * std::log(2 * util::pi<double> * total_variance);
-    return std::max(mi, 0.);
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::cmi_discrete_continuous(const std::string& x,
@@ -1378,6 +1388,11 @@ double MutualInformation::pvalue(const std::string& x, const std::string& y, con
     auto mi_value = mi(x, y, z);
     // Multiply by 2*N to obtain 2*N*MI(X; Y). This follows a X^2 distribution.
     mi_value *= 2 * m_df.valid_rows(x, y, z);
+
+    if (std::isinf(mi_value) || std::isnan(mi_value)) {
+        return 1;
+    }
+
     auto df = calculate_df(x, y, z);
 
     boost::math::chi_squared_distribution chidist(static_cast<double>(df));
@@ -1442,7 +1457,7 @@ double MutualInformation::cmi_discrete_discrete(const std::string& x,
     }
 
     // mi contains N*MI(X; Y).
-    return mi;
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::cmi_general_both_discrete(const std::string& x,
@@ -1527,7 +1542,7 @@ double MutualInformation::cmi_general_both_discrete(const std::string& x,
         mi -= pz * h_z;
     }
 
-    return std::max(mi, 0.);
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::cmi_general_mixed(const std::string& x_discrete,
@@ -1584,7 +1599,7 @@ double MutualInformation::cmi_general_mixed(const std::string& x_discrete,
         }
     }
 
-    return std::max(mi, 0.);
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::cmi_general_both_continuous(const std::string& x,
@@ -1621,7 +1636,7 @@ double MutualInformation::cmi_general_both_continuous(const std::string& x,
         }
     }
 
-    return std::max(mi, 0.);
+    return std::max(mi, util::machine_tol);
 }
 
 double MutualInformation::cmi_general(const std::string& x,
@@ -1744,6 +1759,11 @@ double MutualInformation::pvalue(const std::string& x, const std::string& y, con
     auto mi_value = cmi_general(x, y, discrete_z, continuous_z);
     // Multiply by 2*N to obtain 2*N*MI(X; Y). This follows a X^2 distribution.
     mi_value *= 2 * m_df.valid_rows(x, y, z);
+
+    if (std::isinf(mi_value) || std::isnan(mi_value)) {
+        return 1;
+    }
+
     auto df = calculate_df(x, y, discrete_z, continuous_z);
 
     boost::math::chi_squared_distribution chidist(static_cast<double>(df));

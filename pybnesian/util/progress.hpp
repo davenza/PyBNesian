@@ -2,8 +2,43 @@
 #define PYBNESIAN_UTIL_PROGRESS_HPP
 
 #include <indicators/indicators.hpp>
+// #include <sstream>
+// #include <boost/format.hpp>  // sudo apt install libboost-all-dev
+#include <iostream>
+// enum class log_level_t { LOG_NOTHING, LOG_CRITICAL, LOG_ERROR, LOG_WARNING, LOG_INFO, LOG_DEBUG };
 
 namespace util {
+
+// auto GLOBAL_LEVEL = log_level_t::LOG_INFO;
+class formatted_log_t {
+public:
+    formatted_log_t(int verbose_level, std::string msg) : verbose_level(verbose_level), msg(msg) {}
+    ~formatted_log_t() {
+        // GLOBAL_LEVEL is a global variable and could be changed at runtime
+        // Any customization could be here
+        // if (level <= GLOBAL_LEVEL)
+        //     std::wcout << static_cast<int>(level) << L" " << fmt.str()
+        //                << std::endl;  // Convert level to a string before printing
+        if (verbose_level > 0) {
+            std::cout << msg << std::endl;
+        }
+    }
+    // template <typename T>
+    // formatted_log_t& operator%(T value) {
+    //     fmt % value;
+    //     return *this;
+    // }
+    // formatted_log_t log(int verbose_level, const char* msg) { return formatted_log_t(verbose_level, msg); }
+
+protected:
+    int verbose_level;
+    std::string msg;
+};
+// Helper function. Class formatted_log_t will not be used directly.
+// template <bool verbose_level>
+// formatted_log_t log(const char* msg) {
+//     return formatted_log_t(verbose_level, msg);
+// }
 
 class BaseIndeterminateSpinner {
 public:
@@ -65,6 +100,14 @@ private:
     indicators::ProgressSpinner m_spinner;
 };
 
+/**
+ * @brief Creates a spinner based on the verbose level.
+ *
+ * @tparam Args Arguments to pass to the spinner.
+ * @param verbose_level 0: no spinner, 1: indeterminate spinner
+ * @param additional_args Additional arguments to pass to the spinner.
+ * @return std::unique_ptr<BaseIndeterminateSpinner> Pointer to the spinner.
+ */
 template <typename... Args>
 std::unique_ptr<BaseIndeterminateSpinner> indeterminate_spinner(int verbose_level, Args&&... additional_args) {
     switch (verbose_level) {

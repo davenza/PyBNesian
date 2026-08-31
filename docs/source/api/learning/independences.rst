@@ -77,3 +77,10 @@ Bibliography
 
 .. [RCoT] Strobl, E. V., Zhang, K., & Visweswaran, S. (2019). Approximate kernel-based conditional independence tests
           for fast non-parametric causal discovery. Journal of Causal Inference, 7(1).
+
+.. [MSCMI] [1] Mesner, O. C. and Shalizi C. R. (2021) Conditional mutual information estimation for mixed, discrete and 
+            continuous data. IEEE Transactions on Information Theory, 67(1), 464–484.
+
+.. [MixedCMIKnn] [1] Popescu, O.-I., Gerhardus, A. & Runge, J. (2023). Non-parametric conditional independence testing for 
+            mixed continuous-categorical variables: A novel method and numerical evaluation. arXiv pre-print. 
+            Available: https://arxiv.org/abs/2310.11132

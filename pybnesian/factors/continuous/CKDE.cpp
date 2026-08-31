@@ -40,6 +40,11 @@ std::shared_ptr<Factor> CKDEType::new_factor(const ConditionalBayesianNetworkBas
     return generic_new_factor<CKDE>(variable, evidence, args, kwargs);
 }
 
+/**
+ * @brief Public function to learn the CKDE parameters given the data.
+ *
+ * @param df Data.
+ */
 void CKDE::fit(const DataFrame& df) {
     auto type = df.same_type(m_variables);
 

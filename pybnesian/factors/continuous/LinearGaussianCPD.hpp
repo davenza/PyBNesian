@@ -70,7 +70,7 @@ public:
 
     FactorType& type_ref() const override { return LinearGaussianCPDType::get_ref(); }
 
-    std::shared_ptr<arrow::DataType> data_type() const override { return arrow::float64(); }
+    std::shared_ptr<arrow::DataType> data_type() const override { return m_training_type; }
 
     bool fitted() const override { return m_fitted; }
     void fit(const DataFrame& df) override;
@@ -117,6 +117,7 @@ private:
     bool m_fitted;
     VectorXd m_beta;
     double m_variance;
+    std::shared_ptr<arrow::DataType> m_training_type = arrow::float64();
 };
 
 // Fix const name: https://stackoverflow.com/a/15862594

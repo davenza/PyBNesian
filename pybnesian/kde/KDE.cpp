@@ -39,7 +39,11 @@ DataFrame KDE::training_data() const {
             throw std::invalid_argument("Unreachable code.");
     }
 }
-
+/**
+ * @brief Learns the KDE parameters from the given data.
+ *
+ * @param df Data.
+ */
 void KDE::fit(const DataFrame& df) {
     m_training_type = df.same_type(m_variables);
 
@@ -67,6 +71,12 @@ void KDE::fit(const DataFrame& df) {
     m_fitted = true;
 }
 
+/**
+ * @brief Public function to calculate the log-likelihood vector of the given data.
+ *
+ * @param df Data.
+ * @return VectorXd Log-likelihood vector.
+ */
 VectorXd KDE::logl(const DataFrame& df) const {
     check_fitted();
     auto type = df.same_type(m_variables);
@@ -85,6 +95,12 @@ VectorXd KDE::logl(const DataFrame& df) const {
     }
 }
 
+/**
+ * @brief Public function to calculate the log-likelihood sum of the given data.
+ *
+ * @param df Data.
+ * @return double Log-likelihood sum.
+ */
 double KDE::slogl(const DataFrame& df) const {
     check_fitted();
     auto type = df.same_type(m_variables);

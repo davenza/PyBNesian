@@ -515,18 +515,31 @@ void OpenCLConfig::reduction_cols_offset(
 }
 
 template <typename ArrowType>
+/**
+ * @brief Calculates the log(sum(exp(.))) of each column of a matrix.
+ *
+ * @param input_mat Matrix of size input_rows x input_cols
+ * @param input_rows Number of rows of the matrix
+ * @param input_cols Number of columns of the matrix
+ * @param output_vec Vector of size input_cols
+ * @param output_offset Offset of the output vector
+ */
 void OpenCLConfig::logsumexp_cols_offset(
     cl::Buffer& input_mat, int input_rows, int input_cols, cl::Buffer& output_vec, int output_offset) {
     auto max_buffer = amax_cols<ArrowType>(input_mat, input_rows, input_cols);
 
+    // exp(input_mat[idx] - max_buffer[col]);
     auto logsumexp_coeffs = kernel(OpenCL_kernel_traits<ArrowType>::logsumexp_coeffs);
     logsumexp_coeffs.setArg(0, input_mat);
     logsumexp_coeffs.setArg(1, static_cast<unsigned int>(input_rows));
     logsumexp_coeffs.setArg(2, max_buffer);
     RAISE_ENQUEUEKERNEL_ERROR(m_queue.enqueueNDRangeKernel(
         logsumexp_coeffs, cl::NullRange, cl::NDRange(input_rows * input_cols), cl::NullRange));
+
+    // sum(exp(input_mat[idx] - max_buffer[col]));
     sum_cols_offset<ArrowType>(input_mat, input_rows, input_cols, output_vec, static_cast<unsigned int>(output_offset));
 
+    // log(sum(exp(input_mat[idx] - max_buffer[col]))) + max_buffer[col];
     auto finish_lse = kernel(OpenCL_kernel_traits<ArrowType>::finish_lse_offset);
     finish_lse.setArg(0, output_vec);
     finish_lse.setArg(1, static_cast<unsigned int>(output_offset));

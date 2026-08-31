@@ -2,7 +2,10 @@
     "name": "main",
     "version-string": "latest",
     "dependencies": [
-        "arrow",
+        {
+            "name": "arrow",
+            "default-features": false
+        },
         "nlopt",
         "libfort",
         "boost-math",

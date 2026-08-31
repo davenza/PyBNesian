@@ -1,6 +1,7 @@
 #ifndef PYBNESIAN_LEARNING_OPERATORS_OPERATORS_HPP
 #define PYBNESIAN_LEARNING_OPERATORS_OPERATORS_HPP
 
+#include <cmath>
 #include <Eigen/Dense>
 #include <models/BayesianNetwork.hpp>
 #include <learning/scores/scores.hpp>
@@ -18,10 +19,33 @@ using util::ArcStringVector, util::FactorTypeVector;
 
 namespace learning::operators {
 
+/**
+ * @brief Comparator for operator delta indices with deterministic tie-breaking.
+ *
+ * Sorts by descending delta score, places NaN values after finite values,
+ * and uses the index as a stable tie-breaker when deltas are equal.
+ */
+inline bool delta_index_greater(const double* delta_ptr, int i1, int i2) {
+    const auto d1 = delta_ptr[i1];
+    const auto d2 = delta_ptr[i2];
+
+    const bool nan1 = std::isnan(d1);
+    const bool nan2 = std::isnan(d2);
+    if (nan1 != nan2) {
+        return !nan1;
+    }
+
+    if (d1 == d2) {
+        return i1 < i2;
+    }
+
+    return d1 > d2;
+}
+
 class Operator {
 public:
     Operator(double delta) : m_delta(delta) {}
-    virtual ~Operator(){};
+    virtual ~Operator() {};
 
     virtual bool is_python_derived() const { return false; }
 
@@ -292,26 +316,43 @@ private:
     SetType m_set;
 };
 
+/**
+ * @brief Cache of local scores for each node in the network.
+ *
+ */
 class LocalScoreCache {
 public:
     LocalScoreCache() : m_local_score() {}
     LocalScoreCache(const BayesianNetworkBase& m) : m_local_score(m.num_nodes()) {}
 
+    /**
+     * @brief Cache local scores for each node in the network.
+     *
+     * @param model Bayesian network
+     * @param score Score
+     */
     void cache_local_scores(const BayesianNetworkBase& model, const Score& score) {
+        // Checks if the cache has the right size
         if (m_local_score.rows() != model.num_nodes()) {
             m_local_score = VectorXd(model.num_nodes());
         }
-
+        // Caches the local score for each node
         for (const auto& node : model.nodes()) {
             m_local_score(model.collapsed_index(node)) = score.local_score(model, node);
         }
     }
-
+    /**
+     * @brief Cache Validated local scores for each node in the network.
+     *
+     * @param model Bayesian network
+     * @param score Validated score
+     */
     void cache_vlocal_scores(const BayesianNetworkBase& model, const ValidatedScore& score) {
+        // Checks if the cache has the right size
         if (m_local_score.rows() != model.num_nodes()) {
             m_local_score = VectorXd(model.num_nodes());
         }
-
+        // Caches the validated local score for each node
         for (const auto& node : model.nodes()) {
             m_local_score(model.collapsed_index(node)) = score.vlocal_score(model, node);
         }
@@ -490,9 +531,9 @@ template <bool limited_indegree>
 std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const BayesianNetworkBase& model) const {
     auto delta_ptr = delta.data();
 
-    // TODO: Not checking sorted_idx empty
-    std::sort(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] > delta_ptr[i2]; });
+    std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+        return delta_index_greater(delta_ptr, i1, i2);
+    });
 
     for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
         auto idx = *it;
@@ -528,9 +569,9 @@ template <bool limited_indegree>
 std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBayesianNetworkBase& model) const {
     auto delta_ptr = delta.data();
 
-    // TODO: Not checking sorted_idx empty
-    std::sort(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] > delta_ptr[i2]; });
+    std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+        return delta_index_greater(delta_ptr, i1, i2);
+    });
 
     for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
         auto idx = *it;
@@ -582,9 +623,9 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const BayesianNetwor
                                                             const OperatorTabuSet& tabu_set) const {
     auto delta_ptr = delta.data();
 
-    // TODO: Not checking sorted_idx empty
-    std::sort(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] > delta_ptr[i2]; });
+    std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+        return delta_index_greater(delta_ptr, i1, i2);
+    });
 
     for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
         auto idx = *it;
@@ -627,9 +668,9 @@ std::shared_ptr<Operator> ArcOperatorSet::find_max_indegree(const ConditionalBay
                                                             const OperatorTabuSet& tabu_set) const {
     auto delta_ptr = delta.data();
 
-    // TODO: Not checking sorted_idx empty
-    std::sort(
-        sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) { return delta_ptr[i1] > delta_ptr[i2]; });
+    std::sort(sorted_idx.begin(), sorted_idx.end(), [&delta_ptr](auto i1, auto i2) {
+        return delta_index_greater(delta_ptr, i1, i2);
+    });
 
     for (auto it = sorted_idx.begin(), end = sorted_idx.end(); it != end; ++it) {
         auto idx = *it;
@@ -833,6 +874,13 @@ private:
     std::vector<std::shared_ptr<OperatorSet>> m_op_sets;
 };
 
+/**
+ * @brief Cache local scores for each of the operators in the pool with the given model and score.
+ *
+ * @tparam M Model type
+ * @param model Bayesian network
+ * @param score Score
+ */
 template <typename M>
 void OperatorPool::cache_scores(const M& model, const Score& score) {
     if (!this->m_local_cache) {

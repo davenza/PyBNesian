@@ -2244,13 +2244,13 @@ public:
 
         PyObject* method_py = method.ptr();
 
-        #ifdef Python_MAJOR_VERSION == 3 && Python_MINOR_VERSION >= 9
+#if Python_MAJOR_VERSION == 3 && Python_MINOR_VERSION >= 9
         py::handle casted = PyObject_CallOneArg(method_py, schema_capsule);
-        #else
+#else
         PyObject* args = PyTuple_Pack(1, schema_capsule);
         py::handle casted = PyObject_Call(method_py, args, NULL);
         Py_DECREF(args);
-        #endif
+#endif
 
         return casted;
     }

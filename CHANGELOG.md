@@ -1,4 +1,25 @@
 # Changelog
+## 0.6.0
+- Fixed a bug with LinearGaussianCPD sampling
+- Fixed pytests to work with diagonal bandwidth matrix.
+- Added delta index comparator to fix seed in hc learning
+- Refactor variable names in serialization tests to lowercase
+- Updated installation guide with improved instructions and additional dependencies
+
+
+## 0.5.3
+- Updated KDE bandwidth calculation to use diagonal covariance matrix instead of full covariance matrix. This change allows for more efficient bandwidth estimation and can improve the performance of KDE in high-dimensional spaces.
+- Added mixed_knncmi estimator for mutual information estimation with mixed data. This estimator uses a k-nearest neighbors approach for continuous data and a frequency-based approach for discrete data.
+- Improved the documentation for installation and usage of the package, including more detailed instructions and troubleshooting tips.
+
+
+## v0.5.2
+
+- Python code is now formatted with `black` and `isort`, and has been refactored according to `PEP 8` style guides.
+- Python code partially commented with `google` docstring format.
+- C++ code partially commented with `doxygen` docstring format.
+- Scott's and Normal Reference Rule's `bandwidth` calculation have been reordered and commented.
+- `ArcOperatorSet::update_incoming_arcs_scores` formulas have been reordered and commented.
 
 ## v0.5.1
 
@@ -8,10 +29,10 @@
 ## v0.5.0
 
 - Changed the build process to statically link Apache Arrow. With this change and using the
-[PyCapsule interface](https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html), PyBNesian can interoperate
-with different versions of `pyarrow>=14.0.0`. You can now upgrade pyarrow (`pip install --upgrade pyarrow`)
-without breaking PyBNesian. The dependencies are also managed by [vcpkg](https://vcpkg.io), so the
-build process is simpler and orchestrated by scikit-build-core and a CMakeLists.txt.
+  [PyCapsule interface](https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html), PyBNesian can interoperate
+  with different versions of `pyarrow>=14.0.0`. You can now upgrade pyarrow (`pip install --upgrade pyarrow`)
+  without breaking PyBNesian. The dependencies are also managed by [vcpkg](https://vcpkg.io), so the
+  build process is simpler and orchestrated by scikit-build-core and a CMakeLists.txt.
 
 - Some tests failed because `pandas` and `scipy` were updated. These issues have been fixed.
 
@@ -21,7 +42,7 @@ build process is simpler and orchestrated by scikit-build-core and a CMakeLists.
 
 - Fixed a bug in `DiscreteFactor` and others hybrid factors, such as `CLinearGaussianCPD` and `HCKDE`, where categorical data would not be correctly validated. This could lead to erroneous results or undefined behavior (often leading to segmentation fault). Thanks to Carlos Li for reporting this bug.
 
-- Support for Python 3.10 and `pyarrow>=9.0` has been added. Support for Python 3.6 has been deprecated, as `pyarrow` no longer supports it. 
+- Support for Python 3.10 and `pyarrow>=9.0` has been added. Support for Python 3.6 has been deprecated, as `pyarrow` no longer supports it.
 
 - manylinux2014 wheels are now used instead of manylinux2010, since `pyarrow` no longer provides manylinux2010 wheels.
 
@@ -52,7 +73,7 @@ build process is simpler and orchestrated by scikit-build-core and a CMakeLists.
   - Fixed many serialization bugs. In particular, there were multiple bugs related with the serialization of models with Python extensions.
   - Included a fix for the Windows build (by setting a correct `__cplusplus` value).
   - Fixed a bug in `LinearGaussianCPD.fit()` with 2 parents. In some cases, it was detecting a linear dependence between the parents that did not exist.
-  - Fixes a bug which causes that the Python-class extension functionality is removed. 
+  - Fixes a bug which causes that the Python-class extension functionality is removed.
     Related to: [https://github.com/pybind/pybind11/issues/1333](https://github.com/pybind/pybind11/issues/1333).
 
 ## v0.3.4
@@ -101,7 +122,7 @@ build process is simpler and orchestrated by scikit-build-core and a CMakeLists.
 - Added a `ProductKDE` class that implements `KDE` with diagonal bandwidth matrix.
 - Added an abstract class `BandwidthSelector` to implement bandwidth selection for `KDE` and `ProductKDE`. Three
   concrete implementations of bandwidth selection are included: `ScottsBandwidth`, `NormalReferenceRule` and `UCV`.
-- Added `Arguments`, `Args` and `Kwargs` to store a set of arguments to be used to create new factors through
+- Added `arguments`, `args` and `kwargs` to store a set of arguments to be used to create new factors through
   `FactorType::new_factor()`. The `Arguments` are accepted by `BayesianNetworkBase::fit()` and the constructors of
   `CVLikelihood`, `HoldoutLikelihood` and `ValidatedLikelihood`.
 
@@ -113,8 +134,8 @@ build process is simpler and orchestrated by scikit-build-core and a CMakeLists.
 ## v0.2.0
 
 - Added conditional linear Gaussian networks (`CLGNetworkType`, `CLGNetwork`, `ConditionalCLGNetwork` and `DynamicCLGNetwork`).
-- Implemented `ChiSquare` (and `DynamicChiSquare`) indepencence test.
-- Implemented `MutualInformation` (and `DynamicMutualInformation`) indepencence test. This is valid for hybrid data.
+- Implemented `ChiSquare` (and `DynamicChiSquare`) independence test.
+- Implemented `MutualInformation` (and `DynamicMutualInformation`) independence test. This is valid for hybrid data.
 - Implemented `BDe` (Bayesian Dirichlet equivalent) score (and `DynamicBDe`).
 - Added `UnknownFactorType` as default `FactorType` for Bayesian networks when the node type could not be deduced.
 - Added `Assignment` class to represent the assignment of values to variables.
@@ -124,11 +145,11 @@ API changes:
 - Added method `Score::data()`.
 - Added `BayesianNetworkType::data_default_node_type()` for non-homogeneous `BayesianNetworkType`.
 - Added constructor for `HeterogeneousBN` to specify a default `FactorType` for each data type. Also, it adds
-    `HeterogeneousBN::default_node_types()` and `HeterogeneousBN::single_default()`.
+  `HeterogeneousBN::default_node_types()` and `HeterogeneousBN::single_default()`.
 - Added `BayesianNetworkBase::has_unknown_node_types()` and `BayesianNetworkBase::set_unknown_node_types()`.
 - Changed signature of `BayesianNetworkType::compatible_node_type()` to include the new node type as argument.
 - Removed `FactorType::opposite_semiparametric()`. This functionality has been replaced by
-    `BayesianNetworkType::alternative_node_type()`.
+  `BayesianNetworkType::alternative_node_type()`.
 - Included model as parameter of `Operator::opposite()`.
 - Added method `OperatorSet::set_type_blacklist()`. Added a type blacklist argument to `ChangeNodeTypeSet` constructor.
 

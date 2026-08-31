@@ -1,39 +1,38 @@
 import pybnesian as pbn
-from pybnesian import BayesianNetworkType, BayesianNetwork, ConditionalBayesianNetwork, GaussianNetwork,\
-    SemiparametricBN, KDENetwork, DiscreteBN
-import util_test
+from helpers.data import generate_normal_data_independent
+
 
 def test_bn_type():
-    g1 = GaussianNetwork(["a", "b", "c", "d"])
-    g2 = GaussianNetwork(["a", "b", "c", "d"])
-    g3 = GaussianNetwork(["a", "b", "c", "d"])
+    g1 = pbn.GaussianNetwork(["a", "b", "c", "d"])
+    g2 = pbn.GaussianNetwork(["a", "b", "c", "d"])
+    g3 = pbn.GaussianNetwork(["a", "b", "c", "d"])
 
     assert g1.type() == pbn.GaussianNetworkType()
     assert g1.type() == g2.type()
     assert g1.type() == g3.type()
     assert g2.type() == g3.type()
 
-    s1 = SemiparametricBN(["a", "b", "c", "d"])
-    s2 = SemiparametricBN(["a", "b", "c", "d"])
-    s3 = SemiparametricBN(["a", "b", "c", "d"])
+    s1 = pbn.SemiparametricBN(["a", "b", "c", "d"])
+    s2 = pbn.SemiparametricBN(["a", "b", "c", "d"])
+    s3 = pbn.SemiparametricBN(["a", "b", "c", "d"])
 
     assert s1.type() == pbn.SemiparametricBNType()
     assert s1.type() == s2.type()
     assert s1.type() == s3.type()
     assert s2.type() == s3.type()
 
-    k1 = KDENetwork(["a", "b", "c", "d"])
-    k2 = KDENetwork(["a", "b", "c", "d"])
-    k3 = KDENetwork(["a", "b", "c", "d"])
+    k1 = pbn.KDENetwork(["a", "b", "c", "d"])
+    k2 = pbn.KDENetwork(["a", "b", "c", "d"])
+    k3 = pbn.KDENetwork(["a", "b", "c", "d"])
 
     assert k1.type() == pbn.KDENetworkType()
     assert k1.type() == k2.type()
     assert k1.type() == k3.type()
     assert k2.type() == k3.type()
 
-    d1 = DiscreteBN(["a", "b", "c", "d"])
-    d2 = DiscreteBN(["a", "b", "c", "d"])
-    d3 = DiscreteBN(["a", "b", "c", "d"])
+    d1 = pbn.DiscreteBN(["a", "b", "c", "d"])
+    d2 = pbn.DiscreteBN(["a", "b", "c", "d"])
+    d3 = pbn.DiscreteBN(["a", "b", "c", "d"])
 
     assert d1.type() == pbn.DiscreteBNType()
     assert d1.type() == d2.type()
@@ -47,10 +46,11 @@ def test_bn_type():
     assert s1.type() != d1.type()
     assert k1.type() != d1.type()
 
+
 def test_new_bn_type():
-    class MyGaussianNetworkType(BayesianNetworkType):
+    class MyGaussianNetworkType(pbn.BayesianNetworkType):
         def __init__(self):
-            BayesianNetworkType.__init__(self)
+            pbn.BayesianNetworkType.__init__(self)
 
         def is_homogeneous(self):
             return True
@@ -66,10 +66,10 @@ def test_new_bn_type():
     assert a1 == a3
     assert a2 == a3
 
-    class MySemiparametricBNType(BayesianNetworkType):
+    class MySemiparametricBNType(pbn.BayesianNetworkType):
         def __init__(self):
-            BayesianNetworkType.__init__(self)
-    
+            pbn.BayesianNetworkType.__init__(self)
+
     b1 = MySemiparametricBNType()
     b2 = MySemiparametricBNType()
     b3 = MySemiparametricBNType()
@@ -80,7 +80,7 @@ def test_new_bn_type():
 
     assert a1 != b1
 
-    mybn = BayesianNetwork(a1, ["a", "b", "c", "d"])
+    mybn = pbn.BayesianNetwork(a1, ["a", "b", "c", "d"])
 
     # This type omits the arcs that do not have "a" as source.
     assert mybn.can_add_arc("a", "b")
@@ -88,9 +88,9 @@ def test_new_bn_type():
     assert not mybn.can_add_arc("c", "d")
 
 
-class MyRestrictedGaussianNetworkType(BayesianNetworkType):
+class MyRestrictedGaussianNetworkType(pbn.BayesianNetworkType):
     def __init__(self):
-        BayesianNetworkType.__init__(self)
+        pbn.BayesianNetworkType.__init__(self)
 
     def is_homogeneous(self):
         return True
@@ -104,19 +104,30 @@ class MyRestrictedGaussianNetworkType(BayesianNetworkType):
     def __str__(self):
         return "MyRestrictedGaussianNetworkType"
 
-class SpecificNetwork(BayesianNetwork):
+
+class SpecificNetwork(pbn.BayesianNetwork):
     def __init__(self, variables, arcs=None):
         if arcs is None:
-            BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables)
+            pbn.BayesianNetwork.__init__(
+                self, MyRestrictedGaussianNetworkType(), variables
+            )
         else:
-            BayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, arcs)
+            pbn.BayesianNetwork.__init__(
+                self, MyRestrictedGaussianNetworkType(), variables, arcs
+            )
 
-class ConditionalSpecificNetwork(ConditionalBayesianNetwork):
+
+class ConditionalSpecificNetwork(pbn.ConditionalBayesianNetwork):
     def __init__(self, variables, interface, arcs=None):
         if arcs is None:
-            ConditionalBayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, interface)
+            pbn.ConditionalBayesianNetwork.__init__(
+                self, MyRestrictedGaussianNetworkType(), variables, interface
+            )
         else:
-            ConditionalBayesianNetwork.__init__(self, MyRestrictedGaussianNetworkType(), variables, interface, arcs)
+            pbn.ConditionalBayesianNetwork.__init__(
+                self, MyRestrictedGaussianNetworkType(), variables, interface, arcs
+            )
+
 
 def test_new_specific_bn_type():
     sp1 = SpecificNetwork(["a", "b", "c", "d"])
@@ -134,7 +145,7 @@ def test_new_specific_bn_type():
     assert sp1.num_arcs() == sp3.num_arcs() == 0
     assert sp2.arcs() == [("a", "b")]
 
-    df = util_test.generate_normal_data_indep(1000)
+    df = generate_normal_data_independent(1000)
     bic = pbn.BIC(df)
 
     start = SpecificNetwork(["a", "b", "c", "d"])
@@ -147,7 +158,7 @@ def test_new_specific_bn_type():
     # #######################
     # Conditional BN
     # #######################
- 
+
     csp1 = ConditionalSpecificNetwork(["a", "b"], ["c", "d"])
     csp2 = ConditionalSpecificNetwork(["a", "b"], ["c", "d"], [("a", "b")])
     csp3 = ConditionalSpecificNetwork(["a", "b"], ["c", "d"])
